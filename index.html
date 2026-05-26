@@ -1,0 +1,688 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Gerador de FAQ</title>
+  <style>
+    :root {
+      --bg: #f4f7fb;
+      --panel: #ffffff;
+      --ink: #172033;
+      --muted: #64748b;
+      --line: #d9e2ec;
+      --blue: #009dff;
+      --blue-dark: #0878c2;
+      --green: #0f766e;
+      --red: #c2410c;
+      --shadow: 0 16px 40px rgba(15, 23, 42, 0.08);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      color: var(--ink);
+      background:
+        linear-gradient(180deg, #eaf6ff 0, rgba(234, 246, 255, 0) 320px),
+        var(--bg);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    button,
+    input,
+    textarea {
+      font: inherit;
+    }
+
+    button {
+      border: 0;
+    }
+
+    .app {
+      width: min(1320px, calc(100% - 32px));
+      margin: 0 auto;
+      padding: 28px 0;
+    }
+
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 20px;
+    }
+
+    .brand {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .brand h1 {
+      margin: 0;
+      color: #102033;
+      font-size: 28px;
+      line-height: 1.12;
+      font-weight: 800;
+    }
+
+    .brand p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+      gap: 8px;
+    }
+
+    .button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      min-height: 40px;
+      padding: 10px 14px;
+      border-radius: 8px;
+      color: #ffffff;
+      background: var(--blue);
+      font-weight: 750;
+      cursor: pointer;
+      transition: transform 0.12s ease, background 0.12s ease, box-shadow 0.12s ease;
+      white-space: nowrap;
+    }
+
+    .button:hover {
+      background: var(--blue-dark);
+      box-shadow: 0 10px 22px rgba(0, 157, 255, 0.2);
+      transform: translateY(-1px);
+    }
+
+    .button:focus-visible {
+      outline: 3px solid rgba(0, 157, 255, 0.25);
+      outline-offset: 2px;
+    }
+
+    .button--soft {
+      color: #0f3554;
+      background: #dff2ff;
+    }
+
+    .button--soft:hover {
+      color: #ffffff;
+      background: var(--blue-dark);
+    }
+
+    .button--green {
+      background: var(--green);
+    }
+
+    .button--green:hover {
+      background: #0b5f59;
+      box-shadow: 0 10px 22px rgba(15, 118, 110, 0.18);
+    }
+
+    .button--danger {
+      color: var(--red);
+      background: #fff1e8;
+      box-shadow: none;
+    }
+
+    .button--danger:hover {
+      color: #ffffff;
+      background: var(--red);
+      box-shadow: none;
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: minmax(330px, 0.88fr) minmax(420px, 1.12fr);
+      gap: 18px;
+      align-items: start;
+    }
+
+    .panel {
+      min-width: 0;
+      background: var(--panel);
+      border: 1px solid rgba(217, 226, 236, 0.9);
+      border-radius: 8px;
+      box-shadow: var(--shadow);
+    }
+
+    .panel__head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 16px 18px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .panel__head h2 {
+      margin: 0;
+      font-size: 16px;
+      line-height: 1.3;
+    }
+
+    .panel__body {
+      padding: 18px;
+    }
+
+    .field {
+      display: grid;
+      gap: 7px;
+      margin-bottom: 14px;
+    }
+
+    .field span {
+      color: #314155;
+      font-size: 13px;
+      font-weight: 750;
+    }
+
+    .field input,
+    .field textarea {
+      width: 100%;
+      border: 1px solid #cbd5e1;
+      border-radius: 8px;
+      color: #0f172a;
+      background: #ffffff;
+      padding: 11px 12px;
+      outline: none;
+      transition: border 0.12s ease, box-shadow 0.12s ease;
+    }
+
+    .field textarea {
+      min-height: 96px;
+      resize: vertical;
+      line-height: 1.5;
+    }
+
+    .field input:focus,
+    .field textarea:focus {
+      border-color: var(--blue);
+      box-shadow: 0 0 0 3px rgba(0, 157, 255, 0.15);
+    }
+
+    .faq-editor {
+      display: grid;
+      gap: 12px;
+    }
+
+    .faq-editor__item {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fbfdff;
+      overflow: hidden;
+    }
+
+    .faq-editor__bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 10px 12px;
+      background: #eef6fc;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .faq-editor__bar strong {
+      min-width: 0;
+      color: #18324a;
+      font-size: 13px;
+      overflow-wrap: anywhere;
+    }
+
+    .faq-editor__fields {
+      padding: 12px;
+    }
+
+    .status {
+      min-height: 20px;
+      color: var(--green);
+      font-size: 13px;
+      font-weight: 750;
+      text-align: right;
+    }
+
+    .output {
+      display: grid;
+      gap: 14px;
+    }
+
+    .output textarea {
+      width: 100%;
+      min-height: 360px;
+      padding: 14px;
+      border: 1px solid #cbd5e1;
+      border-radius: 8px;
+      resize: vertical;
+      color: #17324d;
+      background: #f8fbff;
+      font: 13px/1.45 Consolas, "Courier New", monospace;
+      white-space: pre;
+    }
+
+    .preview-shell {
+      padding: 14px;
+      border: 1px dashed #b7c8d9;
+      border-radius: 8px;
+      background: #f8fafc;
+    }
+
+    .preview-shell__label {
+      display: block;
+      margin: 0 0 12px;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 750;
+    }
+
+    .preview-frame {
+      min-height: 120px;
+      padding: 16px 0;
+      background: #ffffff;
+      border-radius: 8px;
+      overflow: hidden;
+    }
+
+    @media (max-width: 920px) {
+      .topbar {
+        align-items: flex-start;
+        flex-direction: column;
+      }
+
+      .actions {
+        justify-content: flex-start;
+      }
+
+      .layout {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 560px) {
+      .app {
+        width: min(100% - 20px, 1320px);
+        padding: 18px 0;
+      }
+
+      .brand h1 {
+        font-size: 24px;
+      }
+
+      .panel__head,
+      .panel__body {
+        padding: 14px;
+      }
+
+      .actions,
+      .button {
+        width: 100%;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <header class="topbar">
+      <div class="brand">
+        <h1>Gerador de FAQ</h1>
+        <p>Preencha os campos e copie apenas o bloco pronto do FAQ.</p>
+      </div>
+      <div class="actions">
+        <button class="button button--soft" id="addItemTop" type="button">Adicionar pergunta</button>
+        <button class="button button--green" id="copyHtmlTop" type="button">Copiar HTML</button>
+      </div>
+    </header>
+
+    <section class="layout" aria-label="Gerador">
+      <div class="panel">
+        <div class="panel__head">
+          <h2>Conteúdo</h2>
+          <button class="button button--soft" id="addItem" type="button">Adicionar</button>
+        </div>
+        <div class="panel__body">
+          <label class="field">
+            <span>Título do FAQ</span>
+            <input id="faqTitle" type="text" value="Dúvidas Frequentes" autocomplete="off">
+          </label>
+
+          <div class="faq-editor" id="faqEditor"></div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel__head">
+          <h2>HTML pronto</h2>
+          <div class="actions">
+            <button class="button button--green" id="copyHtml" type="button">Copiar</button>
+          </div>
+        </div>
+        <div class="panel__body output">
+          <div class="status" id="copyStatus" aria-live="polite"></div>
+          <textarea id="generatedHtml" readonly spellcheck="false" aria-label="HTML gerado"></textarea>
+          <div class="preview-shell">
+            <span class="preview-shell__label">Prévia</span>
+            <div class="preview-frame" id="previewFrame"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const faqStyle = `<style>
+.faq-section,
+.faq-section * {
+box-sizing: border-box;
+}
+
+.faq-section * {
+padding: 0;
+margin: 0;
+}
+
+.faq-section {
+width: 100%;
+padding: 0rem 16px;
+box-sizing: border-box;
+margin: -10px auto 25px;
+font-family: sans-serif;
+}
+
+.faq-section__header {
+color: #f1f1f1;
+margin: 0 0 12px;
+font-size: 14px;
+line-height: 24px;
+letter-spacing: 0.15px;
+font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Helvetica, "Noto Sans", "Liberation Sans", Arial, sans-serif;
+font-weight: 400;
+text-decoration: none;
+}
+
+.faq-section__title {
+text-align: center;
+align-items: flex-start;
+background: rgb(0, 157, 255);
+border-radius: 4px;
+color: rgb(255, 255, 255);
+display: flex;
+flex-direction: row;
+height: 40px;
+margin: 0 0 8px;
+padding: 8px;
+width: 100%;
+box-sizing: border-box;
+}
+
+.faq-section__list {
+list-style: none;
+margin: 0 auto;
+padding: 0;
+display: flex;
+flex-direction: column;
+gap: 8px;
+}
+
+.faq-section__item {
+background: #fff;
+border: 1px solid #e5e5e5;
+border-radius: 12px;
+overflow: hidden;
+}
+
+.faq-section__item summary {
+display: flex;
+align-items: center;
+justify-content: space-between;
+gap: 12px;
+padding: 16px 20px;
+cursor: pointer;
+list-style: none;
+transition: background 0.15s ease;
+}
+
+.faq-section__item summary::-webkit-details-marker {
+display: none;
+}
+
+.faq-section__item summary:hover {
+background: #f9f9f9;
+}
+
+.faq-section__item summary:focus-visible {
+outline: 2px solid #ea5b0c;
+outline-offset: -2px;
+border-radius: 12px;
+}
+
+.faq-section__q-text {
+font-size: 14px;
+font-weight: bold;
+color: #333;
+flex: 1;
+margin: 0;
+transition: color 0.15s ease;
+}
+
+.faq-section__icon {
+width: 20px;
+height: 20px;
+flex-shrink: 0;
+position: relative;
+}
+
+.faq-section__icon::before,
+.faq-section__icon::after {
+content: '';
+position: absolute;
+background: rgb(46, 53, 56);
+border-radius: 2px;
+transition: transform 0.25s ease, opacity 0.25s ease;
+}
+
+.faq-section__icon::before {
+width: 12px;
+height: 1.5px;
+top: 9px;
+left: 4px;
+}
+
+.faq-section__icon::after {
+width: 1.5px;
+height: 12px;
+top: 4px;
+left: 9px;
+}
+
+.faq-section__item details[open] .faq-section__icon::after {
+transform: rotate(90deg);
+opacity: 0;
+}
+
+.faq-section__a-inner {
+padding: 14px 20px 16px;
+border-top: 1px solid #e5e5e5;
+}
+
+.faq-section__a-text {
+font-size: 12px;
+color: rgb(46, 53, 56);
+line-height: 1.6;
+margin: 0;
+}
+
+@media (max-width: 480px) {
+.faq-section__q-text {
+font-size: 0.9rem;
+}
+}
+</style>`;
+
+    const state = {
+      items: [
+        { question: "PERGUNTA", answer: "RESPOSTA" },
+        { question: "PERGUNTA", answer: "RESPOSTA" },
+        { question: "PERGUNTA", answer: "RESPOSTA" }
+      ]
+    };
+
+    const titleInput = document.querySelector("#faqTitle");
+    const editor = document.querySelector("#faqEditor");
+    const generatedHtml = document.querySelector("#generatedHtml");
+    const previewFrame = document.querySelector("#previewFrame");
+    const copyStatus = document.querySelector("#copyStatus");
+
+    function escapeHtml(value) {
+      return value
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+    }
+
+    function formatAnswer(value) {
+      return escapeHtml(value.trim()).replace(/\r?\n/g, "<br>");
+    }
+
+    function renderFaqItem(item) {
+      const question = escapeHtml(item.question.trim());
+      const answer = formatAnswer(item.answer);
+
+      return `<li class="faq-section__item">
+<details>
+<summary>
+<h3 class="faq-section__q-text">${question}</h3>
+<span class="faq-section__icon" aria-hidden="true"></span>
+</summary>
+<div class="faq-section__a-inner">
+<p class="faq-section__a-text">${answer}</p>
+</div>
+</details>
+</li>`;
+    }
+
+    function buildFaqHtml() {
+      const title = escapeHtml(titleInput.value.trim() || "Dúvidas Frequentes");
+      const items = state.items
+        .filter((item) => item.question.trim() || item.answer.trim())
+        .map(renderFaqItem)
+        .join("\n\n");
+
+      return `<section class="faq-section" aria-labelledby="faq-section-title">
+<div class="faq-section__header">
+<h2 class="faq-section__title" id="faq-section-title">${title}</h2>
+</div>
+<ul class="faq-section__list" role="list">
+${items}
+</ul>
+</section>
+
+${faqStyle}`;
+    }
+
+    function updateOutput() {
+      const html = buildFaqHtml();
+      generatedHtml.value = html;
+      previewFrame.innerHTML = html;
+      copyStatus.textContent = "";
+    }
+
+    function renderEditor() {
+      editor.innerHTML = state.items.map((item, index) => `
+        <article class="faq-editor__item" data-index="${index}">
+          <div class="faq-editor__bar">
+            <strong>Pergunta ${index + 1}</strong>
+            <button class="button button--danger" type="button" data-action="remove">Remover</button>
+          </div>
+          <div class="faq-editor__fields">
+            <label class="field">
+              <span>Pergunta</span>
+              <input type="text" value="${escapeHtml(item.question)}" data-field="question" autocomplete="off">
+            </label>
+            <label class="field">
+              <span>Resposta</span>
+              <textarea data-field="answer">${escapeHtml(item.answer)}</textarea>
+            </label>
+          </div>
+        </article>
+      `).join("");
+
+      updateOutput();
+    }
+
+    function addItem() {
+      state.items.push({ question: "", answer: "" });
+      renderEditor();
+      const lastItem = editor.querySelector(".faq-editor__item:last-child input");
+      if (lastItem) {
+        lastItem.focus();
+      }
+    }
+
+    async function copyGeneratedHtml() {
+      generatedHtml.focus();
+      generatedHtml.select();
+
+      try {
+        await navigator.clipboard.writeText(generatedHtml.value);
+      } catch (error) {
+        document.execCommand("copy");
+      }
+
+      copyStatus.textContent = "HTML copiado.";
+      window.setTimeout(() => {
+        copyStatus.textContent = "";
+      }, 2400);
+    }
+
+    editor.addEventListener("input", (event) => {
+      const field = event.target.dataset.field;
+      if (!field) {
+        return;
+      }
+
+      const itemElement = event.target.closest(".faq-editor__item");
+      const index = Number(itemElement.dataset.index);
+      state.items[index][field] = event.target.value;
+      updateOutput();
+    });
+
+    editor.addEventListener("click", (event) => {
+      const button = event.target.closest("[data-action='remove']");
+      if (!button) {
+        return;
+      }
+
+      const itemElement = button.closest(".faq-editor__item");
+      const index = Number(itemElement.dataset.index);
+      state.items.splice(index, 1);
+
+      if (state.items.length === 0) {
+        state.items.push({ question: "", answer: "" });
+      }
+
+      renderEditor();
+    });
+
+    titleInput.addEventListener("input", updateOutput);
+    document.querySelector("#addItem").addEventListener("click", addItem);
+    document.querySelector("#addItemTop").addEventListener("click", addItem);
+    document.querySelector("#copyHtml").addEventListener("click", copyGeneratedHtml);
+    document.querySelector("#copyHtmlTop").addEventListener("click", copyGeneratedHtml);
+
+    renderEditor();
+  </script>
+</body>
+</html>
