@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Gerador de FAQ</title>
+  <title>Compilador de FAQs</title>
   <style>
     :root {
       --bg: #f4f7fb;
@@ -199,6 +199,11 @@
       overflow: hidden;
     }
 
+    .editor-tools {
+      flex: 0 0 auto;
+      padding: 18px 18px 0;
+    }
+
     .field {
       display: grid;
       gap: 7px;
@@ -229,6 +234,10 @@
       line-height: 1.5;
     }
 
+    .field textarea.bulk-input {
+      min-height: 150px;
+    }
+
     .field input:focus,
     .field textarea:focus {
       border-color: var(--blue);
@@ -247,6 +256,21 @@
       overscroll-behavior: contain;
       padding: 18px 12px 18px 18px;
       scrollbar-gutter: stable;
+    }
+
+    .bulk-actions {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 10px;
+      margin: -4px 0 16px;
+    }
+
+    .bulk-status {
+      min-height: 20px;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 700;
     }
 
     .faq-editor__item {
@@ -330,8 +354,10 @@
 
     .preview-frame {
       flex: 1;
+      width: 100%;
       min-height: 0;
       padding: 16px 0;
+      border: 0;
       background: #ffffff;
       border-radius: 8px;
       overflow: auto;
@@ -373,6 +399,10 @@
         height: auto;
         overflow: visible;
         padding: 14px;
+      }
+
+      .editor-tools {
+        padding: 14px 14px 0;
       }
 
       .output textarea {
@@ -438,7 +468,7 @@
   <main class="app">
     <header class="topbar">
       <div class="brand">
-        <h1>Gerador de FAQ</h1>
+        <h1>Compilador de FAQs</h1>
         <p>Preencha os campos e copie apenas o bloco pronto do FAQ.</p>
       </div>
       <div class="actions">
@@ -454,6 +484,23 @@
           <button class="button button--soft" id="addItem" type="button">Adicionar</button>
         </div>
         <div class="panel__body">
+          <div class="editor-tools">
+            <label class="field">
+              <span>Colar perguntas e respostas</span>
+              <textarea class="bulk-input" id="bulkFaqInput" spellcheck="false" placeholder="4. O produto contém glúten?
+
+Não. O adoçante não contém glúten, o que amplia as possibilidades de consumo para diferentes rotinas alimentares.
+
+5. O sabor funciona bem no café?
+
+Sim. A apresentação líquida facilita a diluição e ajuda no uso em bebidas quentes como café e chá."></textarea>
+            </label>
+
+            <div class="bulk-actions">
+              <button class="button button--soft" id="fillFromBulk" type="button">Preencher campos</button>
+              <span class="bulk-status" id="bulkStatus" aria-live="polite"></span>
+            </div>
+          </div>
           <div class="faq-editor" id="faqEditor"></div>
         </div>
       </div>
@@ -470,7 +517,7 @@
           <textarea id="generatedHtml" readonly spellcheck="false" aria-label="HTML gerado"></textarea>
           <div class="preview-shell">
             <span class="preview-shell__label">Prévia</span>
-            <div class="preview-frame" id="previewFrame"></div>
+            <iframe class="preview-frame" id="previewFrame" title="Prévia do FAQ"></iframe>
           </div>
         </div>
       </div>
@@ -479,152 +526,147 @@
 
   <script>
     const faqStyle = `<style>
-.faq-section,
-.faq-section * {
-box-sizing: border-box;
-}
+    * {
+        padding: 0;
+        margin: 0;
+    }
 
-.faq-section * {
-padding: 0;
-margin: 0;
-}
+    #faq-section {
+        width: 100%;
+        padding: 0rem 16px;
+        box-sizing: border-box;
+        margin: -10px auto 25px;
+        font-family: sans-serif;
+    }
 
-.faq-section {
-width: 100%;
-padding: 0rem 16px;
-box-sizing: border-box;
-margin: -10px auto 25px;
-font-family: sans-serif;
-}
+    #faq-section__header {
+        color: #f1f1f1;
+        margin: 0 0 12px;
+        font-size: 14px;
+        line-height: 24px;
+        letter-spacing: 0.15px;
+        font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Helvetica, "Noto Sans", "Liberation Sans", Arial, sans-serif;
+        font-weight: 400;
+        text-decoration: none;
+    }
 
-.faq-section__header {
-color: #f1f1f1;
-margin: 0 0 12px;
-font-size: 14px;
-line-height: 24px;
-letter-spacing: 0.15px;
-font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Helvetica, "Noto Sans", "Liberation Sans", Arial, sans-serif;
-font-weight: 400;
-text-decoration: none;
-}
+    #faq-section__title {
+        text-align: center;
+        align-items: flex-start;
+        background: rgb(0, 157, 255);
+        border-radius: 4px;
+        color: rgb(255, 255, 255);
+        display: flex;
+        flex-direction: row;
+        height: 40px;
+        margin: 0 0 8px;
+        padding: 8px;
+        width: 100%;
+        box-sizing: border-box;
+    }
 
-.faq-section__title {
-text-align: center;
-align-items: flex-start;
-background: rgb(0, 157, 255);
-border-radius: 4px;
-color: rgb(255, 255, 255);
-display: flex;
-flex-direction: row;
-height: 40px;
-margin: 0 0 8px;
-padding: 8px;
-width: 100%;
-box-sizing: border-box;
-}
+    #faq-section__list {
+        list-style: none;
+        margin: 0 auto;
+        padding: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
 
-.faq-section__list {
-list-style: none;
-margin: 0 auto;
-padding: 0;
-display: flex;
-flex-direction: column;
-gap: 8px;
-}
+    #faq-section__item {
+        background: #fff;
+        border: 1px solid #e5e5e5;
+        border-radius: 12px;
+        overflow: hidden;
+    }
 
-.faq-section__item {
-background: #fff;
-border: 1px solid #e5e5e5;
-border-radius: 12px;
-overflow: hidden;
-}
+    #faq-section__item summary {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 16px 20px;
+        cursor: pointer;
+        list-style: none;
+        transition: background 0.15s ease;
+    }
 
-.faq-section__item summary {
-display: flex;
-align-items: center;
-justify-content: space-between;
-gap: 12px;
-padding: 16px 20px;
-cursor: pointer;
-list-style: none;
-transition: background 0.15s ease;
-}
+    #faq-section__item summary::-webkit-details-marker {
+        display: none;
+    }
 
-.faq-section__item summary::-webkit-details-marker {
-display: none;
-}
+    #faq-section__item summary:hover {
+        background: #f9f9f9;
+    }
 
-.faq-section__item summary:hover {
-background: #f9f9f9;
-}
+    #faq-section__item summary:focus-visible {
+        outline: 2px solid #ea5b0c;
+        outline-offset: -2px;
+        border-radius: 12px;
+    }
 
-.faq-section__item summary:focus-visible {
-outline: 2px solid #ea5b0c;
-outline-offset: -2px;
-border-radius: 12px;
-}
+    #faq-section__q-text {
+        font-size: 14px;
+        font-weight: bold;
+        color: #333;
+        flex: 1;
+        margin: 0;
+        transition: color 0.15s ease;
+    }
 
-.faq-section__q-text {
-font-size: 14px;
-font-weight: bold;
-color: #333;
-flex: 1;
-margin: 0;
-transition: color 0.15s ease;
-}
+    #faq-section__icon {
+        width: 20px;
+        height: 20px;
+        flex-shrink: 0;
+        position: relative;
+    }
 
-.faq-section__icon {
-width: 20px;
-height: 20px;
-flex-shrink: 0;
-position: relative;
-}
+    #faq-section__icon::before,
+    #faq-section__icon::after {
+        content: '';
+        position: absolute;
+        background: rgb(46, 53, 56);
+        border-radius: 2px;
+        transition: transform 0.25s ease, opacity 0.25s ease;
+    }
 
-.faq-section__icon::before,
-.faq-section__icon::after {
-content: '';
-position: absolute;
-background: rgb(46, 53, 56);
-border-radius: 2px;
-transition: transform 0.25s ease, opacity 0.25s ease;
-}
+    #faq-section__icon::before {
+        width: 12px;
+        height: 1.5px;
+        top: 9px;
+        left: 4px;
+    }
 
-.faq-section__icon::before {
-width: 12px;
-height: 1.5px;
-top: 9px;
-left: 4px;
-}
+    #faq-section__icon::after {
+        width: 1.5px;
+        height: 12px;
+        top: 4px;
+        left: 9px;
+    }
 
-.faq-section__icon::after {
-width: 1.5px;
-height: 12px;
-top: 4px;
-left: 9px;
-}
+    #faq-section__item details[open] #faq-section__icon::after {
+        transform: rotate(90deg);
+        opacity: 0;
+    }
 
-.faq-section__item details[open] .faq-section__icon::after {
-transform: rotate(90deg);
-opacity: 0;
-}
+    #faq-section__a-inner {
+        padding: 14px 20px 16px;
+        border-top: 1px solid #e5e5e5;
+    }
 
-.faq-section__a-inner {
-padding: 14px 20px 16px;
-border-top: 1px solid #e5e5e5;
-}
+    #faq-section__a-text {
+        font-size: 12px;
+        color: rgb(46, 53, 56);
+        line-height: 1.6;
+        margin: 0;
+    }
 
-.faq-section__a-text {
-font-size: 12px;
-color: rgb(46, 53, 56);
-line-height: 1.6;
-margin: 0;
-}
-
-@media (max-width: 480px) {
-.faq-section__q-text {
-font-size: 0.9rem;
-}
-}
+    @media (max-width: 480px) {
+        #faq-section__q-text {
+            font-size: 0.9rem;
+        }
+    }
 </style>`;
 
     const state = {
@@ -635,7 +677,8 @@ font-size: 0.9rem;
       ]
     };
 
-    const faqTitle = "Dúvidas Frequentes";
+    const bulkInput = document.querySelector("#bulkFaqInput");
+    const bulkStatus = document.querySelector("#bulkStatus");
     const editor = document.querySelector("#faqEditor");
     const generatedHtml = document.querySelector("#generatedHtml");
     const previewFrame = document.querySelector("#previewFrame");
@@ -658,36 +701,38 @@ font-size: 0.9rem;
       const question = escapeHtml(item.question.trim());
       const answer = formatAnswer(item.answer);
 
-      return `<li class="faq-section__item">
+      return `        <!-- Cole aqui as perguntas e respostas -->
+        <li id="faq-section__item">
 <details>
 <summary>
-<h3 class="faq-section__q-text">${question}</h3>
-<span class="faq-section__icon" aria-hidden="true"></span>
+<h3 id="faq-section__q-text"> ${question} </h3>
+<span id="faq-section__icon" aria-hidden="true"></span>
 </summary>
-<div class="faq-section__a-inner">
-<p class="faq-section__a-text">${answer}</p>
+<div id="faq-section__a-inner">
+<p id="faq-section__a-text"> ${answer} </p>
 </div>
 </details>
-</li>`;
+</li>
+        <!-------------------------->`;
     }
 
     function buildFaqHtml() {
-      const title = escapeHtml(faqTitle);
       const items = state.items
         .filter((item) => item.question.trim() || item.answer.trim())
         .map(renderFaqItem)
         .join("\n\n");
 
-      return `
-<meta charset="UTF-8">
-<section class="faq-section" aria-labelledby="faq-section-title">
-<div class="faq-section__header">
-<h2 class="faq-section__title" id="faq-section-title">${title}</h2>
+      return `<meta charset="UTF-8">
+<section id="faq-section" aria-labelledby="faq-section-title">
+<div id="faq-section__header">
+<h2 id="faq-section__title" id="faq-section-title">Dúvidas Frequentes</h2>
 </div>
-<ul class="faq-section__list" role="list">
+<ul id="faq-section__list" role="list">
 ${items}
 </ul>
 </section>
+
+<!-- ESSES CÓDIGOS ABAIXO VOCÊ NÃO PRECISA MEXER!!! APENAS O HTML ACIMA-->
 
 ${faqStyle}`;
     }
@@ -695,7 +740,7 @@ ${faqStyle}`;
     function updateOutput() {
       const html = buildFaqHtml();
       generatedHtml.value = html;
-      previewFrame.innerHTML = html;
+      previewFrame.srcdoc = html;
       copyStatus.textContent = "";
     }
 
@@ -720,6 +765,47 @@ ${faqStyle}`;
       `).join("");
 
       updateOutput();
+    }
+
+    function parseBulkFaq(value) {
+      const normalized = value.replace(/\r\n?/g, "\n");
+      const questionPattern = /(?:^|\n)\s*(?:\d+|[A-Za-z])\.\s*([\s\S]*?\?)/g;
+      const matches = [];
+      const items = [];
+      let match;
+
+      while ((match = questionPattern.exec(normalized)) !== null) {
+        matches.push({
+          start: match.index,
+          end: match.index + match[0].length,
+          question: match[1].replace(/\s+/g, " ").trim()
+        });
+      }
+
+      matches.forEach((item, index) => {
+        const nextItem = matches[index + 1];
+        const answerEnd = nextItem ? nextItem.start : normalized.length;
+        const answer = normalized.slice(item.end, answerEnd).trim();
+
+        if (item.question || answer) {
+          items.push({ question: item.question, answer });
+        }
+      });
+
+      return items;
+    }
+
+    function fillFromBulk() {
+      const parsedItems = parseBulkFaq(bulkInput.value);
+
+      if (!parsedItems.length) {
+        bulkStatus.textContent = "Não encontrei perguntas no formato 1. Pergunta?";
+        return;
+      }
+
+      state.items = parsedItems;
+      bulkStatus.textContent = `${parsedItems.length} pergunta${parsedItems.length === 1 ? "" : "s"} preenchida${parsedItems.length === 1 ? "" : "s"}.`;
+      renderEditor();
     }
 
     function addItem() {
@@ -776,6 +862,7 @@ ${faqStyle}`;
       renderEditor();
     });
 
+    document.querySelector("#fillFromBulk").addEventListener("click", fillFromBulk);
     document.querySelector("#addItem").addEventListener("click", addItem);
     document.querySelector("#addItemTop").addEventListener("click", addItem);
     document.querySelector("#copyHtml").addEventListener("click", copyGeneratedHtml);
