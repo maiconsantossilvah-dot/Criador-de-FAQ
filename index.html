@@ -19,6 +19,20 @@
       --shadow: 0 16px 40px rgba(15, 23, 42, 0.08);
     }
 
+    html[data-theme="dark"] {
+      --bg: #172a34;
+      --panel: #101827;
+      --ink: #e5edf7;
+      --muted: #9aa8bb;
+      --line: #273548;
+      --blue: #00a8e8;
+      --blue-dark: #38c6ff;
+      --green: #16a394;
+      --red: #fb923c;
+      --shadow: 0 20px 46px rgba(0, 0, 0, 0.35);
+      color-scheme: dark;
+    }
+
     * {
       box-sizing: border-box;
     }
@@ -148,6 +162,59 @@
       color: #ffffff;
       background: var(--red);
       box-shadow: none;
+    }
+
+    .theme-toggle {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      min-height: 40px;
+      padding: 7px 10px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      color: var(--muted);
+      background: rgba(255, 255, 255, 0.55);
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .theme-toggle input {
+      position: absolute;
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .theme-toggle__track {
+      width: 42px;
+      height: 24px;
+      padding: 3px;
+      border-radius: 999px;
+      background: #cfe2f3;
+      transition: background 0.16s ease;
+    }
+
+    .theme-toggle__thumb {
+      display: block;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: #ffffff;
+      box-shadow: 0 2px 6px rgba(15, 23, 42, 0.25);
+      transition: transform 0.16s ease;
+    }
+
+    .theme-toggle input:checked + .theme-toggle__track {
+      background: var(--blue);
+    }
+
+    .theme-toggle input:checked + .theme-toggle__track .theme-toggle__thumb {
+      transform: translateX(18px);
+    }
+
+    .theme-toggle__text {
+      font-size: 13px;
+      font-weight: 750;
+      white-space: nowrap;
     }
 
     .layout {
@@ -364,6 +431,78 @@
       overflow: auto;
     }
 
+    html[data-theme="dark"] body {
+      background: var(--bg);
+    }
+
+    html[data-theme="dark"] .brand h1,
+    html[data-theme="dark"] .panel__head h2 {
+      color: #f8fafc;
+    }
+
+    html[data-theme="dark"] .theme-toggle,
+    html[data-theme="dark"] .button--soft {
+      color: #d8edff;
+      background: rgba(0, 168, 232, 0.13);
+    }
+
+    html[data-theme="dark"] .theme-toggle:hover,
+    html[data-theme="dark"] .button--soft:hover {
+      color: #ffffff;
+      background: rgba(0, 168, 232, 0.28);
+    }
+
+    html[data-theme="dark"] .button--danger {
+      color: #fed7aa;
+      background: rgba(251, 146, 60, 0.14);
+    }
+
+    html[data-theme="dark"] .button--danger:hover {
+      color: #ffffff;
+      background: #ea580c;
+    }
+
+    html[data-theme="dark"] .panel {
+      border-color: rgba(39, 53, 72, 0.95);
+    }
+
+    html[data-theme="dark"] .field span,
+    html[data-theme="dark"] .faq-editor__bar strong {
+      color: #d8e6f3;
+    }
+
+    html[data-theme="dark"] .field input,
+    html[data-theme="dark"] .field textarea,
+    html[data-theme="dark"] .output textarea {
+      border-color: #33465e;
+      color: #e5edf7;
+      background: #0b1422;
+    }
+
+    html[data-theme="dark"] .field input::placeholder,
+    html[data-theme="dark"] .field textarea::placeholder {
+      color: #6f8196;
+    }
+
+    html[data-theme="dark"] .faq-editor__item {
+      background: #0d1727;
+      border-color: #273548;
+    }
+
+    html[data-theme="dark"] .faq-editor__bar {
+      background: #122138;
+      border-bottom-color: #273548;
+    }
+
+    html[data-theme="dark"] .preview-shell {
+      border-color: #36556f;
+      background: #0b1422;
+    }
+
+    html[data-theme="dark"] .preview-frame {
+      background: #ffffff;
+    }
+
     @media (max-width: 920px) {
       body {
         height: auto;
@@ -459,8 +598,13 @@
       }
 
       .actions,
+      .theme-toggle,
       .button {
         width: 100%;
+      }
+
+      .theme-toggle {
+        justify-content: space-between;
       }
     }
   </style>
@@ -473,6 +617,13 @@
         <p>Preencha os campos e copie apenas o bloco pronto do FAQ.</p>
       </div>
       <div class="actions">
+        <label class="theme-toggle" for="themeToggle">
+          <input id="themeToggle" type="checkbox">
+          <span class="theme-toggle__track" aria-hidden="true">
+            <span class="theme-toggle__thumb"></span>
+          </span>
+          <span class="theme-toggle__text">Modo escuro</span>
+        </label>
         <button class="button button--soft" id="addItemTop" type="button">Adicionar pergunta</button>
         <button class="button button--green" id="copyHtmlTop" type="button">Copiar HTML</button>
       </div>
@@ -684,6 +835,31 @@ Sim. A apresentação líquida facilita a diluição e ajuda no uso em bebidas q
     const generatedHtml = document.querySelector("#generatedHtml");
     const previewFrame = document.querySelector("#previewFrame");
     const copyStatus = document.querySelector("#copyStatus");
+    const themeToggle = document.querySelector("#themeToggle");
+
+    function setTheme(theme) {
+      document.documentElement.dataset.theme = theme;
+      themeToggle.checked = theme === "dark";
+
+      try {
+        localStorage.setItem("faqCompilerTheme", theme);
+      } catch (error) {
+        return;
+      }
+    }
+
+    function getInitialTheme() {
+      try {
+        const savedTheme = localStorage.getItem("faqCompilerTheme");
+        if (savedTheme === "dark" || savedTheme === "light") {
+          return savedTheme;
+        }
+      } catch (error) {
+        return "light";
+      }
+
+      return "light";
+    }
 
     function escapeHtml(value) {
       return value
@@ -868,7 +1044,11 @@ ${faqStyle}`;
     document.querySelector("#addItemTop").addEventListener("click", addItem);
     document.querySelector("#copyHtml").addEventListener("click", copyGeneratedHtml);
     document.querySelector("#copyHtmlTop").addEventListener("click", copyGeneratedHtml);
+    themeToggle.addEventListener("change", () => {
+      setTheme(themeToggle.checked ? "dark" : "light");
+    });
 
+    setTheme(getInitialTheme());
     renderEditor();
   </script>
 </body>
