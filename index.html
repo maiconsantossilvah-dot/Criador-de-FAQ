@@ -16,7 +16,40 @@
       --blue-dark: #0878c2;
       --green: #0f766e;
       --red: #c2410c;
+      --body-glow: #eaf6ff;
+      --body-glow-end: rgba(234, 246, 255, 0);
+      --brand-ink: #102033;
+      --panel-border: rgba(217, 226, 236, 0.9);
+      --soft-button-text: #0f3554;
+      --soft-button-bg: #dff2ff;
+      --field-label: #314155;
+      --field-border: #cbd5e1;
+      --field-bg: #ffffff;
+      --field-text: #0f172a;
+      --editor-item-bg: #fbfdff;
+      --editor-bar-bg: #eef6fc;
+      --editor-bar-text: #18324a;
+      --output-bg: #f8fbff;
+      --output-text: #17324d;
+      --preview-border: #b7c8d9;
+      --preview-bg: #f8fafc;
       --shadow: 0 16px 40px rgba(15, 23, 42, 0.08);
+    }
+
+    html[data-page="conteudo"] {
+      --bg: #f3eef8;
+      --body-glow: #f3eef8;
+      --body-glow-end: rgba(243, 238, 248, 0);
+      --brand-ink: #3a3148;
+      --blue: #7c3aed;
+      --blue-dark: #6d28d9;
+      --green: #f97316;
+      --soft-button-text: #3f3456;
+      --soft-button-bg: #ebe5f2;
+      --editor-bar-bg: #eee8f5;
+      --editor-bar-text: #3a3148;
+      --preview-border: #c9bfd8;
+      --shadow: 0 16px 40px rgba(58, 49, 72, 0.1);
     }
 
     html[data-theme="dark"] {
@@ -29,8 +62,37 @@
       --blue-dark: #38c6ff;
       --green: #16a394;
       --red: #fb923c;
+      --brand-ink: #f8fafc;
+      --panel-border: rgba(39, 53, 72, 0.95);
+      --field-label: #d8e6f3;
+      --field-border: #33465e;
+      --field-bg: #0b1422;
+      --field-text: #e5edf7;
+      --editor-item-bg: #0d1727;
+      --editor-bar-bg: #122138;
+      --editor-bar-text: #d8e6f3;
+      --output-bg: #0b1422;
+      --output-text: #e5edf7;
+      --preview-border: #36556f;
+      --preview-bg: #0b1422;
       --shadow: 0 20px 46px rgba(0, 0, 0, 0.35);
       color-scheme: dark;
+    }
+
+    html[data-theme="dark"][data-page="conteudo"] {
+      --bg: #282634;
+      --panel: #171520;
+      --line: #373243;
+      --blue: #8b5cf6;
+      --blue-dark: #a78bfa;
+      --green: #fb923c;
+      --panel-border: rgba(68, 61, 82, 0.95);
+      --field-border: #454052;
+      --field-bg: #11101a;
+      --editor-item-bg: #15131e;
+      --editor-bar-bg: #211d2c;
+      --preview-border: #61576f;
+      --preview-bg: #11101a;
     }
 
     * {
@@ -44,9 +106,13 @@
       overflow: hidden;
       color: var(--ink);
       background:
-        linear-gradient(180deg, #eaf6ff 0, rgba(234, 246, 255, 0) 320px),
+        linear-gradient(180deg, var(--body-glow) 0, var(--body-glow-end) 320px),
         var(--bg);
       font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    html[data-page="conteudo"] body {
+      background: var(--bg);
     }
 
     button,
@@ -86,7 +152,7 @@
 
     .brand h1 {
       margin: 0;
-      color: #102033;
+      color: var(--brand-ink);
       font-size: 28px;
       line-height: 1.12;
       font-weight: 800;
@@ -104,6 +170,35 @@
       flex-wrap: wrap;
       justify-content: flex-end;
       gap: 8px;
+    }
+
+    .page-nav {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 4px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.52);
+    }
+
+    .page-nav__link {
+      display: inline-flex;
+      align-items: center;
+      min-height: 34px;
+      padding: 8px 12px;
+      border-radius: 6px;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 800;
+      text-decoration: none;
+      white-space: nowrap;
+    }
+
+    .page-nav__link:hover,
+    .page-nav__link[aria-current="page"] {
+      color: #ffffff;
+      background: var(--blue);
     }
 
     .button {
@@ -134,8 +229,8 @@
     }
 
     .button--soft {
-      color: #0f3554;
-      background: #dff2ff;
+      color: var(--soft-button-text);
+      background: var(--soft-button-bg);
     }
 
     .button--soft:hover {
@@ -233,7 +328,7 @@
       flex-direction: column;
       overflow: hidden;
       background: var(--panel);
-      border: 1px solid rgba(217, 226, 236, 0.9);
+      border: 1px solid var(--panel-border);
       border-radius: 8px;
       box-shadow: var(--shadow);
     }
@@ -272,6 +367,39 @@
       padding: 18px 18px 0;
     }
 
+    .editor-tools.is-hidden,
+    .button.is-hidden {
+      display: none;
+    }
+
+    .editor-tabs {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 4px;
+      padding: 4px;
+      margin-bottom: 16px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.58);
+    }
+
+    .editor-tabs__button {
+      min-height: 36px;
+      padding: 8px 12px;
+      border-radius: 6px;
+      color: var(--muted);
+      background: transparent;
+      font-size: 13px;
+      font-weight: 800;
+      cursor: pointer;
+    }
+
+    .editor-tabs__button:hover,
+    .editor-tabs__button[aria-selected="true"] {
+      color: #ffffff;
+      background: var(--blue);
+    }
+
     .field {
       display: grid;
       gap: 7px;
@@ -279,7 +407,7 @@
     }
 
     .field span {
-      color: #314155;
+      color: var(--field-label);
       font-size: 13px;
       font-weight: 750;
     }
@@ -287,13 +415,19 @@
     .field input,
     .field textarea {
       width: 100%;
-      border: 1px solid #cbd5e1;
+      border: 1px solid var(--field-border);
       border-radius: 8px;
-      color: #0f172a;
-      background: #ffffff;
+      color: var(--field-text);
+      background: var(--field-bg);
       padding: 11px 12px;
       outline: none;
       transition: border 0.12s ease, box-shadow 0.12s ease;
+    }
+
+    .field input[type="color"] {
+      height: 46px;
+      padding: 4px;
+      cursor: pointer;
     }
 
     .field textarea {
@@ -312,6 +446,12 @@
       box-shadow: 0 0 0 3px rgba(0, 157, 255, 0.15);
     }
 
+    .field input[type="color"] {
+      min-height: 44px;
+      padding: 5px;
+      cursor: pointer;
+    }
+
     .faq-editor {
       display: flex;
       flex: 1;
@@ -324,6 +464,29 @@
       overscroll-behavior: contain;
       padding: 18px 12px 18px 18px;
       scrollbar-gutter: stable;
+    }
+
+    .editor-section-title {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin: 2px 0 0;
+      padding: 2px 2px 0;
+    }
+
+    .editor-section-title h3 {
+      margin: 0;
+      color: var(--brand-ink);
+      font-size: 14px;
+      line-height: 1.3;
+    }
+
+    .editor-section-title p {
+      margin: 3px 0 0;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.45;
     }
 
     .bulk-actions {
@@ -345,7 +508,7 @@
       flex: 0 0 auto;
       border: 1px solid var(--line);
       border-radius: 8px;
-      background: #fbfdff;
+      background: var(--editor-item-bg);
       overflow: hidden;
     }
 
@@ -355,18 +518,75 @@
       justify-content: space-between;
       gap: 10px;
       padding: 10px 12px;
-      background: #eef6fc;
+      background: var(--editor-bar-bg);
       border-bottom: 1px solid var(--line);
     }
 
     .faq-editor__bar strong {
       min-width: 0;
-      color: #18324a;
+      color: var(--editor-bar-text);
       font-size: 13px;
       overflow-wrap: anywhere;
     }
 
     .faq-editor__fields {
+      padding: 12px;
+    }
+
+    .table-editor {
+      display: grid;
+      gap: 12px;
+      margin-top: 8px;
+      padding-top: 16px;
+      border-top: 1px solid var(--line);
+    }
+
+    .table-editor__box {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--editor-item-bg);
+      overflow: hidden;
+    }
+
+    .table-editor__box-body {
+      padding: 12px;
+    }
+
+    .table-editor__columns,
+    .table-row-editor__cells,
+    .color-field {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 10px;
+    }
+
+    .color-field .field {
+      margin-bottom: 0;
+    }
+
+    .table-editor__column {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 8px;
+      align-items: end;
+    }
+
+    .table-editor__column .field {
+      margin-bottom: 0;
+    }
+
+    .table-row-editor__cells .field {
+      margin-bottom: 0;
+    }
+
+    .table-row-editor {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--editor-item-bg);
+      overflow: hidden;
+    }
+
+    .table-row-editor__cells {
       padding: 12px;
     }
 
@@ -392,11 +612,11 @@
       height: 100%;
       min-height: 0;
       padding: 14px;
-      border: 1px solid #cbd5e1;
+      border: 1px solid var(--field-border);
       border-radius: 8px;
       resize: none;
-      color: #17324d;
-      background: #f8fbff;
+      color: var(--output-text);
+      background: var(--output-bg);
       font: 13px/1.45 Consolas, "Courier New", monospace;
       white-space: pre;
     }
@@ -406,9 +626,9 @@
       flex-direction: column;
       min-height: 0;
       padding: 14px;
-      border: 1px dashed #b7c8d9;
+      border: 1px dashed var(--preview-border);
       border-radius: 8px;
-      background: #f8fafc;
+      background: var(--preview-bg);
       overflow: hidden;
     }
 
@@ -444,6 +664,10 @@
     html[data-theme="dark"] .button--soft {
       color: #d8edff;
       background: rgba(0, 168, 232, 0.13);
+    }
+
+    html[data-theme="dark"] .page-nav {
+      background: transparent;
     }
 
     html[data-theme="dark"] .theme-toggle:hover,
@@ -494,6 +718,20 @@
       border-bottom-color: #273548;
     }
 
+    html[data-theme="dark"] .editor-tabs {
+      background: rgba(0, 0, 0, 0.12);
+    }
+
+    html[data-theme="dark"] .editor-section-title h3 {
+      color: #f8fafc;
+    }
+
+    html[data-theme="dark"] .table-editor__box,
+    html[data-theme="dark"] .table-row-editor {
+      background: #0d1727;
+      border-color: #273548;
+    }
+
     html[data-theme="dark"] .preview-shell {
       border-color: #36556f;
       background: #0b1422;
@@ -501,6 +739,18 @@
 
     html[data-theme="dark"] .preview-frame {
       background: #ffffff;
+    }
+
+    html[data-theme="dark"][data-page="conteudo"] .theme-toggle,
+    html[data-theme="dark"][data-page="conteudo"] .button--soft {
+      color: #f3e8ff;
+      background: rgba(167, 139, 250, 0.16);
+    }
+
+    html[data-theme="dark"][data-page="conteudo"] .theme-toggle:hover,
+    html[data-theme="dark"][data-page="conteudo"] .button--soft:hover {
+      color: #ffffff;
+      background: rgba(167, 139, 250, 0.3);
     }
 
     @media (max-width: 920px) {
@@ -521,6 +771,15 @@
 
       .actions {
         justify-content: flex-start;
+      }
+
+      .page-nav {
+        width: 100%;
+      }
+
+      .page-nav__link {
+        flex: 1;
+        justify-content: center;
       }
 
       .layout {
@@ -613,9 +872,13 @@
   <main class="app">
     <header class="topbar">
       <div class="brand">
-        <h1>Compilador de FAQs</h1>
-        <p>Preencha os campos e copie apenas o bloco pronto do FAQ.</p>
+        <h1 id="appTitle">Compilador de FAQs</h1>
+        <p id="appSubtitle">Preencha os campos e copie apenas o bloco pronto do FAQ.</p>
       </div>
+      <nav class="page-nav" aria-label="Equipe">
+        <a class="page-nav__link" href="#qualidade-tecnica" data-page-link="tecnica">Qualidade Técnica</a>
+        <a class="page-nav__link" href="#qualidade-conteudo" data-page-link="conteudo">Qualidade Conteúdo</a>
+      </nav>
       <div class="actions">
         <label class="theme-toggle" for="themeToggle">
           <input id="themeToggle" type="checkbox">
@@ -625,7 +888,6 @@
           <span class="theme-toggle__text">Modo escuro</span>
         </label>
         <button class="button button--soft" id="addItemTop" type="button">Adicionar pergunta</button>
-        <button class="button button--green" id="copyHtmlTop" type="button">Copiar HTML</button>
       </div>
     </header>
 
@@ -636,21 +898,10 @@
           <button class="button button--soft" id="addItem" type="button">Adicionar</button>
         </div>
         <div class="panel__body">
-          <div class="editor-tools">
-            <label class="field">
-              <span>Colar perguntas e respostas</span>
-              <textarea class="bulk-input" id="bulkFaqInput" spellcheck="false" placeholder="4. O produto contém glúten?
-
-Não. O adoçante não contém glúten, o que amplia as possibilidades de consumo para diferentes rotinas alimentares.
-
-5. O sabor funciona bem no café?
-
-Sim. A apresentação líquida facilita a diluição e ajuda no uso em bebidas quentes como café e chá."></textarea>
-            </label>
-
-            <div class="bulk-actions">
-              <button class="button button--soft" id="fillFromBulk" type="button">Preencher campos</button>
-              <span class="bulk-status" id="bulkStatus" aria-live="polite"></span>
+          <div class="editor-tools" id="editorTools">
+            <div class="editor-tabs" role="tablist" aria-label="Tipo de conteúdo">
+              <button class="editor-tabs__button" type="button" role="tab" data-editor-tab="faq">FAQ</button>
+              <button class="editor-tabs__button" type="button" role="tab" data-editor-tab="table">Tabela</button>
             </div>
           </div>
           <div class="faq-editor" id="faqEditor"></div>
@@ -659,9 +910,10 @@ Sim. A apresentação líquida facilita a diluição e ajuda no uso em bebidas q
 
       <div class="panel output-panel">
         <div class="panel__head">
-          <h2>HTML pronto</h2>
+          <h2 id="outputTitle">HTML pronto</h2>
           <div class="actions">
-            <button class="button button--green" id="copyHtml" type="button">Copiar</button>
+            <button class="button button--green" id="copyHtml" type="button" data-copy-mode="html">Copiar HTML</button>
+            <button class="button button--green" id="copyHtmlCss" type="button" data-copy-mode="full">Copiar HTML/CSS</button>
           </div>
         </div>
         <div class="panel__body output">
@@ -821,21 +1073,135 @@ Sim. A apresentação líquida facilita a diluição e ajuda no uso em bebidas q
     }
 </style>`;
 
+    const tableStyle = `<style>
+  .sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+
+  .table-container-custom {
+    background-color: #fff;
+    padding: 20px;
+    border-radius: 10px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    max-width: 800px;
+    width: 100%;
+    margin: 0 auto 25px;
+    display: block;
+  }
+
+  .table-design-custom {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 0 auto;
+  }
+
+  .table-head-custom {
+    color: rgb(255, 255, 255);
+    border-radius: 10px;
+  }
+
+  .table-text-custom {
+    padding: 12px;
+    text-align: left;
+    border-bottom: 1px solid #979797;
+    font-family: sans-serif;
+  }
+
+  .table-tr-custom:hover {
+    background-color: #f1f1f1;
+    filter: brightness(0.9);
+  }
+
+  .table-design-custom td a {
+    color: #000;
+    font-weight: 600;
+    text-decoration: none;
+  }
+
+  .table-design-custom td a:hover {
+     color: #e74011;
+  }
+
+  .table-th-custom {
+    font-weight: bold;
+  }
+
+  .table-td-custom {
+    color: #555;
+  }
+
+  .table-tr-custom:nth-child(even) {
+    background-color: #f1f1f1;
+  }
+</style>`;
+
     const state = {
+      faqBulkInput: "",
+      faqBulkStatus: "",
       items: [
         { question: "", answer: "" },
         { question: "", answer: "" },
         { question: "", answer: "" }
-      ]
+      ],
+      table: {
+        caption: "",
+        headerColor: "#ea5b0c",
+        bulkInput: "",
+        status: "",
+        columns: ["SKU", "TÍTULO"],
+        rows: [
+          ["", ""],
+          ["", ""],
+          ["", ""]
+        ]
+      }
     };
 
-    const bulkInput = document.querySelector("#bulkFaqInput");
-    const bulkStatus = document.querySelector("#bulkStatus");
     const editor = document.querySelector("#faqEditor");
+    const editorTools = document.querySelector("#editorTools");
     const generatedHtml = document.querySelector("#generatedHtml");
     const previewFrame = document.querySelector("#previewFrame");
     const copyStatus = document.querySelector("#copyStatus");
     const themeToggle = document.querySelector("#themeToggle");
+    const appTitle = document.querySelector("#appTitle");
+    const appSubtitle = document.querySelector("#appSubtitle");
+    const outputTitle = document.querySelector("#outputTitle");
+    const pageLinks = Array.from(document.querySelectorAll("[data-page-link]"));
+    const editorTabButtons = Array.from(document.querySelectorAll("[data-editor-tab]"));
+    const addButtons = [document.querySelector("#addItem"), document.querySelector("#addItemTop")];
+    const htmlCopyButtons = [document.querySelector("#copyHtml")].filter(Boolean);
+    const fullCopyButtons = [document.querySelector("#copyHtmlCss")].filter(Boolean);
+    let currentPage = "conteudo";
+    let currentEditorTab = "faq";
+
+    const pageConfigs = {
+      conteudo: {
+        title: "Qualidade Conteúdo",
+        subtitle: "Preencha o FAQ ou a tabela, depois copie o HTML no formato que precisar.",
+        outputTitle: "HTML pronto",
+        copyLabel: "Copiar HTML",
+        fullCopyLabel: "Copiar HTML/CSS",
+        copiedStatus: "HTML copiado.",
+        fullCopiedStatus: "HTML/CSS copiado."
+      },
+      tecnica: {
+        title: "Qualidade Técnica",
+        subtitle: "Preencha o FAQ e copie o bloco completo com HTML e CSS.",
+        outputTitle: "HTML/CSS pronto",
+        copyLabel: "Copiar HTML/CSS",
+        fullCopyLabel: "",
+        copiedStatus: "HTML/CSS copiado.",
+        fullCopiedStatus: ""
+      }
+    };
 
     function setTheme(theme) {
       document.documentElement.dataset.theme = theme;
@@ -874,6 +1240,85 @@ Sim. A apresentação líquida facilita a diluição e ajuda no uso em bebidas q
       return escapeHtml(value.trim()).replace(/\r?\n/g, "<br>");
     }
 
+    function normalizeHexColor(value) {
+      const rawValue = String(value || "").trim();
+      const colorValue = rawValue.startsWith("#") ? rawValue : `#${rawValue}`;
+      const shortHexMatch = colorValue.match(/^#([0-9a-fA-F]{3})$/);
+
+      if (shortHexMatch) {
+        return `#${shortHexMatch[1].split("").map((char) => char + char).join("")}`.toLowerCase();
+      }
+
+      if (/^#[0-9a-fA-F]{6}$/.test(colorValue)) {
+        return colorValue.toLowerCase();
+      }
+
+      return "#ea5b0c";
+    }
+
+    function getTableHeaderColor() {
+      return normalizeHexColor(state.table.headerColor);
+    }
+
+    function getPageFromHash() {
+      return window.location.hash === "#qualidade-tecnica" ? "tecnica" : "conteudo";
+    }
+
+    function updateEditorTabs() {
+      const showTabs = currentPage === "conteudo";
+      editorTools.classList.toggle("is-hidden", !showTabs);
+
+      editorTabButtons.forEach((button) => {
+        const isSelected = button.dataset.editorTab === currentEditorTab;
+        button.setAttribute("aria-selected", String(isSelected));
+        button.setAttribute("tabindex", isSelected ? "0" : "-1");
+      });
+    }
+
+    function updateAddButtons() {
+      const isTableTab = currentPage === "conteudo" && currentEditorTab === "table";
+      addButtons.forEach((button, index) => {
+        button.textContent = isTableTab ? "Adicionar linha" : index === 0 ? "Adicionar" : "Adicionar pergunta";
+      });
+    }
+
+    function updateCopyButtons(config) {
+      htmlCopyButtons.forEach((button) => {
+        button.textContent = config.copyLabel;
+        button.classList.remove("is-hidden");
+      });
+
+      fullCopyButtons.forEach((button) => {
+        button.textContent = config.fullCopyLabel;
+        button.classList.toggle("is-hidden", currentPage !== "conteudo");
+      });
+    }
+
+    function applyPage(page) {
+      currentPage = pageConfigs[page] ? page : "conteudo";
+      if (currentPage !== "conteudo") {
+        currentEditorTab = "faq";
+      }
+
+      const config = pageConfigs[currentPage];
+      document.documentElement.dataset.page = currentPage;
+      appTitle.textContent = config.title;
+      appSubtitle.textContent = config.subtitle;
+      outputTitle.textContent = config.outputTitle;
+      updateCopyButtons(config);
+      pageLinks.forEach((link) => {
+        const isCurrent = link.dataset.pageLink === currentPage;
+        if (isCurrent) {
+          link.setAttribute("aria-current", "page");
+        } else {
+          link.removeAttribute("aria-current");
+        }
+      });
+      updateEditorTabs();
+      updateAddButtons();
+      renderEditor();
+    }
+
     function renderFaqItem(item) {
       const question = escapeHtml(item.question.trim());
       const answer = formatAnswer(item.answer);
@@ -893,36 +1338,182 @@ Sim. A apresentação líquida facilita a diluição e ajuda no uso em bebidas q
         <!-------------------------->`;
     }
 
-    function buildFaqHtml() {
+    function buildFaqSectionHtml() {
       const items = state.items
         .filter((item) => item.question.trim() || item.answer.trim())
         .map(renderFaqItem)
         .join("\n\n");
 
-      return `<meta charset="UTF-8">
-<section id="faq-section" aria-labelledby="faq-section-title">
+      return `<section id="faq-section" aria-labelledby="faq-section-title">
 <div id="faq-section__header">
 <h2 id="faq-section__title" id="faq-section-title">Dúvidas Frequentes</h2>
 </div>
 <ul id="faq-section__list" role="list">
 ${items}
 </ul>
-</section>
+</section>`;
+    }
+
+    function getTableColumns() {
+      return state.table.columns.length ? state.table.columns : ["SKU", "TÍTULO"];
+    }
+
+    function getVisibleTableRows() {
+      return state.table.rows.filter((row) => row.some((cell) => cell.trim()));
+    }
+
+    function hasTableData() {
+      return getVisibleTableRows().length > 0;
+    }
+
+    function getHeaderRadius(index, total) {
+      if (total === 1) {
+        return "10px 10px 0 0";
+      }
+
+      if (index === 0) {
+        return "10px 0 0 0";
+      }
+
+      if (index === total - 1) {
+        return "0 10px 0 0";
+      }
+
+      return "";
+    }
+
+    function renderTableHeaderCell(label, index, total) {
+      const radius = getHeaderRadius(index, total);
+      const radiusStyle = radius ? ` border-radius: ${radius};` : "";
+      const headerText = escapeHtml(label.trim() || `COLUNA ${index + 1}`);
+
+      return `                 <th class="table-text-custom table-th-custom" style="background-color: ${getTableHeaderColor()};${radiusStyle}" scope="col">${headerText}
+                 </th>`;
+    }
+
+    function renderTableRow(row) {
+      const columns = getTableColumns();
+      const cells = columns.map((column, index) => {
+        const cellClass = index === 0 ? "table-td-custom-title" : "table-td-custom-sub";
+        return `                 <td class="table-text-custom ${cellClass}">${escapeHtml((row[index] || "").trim())}</td>`;
+      }).join("\n");
+
+      return `               <tr class="table-tr-custom">
+${cells}
+               </tr>`;
+    }
+
+    function buildTableSectionHtml(forcePreview = false) {
+      if (!forcePreview && !hasTableData()) {
+        return "";
+      }
+
+      const columns = getTableColumns();
+      const caption = escapeHtml(state.table.caption.trim() || "produtos relacionados");
+      const headers = columns.map(renderTableHeaderCell).join("\n");
+      const visibleRows = getVisibleTableRows();
+      const previewRows = visibleRows.length ? visibleRows : [createEmptyTableRow()];
+      const rows = (forcePreview ? previewRows : visibleRows).map(renderTableRow).join("\n");
+
+      return `<section class="table-container-custom" aria-label="tabela contendo produtos relacionados e citados dentre deste conteúdo">
+          <table class="table-design-custom" aria-describedby="table-desc">
+            <caption id="table-desc" class="sr-only" style="text-align:left; padding: 0 0 8px; font-weight:600;">
+          ${caption}
+          </caption>
+            <thead class="table-head-custom">
+               <tr class="table-tr-custom">
+${headers}
+               </tr>
+             </thead>
+             <tbody>
+${rows}
+             </tbody>
+           </table>
+         </section>`;
+    }
+
+    function buildBlocksHtml(includeTable) {
+      const blocks = [buildFaqSectionHtml()];
+      const tableHtml = includeTable ? buildTableSectionHtml() : "";
+
+      if (tableHtml) {
+        blocks.push(tableHtml);
+      }
+
+      return blocks.join("\n\n");
+    }
+
+    function buildFullHtml(includeTable) {
+      const styles = includeTable && hasTableData() ? `${faqStyle}\n\n${tableStyle}` : faqStyle;
+
+      return `<meta charset="UTF-8">
+${buildBlocksHtml(includeTable)}
+
+<!-- ESSES CÓDIGOS ABAIXO VOCÊ NÃO PRECISA MEXER!!! APENAS O HTML ACIMA-->
+
+${styles}`;
+    }
+
+    function buildPreviewHtml() {
+      if (currentPage === "conteudo" && currentEditorTab === "table") {
+        return `<meta charset="UTF-8">
+${buildTableSectionHtml(true)}
+
+${tableStyle}`;
+      }
+
+      if (currentPage === "conteudo") {
+        return `<meta charset="UTF-8">
+${buildFaqSectionHtml()}
+
+${faqStyle}`;
+      }
+
+      return buildFullHtml(false);
+    }
+
+    function buildOutputHtml(copyMode = "html") {
+      if (currentPage === "tecnica") {
+        return buildFullHtml(false);
+      }
+
+      if (currentEditorTab === "table") {
+        const tableHtml = buildTableSectionHtml(true);
+
+        if (copyMode === "full") {
+          return `<meta charset="UTF-8">
+${tableHtml}
+
+<!-- ESSES CÓDIGOS ABAIXO VOCÊ NÃO PRECISA MEXER!!! APENAS O HTML ACIMA-->
+
+${tableStyle}`;
+        }
+
+        return tableHtml;
+      }
+
+      const faqHtml = buildFaqSectionHtml();
+
+      if (copyMode === "full") {
+        return `<meta charset="UTF-8">
+${faqHtml}
 
 <!-- ESSES CÓDIGOS ABAIXO VOCÊ NÃO PRECISA MEXER!!! APENAS O HTML ACIMA-->
 
 ${faqStyle}`;
+      }
+
+      return faqHtml;
     }
 
     function updateOutput() {
-      const html = buildFaqHtml();
-      generatedHtml.value = html;
-      previewFrame.srcdoc = html;
+      generatedHtml.value = buildOutputHtml("html");
+      previewFrame.srcdoc = buildPreviewHtml();
       copyStatus.textContent = "";
     }
 
-    function renderEditor() {
-      editor.innerHTML = state.items.map((item, index) => `
+    function renderFaqEditorItems() {
+      return state.items.map((item, index) => `
         <article class="faq-editor__item" data-index="${index}">
           <div class="faq-editor__bar">
             <strong>Pergunta ${index + 1}</strong>
@@ -940,6 +1531,141 @@ ${faqStyle}`;
           </div>
         </article>
       `).join("");
+    }
+
+    function renderFaqEditor() {
+      return `
+        <div class="editor-section-title">
+          <div>
+            <h3>FAQ</h3>
+            <p>Perguntas e respostas do bloco de dúvidas frequentes.</p>
+          </div>
+        </div>
+
+        <article class="table-editor__box">
+          <div class="faq-editor__bar">
+            <strong>Colar perguntas e respostas</strong>
+          </div>
+          <div class="table-editor__box-body">
+            <label class="field">
+              <span>Texto do FAQ</span>
+              <textarea class="bulk-input" data-faq-bulk="input" spellcheck="false" placeholder="4. O produto contém glúten?
+
+Não. O adoçante não contém glúten, o que amplia as possibilidades de consumo para diferentes rotinas alimentares.
+
+5. O sabor funciona bem no café?
+
+Sim. A apresentação líquida facilita a diluição e ajuda no uso em bebidas quentes como café e chá.">${escapeHtml(state.faqBulkInput)}</textarea>
+            </label>
+            <div class="bulk-actions">
+              <button class="button button--soft" type="button" data-action="fill-faq-bulk">Preencher FAQ</button>
+              <span class="bulk-status" aria-live="polite">${escapeHtml(state.faqBulkStatus)}</span>
+            </div>
+          </div>
+        </article>
+
+        ${renderFaqEditorItems()}
+      `;
+    }
+
+    function renderTableEditor() {
+      if (currentPage !== "conteudo") {
+        return "";
+      }
+
+      const columns = getTableColumns();
+      const columnFields = columns.map((column, index) => `
+              <div class="table-editor__column">
+                <label class="field">
+                  <span>Coluna ${index + 1}</span>
+                  <input type="text" value="${escapeHtml(column)}" data-table-field="column" data-column-index="${index}" autocomplete="off">
+                </label>
+                ${columns.length > 1 ? `<button class="button button--danger" type="button" data-action="remove-table-column" data-column-index="${index}">Remover</button>` : ""}
+              </div>
+            `).join("");
+
+      const rows = state.table.rows.map((row, rowIndex) => `
+        <article class="table-row-editor" data-table-row="${rowIndex}">
+          <div class="faq-editor__bar">
+            <strong>Linha ${rowIndex + 1}</strong>
+            <button class="button button--danger" type="button" data-action="remove-table-row">Remover</button>
+          </div>
+          <div class="table-row-editor__cells">
+            ${columns.map((column, cellIndex) => `
+              <label class="field">
+                <span>${escapeHtml(column.trim() || `Coluna ${cellIndex + 1}`)}</span>
+                <input type="text" value="${escapeHtml(row[cellIndex] || "")}" data-table-field="cell" data-row-index="${rowIndex}" data-cell-index="${cellIndex}" autocomplete="off">
+              </label>
+            `).join("")}
+          </div>
+        </article>
+      `).join("");
+
+      return `
+        <section class="table-editor" aria-label="Editor da tabela">
+          <div class="editor-section-title">
+            <div>
+              <h3>Tabela</h3>
+              <p>Cole linhas de planilha ou preencha manualmente os dados da tabela.</p>
+            </div>
+            <button class="button button--soft" type="button" data-action="add-table-row">Adicionar linha</button>
+          </div>
+
+          <article class="table-editor__box">
+            <div class="faq-editor__bar">
+              <strong>Colar tabela pronta</strong>
+            </div>
+            <div class="table-editor__box-body">
+              <label class="field">
+                <span>Linhas da tabela</span>
+                <textarea class="bulk-input" data-table-field="bulk" spellcheck="false" placeholder="SKU    TÍTULO
+1225007    HAVAIANAS TOP.BASIC BRANCO/BRANCO/VERDE 37/8
+1225008    HAVAIANAS KIDS ATHLETIC VERDE PATRIA 25/6">${escapeHtml(state.table.bulkInput)}</textarea>
+              </label>
+              <div class="bulk-actions">
+                <button class="button button--soft" type="button" data-action="fill-table-bulk">Preencher tabela</button>
+                <span class="bulk-status" aria-live="polite">${escapeHtml(state.table.status)}</span>
+              </div>
+            </div>
+          </article>
+
+          <article class="table-editor__box">
+            <div class="faq-editor__bar">
+              <strong>Colunas</strong>
+              <button class="button button--soft" type="button" data-action="add-table-column">Adicionar coluna</button>
+            </div>
+            <div class="table-editor__box-body table-editor__columns">
+${columnFields}
+            </div>
+          </article>
+
+          <label class="field">
+            <span>Descrição da tabela</span>
+            <input type="text" value="${escapeHtml(state.table.caption)}" data-table-field="caption" autocomplete="off" placeholder="tamanhos de chinelos disponíveis">
+          </label>
+
+          <div class="color-field">
+            <label class="field">
+              <span>Cor do cabeçalho</span>
+              <input type="color" value="${getTableHeaderColor()}" data-table-field="headerColor" aria-label="Cor do cabeçalho da tabela">
+            </label>
+            <label class="field">
+              <span>Hex da cor</span>
+              <input type="text" value="${escapeHtml(state.table.headerColor)}" data-table-field="headerColor" autocomplete="off" maxlength="7" placeholder="#ea5b0c">
+            </label>
+          </div>
+
+${rows}
+        </section>
+      `;
+    }
+
+    function renderEditor() {
+      updateEditorTabs();
+      updateAddButtons();
+      editor.innerHTML = currentPage === "conteudo" && currentEditorTab === "table"
+        ? renderTableEditor()
+        : renderFaqEditor();
 
       updateOutput();
     }
@@ -973,44 +1699,240 @@ ${faqStyle}`;
     }
 
     function fillFromBulk() {
-      const parsedItems = parseBulkFaq(bulkInput.value);
+      const parsedItems = parseBulkFaq(state.faqBulkInput);
 
       if (!parsedItems.length) {
-        bulkStatus.textContent = "Não encontrei perguntas no formato 1. Pergunta?";
+        state.faqBulkStatus = "Não encontrei perguntas no formato 1. Pergunta?";
+        renderEditor();
         return;
       }
 
       state.items = parsedItems;
-      bulkStatus.textContent = `${parsedItems.length} pergunta${parsedItems.length === 1 ? "" : "s"} preenchida${parsedItems.length === 1 ? "" : "s"}.`;
+      state.faqBulkStatus = `${parsedItems.length} pergunta${parsedItems.length === 1 ? "" : "s"} preenchida${parsedItems.length === 1 ? "" : "s"}.`;
+      renderEditor();
+    }
+
+    function createEmptyTableRow() {
+      return getTableColumns().map(() => "");
+    }
+
+    function normalizeTableRows() {
+      const columns = getTableColumns();
+      state.table.rows = state.table.rows.map((row) => columns.map((column, index) => row[index] || ""));
+
+      if (!state.table.rows.length) {
+        state.table.rows.push(createEmptyTableRow());
+      }
+    }
+
+    function parseBulkTableHtml(value) {
+      const html = value.includes("<table") ? value : `<table>${value}</table>`;
+      const documentValue = new DOMParser().parseFromString(html, "text/html");
+      const headerCells = Array.from(documentValue.querySelectorAll("thead th"));
+      const columns = headerCells.map((cell) => cell.textContent.replace(/\s+/g, " ").trim()).filter(Boolean);
+      let rowElements = Array.from(documentValue.querySelectorAll("tbody tr"));
+
+      if (!rowElements.length) {
+        rowElements = Array.from(documentValue.querySelectorAll("tr")).filter((row) => row.querySelector("td"));
+      }
+
+      const rows = rowElements
+        .map((row) => Array.from(row.querySelectorAll("td")).map((cell) => cell.textContent.replace(/\s+/g, " ").trim()))
+        .filter((row) => row.some(Boolean));
+
+      return { columns, rows };
+    }
+
+    function parseBulkTableText(value) {
+      const lines = value
+        .replace(/\r\n?/g, "\n")
+        .split("\n")
+        .map((line) => line.trim())
+        .filter(Boolean);
+
+      const rows = lines.map((line) => {
+        if (line.includes("\t")) {
+          return line.split("\t").map((cell) => cell.trim());
+        }
+
+        if (line.includes(";")) {
+          return line.split(";").map((cell) => cell.trim());
+        }
+
+        const skuAndTitle = line.match(/^(\S+)\s+(.+)$/);
+        return skuAndTitle ? [skuAndTitle[1], skuAndTitle[2]] : [line];
+      }).filter((row) => row.some(Boolean));
+
+      const firstRow = rows[0] || [];
+      const firstRowLooksLikeHeader = rows.length > 1 && firstRow.some((cell) => /sku|t[ií]tulo|produto|descri[cç][aã]o/i.test(cell));
+
+      return {
+        columns: firstRowLooksLikeHeader ? firstRow : [],
+        rows: firstRowLooksLikeHeader ? rows.slice(1) : rows
+      };
+    }
+
+    function parseBulkTable(value) {
+      const trimmed = value.trim();
+
+      if (!trimmed) {
+        return { columns: [], rows: [] };
+      }
+
+      if (/<\/?(table|thead|tbody|tr|td|th)\b/i.test(trimmed)) {
+        return parseBulkTableHtml(trimmed);
+      }
+
+      return parseBulkTableText(trimmed);
+    }
+
+    function fillTableFromBulk() {
+      const parsedTable = parseBulkTable(state.table.bulkInput);
+
+      if (!parsedTable.rows.length) {
+        state.table.status = "Não encontrei linhas para preencher.";
+        renderEditor();
+        return;
+      }
+
+      const maxColumns = Math.max(
+        parsedTable.columns.length,
+        state.table.columns.length,
+        ...parsedTable.rows.map((row) => row.length)
+      );
+
+      state.table.columns = Array.from({ length: maxColumns }, (item, index) => {
+        return parsedTable.columns[index] || state.table.columns[index] || `COLUNA ${index + 1}`;
+      });
+
+      state.table.rows = parsedTable.rows.map((row) => {
+        return Array.from({ length: maxColumns }, (item, index) => row[index] || "");
+      });
+
+      state.table.status = `${state.table.rows.length} linha${state.table.rows.length === 1 ? "" : "s"} preenchida${state.table.rows.length === 1 ? "" : "s"}.`;
+      renderEditor();
+    }
+
+    function addTableColumn() {
+      state.table.columns.push("");
+      state.table.rows.forEach((row) => row.push(""));
+      state.table.status = "";
+      renderEditor();
+    }
+
+    function removeTableColumn(index) {
+      if (state.table.columns.length <= 1) {
+        return;
+      }
+
+      state.table.columns.splice(index, 1);
+      state.table.rows.forEach((row) => row.splice(index, 1));
+      state.table.status = "";
+      normalizeTableRows();
+      renderEditor();
+    }
+
+    function addTableRow() {
+      state.table.rows.push(createEmptyTableRow());
+      state.table.status = "";
+      renderEditor();
+      const lastRowInput = editor.querySelector(`[data-table-row="${state.table.rows.length - 1}"] input`);
+      if (lastRowInput) {
+        lastRowInput.focus();
+      }
+    }
+
+    function removeTableRow(index) {
+      state.table.rows.splice(index, 1);
+      state.table.status = "";
+      normalizeTableRows();
       renderEditor();
     }
 
     function addItem() {
       state.items.push({ question: "", answer: "" });
       renderEditor();
-      const lastItem = editor.querySelector(".faq-editor__item:last-child input");
+      const lastItem = editor.querySelector(`.faq-editor__item[data-index="${state.items.length - 1}"] input`);
       if (lastItem) {
         lastItem.focus();
       }
     }
 
-    async function copyGeneratedHtml() {
+    function addCurrentItem() {
+      if (currentPage === "conteudo" && currentEditorTab === "table") {
+        addTableRow();
+        return;
+      }
+
+      addItem();
+    }
+
+    async function copyGeneratedHtml(mode = "html") {
+      const copyMode = mode === "full" ? "full" : "html";
+      const value = buildOutputHtml(copyMode);
+      generatedHtml.value = value;
       generatedHtml.focus();
       generatedHtml.select();
 
       try {
-        await navigator.clipboard.writeText(generatedHtml.value);
+        await navigator.clipboard.writeText(value);
       } catch (error) {
         document.execCommand("copy");
       }
 
-      copyStatus.textContent = "HTML copiado.";
+      copyStatus.textContent = copyMode === "full" && currentPage === "conteudo"
+        ? pageConfigs[currentPage].fullCopiedStatus
+        : pageConfigs[currentPage].copiedStatus;
       window.setTimeout(() => {
         copyStatus.textContent = "";
       }, 2400);
     }
 
     editor.addEventListener("input", (event) => {
+      const faqBulkField = event.target.dataset.faqBulk;
+      if (faqBulkField) {
+        state.faqBulkInput = event.target.value;
+        state.faqBulkStatus = "";
+        return;
+      }
+
+      const tableField = event.target.dataset.tableField;
+      if (tableField) {
+        if (tableField === "caption") {
+          state.table.caption = event.target.value;
+          updateOutput();
+        }
+
+        if (tableField === "headerColor") {
+          state.table.headerColor = event.target.value;
+          if (event.target.type === "color") {
+            renderEditor();
+            return;
+          }
+          updateOutput();
+        }
+
+        if (tableField === "bulk") {
+          state.table.bulkInput = event.target.value;
+          state.table.status = "";
+        }
+
+        if (tableField === "column") {
+          const columnIndex = Number(event.target.dataset.columnIndex);
+          state.table.columns[columnIndex] = event.target.value;
+          updateOutput();
+        }
+
+        if (tableField === "cell") {
+          const rowIndex = Number(event.target.dataset.rowIndex);
+          const cellIndex = Number(event.target.dataset.cellIndex);
+          state.table.rows[rowIndex][cellIndex] = event.target.value;
+          updateOutput();
+        }
+
+        return;
+      }
+
       const field = event.target.dataset.field;
       if (!field) {
         return;
@@ -1023,33 +1945,75 @@ ${faqStyle}`;
     });
 
     editor.addEventListener("click", (event) => {
-      const button = event.target.closest("[data-action='remove']");
+      const button = event.target.closest("[data-action]");
       if (!button) {
         return;
       }
 
-      const itemElement = button.closest(".faq-editor__item");
-      const index = Number(itemElement.dataset.index);
-      state.items.splice(index, 1);
+      const action = button.dataset.action;
 
-      if (state.items.length === 0) {
-        state.items.push({ question: "", answer: "" });
+      if (action === "remove") {
+        const itemElement = button.closest(".faq-editor__item");
+        const index = Number(itemElement.dataset.index);
+        state.items.splice(index, 1);
+
+        if (state.items.length === 0) {
+          state.items.push({ question: "", answer: "" });
+        }
+
+        renderEditor();
+        return;
       }
 
-      renderEditor();
+      if (action === "fill-faq-bulk") {
+        fillFromBulk();
+      }
+
+      if (action === "add-table-column") {
+        addTableColumn();
+      }
+
+      if (action === "remove-table-column") {
+        removeTableColumn(Number(button.dataset.columnIndex));
+      }
+
+      if (action === "add-table-row") {
+        addTableRow();
+      }
+
+      if (action === "remove-table-row") {
+        const rowElement = button.closest("[data-table-row]");
+        removeTableRow(Number(rowElement.dataset.tableRow));
+      }
+
+      if (action === "fill-table-bulk") {
+        fillTableFromBulk();
+      }
     });
 
-    document.querySelector("#fillFromBulk").addEventListener("click", fillFromBulk);
-    document.querySelector("#addItem").addEventListener("click", addItem);
-    document.querySelector("#addItemTop").addEventListener("click", addItem);
-    document.querySelector("#copyHtml").addEventListener("click", copyGeneratedHtml);
-    document.querySelector("#copyHtmlTop").addEventListener("click", copyGeneratedHtml);
+    editorTabButtons.forEach((button) => {
+      button.addEventListener("click", () => {
+        currentEditorTab = button.dataset.editorTab === "table" ? "table" : "faq";
+        renderEditor();
+      });
+    });
+
+    document.querySelector("#addItem").addEventListener("click", addCurrentItem);
+    document.querySelector("#addItemTop").addEventListener("click", addCurrentItem);
+    [...htmlCopyButtons, ...fullCopyButtons].forEach((button) => {
+      button.addEventListener("click", () => {
+        copyGeneratedHtml(button.dataset.copyMode);
+      });
+    });
+    window.addEventListener("hashchange", () => {
+      applyPage(getPageFromHash());
+    });
     themeToggle.addEventListener("change", () => {
       setTheme(themeToggle.checked ? "dark" : "light");
     });
 
     setTheme(getInitialTheme());
-    renderEditor();
+    applyPage(getPageFromHash());
   </script>
 </body>
 </html>
