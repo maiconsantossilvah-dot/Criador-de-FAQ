@@ -534,6 +534,26 @@
       padding: 12px;
     }
 
+    .faq-bulk-panel {
+      flex: 0 0 auto;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--editor-item-bg);
+      overflow: hidden;
+    }
+
+    .faq-bulk-panel__body {
+      padding: 12px;
+    }
+
+    .faq-bulk-panel .field {
+      margin-bottom: 10px;
+    }
+
+    .faq-bulk-panel .bulk-input {
+      min-height: 150px;
+    }
+
     .table-editor {
       display: grid;
       gap: 12px;
@@ -821,7 +841,8 @@
     }
 
     html[data-theme="dark"] .table-editor__box,
-    html[data-theme="dark"] .table-row-editor {
+    html[data-theme="dark"] .table-row-editor,
+    html[data-theme="dark"] .faq-bulk-panel {
       background: #0d1727;
       border-color: #273548;
     }
@@ -1647,20 +1668,14 @@ ${faqStyle}`;
           </div>
         </div>
 
-        <article class="table-editor__box">
+        <article class="faq-bulk-panel">
           <div class="faq-editor__bar">
-            <strong>Colar perguntas e respostas</strong>
+            <strong>Colar texto completo do FAQ</strong>
           </div>
-          <div class="table-editor__box-body">
+          <div class="faq-bulk-panel__body">
             <label class="field">
-              <span>Texto do FAQ</span>
-              <textarea class="bulk-input" data-faq-bulk="input" spellcheck="false" placeholder="4. O produto contém glúten?
-
-Não. O adoçante não contém glúten, o que amplia as possibilidades de consumo para diferentes rotinas alimentares.
-
-5. O sabor funciona bem no café?
-
-Sim. A apresentação líquida facilita a diluição e ajuda no uso em bebidas quentes como café e chá.">${escapeHtml(state.faqBulkInput)}</textarea>
+              <span>Perguntas e respostas em massa</span>
+              <textarea class="bulk-input" data-faq-bulk="input" spellcheck="false">${escapeHtml(state.faqBulkInput)}</textarea>
             </label>
             <div class="bulk-actions">
               <button class="button button--soft" type="button" data-action="fill-faq-bulk">Preencher FAQ</button>
@@ -1770,6 +1785,7 @@ ${rows}
       editor.innerHTML = currentPage === "conteudo" && currentEditorTab === "table"
         ? renderTableEditor()
         : renderFaqEditor();
+      editor.scrollTop = 0;
 
       updateOutput();
     }
