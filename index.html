@@ -248,14 +248,14 @@
     }
 
     .button--danger {
-      color: var(--red);
-      background: #fff1e8;
+      color: #ffffff;
+      background: #dc2626;
       box-shadow: none;
     }
 
     .button--danger:hover {
       color: #ffffff;
-      background: var(--red);
+      background: #b91c1c;
       box-shadow: none;
     }
 
@@ -425,8 +425,8 @@
     }
 
     .field input[type="color"] {
-      height: 46px;
-      padding: 4px;
+      min-height: 40px;
+      padding: 5px;
       cursor: pointer;
     }
 
@@ -444,12 +444,6 @@
     .field textarea:focus {
       border-color: var(--blue);
       box-shadow: 0 0 0 3px rgba(0, 157, 255, 0.15);
-    }
-
-    .field input[type="color"] {
-      min-height: 44px;
-      padding: 5px;
-      cursor: pointer;
     }
 
     .faq-editor {
@@ -473,6 +467,13 @@
       gap: 12px;
       margin: 2px 0 0;
       padding: 2px 2px 0;
+    }
+
+    .table-editor__title {
+      display: flex;
+      align-items: center;
+      min-width: 0;
+      gap: 10px;
     }
 
     .editor-section-title h3 {
@@ -548,25 +549,104 @@
       overflow: hidden;
     }
 
+    .table-editor__box--sheet {
+      background: transparent;
+    }
+
     .table-editor__box-body {
       padding: 12px;
     }
 
     .table-editor__columns,
-    .table-row-editor__cells,
-    .color-field {
+    .table-row-editor__cells {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
       gap: 10px;
     }
 
-    .color-field .field {
-      margin-bottom: 0;
+    .table-settings {
+      display: grid;
+      gap: 12px;
+    }
+
+    .table-settings__head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 10px 12px;
+      background: var(--editor-bar-bg);
+      border-bottom: 1px solid var(--line);
+    }
+
+    .table-settings__head strong {
+      color: var(--editor-bar-text);
+      font-size: 13px;
+    }
+
+    .table-settings__controls {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .table-settings__body {
+      display: grid;
+      gap: 12px;
+      padding: 12px;
+    }
+
+    .sheet-field {
+      margin-bottom: 10px;
+    }
+
+    .sheet-field span {
+      color: var(--muted);
+      font-size: 12px;
+      opacity: 0.72;
+    }
+
+    .field textarea.sheet-paste {
+      min-height: 116px;
+      padding: 8px 10px;
+      color: var(--field-text);
+      background:
+        linear-gradient(rgba(148, 163, 184, 0.22) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(148, 163, 184, 0.18) 1px, transparent 1px),
+        var(--field-bg);
+      background-size: 100% 24px, 18ch 100%, auto;
+      font: 12px/1.5 Consolas, "Courier New", monospace;
+      tab-size: 16;
+    }
+
+    .field textarea.sheet-paste::placeholder {
+      color: var(--field-text);
+      opacity: 0.38;
+    }
+
+    .table-header-color {
+      width: 32px;
+      height: 32px;
+      min-height: 32px;
+      padding: 3px;
+      border: 1px solid var(--field-border);
+      border-radius: 8px;
+      background: var(--field-bg);
+      cursor: pointer;
+    }
+
+    .table-header-color::-webkit-color-swatch-wrapper {
+      padding: 0;
+    }
+
+    .table-header-color::-webkit-color-swatch {
+      border: 0;
+      border-radius: 5px;
     }
 
     .table-editor__column {
       display: grid;
-      grid-template-columns: minmax(0, 1fr) auto;
+      grid-template-columns: auto minmax(0, 1fr);
       gap: 8px;
       align-items: end;
     }
@@ -588,6 +668,20 @@
 
     .table-row-editor__cells {
       padding: 12px;
+    }
+
+    .icon-button {
+      width: 32px;
+      height: 32px;
+      min-height: 32px;
+      padding: 0;
+      border-radius: 8px;
+    }
+
+    .icon-button svg {
+      width: 16px;
+      height: 16px;
+      stroke: currentColor;
     }
 
     .status {
@@ -677,13 +771,13 @@
     }
 
     html[data-theme="dark"] .button--danger {
-      color: #fed7aa;
-      background: rgba(251, 146, 60, 0.14);
+      color: #ffffff;
+      background: #dc2626;
     }
 
     html[data-theme="dark"] .button--danger:hover {
       color: #ffffff;
-      background: #ea580c;
+      background: #b91c1c;
     }
 
     html[data-theme="dark"] .panel {
@@ -887,7 +981,7 @@
           </span>
           <span class="theme-toggle__text">Modo escuro</span>
         </label>
-        <button class="button button--soft" id="addItemTop" type="button">Adicionar pergunta</button>
+        <button class="button button--soft icon-button" id="addItemTop" type="button" aria-label="Adicionar pergunta" title="Adicionar pergunta">+</button>
       </div>
     </header>
 
@@ -895,7 +989,7 @@
       <div class="panel editor-panel">
         <div class="panel__head">
           <h2>Conteúdo</h2>
-          <button class="button button--soft" id="addItem" type="button">Adicionar</button>
+          <button class="button button--soft icon-button" id="addItem" type="button" aria-label="Adicionar pergunta" title="Adicionar pergunta">+</button>
         </div>
         <div class="panel__body">
           <div class="editor-tools" id="editorTools">
@@ -1154,6 +1248,7 @@
       table: {
         caption: "",
         headerColor: "#ea5b0c",
+        headerColors: ["#ea5b0c", "#ea5b0c"],
         bulkInput: "",
         status: "",
         columns: ["SKU", "TÍTULO"],
@@ -1256,8 +1351,15 @@
       return "#ea5b0c";
     }
 
-    function getTableHeaderColor() {
-      return normalizeHexColor(state.table.headerColor);
+    function getTableHeaderColor(index = 0) {
+      return normalizeHexColor(state.table.headerColors[index] || state.table.headerColor);
+    }
+
+    function normalizeTableHeaderColors() {
+      const columns = getTableColumns();
+      state.table.headerColors = columns.map((column, index) => {
+        return normalizeHexColor(state.table.headerColors[index] || state.table.headerColor);
+      });
     }
 
     function getPageFromHash() {
@@ -1277,8 +1379,11 @@
 
     function updateAddButtons() {
       const isTableTab = currentPage === "conteudo" && currentEditorTab === "table";
-      addButtons.forEach((button, index) => {
-        button.textContent = isTableTab ? "Adicionar linha" : index === 0 ? "Adicionar" : "Adicionar pergunta";
+      const label = isTableTab ? "Adicionar linha" : "Adicionar pergunta";
+      addButtons.forEach((button) => {
+        button.textContent = "+";
+        button.setAttribute("aria-label", label);
+        button.setAttribute("title", label);
       });
     }
 
@@ -1387,7 +1492,7 @@ ${items}
       const radiusStyle = radius ? ` border-radius: ${radius};` : "";
       const headerText = escapeHtml(label.trim() || `COLUNA ${index + 1}`);
 
-      return `                 <th class="table-text-custom table-th-custom" style="background-color: ${getTableHeaderColor()};${radiusStyle}" scope="col">${headerText}
+      return `                 <th class="table-text-custom table-th-custom" style="background-color: ${getTableHeaderColor(index)};${radiusStyle}" scope="col">${headerText}
                  </th>`;
     }
 
@@ -1517,7 +1622,7 @@ ${faqStyle}`;
         <article class="faq-editor__item" data-index="${index}">
           <div class="faq-editor__bar">
             <strong>Pergunta ${index + 1}</strong>
-            <button class="button button--danger" type="button" data-action="remove">Remover</button>
+            <button class="button button--danger icon-button" type="button" data-action="remove" aria-label="Remover pergunta ${index + 1}" title="Remover pergunta">${trashIcon()}</button>
           </div>
           <div class="faq-editor__fields">
             <label class="field">
@@ -1568,19 +1673,30 @@ Sim. A apresentação líquida facilita a diluição e ajuda no uso em bebidas q
       `;
     }
 
+    function trashIcon() {
+      return `<svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <path d="M4 7h16" stroke-width="2" stroke-linecap="round"></path>
+        <path d="M10 11v6" stroke-width="2" stroke-linecap="round"></path>
+        <path d="M14 11v6" stroke-width="2" stroke-linecap="round"></path>
+        <path d="M6 7l1 14h10l1-14" stroke-width="2" stroke-linejoin="round"></path>
+        <path d="M9 7V4h6v3" stroke-width="2" stroke-linejoin="round"></path>
+      </svg>`;
+    }
+
     function renderTableEditor() {
       if (currentPage !== "conteudo") {
         return "";
       }
 
+      normalizeTableHeaderColors();
       const columns = getTableColumns();
       const columnFields = columns.map((column, index) => `
               <div class="table-editor__column">
+                <input class="table-header-color" type="color" value="${getTableHeaderColor(index)}" data-table-field="columnHeaderColor" data-column-index="${index}" aria-label="Cor do cabeçalho da coluna ${index + 1}" title="Cor do cabeçalho">
                 <label class="field">
                   <span>Coluna ${index + 1}</span>
                   <input type="text" value="${escapeHtml(column)}" data-table-field="column" data-column-index="${index}" autocomplete="off">
                 </label>
-                ${columns.length > 1 ? `<button class="button button--danger" type="button" data-action="remove-table-column" data-column-index="${index}">Remover</button>` : ""}
               </div>
             `).join("");
 
@@ -1588,7 +1704,7 @@ Sim. A apresentação líquida facilita a diluição e ajuda no uso em bebidas q
         <article class="table-row-editor" data-table-row="${rowIndex}">
           <div class="faq-editor__bar">
             <strong>Linha ${rowIndex + 1}</strong>
-            <button class="button button--danger" type="button" data-action="remove-table-row">Remover</button>
+            <button class="button button--danger icon-button" type="button" data-action="remove-table-row" aria-label="Remover linha ${rowIndex + 1}" title="Remover linha">${trashIcon()}</button>
           </div>
           <div class="table-row-editor__cells">
             ${columns.map((column, cellIndex) => `
@@ -1604,23 +1720,37 @@ Sim. A apresentação líquida facilita a diluição e ajuda no uso em bebidas q
       return `
         <section class="table-editor" aria-label="Editor da tabela">
           <div class="editor-section-title">
-            <div>
-              <h3>Tabela</h3>
-              <p>Cole linhas de planilha ou preencha manualmente os dados da tabela.</p>
+            <div class="table-editor__title">
+              <div>
+                <h3>Tabela</h3>
+                <p>Cole da planilha ou edite as células abaixo.</p>
+              </div>
             </div>
-            <button class="button button--soft" type="button" data-action="add-table-row">Adicionar linha</button>
           </div>
 
-          <article class="table-editor__box">
-            <div class="faq-editor__bar">
-              <strong>Colar tabela pronta</strong>
+          <article class="table-editor__box table-settings">
+            <div class="table-settings__head">
+              <strong>Configurações</strong>
+              <div class="table-settings__controls">
+                <button class="button button--soft icon-button" type="button" data-action="add-table-column" aria-label="Adicionar coluna" title="Adicionar coluna">+</button>
+              </div>
             </div>
-            <div class="table-editor__box-body">
+            <div class="table-settings__body">
               <label class="field">
-                <span>Linhas da tabela</span>
-                <textarea class="bulk-input" data-table-field="bulk" spellcheck="false" placeholder="SKU    TÍTULO
-1225007    HAVAIANAS TOP.BASIC BRANCO/BRANCO/VERDE 37/8
-1225008    HAVAIANAS KIDS ATHLETIC VERDE PATRIA 25/6">${escapeHtml(state.table.bulkInput)}</textarea>
+                <span>Caption de Acessibilidade</span>
+                <input type="text" value="${escapeHtml(state.table.caption)}" data-table-field="caption" autocomplete="off" placeholder="tamanhos de chinelos disponíveis">
+              </label>
+              <div class="table-editor__columns">
+${columnFields}
+              </div>
+            </div>
+          </article>
+
+          <article class="table-editor__box table-editor__box--sheet">
+            <div class="table-editor__box-body">
+              <label class="field sheet-field">
+                <span>Colar conteúdo de planilha ou .txt</span>
+                <textarea class="bulk-input sheet-paste" data-table-field="bulk" spellcheck="false" placeholder="SKU&#9;TÍTULO&#10;1225007&#9;HAVAIANAS TOP.BASIC BRANCO/BRANCO/VERDE 37/8&#10;1225008&#9;HAVAIANAS KIDS ATHLETIC VERDE PATRIA 25/6">${escapeHtml(state.table.bulkInput)}</textarea>
               </label>
               <div class="bulk-actions">
                 <button class="button button--soft" type="button" data-action="fill-table-bulk">Preencher tabela</button>
@@ -1628,32 +1758,6 @@ Sim. A apresentação líquida facilita a diluição e ajuda no uso em bebidas q
               </div>
             </div>
           </article>
-
-          <article class="table-editor__box">
-            <div class="faq-editor__bar">
-              <strong>Colunas</strong>
-              <button class="button button--soft" type="button" data-action="add-table-column">Adicionar coluna</button>
-            </div>
-            <div class="table-editor__box-body table-editor__columns">
-${columnFields}
-            </div>
-          </article>
-
-          <label class="field">
-            <span>Descrição da tabela</span>
-            <input type="text" value="${escapeHtml(state.table.caption)}" data-table-field="caption" autocomplete="off" placeholder="tamanhos de chinelos disponíveis">
-          </label>
-
-          <div class="color-field">
-            <label class="field">
-              <span>Cor do cabeçalho</span>
-              <input type="color" value="${getTableHeaderColor()}" data-table-field="headerColor" aria-label="Cor do cabeçalho da tabela">
-            </label>
-            <label class="field">
-              <span>Hex da cor</span>
-              <input type="text" value="${escapeHtml(state.table.headerColor)}" data-table-field="headerColor" autocomplete="off" maxlength="7" placeholder="#ea5b0c">
-            </label>
-          </div>
 
 ${rows}
         </section>
@@ -1804,6 +1908,9 @@ ${rows}
       state.table.columns = Array.from({ length: maxColumns }, (item, index) => {
         return parsedTable.columns[index] || state.table.columns[index] || `COLUNA ${index + 1}`;
       });
+      state.table.headerColors = Array.from({ length: maxColumns }, (item, index) => {
+        return normalizeHexColor(state.table.headerColors[index] || state.table.headerColor);
+      });
 
       state.table.rows = parsedTable.rows.map((row) => {
         return Array.from({ length: maxColumns }, (item, index) => row[index] || "");
@@ -1815,6 +1922,7 @@ ${rows}
 
     function addTableColumn() {
       state.table.columns.push("");
+      state.table.headerColors.push(normalizeHexColor(state.table.headerColor));
       state.table.rows.forEach((row) => row.push(""));
       state.table.status = "";
       renderEditor();
@@ -1826,9 +1934,11 @@ ${rows}
       }
 
       state.table.columns.splice(index, 1);
+      state.table.headerColors.splice(index, 1);
       state.table.rows.forEach((row) => row.splice(index, 1));
       state.table.status = "";
       normalizeTableRows();
+      normalizeTableHeaderColors();
       renderEditor();
     }
 
@@ -1910,6 +2020,13 @@ ${rows}
             return;
           }
           updateOutput();
+        }
+
+        if (tableField === "columnHeaderColor") {
+          const columnIndex = Number(event.target.dataset.columnIndex);
+          state.table.headerColors[columnIndex] = event.target.value;
+          renderEditor();
+          return;
         }
 
         if (tableField === "bulk") {
