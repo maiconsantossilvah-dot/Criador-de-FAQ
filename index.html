@@ -117,7 +117,8 @@
 
     button,
     input,
-    textarea {
+    textarea,
+    select {
       font: inherit;
     }
 
@@ -374,7 +375,7 @@
 
     .editor-tabs {
       display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
+      grid-template-columns: repeat(3, minmax(0, 1fr));
       gap: 4px;
       padding: 4px;
       margin-bottom: 16px;
@@ -413,7 +414,8 @@
     }
 
     .field input,
-    .field textarea {
+    .field textarea,
+    .field select {
       width: 100%;
       border: 1px solid var(--field-border);
       border-radius: 8px;
@@ -422,6 +424,11 @@
       padding: 11px 12px;
       outline: none;
       transition: border 0.12s ease, box-shadow 0.12s ease;
+    }
+
+    .field select {
+      min-height: 42px;
+      cursor: pointer;
     }
 
     .field input[type="color"] {
@@ -441,7 +448,8 @@
     }
 
     .field input:focus,
-    .field textarea:focus {
+    .field textarea:focus,
+    .field select:focus {
       border-color: var(--blue);
       box-shadow: 0 0 0 3px rgba(0, 157, 255, 0.15);
     }
@@ -679,6 +687,161 @@
       margin-bottom: 0;
     }
 
+    .stories-editor {
+      display: grid;
+      gap: 12px;
+      margin-top: 8px;
+      padding-top: 16px;
+      border-top: 1px solid var(--line);
+    }
+
+    .stories-editor__box,
+    .stories-slide-editor {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--editor-item-bg);
+      overflow: hidden;
+    }
+
+    .stories-container-editor summary {
+      list-style: none;
+      cursor: pointer;
+    }
+
+    .stories-container-editor summary::-webkit-details-marker {
+      display: none;
+    }
+
+    .stories-container-editor__summary {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 12px;
+      background: var(--editor-bar-bg);
+      border-bottom: 1px solid var(--line);
+    }
+
+    .stories-container-editor:not([open]) .stories-container-editor__summary {
+      border-bottom: 0;
+    }
+
+    .stories-container-editor__summary strong {
+      flex: 1;
+      min-width: 0;
+      color: var(--editor-bar-text);
+      font-size: 13px;
+      overflow-wrap: anywhere;
+    }
+
+    .stories-container-editor__meta {
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 750;
+      white-space: nowrap;
+    }
+
+    .stories-container-editor__chevron {
+      color: var(--muted);
+      font-size: 18px;
+      line-height: 1;
+      transition: transform 0.14s ease;
+    }
+
+    .stories-container-editor[open] .stories-container-editor__chevron {
+      transform: rotate(90deg);
+    }
+
+    .stories-editor__body {
+      display: grid;
+      gap: 12px;
+      padding: 12px;
+    }
+
+    .stories-guide {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--editor-item-bg);
+      overflow: hidden;
+    }
+
+    .stories-guide summary {
+      list-style: none;
+      cursor: pointer;
+    }
+
+    .stories-guide summary::-webkit-details-marker {
+      display: none;
+    }
+
+    .stories-guide__summary {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 12px;
+      background: var(--editor-bar-bg);
+      border-bottom: 1px solid var(--line);
+    }
+
+    .stories-guide:not([open]) .stories-guide__summary {
+      border-bottom: 0;
+    }
+
+    .stories-guide__summary strong {
+      flex: 1;
+      min-width: 0;
+      color: var(--editor-bar-text);
+      font-size: 13px;
+    }
+
+    .stories-guide__summary span {
+      color: var(--muted);
+      font-size: 18px;
+      line-height: 1;
+      transition: transform 0.14s ease;
+    }
+
+    .stories-guide[open] .stories-guide__summary span {
+      transform: rotate(90deg);
+    }
+
+    .stories-guide__body {
+      display: grid;
+      gap: 8px;
+      padding: 12px;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.45;
+    }
+
+    .stories-guide__body p {
+      margin: 0;
+    }
+
+    .stories-guide__body strong {
+      color: var(--field-label);
+      font-weight: 800;
+    }
+
+    .stories-editor__grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 10px;
+    }
+
+    .stories-editor__grid--base {
+      grid-template-columns: minmax(0, 1fr);
+    }
+
+    .stories-slide-editor__body {
+      display: grid;
+      gap: 10px;
+      padding: 12px;
+    }
+
+    .stories-slide-editor__body .field {
+      margin-bottom: 0;
+    }
+
     .table-row-editor {
       border: 1px solid var(--line);
       border-radius: 8px;
@@ -811,6 +974,7 @@
 
     html[data-theme="dark"] .field input,
     html[data-theme="dark"] .field textarea,
+    html[data-theme="dark"] .field select,
     html[data-theme="dark"] .output textarea {
       border-color: #33465e;
       color: #e5edf7;
@@ -842,7 +1006,10 @@
 
     html[data-theme="dark"] .table-editor__box,
     html[data-theme="dark"] .table-row-editor,
-    html[data-theme="dark"] .faq-bulk-panel {
+    html[data-theme="dark"] .faq-bulk-panel,
+    html[data-theme="dark"] .stories-guide,
+    html[data-theme="dark"] .stories-editor__box,
+    html[data-theme="dark"] .stories-slide-editor {
       background: #0d1727;
       border-color: #273548;
     }
@@ -1017,6 +1184,7 @@
             <div class="editor-tabs" role="tablist" aria-label="Tipo de conteúdo">
               <button class="editor-tabs__button" type="button" role="tab" data-editor-tab="faq">FAQ</button>
               <button class="editor-tabs__button" type="button" role="tab" data-editor-tab="table">Tabela</button>
+              <button class="editor-tabs__button" type="button" role="tab" data-editor-tab="stories">Stories</button>
             </div>
           </div>
           <div class="faq-editor" id="faqEditor"></div>
@@ -1036,7 +1204,7 @@
           <textarea id="generatedHtml" readonly spellcheck="false" aria-label="HTML gerado"></textarea>
           <div class="preview-shell">
             <span class="preview-shell__label">Prévia</span>
-            <iframe class="preview-frame" id="previewFrame" title="Prévia do FAQ"></iframe>
+            <iframe class="preview-frame" id="previewFrame" title="Previa do conteudo"></iframe>
           </div>
         </div>
       </div>
@@ -1258,6 +1426,353 @@
   }
 </style>`;
 
+    const storiesStyle = `<style>
+  /* Guia rapido de midias:
+     - Slide/story: proporcao 9:16. Recomendado 1080x1920 px. Minimo seguro 860x1530 px.
+     - Poster de video: use a mesma proporcao do slide, preferencialmente 1080x1920 px.
+     - Miniatura da bolinha: proporcao 1:1. Recomendado 400x400 px. Minimo seguro 220x220 px.
+     - Imagens horizontais funcionam, mas serao cortadas pelo object-fit: cover.
+     - Formatos comuns: webp, jpg, png para imagem; webm ou mp4 para video.
+  */
+  .lp-stories {
+    --story-max-width: 430px;
+    --story-max-height: min(680px, 78vh);
+    --story-aspect-ratio: 9 / 16;
+    --story-ring-size: 5.25rem;
+    --story-thumb-size: 4.75rem;
+    width: min(100%, 520px);
+    margin: 0 auto 2.5rem;
+    padding: 0 1rem;
+    font-family: sans-serif;
+    color: #111827;
+    position: relative;
+  }
+
+  .lp-stories *,
+  .lp-stories *::before,
+  .lp-stories *::after {
+    box-sizing: border-box;
+  }
+
+  .lp-stories__target {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    scroll-margin-top: 1rem;
+  }
+
+  .lp-stories__options {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.75rem;
+    margin-bottom: 1.25rem;
+  }
+
+  .lp-stories__option {
+    min-width: 0;
+    padding: 0;
+    color: #111827;
+    background: transparent;
+    display: grid;
+    justify-items: center;
+    gap: 0.45rem;
+    text-align: center;
+    text-decoration: none;
+    transition: transform 160ms ease;
+  }
+
+  .lp-stories__option:hover {
+    transform: translateY(-2px);
+  }
+
+  .lp-stories__option:focus-visible {
+    outline: none;
+  }
+
+  .lp-stories__option:focus-visible .lp-stories__ring,
+  #lp-story-produto-1:target ~ .lp-stories__options [data-group="produto"] .lp-stories__ring,
+  #lp-story-produto-2:target ~ .lp-stories__options [data-group="produto"] .lp-stories__ring,
+  #lp-story-produto-3:target ~ .lp-stories__options [data-group="produto"] .lp-stories__ring,
+  #lp-story-uso-1:target ~ .lp-stories__options [data-group="uso"] .lp-stories__ring,
+  #lp-story-uso-2:target ~ .lp-stories__options [data-group="uso"] .lp-stories__ring,
+  #lp-story-uso-3:target ~ .lp-stories__options [data-group="uso"] .lp-stories__ring,
+  #lp-story-detalhes-1:target ~ .lp-stories__options [data-group="detalhes"] .lp-stories__ring,
+  #lp-story-detalhes-2:target ~ .lp-stories__options [data-group="detalhes"] .lp-stories__ring,
+  #lp-story-detalhes-3:target ~ .lp-stories__options [data-group="detalhes"] .lp-stories__ring {
+    outline: 3px solid rgba(255, 153, 0, 0.28);
+    outline-offset: 4px;
+  }
+
+  .lp-stories__ring {
+    width: var(--story-ring-size);
+    height: var(--story-ring-size);
+    padding: 3px;
+    border-radius: 50%;
+    background: conic-gradient(from -20deg, #ff9900, #111827, #ffcc66, #ff9900);
+    display: grid;
+    place-items: center;
+    box-shadow: 0 8px 24px rgba(15, 23, 42, 0.14);
+  }
+
+  .lp-stories__thumb {
+    width: var(--story-thumb-size);
+    height: var(--story-thumb-size);
+    border: 3px solid #fff;
+    border-radius: 50%;
+    object-fit: cover;
+    background: #f1f5f9;
+  }
+
+  .lp-stories__name {
+    max-width: 6rem;
+    color: #334155;
+    font-size: 0.88rem;
+    line-height: 1.15;
+    overflow-wrap: anywhere;
+  }
+
+  .lp-stories__panel {
+    display: none;
+  }
+
+  .lp-stories__panel.is-default {
+    display: block;
+  }
+
+  .lp-stories__target:target ~ .lp-stories__panels .lp-stories__panel.is-default {
+    display: none;
+  }
+
+  #lp-story-produto-1:target ~ .lp-stories__panels .panel-produto-1,
+  #lp-story-produto-2:target ~ .lp-stories__panels .panel-produto-2,
+  #lp-story-produto-3:target ~ .lp-stories__panels .panel-produto-3,
+  #lp-story-uso-1:target ~ .lp-stories__panels .panel-uso-1,
+  #lp-story-uso-2:target ~ .lp-stories__panels .panel-uso-2,
+  #lp-story-uso-3:target ~ .lp-stories__panels .panel-uso-3,
+  #lp-story-detalhes-1:target ~ .lp-stories__panels .panel-detalhes-1,
+  #lp-story-detalhes-2:target ~ .lp-stories__panels .panel-detalhes-2,
+  #lp-story-detalhes-3:target ~ .lp-stories__panels .panel-detalhes-3 {
+    display: block;
+  }
+
+  .lp-stories__viewer {
+    width: min(100%, var(--story-max-width));
+    max-height: var(--story-max-height);
+    aspect-ratio: var(--story-aspect-ratio);
+    margin: 0 auto;
+    position: relative;
+    overflow: hidden;
+    border-radius: 16px;
+    background: #020617;
+    color: #fff;
+    box-shadow: 0 18px 54px rgba(15, 23, 42, 0.22);
+    isolation: isolate;
+  }
+
+  .lp-stories__progress {
+    --slides: 3;
+    --index: 1;
+    --gap: 5px;
+    position: absolute;
+    z-index: 4;
+    top: 12px;
+    left: 12px;
+    right: 12px;
+    height: 3px;
+    overflow: hidden;
+    border-radius: 999px;
+    background: repeating-linear-gradient(to right, rgba(255, 255, 255, 0.32) 0 calc((100% / var(--slides)) - var(--gap)), transparent calc((100% / var(--slides)) - var(--gap)) calc(100% / var(--slides)));
+  }
+
+  .lp-stories__progress::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(to right, #fff 0 calc((100% / var(--slides)) * var(--index)), transparent 0);
+    -webkit-mask: repeating-linear-gradient(to right, #000 0 calc((100% / var(--slides)) - var(--gap)), transparent calc((100% / var(--slides)) - var(--gap)) calc(100% / var(--slides)));
+    mask: repeating-linear-gradient(to right, #000 0 calc((100% / var(--slides)) - var(--gap)), transparent calc((100% / var(--slides)) - var(--gap)) calc(100% / var(--slides)));
+  }
+
+  .lp-stories__topbar {
+    position: absolute;
+    z-index: 5;
+    top: 26px;
+    left: 12px;
+    right: 12px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .lp-stories__avatar {
+    width: 36px;
+    height: 36px;
+    flex: 0 0 auto;
+    border: 2px solid rgba(255, 255, 255, 0.78);
+    border-radius: 50%;
+    object-fit: cover;
+  }
+
+  .lp-stories__title {
+    min-width: 0;
+    flex: 1;
+    margin: 0;
+    color: #fff;
+    font-size: 0.96rem;
+    line-height: 1.2;
+    font-weight: 700;
+    text-shadow: 0 1px 14px rgba(0, 0, 0, 0.45);
+  }
+
+  .lp-stories__step {
+    font-size: 0.82rem;
+    font-weight: 700;
+    text-shadow: 0 1px 14px rgba(0, 0, 0, 0.45);
+  }
+
+  .lp-stories__figure,
+  .lp-stories__media {
+    width: 100%;
+    height: 100%;
+    margin: 0;
+  }
+
+  .lp-stories__figure {
+    position: relative;
+  }
+
+  .lp-stories__media img,
+  .lp-stories__media video {
+    width: 100%;
+    height: 100%;
+    display: block;
+    object-fit: cover;
+    object-position: center center;
+    background: #020617;
+  }
+
+  .lp-stories__caption {
+    position: absolute;
+    z-index: 3;
+    left: 16px;
+    right: 16px;
+    margin: 0;
+    padding: 12px 14px;
+    border-radius: 12px;
+    color: #fff;
+    font-size: 1rem;
+    line-height: 1.35;
+    background: linear-gradient(90deg, rgba(2, 6, 23, 0.72), rgba(15, 23, 42, 0.46));
+    text-shadow: 0 1px 10px rgba(0, 0, 0, 0.38);
+  }
+
+  .lp-stories__caption.is-top {
+    top: 84px;
+  }
+
+  .lp-stories__caption.is-bottom {
+    bottom: 22px;
+  }
+
+  .lp-stories__nav {
+    position: absolute;
+    z-index: 6;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    pointer-events: none;
+  }
+
+  .lp-stories__arrow {
+    width: 46px;
+    height: 54px;
+    border: 1px solid rgba(255, 255, 255, 0.22);
+    color: #fff;
+    background: rgba(15, 23, 42, 0.34);
+    backdrop-filter: blur(10px);
+    cursor: pointer;
+    display: grid;
+    place-items: center;
+    font-size: 2rem;
+    line-height: 1;
+    text-decoration: none;
+    pointer-events: auto;
+  }
+
+  .lp-stories__arrow.prev {
+    border-radius: 0 12px 12px 0;
+  }
+
+  .lp-stories__arrow.next {
+    border-radius: 12px 0 0 12px;
+  }
+
+  @media (max-width: 520px) {
+    .lp-stories {
+      padding-inline: 0.8rem;
+      --story-max-height: 68vh;
+      --story-ring-size: 4.6rem;
+      --story-thumb-size: 4.1rem;
+    }
+
+    .lp-stories__options {
+      gap: 0.6rem;
+    }
+
+    .lp-stories__name {
+      max-width: 5.2rem;
+      font-size: 0.8rem;
+    }
+
+    .lp-stories__caption {
+      border-radius: 8px;
+      font-size: 0.94rem;
+    }
+
+    .lp-stories__viewer {
+      border-radius: 8px;
+    }
+
+    .lp-stories__nav {
+      pointer-events: auto;
+    }
+
+    .lp-stories__arrow.prev {
+      display: none;
+    }
+
+    .lp-stories__arrow.next {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      border: 0;
+      border-radius: 8px;
+      color: transparent;
+      background: transparent;
+      backdrop-filter: none;
+      font-size: 0;
+    }
+  }
+</style>`;
+
+    const storiesPreviewScript = `<script>
+  document.addEventListener("click", function(event) {
+    const link = event.target.closest(".lp-stories a[href^='#lp-story-']");
+    if (!link) {
+      return;
+    }
+
+    event.preventDefault();
+    const targetId = link.getAttribute("href").slice(1);
+    if (document.getElementById(targetId)) {
+      window.location.hash = targetId;
+    }
+  });
+<\/script>`;
+
     const state = {
       faqBulkInput: "",
       faqBulkStatus: "",
@@ -1277,6 +1792,106 @@
           ["", ""],
           ["", ""],
           ["", ""]
+        ]
+      },
+      stories: {
+        ariaLabel: "Stories do produto",
+        avatar: "https://imgprd.martinsatacado.com.br/catalogoimg/catalogo/logo-rossi.webp",
+        openGroupIndex: 0,
+        groups: [
+          {
+            key: "produto",
+            name: "Produto",
+            thumb: "https://imgprd.martinsatacado.com.br/catalogoimg/catalogo/revolver-pressao-rossi-wingun-701-co2-4-5mm-produto-preto-3023607-02.webp?ims=220x",
+            slides: [
+              {
+                type: "image",
+                src: "https://imgprd.martinsatacado.com.br/catalogoimg/catalogo/revolver-pressao-rossi-wingun-701-co2-4-5mm-produto-preto-3023607-02.webp",
+                poster: "",
+                alt: "Revolver de pressao Rossi Wingun 701 CO2 em destaque sobre fundo preto e amarelo.",
+                caption: "Visual robusto, acabamento oxidado e construcao em metal.",
+                captionPosition: "top"
+              },
+              {
+                type: "image",
+                src: "https://imgprd.martinsatacado.com.br/catalogoimg/catalogo/revolver-pressao-rossi-wingun-701-co2-4-5mm-manejo-lateral-3023607-04.webp",
+                poster: "",
+                alt: "Revolver Rossi Wingun 701 em manejo lateral com recorte amarelo.",
+                caption: "Tambor para 6 tiros e operacao em acao simples ou dupla.",
+                captionPosition: "bottom"
+              },
+              {
+                type: "image",
+                src: "https://imgprd.martinsatacado.com.br/catalogoimg/catalogo/revolver-pressao-rossi-wingun-701-co2-4-5mm-fundo-amarelo-madeira-3023607-05.webp",
+                poster: "",
+                alt: "Revolver Rossi Wingun 701 sobre fundo amarelo e textura de madeira.",
+                caption: "Peso de 1000 g e aparencia realista para pratica recreativa.",
+                captionPosition: "bottom"
+              }
+            ]
+          },
+          {
+            key: "uso",
+            name: "Uso",
+            thumb: "https://imgprd.martinsatacado.com.br/catalogoimg/catalogo/revolver-pressao-rossi-wingun-701-co2-4-5mm-estande-tiro-3023607-03.webp?ims=220x",
+            slides: [
+              {
+                type: "video",
+                src: "https://imgprd.martinsatacado.com.br/catalogoimg/catalogo/header-rossi.webm",
+                poster: "https://imgprd.martinsatacado.com.br/catalogoimg/catalogo/poster-rossi-amarelo-marca.webp",
+                alt: "Video promocional do produto Rossi",
+                caption: "Video em loop automatico, sem controles visiveis.",
+                captionPosition: "bottom"
+              },
+              {
+                type: "image",
+                src: "https://imgprd.martinsatacado.com.br/catalogoimg/catalogo/revolver-pressao-rossi-wingun-701-co2-4-5mm-estande-tiro-3023607-03.webp",
+                poster: "",
+                alt: "Revolver Rossi Wingun 701 em estande com oculos de protecao ao lado.",
+                caption: "Trilho Picatinny de 22 mm para acessorios compativeis.",
+                captionPosition: "top"
+              },
+              {
+                type: "image",
+                src: "https://imgprd.martinsatacado.com.br/catalogoimg/catalogo/revolver-pressao-rossi-wingun-701-co2-4-5mm-fundo-amarelo-madeira-3023607-05.webp",
+                poster: "",
+                alt: "Revolver Rossi Wingun 701 em fundo amarelo sobre madeira.",
+                caption: "Autonomia informada de ate 80 disparos por capsula de CO2.",
+                captionPosition: "bottom"
+              }
+            ]
+          },
+          {
+            key: "detalhes",
+            name: "Detalhes",
+            thumb: "https://imgprd.martinsatacado.com.br/catalogoimg/catalogo/revolver-pressao-rossi-wingun-701-co2-4-5mm-manejo-lateral-3023607-04.webp?ims=220x",
+            slides: [
+              {
+                type: "image",
+                src: "https://imgprd.martinsatacado.com.br/catalogoimg/catalogo/revolver-pressao-rossi-wingun-701-co2-4-5mm-manejo-lateral-3023607-04.webp",
+                poster: "",
+                alt: "Detalhe lateral do Revolver Rossi Wingun 701 em manejo.",
+                caption: "Calibre 4,5 mm com esferas de aco e cartuchos metalicos.",
+                captionPosition: "top"
+              },
+              {
+                type: "image",
+                src: "https://imgprd.martinsatacado.com.br/catalogoimg/catalogo/revolver-pressao-rossi-wingun-701-co2-4-5mm-produto-preto-3023607-02.webp",
+                poster: "",
+                alt: "Revolver Rossi Wingun 701 em destaque.",
+                caption: "Alca de mira regulavel e massa de mira fixa.",
+                captionPosition: "bottom"
+              },
+              {
+                type: "image",
+                src: "https://imgprd.martinsatacado.com.br/catalogoimg/catalogo/revolver-pressao-rossi-wingun-701-co2-4-5mm-estande-tiro-3023607-03.webp",
+                poster: "",
+                alt: "Revolver Rossi Wingun 701 em estande de tiro.",
+                caption: "Trava de seguranca manual para uso mais controlado.",
+                captionPosition: "bottom"
+              }
+            ]
+          }
         ]
       }
     };
@@ -1301,7 +1916,7 @@
     const pageConfigs = {
       conteudo: {
         title: "Qualidade Conteúdo",
-        subtitle: "Preencha o FAQ ou a tabela, depois copie o HTML no formato que precisar.",
+        subtitle: "Preencha FAQ, tabela ou stories, depois copie o HTML no formato que precisar.",
         outputTitle: "HTML pronto",
         copyLabel: "Copiar HTML",
         fullCopyLabel: "Copiar HTML/CSS",
@@ -1400,8 +2015,10 @@
 
     function updateAddButtons() {
       const isTableTab = currentPage === "conteudo" && currentEditorTab === "table";
+      const isStoriesTab = currentPage === "conteudo" && currentEditorTab === "stories";
       const label = isTableTab ? "Adicionar linha" : "Adicionar pergunta";
       addButtons.forEach((button) => {
+        button.classList.toggle("is-hidden", isStoriesTab);
         button.textContent = "+";
         button.setAttribute("aria-label", label);
         button.setAttribute("title", label);
@@ -1558,6 +2175,129 @@ ${rows}
          </section>`;
     }
 
+    function getStoryId(group, slideIndex) {
+      return `lp-story-${group.key}-${slideIndex + 1}`;
+    }
+
+    function getStoryPanelClass(group, slideIndex) {
+      return `panel-${group.key}-${slideIndex + 1}`;
+    }
+
+    function normalizeStoryType(type) {
+      return type === "video" ? "video" : "image";
+    }
+
+    function normalizeStoryPosition(position) {
+      return position === "top" ? "top" : "bottom";
+    }
+
+    function getStoryVideoType(src) {
+      return /\.mp4(?:$|\?)/i.test(src) ? "video/mp4" : "video/webm";
+    }
+
+    function getStoryNextHref(groupIndex, slideIndex) {
+      const group = state.stories.groups[groupIndex];
+      if (slideIndex < group.slides.length - 1) {
+        return `#${getStoryId(group, slideIndex + 1)}`;
+      }
+
+      const nextGroup = state.stories.groups[(groupIndex + 1) % state.stories.groups.length];
+      return `#${getStoryId(nextGroup, 0)}`;
+    }
+
+    function getStoryPreviousHref(groupIndex, slideIndex) {
+      const group = state.stories.groups[groupIndex];
+      if (slideIndex > 0) {
+        return `#${getStoryId(group, slideIndex - 1)}`;
+      }
+
+      return `#${getStoryId(group, group.slides.length - 1)}`;
+    }
+
+    function renderStoryOption(group) {
+      const name = escapeHtml(group.name.trim() || "Story");
+      const thumb = escapeHtml(group.thumb.trim());
+      const firstStoryId = getStoryId(group, 0);
+
+      return `        <a class="lp-stories__option" data-group="${group.key}" href="#${firstStoryId}" aria-label="Abrir container ${name}, slide 1 de ${group.slides.length}">
+          <span class="lp-stories__ring" aria-hidden="true">
+            <img class="lp-stories__thumb" src="${thumb}" alt="" loading="lazy">
+          </span>
+          <span class="lp-stories__name">${name}</span>
+        </a>`;
+    }
+
+    function renderStoryMedia(slide) {
+      const src = escapeHtml(slide.src.trim());
+      const alt = escapeHtml(slide.alt.trim());
+
+      if (normalizeStoryType(slide.type) === "video") {
+        const poster = slide.poster.trim() ? ` poster="${escapeHtml(slide.poster.trim())}"` : "";
+        return `<video autoplay muted loop playsinline preload="auto"${poster} aria-label="${alt}">
+                  <source src="${src}" type="${getStoryVideoType(slide.src)}">
+                </video>`;
+      }
+
+      return `<img src="${src}" alt="${alt}" loading="lazy">`;
+    }
+
+    function renderStoryPanel(group, groupIndex, slide, slideIndex) {
+      const storyId = getStoryId(group, slideIndex);
+      const title = escapeHtml(group.name.trim() || "Story");
+      const caption = escapeHtml(slide.caption.trim());
+      const position = normalizeStoryPosition(slide.captionPosition);
+      const isDefault = groupIndex === 0 && slideIndex === 0 ? " is-default" : "";
+      const duration = normalizeStoryType(slide.type) === "video" ? "8s" : "5.4s";
+      const previousHref = getStoryPreviousHref(groupIndex, slideIndex);
+      const nextHref = getStoryNextHref(groupIndex, slideIndex);
+      const avatar = escapeHtml(state.stories.avatar.trim());
+
+      return `        <article class="lp-stories__panel ${getStoryPanelClass(group, slideIndex)}${isDefault}" aria-labelledby="${storyId}-title" aria-describedby="${storyId}-caption" style="--story-duration: ${duration}">
+          <div class="lp-stories__viewer">
+            <div class="lp-stories__progress" aria-label="Progresso do container ${title}" style="--slides: ${group.slides.length}; --index: ${slideIndex + 1}"></div>
+            <header class="lp-stories__topbar">
+              <img class="lp-stories__avatar" src="${avatar}" alt="">
+              <h3 class="lp-stories__title" id="${storyId}-title">${title}</h3>
+              <span class="lp-stories__step">${slideIndex + 1}/${group.slides.length}</span>
+            </header>
+            <figure class="lp-stories__figure">
+              <div class="lp-stories__media">
+                ${renderStoryMedia(slide)}
+              </div>
+              <figcaption class="lp-stories__caption is-${position}" id="${storyId}-caption">${caption}</figcaption>
+            </figure>
+            <nav class="lp-stories__nav" aria-label="Navegar slides do container ${title}">
+              <a class="lp-stories__arrow prev" href="${previousHref}" aria-label="Slide anterior de ${title}"><span aria-hidden="true">&lsaquo;</span></a>
+              <a class="lp-stories__arrow next" href="${nextHref}" aria-label="Proximo slide de ${title}"><span aria-hidden="true">&rsaquo;</span></a>
+            </nav>
+          </div>
+        </article>`;
+    }
+
+    function buildStoriesSectionHtml() {
+      const groups = state.stories.groups;
+      const targets = groups.flatMap((group) => {
+        return group.slides.map((slide, slideIndex) => `      <span class="lp-stories__target" id="${getStoryId(group, slideIndex)}" aria-hidden="true"></span>`);
+      }).join("\n");
+      const options = groups.map(renderStoryOption).join("\n");
+      const panels = groups.flatMap((group, groupIndex) => {
+        return group.slides.map((slide, slideIndex) => renderStoryPanel(group, groupIndex, slide, slideIndex));
+      }).join("\n\n");
+      const ariaLabel = escapeHtml(state.stories.ariaLabel.trim() || "Stories do produto");
+
+      return `<section class="lp-stories" aria-label="${ariaLabel}">
+${targets}
+
+      <nav class="lp-stories__options" aria-label="Containers de stories">
+${options}
+      </nav>
+
+      <div class="lp-stories__panels" aria-live="polite">
+${panels}
+      </div>
+    </section>`;
+    }
+
     function buildBlocksHtml(includeTable) {
       const blocks = [buildFaqSectionHtml()];
       const tableHtml = includeTable ? buildTableSectionHtml() : "";
@@ -1575,7 +2315,7 @@ ${rows}
       return `<meta charset="UTF-8">
 ${buildBlocksHtml(includeTable)}
 
-<!-- ESSES CÓDIGOS ABAIXO VOCÊ NÃO PRECISA MEXER!!! APENAS O HTML ACIMA-->
+<!-- ESSES CODIGOS ABAIXO VOCE NAO PRECISA MEXER!!! APENAS O HTML ACIMA-->
 
 ${styles}`;
     }
@@ -1586,6 +2326,14 @@ ${styles}`;
 ${buildTableSectionHtml(true)}
 
 ${tableStyle}`;
+      }
+
+      if (currentPage === "conteudo" && currentEditorTab === "stories") {
+        return `<meta charset="UTF-8">
+${buildStoriesSectionHtml()}
+
+${storiesStyle}
+${storiesPreviewScript}`;
       }
 
       if (currentPage === "conteudo") {
@@ -1610,12 +2358,27 @@ ${faqStyle}`;
           return `<meta charset="UTF-8">
 ${tableHtml}
 
-<!-- ESSES CÓDIGOS ABAIXO VOCÊ NÃO PRECISA MEXER!!! APENAS O HTML ACIMA-->
+<!-- ESSES CODIGOS ABAIXO VOCE NAO PRECISA MEXER!!! APENAS O HTML ACIMA-->
 
 ${tableStyle}`;
         }
 
         return tableHtml;
+      }
+
+      if (currentEditorTab === "stories") {
+        const storiesHtml = buildStoriesSectionHtml();
+
+        if (copyMode === "full") {
+          return `<meta charset="UTF-8">
+${storiesHtml}
+
+<!-- ESSES CODIGOS ABAIXO VOCE NAO PRECISA MEXER!!! APENAS O HTML ACIMA-->
+
+${storiesStyle}`;
+        }
+
+        return storiesHtml;
       }
 
       const faqHtml = buildFaqSectionHtml();
@@ -1624,7 +2387,7 @@ ${tableStyle}`;
         return `<meta charset="UTF-8">
 ${faqHtml}
 
-<!-- ESSES CÓDIGOS ABAIXO VOCÊ NÃO PRECISA MEXER!!! APENAS O HTML ACIMA-->
+<!-- ESSES CODIGOS ABAIXO VOCE NAO PRECISA MEXER!!! APENAS O HTML ACIMA-->
 
 ${faqStyle}`;
       }
@@ -1779,12 +2542,143 @@ ${rows}
       `;
     }
 
+    function renderStoriesEditor() {
+      if (currentPage !== "conteudo") {
+        return "";
+      }
+
+      const groups = state.stories.groups.map((group, groupIndex) => {
+        const slides = group.slides.map((slide, slideIndex) => {
+          const type = normalizeStoryType(slide.type);
+          const position = normalizeStoryPosition(slide.captionPosition);
+          const posterField = type === "video" ? `
+              <label class="field">
+                <span>Poster do video</span>
+                <input type="text" value="${escapeHtml(slide.poster)}" data-stories-field="poster" data-story-group="${groupIndex}" data-story-slide="${slideIndex}" autocomplete="off">
+              </label>` : "";
+
+          return `
+            <article class="stories-slide-editor">
+              <div class="faq-editor__bar">
+                <strong>Slide ${slideIndex + 1}</strong>
+              </div>
+              <div class="stories-slide-editor__body">
+                <div class="stories-editor__grid">
+                  <label class="field">
+                    <span>Tipo de midia</span>
+                    <select data-stories-field="type" data-story-group="${groupIndex}" data-story-slide="${slideIndex}">
+                      <option value="image"${type === "image" ? " selected" : ""}>Imagem</option>
+                      <option value="video"${type === "video" ? " selected" : ""}>Video</option>
+                    </select>
+                  </label>
+                  <label class="field">
+                    <span>URL da midia</span>
+                    <input type="text" value="${escapeHtml(slide.src)}" data-stories-field="src" data-story-group="${groupIndex}" data-story-slide="${slideIndex}" autocomplete="off">
+                  </label>
+${posterField}
+                  <label class="field">
+                    <span>Alt / aria-label</span>
+                    <input type="text" value="${escapeHtml(slide.alt)}" data-stories-field="alt" data-story-group="${groupIndex}" data-story-slide="${slideIndex}" autocomplete="off">
+                  </label>
+                  <label class="field">
+                    <span>Posicao da legenda</span>
+                    <select data-stories-field="captionPosition" data-story-group="${groupIndex}" data-story-slide="${slideIndex}">
+                      <option value="top"${position === "top" ? " selected" : ""}>Em cima</option>
+                      <option value="bottom"${position === "bottom" ? " selected" : ""}>Embaixo</option>
+                    </select>
+                  </label>
+                </div>
+                <label class="field">
+                  <span>Legenda</span>
+                  <textarea data-stories-field="caption" data-story-group="${groupIndex}" data-story-slide="${slideIndex}">${escapeHtml(slide.caption)}</textarea>
+                </label>
+              </div>
+            </article>
+          `;
+        }).join("");
+
+        const isOpen = state.stories.openGroupIndex === groupIndex ? " open" : "";
+
+        return `
+          <details class="stories-editor__box stories-container-editor" data-story-container="${groupIndex}"${isOpen}>
+            <summary class="stories-container-editor__summary">
+              <strong>Container ${groupIndex + 1}: ${escapeHtml(group.name.trim() || "sem nome")}</strong>
+              <span class="stories-container-editor__meta">${group.slides.length} slides</span>
+              <span class="stories-container-editor__chevron" aria-hidden="true">&rsaquo;</span>
+            </summary>
+            <div class="stories-editor__body">
+              <div class="stories-editor__grid">
+                <label class="field">
+                  <span>Nome da bolinha</span>
+                  <input type="text" value="${escapeHtml(group.name)}" data-stories-field="groupName" data-story-group="${groupIndex}" autocomplete="off">
+                </label>
+                <label class="field">
+                  <span>Miniatura da bolinha</span>
+                  <input type="text" value="${escapeHtml(group.thumb)}" data-stories-field="groupThumb" data-story-group="${groupIndex}" autocomplete="off">
+                </label>
+              </div>
+${slides}
+            </div>
+          </details>
+        `;
+      }).join("");
+
+      return `
+        <section class="stories-editor" aria-label="Editor de stories">
+          <div class="editor-section-title">
+            <div>
+              <h3>Stories</h3>
+              <p>Edite os 3 containers e os 3 slides de cada um.</p>
+            </div>
+          </div>
+
+          <details class="stories-guide" open>
+            <summary class="stories-guide__summary">
+              <strong>Guia rapido de midias</strong>
+              <span aria-hidden="true">&rsaquo;</span>
+            </summary>
+            <div class="stories-guide__body">
+              <p><strong>Slides:</strong> use imagens verticais em 9:16. Recomendado 1080x1920 px; minimo seguro 860x1530 px.</p>
+              <p><strong>Miniaturas:</strong> use imagem quadrada em 1:1. Recomendado 400x400 px; minimo seguro 220x220 px.</p>
+              <p><strong>Videos:</strong> use webm ou mp4 vertical em 9:16. O poster do video deve seguir a mesma proporcao.</p>
+              <p><strong>Corte:</strong> imagens horizontais funcionam, mas o centro sera cortado para preencher o story.</p>
+              <p><strong>Alt / aria-label:</strong> descreva o que aparece na midia de forma curta e objetiva.</p>
+            </div>
+          </details>
+
+          <article class="stories-editor__box">
+            <div class="faq-editor__bar">
+              <strong>Base</strong>
+            </div>
+            <div class="stories-editor__body">
+              <div class="stories-editor__grid stories-editor__grid--base">
+                <label class="field">
+                  <span>Aria-label da secao</span>
+                  <input type="text" value="${escapeHtml(state.stories.ariaLabel)}" data-stories-field="ariaLabel" autocomplete="off">
+                </label>
+                <label class="field">
+                  <span>Logo / avatar dos stories</span>
+                  <input type="text" value="${escapeHtml(state.stories.avatar)}" data-stories-field="avatar" autocomplete="off">
+                </label>
+              </div>
+            </div>
+          </article>
+
+${groups}
+        </section>
+      `;
+    }
+
     function renderEditor() {
       updateEditorTabs();
       updateAddButtons();
-      editor.innerHTML = currentPage === "conteudo" && currentEditorTab === "table"
-        ? renderTableEditor()
-        : renderFaqEditor();
+      if (currentPage === "conteudo" && currentEditorTab === "table") {
+        editor.innerHTML = renderTableEditor();
+      } else if (currentPage === "conteudo" && currentEditorTab === "stories") {
+        editor.innerHTML = renderStoriesEditor();
+      } else {
+        editor.innerHTML = renderFaqEditor();
+      }
       editor.scrollTop = 0;
 
       updateOutput();
@@ -1990,6 +2884,10 @@ ${rows}
         return;
       }
 
+      if (currentPage === "conteudo" && currentEditorTab === "stories") {
+        return;
+      }
+
       addItem();
     }
 
@@ -2019,6 +2917,62 @@ ${rows}
       if (faqBulkField) {
         state.faqBulkInput = event.target.value;
         state.faqBulkStatus = "";
+        return;
+      }
+
+      const storiesField = event.target.dataset.storiesField;
+      if (storiesField) {
+        if (storiesField === "ariaLabel") {
+          state.stories.ariaLabel = event.target.value;
+          updateOutput();
+          return;
+        }
+
+        if (storiesField === "avatar") {
+          state.stories.avatar = event.target.value;
+          updateOutput();
+          return;
+        }
+
+        const groupIndex = Number(event.target.dataset.storyGroup);
+        const slideIndex = Number(event.target.dataset.storySlide);
+        const group = state.stories.groups[groupIndex];
+
+        if (!group) {
+          return;
+        }
+
+        if (storiesField === "groupName") {
+          group.name = event.target.value;
+          updateOutput();
+          return;
+        }
+
+        if (storiesField === "groupThumb") {
+          group.thumb = event.target.value;
+          updateOutput();
+          return;
+        }
+
+        const slide = group.slides[slideIndex];
+        if (!slide) {
+          return;
+        }
+
+        if (storiesField === "type") {
+          slide.type = normalizeStoryType(event.target.value);
+          renderEditor();
+          return;
+        }
+
+        if (storiesField === "captionPosition") {
+          slide.captionPosition = normalizeStoryPosition(event.target.value);
+          updateOutput();
+          return;
+        }
+
+        slide[storiesField] = event.target.value;
+        updateOutput();
         return;
       }
 
@@ -2077,6 +3031,34 @@ ${rows}
       updateOutput();
     });
 
+    editor.addEventListener("change", (event) => {
+      if (event.target.matches("select")) {
+        event.target.dispatchEvent(new Event("input", { bubbles: true }));
+      }
+    });
+
+    editor.addEventListener("toggle", (event) => {
+      const container = event.target.closest("[data-story-container]");
+      if (!container || event.target !== container) {
+        return;
+      }
+
+      const groupIndex = Number(container.dataset.storyContainer);
+      if (!container.open) {
+        if (state.stories.openGroupIndex === groupIndex) {
+          state.stories.openGroupIndex = -1;
+        }
+        return;
+      }
+
+      state.stories.openGroupIndex = groupIndex;
+      editor.querySelectorAll("[data-story-container]").forEach((item) => {
+        if (item !== container) {
+          item.open = false;
+        }
+      });
+    }, true);
+
     editor.addEventListener("click", (event) => {
       const button = event.target.closest("[data-action]");
       if (!button) {
@@ -2126,7 +3108,8 @@ ${rows}
 
     editorTabButtons.forEach((button) => {
       button.addEventListener("click", () => {
-        currentEditorTab = button.dataset.editorTab === "table" ? "table" : "faq";
+        const requestedTab = button.dataset.editorTab;
+        currentEditorTab = ["faq", "table", "stories"].includes(requestedTab) ? requestedTab : "faq";
         renderEditor();
       });
     });
