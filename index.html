@@ -1545,6 +1545,9 @@ __TABLE_HEADER_COLORS__
      - Slide/story: proporcao 9:16. Recomendado 1080x1920 px. Minimo seguro 860x1530 px.
      - Poster de video: use a mesma proporcao do slide, preferencialmente 1080x1920 px.
      - Miniatura da bolinha: proporcao 1:1. Recomendado 400x400 px. Minimo seguro 220x220 px.
+     - Desktop largo: o viewer muda para 16:10 e usa imagem em 960x para ocupar melhor a area.
+     - Use imagens verticais nas maiores dimensoes possiveis. Em desktop largo existe zoom/corte, e arquivos maiores preservam nitidez.
+     - Ajuste o foco da midia por slide para topo, centro ou base conforme a posicao do objeto principal.
      - Limites do componente: ate 3 containers e ate 4 slides por container.
      - Imagens horizontais funcionam, mas serao cortadas pelo object-fit: cover.
      - Formatos comuns: webp, jpg, png para imagem; webm ou mp4 para video.
@@ -1825,6 +1828,21 @@ __TABLE_HEADER_COLORS__
     background: #020617;
   }
 
+  .lp-stories__figure--focus-top .lp-stories__image,
+  .lp-stories__figure--focus-top .lp-stories__video {
+    object-position: center top;
+  }
+
+  .lp-stories__figure--focus-center .lp-stories__image,
+  .lp-stories__figure--focus-center .lp-stories__video {
+    object-position: center center;
+  }
+
+  .lp-stories__figure--focus-bottom .lp-stories__image,
+  .lp-stories__figure--focus-bottom .lp-stories__video {
+    object-position: center bottom;
+  }
+
   .lp-stories__caption {
     position: absolute;
     z-index: 3;
@@ -1926,6 +1944,32 @@ __TABLE_HEADER_COLORS__
 
     .lp-stories__arrow.next {
       border-radius: 12px 0 0 12px;
+    }
+  }
+
+  @media (min-width: 992px) {
+    .lp-stories {
+      --story-max-width: 960px;
+      --story-max-height: none;
+      --story-aspect-ratio: 16 / 10;
+      width: min(100%, 1040px);
+    }
+
+    .lp-stories__viewer {
+      width: min(100%, var(--story-max-width));
+    }
+
+    .lp-stories__caption {
+      right: auto;
+      max-width: 560px;
+    }
+
+    .lp-stories__caption.is-top {
+      top: 96px;
+    }
+
+    .lp-stories__caption.is-bottom {
+      bottom: 32px;
     }
   }
 __STORIES_DYNAMIC_COLORS__
@@ -2359,7 +2403,8 @@ __STORIES_DYNAMIC_COLORS__
                 poster: "",
                 alt: "Havaianas Top Nautical branco e marinho nos pes em estudio com fundo claro",
                 caption: "Listras classicas para quem e do mar.",
-                captionPosition: "top"
+                captionPosition: "top",
+                mediaFocus: "bottom"
               },
               {
                 type: "image",
@@ -2367,7 +2412,8 @@ __STORIES_DYNAMIC_COLORS__
                 poster: "",
                 alt: "Havaianas Top Nautical marinho e branco nos pes em estudio de moda",
                 caption: "Top Nautical no pe, leveza no dia.",
-                captionPosition: "top"
+                captionPosition: "top",
+                mediaFocus: "bottom"
               }
             ]
           },
@@ -2382,7 +2428,8 @@ __STORIES_DYNAMIC_COLORS__
                 poster: "",
                 alt: "Havaianas Top Nautical branco e marinho nos pes em calcada com cafe ao fundo",
                 caption: "Estilo atemporal para sair leve.",
-                captionPosition: "top"
+                captionPosition: "top",
+                mediaFocus: "bottom"
               },
               {
                 type: "image",
@@ -2390,7 +2437,8 @@ __STORIES_DYNAMIC_COLORS__
                 poster: "",
                 alt: "Havaianas Top Nautical marinho e branco nos pes a beira da piscina",
                 caption: "Solado 100% borracha, pronto para dias de piscina.",
-                captionPosition: "top"
+                captionPosition: "top",
+                mediaFocus: "bottom"
               }
             ]
           },
@@ -2405,7 +2453,8 @@ __STORIES_DYNAMIC_COLORS__
                 poster: "",
                 alt: "Havaianas Top Nautical branco e marinho nos pes sobre deck de madeira na praia",
                 caption: "Do calcadao ao mar em cada passo.",
-                captionPosition: "top"
+                captionPosition: "top",
+                mediaFocus: "bottom"
               },
               {
                 type: "image",
@@ -2413,7 +2462,8 @@ __STORIES_DYNAMIC_COLORS__
                 poster: "",
                 alt: "Havaianas Top Nautical marinho e branco nos pes na areia com ondas do mar",
                 caption: "Na areia, pertinho do mar.",
-                captionPosition: "top"
+                captionPosition: "top",
+                mediaFocus: "bottom"
               }
             ]
           }
@@ -2801,6 +2851,10 @@ ${rows}
       return position === "top" ? "top" : "bottom";
     }
 
+    function normalizeStoryMediaFocus(focus) {
+      return ["top", "center", "bottom"].includes(focus) ? focus : "center";
+    }
+
     function normalizeStoryRingStyle(value) {
       return value === "solid" ? "solid" : "gradient";
     }
@@ -2891,7 +2945,8 @@ ${rows}
         poster: "",
         alt: "",
         caption: "",
-        captionPosition: "bottom"
+        captionPosition: "bottom",
+        mediaFocus: "center"
       };
     }
 
@@ -2981,11 +3036,13 @@ ${rows}
 
       const mobileSrc = escapeHtml(buildStoryImageVariant(slide.src, "400x"));
       const desktopSrc = escapeHtml(buildStoryImageVariant(slide.src, "430x"));
+      const wideSrc = escapeHtml(buildStoryImageVariant(slide.src, "960x"));
 
       return `<picture class="lp-stories__picture">
                   <source media="(max-width: 499px)" srcset="${mobileSrc}">
+                  <source media="(min-width: 992px)" srcset="${wideSrc}">
                   <source media="(min-width: 500px)" srcset="${desktopSrc}">
-                  <img class="lp-stories__image" src="${desktopSrc || src}" alt="${alt}" width="1080" height="1920" loading="lazy">
+                  <img class="lp-stories__image" src="${wideSrc || desktopSrc || src}" alt="${alt}" width="1080" height="1920" loading="lazy">
                 </picture>`;
     }
 
@@ -2994,6 +3051,7 @@ ${rows}
       const title = escapeHtml(group.name.trim() || "Story");
       const caption = escapeHtml(slide.caption.trim());
       const position = normalizeStoryPosition(slide.captionPosition);
+      const mediaFocus = normalizeStoryMediaFocus(slide.mediaFocus);
       const isDefault = groupIndex === defaultTarget.groupIndex && slideIndex === defaultTarget.slideIndex ? " is-default" : "";
       const previousHref = getStoryPreviousHref(groupIndex, slideIndex);
       const nextHref = getStoryNextHref(groupIndex, slideIndex);
@@ -3007,7 +3065,7 @@ ${rows}
               <h3 class="lp-stories__title" id="${storyId}-title">${title}</h3>
               <span class="lp-stories__step">${slideIndex + 1}/${group.slides.length}</span>
             </header>
-            <figure class="lp-stories__figure">
+            <figure class="lp-stories__figure lp-stories__figure--focus-${mediaFocus}">
               <div class="lp-stories__media">
                 ${renderStoryMedia(slide)}
               </div>
@@ -3388,6 +3446,7 @@ ${rows}
         const slides = group.slides.map((slide, slideIndex) => {
           const type = normalizeStoryType(slide.type);
           const position = normalizeStoryPosition(slide.captionPosition);
+          const mediaFocus = normalizeStoryMediaFocus(slide.mediaFocus);
           const canRemoveSlide = group.slides.length > storyLimits.minSlides;
           const posterField = type === "video" ? `
               <label class="field">
@@ -3426,6 +3485,14 @@ ${posterField}
                     <select data-stories-field="captionPosition" data-story-group="${groupIndex}" data-story-slide="${slideIndex}">
                       <option value="top"${position === "top" ? " selected" : ""}>Em cima</option>
                       <option value="bottom"${position === "bottom" ? " selected" : ""}>Embaixo</option>
+                    </select>
+                  </label>
+                  <label class="field">
+                    <span>Foco da midia</span>
+                    <select data-stories-field="mediaFocus" data-story-group="${groupIndex}" data-story-slide="${slideIndex}">
+                      <option value="center"${mediaFocus === "center" ? " selected" : ""}>Objeto no centro</option>
+                      <option value="top"${mediaFocus === "top" ? " selected" : ""}>Objeto mais em cima</option>
+                      <option value="bottom"${mediaFocus === "bottom" ? " selected" : ""}>Objeto mais embaixo</option>
                     </select>
                   </label>
                 </div>
@@ -3504,11 +3571,11 @@ ${slides}
               <span aria-hidden="true">&rsaquo;</span>
             </summary>
             <div class="stories-guide__body">
-              <p><strong>Slides:</strong> use imagens verticais em 9:16. Recomendado 1080x1920 px; minimo seguro 860x1530 px.</p>
+              <p><strong>Slides:</strong> use imagens verticais em 9:16 e na maior resolucao disponivel. Recomendado 1080x1920 px ou mais; minimo seguro 860x1530 px.</p>
               <p><strong>Miniaturas:</strong> use imagem quadrada em 1:1. Recomendado 400x400 px; minimo seguro 220x220 px.</p>
               <p><strong>Limites:</strong> o componente aceita ate 3 containers e ate 4 slides por container.</p>
               <p><strong>Videos:</strong> use webm ou mp4 vertical em 9:16. O poster do video deve seguir a mesma proporcao.</p>
-              <p><strong>Corte:</strong> imagens horizontais funcionam, mas o centro sera cortado para preencher o story.</p>
+              <p><strong>Corte:</strong> em desktop largo o bloco vira 16:10 e a imagem vertical recebe zoom. Use o foco da midia para preservar topo, centro ou base do objeto principal.</p>
               <p><strong>Alt / aria-label:</strong> descreva o que aparece na midia de forma curta e objetiva.</p>
             </div>
           </details>
@@ -3981,6 +4048,12 @@ ${tabs}
 
         if (storiesField === "captionPosition") {
           slide.captionPosition = normalizeStoryPosition(event.target.value);
+          updateOutput();
+          return;
+        }
+
+        if (storiesField === "mediaFocus") {
+          slide.mediaFocus = normalizeStoryMediaFocus(event.target.value);
           updateOutput();
           return;
         }
