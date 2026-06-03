@@ -1260,8 +1260,8 @@
         <p id="appSubtitle">Crie layouts de conteudo e copie o bloco pronto no formato certo.</p>
       </div>
       <nav class="page-nav" aria-label="Equipe">
-        <a class="page-nav__link" href="#qualidade-tecnica" data-page-link="tecnica">Qualidade TÃ©cnica</a>
-        <a class="page-nav__link" href="#qualidade-conteudo" data-page-link="conteudo">Qualidade ConteÃºdo</a>
+        <a class="page-nav__link" href="#qualidade-tecnica" data-page-link="tecnica">Qualidade Técnica</a>
+        <a class="page-nav__link" href="#qualidade-conteudo" data-page-link="conteudo">Qualidade Conteúdo</a>
       </nav>
       <div class="actions">
         <label class="theme-toggle" for="themeToggle">
@@ -1278,12 +1278,12 @@
     <section class="layout" aria-label="Gerador">
       <div class="panel editor-panel">
         <div class="panel__head">
-          <h2>ConteÃºdo</h2>
+          <h2>Conteúdo</h2>
           <button class="button button--soft icon-button" id="addItem" type="button" aria-label="Adicionar pergunta" title="Adicionar pergunta">+</button>
         </div>
         <div class="panel__body">
           <div class="editor-tools" id="editorTools">
-            <div class="editor-tabs" role="tablist" aria-label="Tipo de conteÃºdo">
+            <div class="editor-tabs" role="tablist" aria-label="Tipo de conteúdo">
               <button class="editor-tabs__button" type="button" role="tab" data-editor-tab="faq">FAQ</button>
               <button class="editor-tabs__button" type="button" role="tab" data-editor-tab="table">Tabela</button>
               <button class="editor-tabs__button" type="button" role="tab" data-editor-tab="stories">Stories</button>
@@ -1306,7 +1306,7 @@
           <div class="status" id="copyStatus" aria-live="polite"></div>
           <textarea id="generatedHtml" readonly spellcheck="false" aria-label="HTML gerado"></textarea>
           <div class="preview-shell">
-            <span class="preview-shell__label">PrÃ©via</span>
+            <span class="preview-shell__label">Prévia</span>
             <iframe class="preview-frame" id="previewFrame" title="Previa do conteudo"></iframe>
           </div>
         </div>
@@ -1804,7 +1804,8 @@ __TABLE_HEADER_COLORS__
   }
 
   .lp-stories__figure,
-  .lp-stories__media {
+  .lp-stories__media,
+  .lp-stories__picture {
     width: 100%;
     height: 100%;
     margin: 0;
@@ -2328,7 +2329,7 @@ __STORIES_DYNAMIC_COLORS__
         headerColors: ["#ea5b0c", "#ea5b0c"],
         bulkInput: "",
         status: "",
-        columns: ["SKU", "TÃTULO"],
+        columns: ["SKU", "TÍTULO"],
         rows: [
           ["", ""],
           ["", ""],
@@ -2512,7 +2513,7 @@ __STORIES_DYNAMIC_COLORS__
       conteudo: {
         title: "Layout Lab",
         subtitle: "Monte layouts de conteudo com FAQ, tabela, stories ou artigo e copie HTML ou HTML/CSS conforme a necessidade.",
-        outputTitle: "PrÃ©via do layout",
+        outputTitle: "Prévia do layout",
         copyLabel: "Copiar HTML",
         fullCopyLabel: "Copiar HTML/CSS",
         copiedStatus: "HTML copiado.",
@@ -2693,7 +2694,7 @@ __STORIES_DYNAMIC_COLORS__
 
       return `<section id="faq-section" aria-labelledby="faq-section__title">
 <div id="faq-section__header">
-<h2 id="faq-section__title">DÃºvidas Frequentes</h2>
+<h2 id="faq-section__title">Dúvidas Frequentes</h2>
 </div>
 <ul id="faq-section__list" role="list">
 ${items}
@@ -2702,7 +2703,7 @@ ${items}
     }
 
     function getTableColumns() {
-      return state.table.columns.length ? state.table.columns : ["SKU", "TÃTULO"];
+      return state.table.columns.length ? state.table.columns : ["SKU", "TÍTULO"];
     }
 
     function getVisibleTableRows() {
@@ -2767,7 +2768,7 @@ ${cells}
       const previewRows = visibleRows.length ? visibleRows : [createEmptyTableRow()];
       const rows = (forcePreview ? previewRows : visibleRows).map(renderTableRow).join("\n");
 
-      return `<section class="table-container-custom" aria-label="tabela contendo produtos relacionados e citados dentre deste conteÃºdo">
+      return `<section class="table-container-custom" aria-label="tabela contendo produtos relacionados e citados dentro deste conteúdo">
           <table class="table-design-custom" aria-describedby="table-desc">
             <caption id="table-desc" class="sr-only">
           ${caption}
@@ -2834,6 +2835,27 @@ ${rows}
 
     function getStoryVideoType(src) {
       return /\.mp4(?:$|\?)/i.test(src) ? "video/mp4" : "video/webm";
+    }
+
+    function buildStoryImageVariant(src, size) {
+      const value = String(src || "").trim();
+      if (!value) {
+        return "";
+      }
+
+      const hashIndex = value.indexOf("#");
+      const hash = hashIndex >= 0 ? value.slice(hashIndex) : "";
+      const withoutHash = hashIndex >= 0 ? value.slice(0, hashIndex) : value;
+      const queryIndex = withoutHash.indexOf("?");
+      const path = queryIndex >= 0 ? withoutHash.slice(0, queryIndex) : withoutHash;
+      const query = queryIndex >= 0 ? withoutHash.slice(queryIndex + 1) : "";
+      const params = query
+        .split("&")
+        .map((param) => param.trim())
+        .filter((param) => param && !/^ims=/i.test(param));
+
+      params.push(`ims=${size}`);
+      return `${path}?${params.join("&")}${hash}`;
     }
 
     function getStoryNextHref(groupIndex, slideIndex) {
@@ -2957,7 +2979,14 @@ ${rows}
                 </video>`;
       }
 
-      return `<img class="lp-stories__image" src="${src}" alt="${alt}" width="1080" height="1920" loading="lazy">`;
+      const mobileSrc = escapeHtml(buildStoryImageVariant(slide.src, "400x"));
+      const desktopSrc = escapeHtml(buildStoryImageVariant(slide.src, "430x"));
+
+      return `<picture class="lp-stories__picture">
+                  <source media="(max-width: 499px)" srcset="${mobileSrc}">
+                  <source media="(min-width: 500px)" srcset="${desktopSrc}">
+                  <img class="lp-stories__image" src="${desktopSrc || src}" alt="${alt}" width="1080" height="1920" loading="lazy">
+                </picture>`;
     }
 
     function renderStoryPanel(group, groupIndex, slide, slideIndex, defaultTarget = { groupIndex: 0, slideIndex: 0 }) {
@@ -2973,7 +3002,7 @@ ${rows}
       return `        <article class="lp-stories__panel ${getStoryPanelClass(group, slideIndex)}${isDefault}" aria-labelledby="${storyId}-title" aria-describedby="${storyId}-caption">
           <div class="lp-stories__viewer">
             <div class="lp-stories__progress lp-stories__progress--slides-${group.slides.length} lp-stories__progress--index-${slideIndex + 1}" aria-label="Progresso do container ${title}"></div>
-            <header class="lp-stories__topbar" aria-label="IdentificaÃ§Ã£o do container ${title}">
+            <header class="lp-stories__topbar" aria-label="Identificação do container ${title}">
               <img class="lp-stories__avatar" src="${avatar}" alt="Logo dos stories" width="400" height="400" loading="lazy">
               <h3 class="lp-stories__title" id="${storyId}-title">${title}</h3>
               <span class="lp-stories__step">${slideIndex + 1}/${group.slides.length}</span>
@@ -3235,7 +3264,7 @@ ${faqStyle}`;
         <div class="editor-section-title">
           <div>
             <h3>FAQ</h3>
-            <p>Perguntas e respostas do bloco de dÃºvidas frequentes.</p>
+            <p>Perguntas e respostas do bloco de dúvidas frequentes.</p>
           </div>
         </div>
 
@@ -3278,7 +3307,7 @@ ${faqStyle}`;
       const columns = getTableColumns();
       const columnFields = columns.map((column, index) => `
               <div class="table-editor__column">
-                <input class="table-header-color" type="color" value="${getTableHeaderColor(index)}" data-table-field="columnHeaderColor" data-column-index="${index}" aria-label="Cor do cabeÃ§alho da coluna ${index + 1}" title="Cor do cabeÃ§alho">
+                <input class="table-header-color" type="color" value="${getTableHeaderColor(index)}" data-table-field="columnHeaderColor" data-column-index="${index}" aria-label="Cor do cabeçalho da coluna ${index + 1}" title="Cor do cabeçalho">
                 <label class="field">
                   <span>Coluna ${index + 1}</span>
                   <input type="text" value="${escapeHtml(column)}" data-table-field="column" data-column-index="${index}" autocomplete="off">
@@ -3309,14 +3338,14 @@ ${faqStyle}`;
             <div class="table-editor__title">
               <div>
                 <h3>Tabela</h3>
-                <p>Cole da planilha ou edite as cÃ©lulas abaixo.</p>
+                <p>Cole da planilha ou edite as células abaixo.</p>
               </div>
             </div>
           </div>
 
           <article class="table-editor__box table-settings">
             <div class="table-settings__head">
-              <strong>ConfiguraÃ§Ãµes</strong>
+              <strong>Configurações</strong>
               <div class="table-settings__controls">
                 <button class="button button--soft icon-button" type="button" data-action="add-table-column" aria-label="Adicionar coluna" title="Adicionar coluna">+</button>
               </div>
@@ -3324,7 +3353,7 @@ ${faqStyle}`;
             <div class="table-settings__body">
               <label class="field">
                 <span>Caption de Acessibilidade</span>
-                <input type="text" value="${escapeHtml(state.table.caption)}" data-table-field="caption" autocomplete="off" placeholder="tamanhos de chinelos disponÃ­veis">
+                <input type="text" value="${escapeHtml(state.table.caption)}" data-table-field="caption" autocomplete="off" placeholder="tamanhos de chinelos disponíveis">
               </label>
               <div class="table-editor__columns">
 ${columnFields}
@@ -3335,8 +3364,8 @@ ${columnFields}
           <article class="table-editor__box table-editor__box--sheet">
             <div class="table-editor__box-body">
               <label class="field sheet-field">
-                <span>Colar conteÃºdo de planilha ou .txt</span>
-                <textarea class="bulk-input sheet-paste" data-table-field="bulk" spellcheck="false" placeholder="SKU&#9;TÃTULO&#10;1225007&#9;HAVAIANAS TOP.BASIC BRANCO/BRANCO/VERDE 37/8&#10;1225008&#9;HAVAIANAS KIDS ATHLETIC VERDE PATRIA 25/6">${escapeHtml(state.table.bulkInput)}</textarea>
+                <span>Colar conteúdo de planilha ou .txt</span>
+                <textarea class="bulk-input sheet-paste" data-table-field="bulk" spellcheck="false" placeholder="SKU&#9;TÍTULO&#10;1225007&#9;HAVAIANAS TOP.BASIC BRANCO/BRANCO/VERDE 37/8&#10;1225008&#9;HAVAIANAS KIDS ATHLETIC VERDE PATRIA 25/6">${escapeHtml(state.table.bulkInput)}</textarea>
               </label>
               <div class="bulk-actions">
                 <button class="button button--soft" type="button" data-action="fill-table-bulk">Preencher tabela</button>
@@ -3671,7 +3700,7 @@ ${tabs}
       const parsedItems = parseBulkFaq(state.faqBulkInput);
 
       if (!parsedItems.length) {
-        state.faqBulkStatus = "NÃ£o encontrei perguntas no formato 1. Pergunta?";
+        state.faqBulkStatus = "Não encontrei perguntas no formato 1. Pergunta?";
         renderEditor();
         return;
       }
@@ -3733,7 +3762,7 @@ ${tabs}
       }).filter((row) => row.some(Boolean));
 
       const firstRow = rows[0] || [];
-      const firstRowLooksLikeHeader = rows.length > 1 && firstRow.some((cell) => /sku|t[iÃ­]tulo|produto|descri[cÃ§][aÃ£]o/i.test(cell));
+      const firstRowLooksLikeHeader = rows.length > 1 && firstRow.some((cell) => /sku|t[ií]tulo|produto|descri[cç][aã]o/i.test(cell));
 
       return {
         columns: firstRowLooksLikeHeader ? firstRow : [],
@@ -3759,7 +3788,7 @@ ${tabs}
       const parsedTable = parseBulkTable(state.table.bulkInput);
 
       if (!parsedTable.rows.length) {
-        state.table.status = "NÃ£o encontrei linhas para preencher.";
+        state.table.status = "Não encontrei linhas para preencher.";
         renderEditor();
         return;
       }
