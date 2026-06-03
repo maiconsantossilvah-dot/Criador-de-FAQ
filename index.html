@@ -720,7 +720,8 @@
       overflow: hidden;
     }
 
-    .stories-container-editor summary {
+    .stories-container-editor summary,
+    .stories-base-editor summary {
       list-style: none;
       cursor: pointer;
     }
@@ -730,7 +731,8 @@
       cursor: pointer;
     }
 
-    .stories-container-editor summary::-webkit-details-marker {
+    .stories-container-editor summary::-webkit-details-marker,
+    .stories-base-editor summary::-webkit-details-marker {
       display: none;
     }
 
@@ -748,7 +750,8 @@
       border-bottom: 1px solid var(--line);
     }
 
-    .stories-container-editor:not([open]) .stories-container-editor__summary {
+    .stories-container-editor:not([open]) .stories-container-editor__summary,
+    .stories-base-editor:not([open]) .stories-container-editor__summary {
       border-bottom: 0;
     }
 
@@ -797,6 +800,10 @@
     }
 
     .stories-container-editor[open] .stories-container-editor__chevron {
+      transform: rotate(90deg);
+    }
+
+    .stories-base-editor[open] .stories-container-editor__chevron {
       transform: rotate(90deg);
     }
 
@@ -1220,6 +1227,28 @@
       .theme-toggle {
         justify-content: space-between;
       }
+    }
+
+    html[data-page="conteudo"] .output {
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+    }
+
+    html[data-page="conteudo"] .output .status,
+    html[data-page="conteudo"] .output textarea {
+      display: none;
+    }
+
+    html[data-page="conteudo"] .preview-shell {
+      flex: 1;
+      min-height: 0;
+      height: 100%;
+    }
+
+    html[data-page="conteudo"] .preview-frame {
+      min-height: 0;
+      height: 100%;
     }
   </style>
 </head>
@@ -2242,7 +2271,7 @@
         captionBackgroundColor: "#020617",
         previewGroupIndex: 0,
         previewSlideIndex: 0,
-        openGroupIndex: 0,
+        openGroupIndex: -1,
         groups: [
           {
             key: "produto",
@@ -2409,7 +2438,7 @@
       conteudo: {
         title: "Layout Lab",
         subtitle: "Monte layouts de conteudo com FAQ, tabela, stories ou artigo e copie HTML ou HTML/CSS conforme a necessidade.",
-        outputTitle: "HTML pronto",
+        outputTitle: "Prévia do layout",
         copyLabel: "Copiar HTML",
         fullCopyLabel: "Copiar HTML/CSS",
         copiedStatus: "HTML copiado.",
@@ -3375,7 +3404,7 @@ ${slides}
             </div>
           </div>
 
-          <details class="stories-guide" open>
+          <details class="stories-guide">
             <summary class="stories-guide__summary">
               <strong>Guia rapido de midias</strong>
               <span aria-hidden="true">&rsaquo;</span>
@@ -3390,10 +3419,11 @@ ${slides}
             </div>
           </details>
 
-          <article class="stories-editor__box">
-            <div class="faq-editor__bar">
+          <details class="stories-editor__box stories-base-editor">
+            <summary class="stories-container-editor__summary">
               <strong>Base</strong>
-            </div>
+              <span class="stories-container-editor__chevron" aria-hidden="true">&rsaquo;</span>
+            </summary>
             <div class="stories-editor__body">
               <div class="stories-editor__grid stories-editor__grid--base">
                 <label class="field">
@@ -3418,7 +3448,7 @@ ${slides}
 ${ringColorControls}
               </div>
             </div>
-          </article>
+          </details>
 
 ${groups}
         </section>
