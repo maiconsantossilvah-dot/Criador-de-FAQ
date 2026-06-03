@@ -1,0 +1,4089 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Layout Lab</title>
+  <link rel="icon" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA2NCA2NCIgcm9sZT0iaW1nIiBhcmlhLWxhYmVsPSJDcmlhZG9yIGRlIEZBUSI+CiAgPHBhdGggZD0iTTI5IDE0IDkgMzIgMjkgNTAiIGZpbGw9Im5vbmUiIHN0cm9rZT0iIzAwYThlOCIgc3Ryb2tlLXdpZHRoPSI3IiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiLz4KICA8cGF0aCBkPSJNMzUgMTQgNTUgMzIgMzUgNTAiIGZpbGw9Im5vbmUiIHN0cm9rZT0iIzAwYThlOCIgc3Ryb2tlLXdpZHRoPSI3IiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiLz4KICA8Y2lyY2xlIGN4PSIzMiIgY3k9IjMyIiByPSI1IiBmaWxsPSIjMGY3NjZlIi8+Cjwvc3ZnPg==" type="image/svg+xml">
+  <style>
+    :root {
+      --bg: #f4f7fb;
+      --panel: #ffffff;
+      --ink: #172033;
+      --muted: #64748b;
+      --line: #d9e2ec;
+      --blue: #009dff;
+      --blue-dark: #0878c2;
+      --green: #0f766e;
+      --red: #c2410c;
+      --body-glow: #eaf6ff;
+      --body-glow-end: rgba(234, 246, 255, 0);
+      --brand-ink: #102033;
+      --panel-border: rgba(217, 226, 236, 0.9);
+      --soft-button-text: #0f3554;
+      --soft-button-bg: #dff2ff;
+      --field-label: #314155;
+      --field-border: #cbd5e1;
+      --field-bg: #ffffff;
+      --field-text: #0f172a;
+      --editor-item-bg: #fbfdff;
+      --editor-bar-bg: #eef6fc;
+      --editor-bar-text: #18324a;
+      --output-bg: #f8fbff;
+      --output-text: #17324d;
+      --preview-border: #b7c8d9;
+      --preview-bg: #f8fafc;
+      --shadow: 0 16px 40px rgba(15, 23, 42, 0.08);
+    }
+
+    html[data-page="conteudo"] {
+      --bg: #f3eef8;
+      --body-glow: #f3eef8;
+      --body-glow-end: rgba(243, 238, 248, 0);
+      --brand-ink: #3a3148;
+      --blue: #7c3aed;
+      --blue-dark: #6d28d9;
+      --green: #f97316;
+      --soft-button-text: #3f3456;
+      --soft-button-bg: #ebe5f2;
+      --editor-bar-bg: #eee8f5;
+      --editor-bar-text: #3a3148;
+      --preview-border: #c9bfd8;
+      --shadow: 0 16px 40px rgba(58, 49, 72, 0.1);
+    }
+
+    html[data-theme="dark"] {
+      --bg: #172a34;
+      --panel: #101827;
+      --ink: #e5edf7;
+      --muted: #9aa8bb;
+      --line: #273548;
+      --blue: #00a8e8;
+      --blue-dark: #38c6ff;
+      --green: #16a394;
+      --red: #fb923c;
+      --brand-ink: #f8fafc;
+      --panel-border: rgba(39, 53, 72, 0.95);
+      --field-label: #d8e6f3;
+      --field-border: #33465e;
+      --field-bg: #0b1422;
+      --field-text: #e5edf7;
+      --editor-item-bg: #0d1727;
+      --editor-bar-bg: #122138;
+      --editor-bar-text: #d8e6f3;
+      --output-bg: #0b1422;
+      --output-text: #e5edf7;
+      --preview-border: #36556f;
+      --preview-bg: #0b1422;
+      --shadow: 0 20px 46px rgba(0, 0, 0, 0.35);
+      color-scheme: dark;
+    }
+
+    html[data-theme="dark"][data-page="conteudo"] {
+      --bg: #282634;
+      --panel: #171520;
+      --line: #373243;
+      --blue: #8b5cf6;
+      --blue-dark: #a78bfa;
+      --green: #fb923c;
+      --panel-border: rgba(68, 61, 82, 0.95);
+      --field-border: #454052;
+      --field-bg: #11101a;
+      --editor-item-bg: #15131e;
+      --editor-bar-bg: #211d2c;
+      --preview-border: #61576f;
+      --preview-bg: #11101a;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      height: 100vh;
+      min-height: 100vh;
+      overflow: hidden;
+      color: var(--ink);
+      background:
+        linear-gradient(180deg, var(--body-glow) 0, var(--body-glow-end) 320px),
+        var(--bg);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    html[data-page="conteudo"] body {
+      background: var(--bg);
+    }
+
+    button,
+    input,
+    textarea,
+    select {
+      font: inherit;
+    }
+
+    button {
+      border: 0;
+    }
+
+    .app {
+      width: min(1320px, calc(100% - 32px));
+      height: 100vh;
+      margin: 0 auto;
+      padding: 28px 0 20px;
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+    }
+
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex: 0 0 auto;
+      gap: 16px;
+      margin-bottom: 20px;
+    }
+
+    .brand {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .brand h1 {
+      margin: 0;
+      color: var(--brand-ink);
+      font-size: 28px;
+      line-height: 1.12;
+      font-weight: 800;
+    }
+
+    .brand p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+      gap: 8px;
+    }
+
+    .page-nav {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 4px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.52);
+    }
+
+    .page-nav__link {
+      display: inline-flex;
+      align-items: center;
+      min-height: 34px;
+      padding: 8px 12px;
+      border-radius: 6px;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 800;
+      text-decoration: none;
+      white-space: nowrap;
+    }
+
+    .page-nav__link:hover,
+    .page-nav__link[aria-current="page"] {
+      color: #ffffff;
+      background: var(--blue);
+    }
+
+    .button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      min-height: 40px;
+      padding: 10px 14px;
+      border-radius: 8px;
+      color: #ffffff;
+      background: var(--blue);
+      font-weight: 750;
+      cursor: pointer;
+      transition: transform 0.12s ease, background 0.12s ease, box-shadow 0.12s ease;
+      white-space: nowrap;
+    }
+
+    .button:hover {
+      background: var(--blue-dark);
+      box-shadow: 0 10px 22px rgba(0, 157, 255, 0.2);
+      transform: translateY(-1px);
+    }
+
+    .button:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+      transform: none;
+      box-shadow: none;
+    }
+
+    .button:focus-visible {
+      outline: 3px solid rgba(0, 157, 255, 0.25);
+      outline-offset: 2px;
+    }
+
+    .button--soft {
+      color: var(--soft-button-text);
+      background: var(--soft-button-bg);
+    }
+
+    .button--soft:hover {
+      color: #ffffff;
+      background: var(--blue-dark);
+    }
+
+    .button--green {
+      background: var(--green);
+    }
+
+    .button--green:hover {
+      background: #0b5f59;
+      box-shadow: 0 10px 22px rgba(15, 118, 110, 0.18);
+    }
+
+    .button--danger {
+      color: #ffffff;
+      background: #dc2626;
+      box-shadow: none;
+    }
+
+    .button--danger:hover {
+      color: #ffffff;
+      background: #b91c1c;
+      box-shadow: none;
+    }
+
+    .theme-toggle {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      min-height: 40px;
+      padding: 7px 10px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      color: var(--muted);
+      background: rgba(255, 255, 255, 0.55);
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .theme-toggle input {
+      position: absolute;
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .theme-toggle__track {
+      width: 42px;
+      height: 24px;
+      padding: 3px;
+      border-radius: 999px;
+      background: #cfe2f3;
+      transition: background 0.16s ease;
+    }
+
+    .theme-toggle__thumb {
+      display: block;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: #ffffff;
+      box-shadow: 0 2px 6px rgba(15, 23, 42, 0.25);
+      transition: transform 0.16s ease;
+    }
+
+    .theme-toggle input:checked + .theme-toggle__track {
+      background: var(--blue);
+    }
+
+    .theme-toggle input:checked + .theme-toggle__track .theme-toggle__thumb {
+      transform: translateX(18px);
+    }
+
+    .theme-toggle__text {
+      font-size: 13px;
+      font-weight: 750;
+      white-space: nowrap;
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: minmax(350px, 0.78fr) minmax(520px, 1.22fr);
+      gap: 18px;
+      align-items: stretch;
+      flex: 1;
+      min-height: 0;
+    }
+
+    .panel {
+      min-width: 0;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      background: var(--panel);
+      border: 1px solid var(--panel-border);
+      border-radius: 8px;
+      box-shadow: var(--shadow);
+    }
+
+    .panel__head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex: 0 0 auto;
+      gap: 12px;
+      padding: 16px 18px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .panel__head h2 {
+      margin: 0;
+      font-size: 16px;
+      line-height: 1.3;
+    }
+
+    .panel__body {
+      min-height: 0;
+      padding: 18px;
+    }
+
+    .editor-panel .panel__body {
+      display: flex;
+      flex: 1;
+      flex-direction: column;
+      padding: 0;
+      overflow: hidden;
+    }
+
+    .editor-tools {
+      flex: 0 0 auto;
+      padding: 18px 18px 0;
+    }
+
+    .editor-tools.is-hidden,
+    .button.is-hidden {
+      display: none;
+    }
+
+    .editor-tabs {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 4px;
+      padding: 4px;
+      margin-bottom: 16px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.58);
+    }
+
+    .editor-tabs__button {
+      min-height: 36px;
+      padding: 8px 12px;
+      border-radius: 6px;
+      color: var(--muted);
+      background: transparent;
+      font-size: 13px;
+      font-weight: 800;
+      cursor: pointer;
+    }
+
+    .editor-tabs__button:hover,
+    .editor-tabs__button[aria-selected="true"] {
+      color: #ffffff;
+      background: var(--blue);
+    }
+
+    .field {
+      display: grid;
+      gap: 7px;
+      margin-bottom: 14px;
+    }
+
+    .field span {
+      color: var(--field-label);
+      font-size: 13px;
+      font-weight: 750;
+    }
+
+    .field input,
+    .field textarea,
+    .field select {
+      width: 100%;
+      border: 1px solid var(--field-border);
+      border-radius: 8px;
+      color: var(--field-text);
+      background: var(--field-bg);
+      padding: 11px 12px;
+      outline: none;
+      transition: border 0.12s ease, box-shadow 0.12s ease;
+    }
+
+    .field select {
+      min-height: 42px;
+      cursor: pointer;
+    }
+
+    .field input[type="color"] {
+      min-height: 40px;
+      padding: 5px;
+      cursor: pointer;
+    }
+
+    .field textarea {
+      min-height: 96px;
+      resize: vertical;
+      line-height: 1.5;
+    }
+
+    .field textarea.bulk-input {
+      min-height: 150px;
+    }
+
+    .field input:focus,
+    .field textarea:focus,
+    .field select:focus {
+      border-color: var(--blue);
+      box-shadow: 0 0 0 3px rgba(0, 157, 255, 0.15);
+    }
+
+    .faq-editor {
+      display: flex;
+      flex: 1;
+      flex-direction: column;
+      gap: 12px;
+      height: 100%;
+      min-height: 0;
+      overflow-x: hidden;
+      overflow-y: scroll;
+      overscroll-behavior: contain;
+      padding: 18px 12px 18px 18px;
+      scrollbar-gutter: stable;
+    }
+
+    .editor-section-title {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin: 2px 0 0;
+      padding: 2px 2px 0;
+    }
+
+    .table-editor__title {
+      display: flex;
+      align-items: center;
+      min-width: 0;
+      gap: 10px;
+    }
+
+    .editor-section-title h3 {
+      margin: 0;
+      color: var(--brand-ink);
+      font-size: 14px;
+      line-height: 1.3;
+    }
+
+    .editor-section-title p {
+      margin: 3px 0 0;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.45;
+    }
+
+    .bulk-actions {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 10px;
+      margin: -4px 0 16px;
+    }
+
+    .bulk-status {
+      min-height: 20px;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .faq-editor__item {
+      flex: 0 0 auto;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--editor-item-bg);
+      overflow: hidden;
+    }
+
+    .faq-editor__bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 10px 12px;
+      background: var(--editor-bar-bg);
+      border-bottom: 1px solid var(--line);
+    }
+
+    .faq-editor__bar strong {
+      min-width: 0;
+      color: var(--editor-bar-text);
+      font-size: 13px;
+      overflow-wrap: anywhere;
+    }
+
+    .faq-editor__fields {
+      padding: 12px;
+    }
+
+    .faq-bulk-panel {
+      flex: 0 0 auto;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--editor-item-bg);
+      overflow: hidden;
+    }
+
+    .faq-bulk-panel__body {
+      padding: 12px;
+    }
+
+    .faq-bulk-panel .field {
+      margin-bottom: 10px;
+    }
+
+    .faq-bulk-panel .bulk-input {
+      min-height: 150px;
+    }
+
+    .table-editor {
+      display: grid;
+      gap: 12px;
+      margin-top: 8px;
+      padding-top: 16px;
+      border-top: 1px solid var(--line);
+    }
+
+    .table-editor__box {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--editor-item-bg);
+      overflow: hidden;
+    }
+
+    .table-editor__box--sheet {
+      background: transparent;
+    }
+
+    .table-editor__box-body {
+      padding: 12px;
+    }
+
+    .table-editor__columns,
+    .table-row-editor__cells {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 10px;
+    }
+
+    .table-settings {
+      display: grid;
+      gap: 12px;
+    }
+
+    .table-settings__head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 10px 12px;
+      background: var(--editor-bar-bg);
+      border-bottom: 1px solid var(--line);
+    }
+
+    .table-settings__head strong {
+      color: var(--editor-bar-text);
+      font-size: 13px;
+    }
+
+    .table-settings__controls {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .table-settings__body {
+      display: grid;
+      gap: 12px;
+      padding: 12px;
+    }
+
+    .sheet-field {
+      margin-bottom: 10px;
+    }
+
+    .sheet-field span {
+      color: var(--muted);
+      font-size: 12px;
+      opacity: 0.72;
+    }
+
+    .field textarea.sheet-paste {
+      min-height: 116px;
+      padding: 8px 10px;
+      color: var(--field-text);
+      background:
+        linear-gradient(rgba(148, 163, 184, 0.22) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(148, 163, 184, 0.18) 1px, transparent 1px),
+        var(--field-bg);
+      background-size: 100% 24px, 18ch 100%, auto;
+      font: 12px/1.5 Consolas, "Courier New", monospace;
+      tab-size: 16;
+    }
+
+    .field textarea.sheet-paste::placeholder {
+      color: var(--field-text);
+      opacity: 0.38;
+    }
+
+    .table-header-color {
+      width: 32px;
+      height: 32px;
+      min-height: 32px;
+      padding: 3px;
+      border: 1px solid var(--field-border);
+      border-radius: 8px;
+      background: var(--field-bg);
+      cursor: pointer;
+    }
+
+    .table-header-color::-webkit-color-swatch-wrapper {
+      padding: 0;
+    }
+
+    .table-header-color::-webkit-color-swatch {
+      border: 0;
+      border-radius: 5px;
+    }
+
+    .table-editor__column {
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr);
+      gap: 8px;
+      align-items: end;
+    }
+
+    .table-editor__column .field {
+      margin-bottom: 0;
+    }
+
+    .table-row-editor__cells .field {
+      margin-bottom: 0;
+    }
+
+    .stories-editor {
+      display: grid;
+      gap: 12px;
+      margin-top: 8px;
+      padding-top: 16px;
+      border-top: 1px solid var(--line);
+    }
+
+    .article-editor {
+      display: grid;
+      gap: 12px;
+      margin-top: 8px;
+      padding-top: 16px;
+      border-top: 1px solid var(--line);
+    }
+
+    .stories-editor__box,
+    .stories-slide-editor,
+    .article-editor__box,
+    .article-tab-editor {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--editor-item-bg);
+      overflow: hidden;
+    }
+
+    .stories-container-editor summary {
+      list-style: none;
+      cursor: pointer;
+    }
+
+    .article-tab-editor summary {
+      list-style: none;
+      cursor: pointer;
+    }
+
+    .stories-container-editor summary::-webkit-details-marker {
+      display: none;
+    }
+
+    .article-tab-editor summary::-webkit-details-marker {
+      display: none;
+    }
+
+    .stories-container-editor__summary,
+    .article-tab-editor__summary {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 12px;
+      background: var(--editor-bar-bg);
+      border-bottom: 1px solid var(--line);
+    }
+
+    .stories-container-editor:not([open]) .stories-container-editor__summary {
+      border-bottom: 0;
+    }
+
+    .article-tab-editor:not([open]) .article-tab-editor__summary {
+      border-bottom: 0;
+    }
+
+    .stories-container-editor__summary strong,
+    .article-tab-editor__summary strong {
+      flex: 1;
+      min-width: 0;
+      color: var(--editor-bar-text);
+      font-size: 13px;
+      overflow-wrap: anywhere;
+    }
+
+    .stories-container-editor__meta {
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 750;
+      white-space: nowrap;
+    }
+
+    .article-tab-editor__meta {
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 750;
+      white-space: nowrap;
+    }
+
+    .stories-container-editor__chevron,
+    .article-tab-editor__chevron {
+      color: var(--muted);
+      font-size: 18px;
+      line-height: 1;
+      transition: transform 0.14s ease;
+    }
+
+    .stories-container-editor__actions,
+    .stories-editor__title-actions,
+    .stories-slide-editor__actions {
+      display: flex;
+      align-items: center;
+      flex: 0 0 auto;
+      gap: 6px;
+    }
+
+    .stories-container-editor[open] .stories-container-editor__chevron {
+      transform: rotate(90deg);
+    }
+
+    .article-tab-editor[open] .article-tab-editor__chevron {
+      transform: rotate(90deg);
+    }
+
+    .stories-editor__body,
+    .article-editor__body {
+      display: grid;
+      gap: 12px;
+      padding: 12px;
+    }
+
+    .stories-guide {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--editor-item-bg);
+      overflow: hidden;
+    }
+
+    .stories-guide summary {
+      list-style: none;
+      cursor: pointer;
+    }
+
+    .stories-guide summary::-webkit-details-marker {
+      display: none;
+    }
+
+    .stories-guide__summary {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 12px;
+      background: var(--editor-bar-bg);
+      border-bottom: 1px solid var(--line);
+    }
+
+    .stories-guide:not([open]) .stories-guide__summary {
+      border-bottom: 0;
+    }
+
+    .stories-guide__summary strong {
+      flex: 1;
+      min-width: 0;
+      color: var(--editor-bar-text);
+      font-size: 13px;
+    }
+
+    .stories-guide__summary span {
+      color: var(--muted);
+      font-size: 18px;
+      line-height: 1;
+      transition: transform 0.14s ease;
+    }
+
+    .stories-guide[open] .stories-guide__summary span {
+      transform: rotate(90deg);
+    }
+
+    .stories-guide__body {
+      display: grid;
+      gap: 8px;
+      padding: 12px;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.45;
+    }
+
+    .stories-guide__body p {
+      margin: 0;
+    }
+
+    .stories-guide__body strong {
+      color: var(--field-label);
+      font-weight: 800;
+    }
+
+    .stories-limits {
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 750;
+      white-space: nowrap;
+    }
+
+    .stories-editor__grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 10px;
+    }
+
+    .article-editor__grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 10px;
+    }
+
+    .stories-editor__grid--base {
+      grid-template-columns: minmax(0, 1fr);
+    }
+
+    .article-editor__grid--base {
+      grid-template-columns: minmax(0, 1fr);
+    }
+
+    .stories-slide-editor__body {
+      display: grid;
+      gap: 10px;
+      padding: 12px;
+    }
+
+    .stories-slide-editor__body .field {
+      margin-bottom: 0;
+    }
+
+    .table-row-editor {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--editor-item-bg);
+      overflow: hidden;
+    }
+
+    .table-row-editor__cells {
+      padding: 12px;
+    }
+
+    .icon-button {
+      width: 32px;
+      height: 32px;
+      min-height: 32px;
+      padding: 0;
+      border-radius: 8px;
+    }
+
+    .icon-button svg {
+      width: 16px;
+      height: 16px;
+      stroke: currentColor;
+    }
+
+    .status {
+      min-height: 20px;
+      color: var(--green);
+      font-size: 13px;
+      font-weight: 750;
+      text-align: right;
+    }
+
+    .output {
+      display: grid;
+      flex: 1;
+      grid-template-rows: auto 170px minmax(0, 1fr);
+      gap: 12px;
+      min-height: 0;
+      overflow: hidden;
+    }
+
+    .output textarea {
+      width: 100%;
+      height: 100%;
+      min-height: 0;
+      padding: 14px;
+      border: 1px solid var(--field-border);
+      border-radius: 8px;
+      resize: none;
+      color: var(--output-text);
+      background: var(--output-bg);
+      font: 13px/1.45 Consolas, "Courier New", monospace;
+      white-space: pre;
+    }
+
+    .preview-shell {
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+      padding: 14px;
+      border: 1px dashed var(--preview-border);
+      border-radius: 8px;
+      background: var(--preview-bg);
+      overflow: hidden;
+    }
+
+    .preview-shell__label {
+      display: block;
+      margin: 0 0 12px;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 750;
+    }
+
+    .preview-frame {
+      flex: 1;
+      width: 100%;
+      min-height: 0;
+      padding: 16px 0;
+      border: 0;
+      background: #ffffff;
+      border-radius: 8px;
+      overflow: auto;
+    }
+
+    html[data-theme="dark"] body {
+      background: var(--bg);
+    }
+
+    html[data-theme="dark"] .brand h1,
+    html[data-theme="dark"] .panel__head h2 {
+      color: #f8fafc;
+    }
+
+    html[data-theme="dark"] .theme-toggle,
+    html[data-theme="dark"] .button--soft {
+      color: #d8edff;
+      background: rgba(0, 168, 232, 0.13);
+    }
+
+    html[data-theme="dark"] .page-nav {
+      background: transparent;
+    }
+
+    html[data-theme="dark"] .theme-toggle:hover,
+    html[data-theme="dark"] .button--soft:hover {
+      color: #ffffff;
+      background: rgba(0, 168, 232, 0.28);
+    }
+
+    html[data-theme="dark"] .button--danger {
+      color: #ffffff;
+      background: #dc2626;
+    }
+
+    html[data-theme="dark"] .button--danger:hover {
+      color: #ffffff;
+      background: #b91c1c;
+    }
+
+    html[data-theme="dark"] .panel {
+      border-color: rgba(39, 53, 72, 0.95);
+    }
+
+    html[data-theme="dark"] .field span,
+    html[data-theme="dark"] .faq-editor__bar strong {
+      color: #d8e6f3;
+    }
+
+    html[data-theme="dark"] .field input,
+    html[data-theme="dark"] .field textarea,
+    html[data-theme="dark"] .field select,
+    html[data-theme="dark"] .output textarea {
+      border-color: #33465e;
+      color: #e5edf7;
+      background: #0b1422;
+    }
+
+    html[data-theme="dark"] .field input::placeholder,
+    html[data-theme="dark"] .field textarea::placeholder {
+      color: #6f8196;
+    }
+
+    html[data-theme="dark"] .faq-editor__item {
+      background: #0d1727;
+      border-color: #273548;
+    }
+
+    html[data-theme="dark"] .faq-editor__bar {
+      background: #122138;
+      border-bottom-color: #273548;
+    }
+
+    html[data-theme="dark"] .editor-tabs {
+      background: rgba(0, 0, 0, 0.12);
+    }
+
+    html[data-theme="dark"] .editor-section-title h3 {
+      color: #f8fafc;
+    }
+
+    html[data-theme="dark"] .table-editor__box,
+    html[data-theme="dark"] .table-row-editor,
+    html[data-theme="dark"] .faq-bulk-panel,
+    html[data-theme="dark"] .stories-guide,
+    html[data-theme="dark"] .stories-editor__box,
+    html[data-theme="dark"] .stories-slide-editor,
+    html[data-theme="dark"] .article-editor__box,
+    html[data-theme="dark"] .article-tab-editor {
+      background: #0d1727;
+      border-color: #273548;
+    }
+
+    html[data-theme="dark"] .preview-shell {
+      border-color: #36556f;
+      background: #0b1422;
+    }
+
+    html[data-theme="dark"] .preview-frame {
+      background: #ffffff;
+    }
+
+    html[data-theme="dark"][data-page="conteudo"] .theme-toggle,
+    html[data-theme="dark"][data-page="conteudo"] .button--soft {
+      color: #f3e8ff;
+      background: rgba(167, 139, 250, 0.16);
+    }
+
+    html[data-theme="dark"][data-page="conteudo"] .theme-toggle:hover,
+    html[data-theme="dark"][data-page="conteudo"] .button--soft:hover {
+      color: #ffffff;
+      background: rgba(167, 139, 250, 0.3);
+    }
+
+    @media (max-width: 920px) {
+      body {
+        height: auto;
+        overflow: auto;
+      }
+
+      .app {
+        height: auto;
+        min-height: 100vh;
+      }
+
+      .topbar {
+        align-items: flex-start;
+        flex-direction: column;
+      }
+
+      .actions {
+        justify-content: flex-start;
+      }
+
+      .page-nav {
+        width: 100%;
+      }
+
+      .page-nav__link {
+        flex: 1;
+        justify-content: center;
+      }
+
+      .layout {
+        grid-template-columns: 1fr;
+        flex: initial;
+      }
+
+      .panel,
+      .editor-panel .panel__body,
+      .output {
+        display: block;
+        overflow: visible;
+      }
+
+      .faq-editor {
+        height: auto;
+        overflow: visible;
+        padding: 14px;
+      }
+
+      .editor-tools {
+        padding: 14px 14px 0;
+      }
+
+      .output textarea {
+        height: auto;
+        min-height: 260px;
+        resize: vertical;
+      }
+
+      .preview-shell {
+        display: block;
+      }
+
+      .preview-frame {
+        min-height: 180px;
+      }
+    }
+
+    @media (max-height: 760px) and (min-width: 921px) {
+      .app {
+        padding-top: 18px;
+      }
+
+      .topbar {
+        margin-bottom: 14px;
+      }
+
+      .brand h1 {
+        font-size: 24px;
+      }
+
+      .brand p {
+        display: none;
+      }
+
+      .output {
+        grid-template-rows: auto 130px minmax(0, 1fr);
+      }
+    }
+
+    @media (max-width: 560px) {
+      .app {
+        width: min(100% - 20px, 1320px);
+        padding: 18px 0;
+      }
+
+      .brand h1 {
+        font-size: 24px;
+      }
+
+      .panel__head,
+      .panel__body {
+        padding: 14px;
+      }
+
+      .actions,
+      .theme-toggle,
+      .button {
+        width: 100%;
+      }
+
+      .theme-toggle {
+        justify-content: space-between;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <header class="topbar">
+      <div class="brand">
+        <h1 id="appTitle">Layout Lab</h1>
+        <p id="appSubtitle">Crie layouts de conteudo e copie o bloco pronto no formato certo.</p>
+      </div>
+      <nav class="page-nav" aria-label="Equipe">
+        <a class="page-nav__link" href="#qualidade-tecnica" data-page-link="tecnica">Qualidade Técnica</a>
+        <a class="page-nav__link" href="#qualidade-conteudo" data-page-link="conteudo">Qualidade Conteúdo</a>
+      </nav>
+      <div class="actions">
+        <label class="theme-toggle" for="themeToggle">
+          <input id="themeToggle" type="checkbox">
+          <span class="theme-toggle__track" aria-hidden="true">
+            <span class="theme-toggle__thumb"></span>
+          </span>
+          <span class="theme-toggle__text">Modo escuro</span>
+        </label>
+        <button class="button button--soft icon-button" id="addItemTop" type="button" aria-label="Adicionar pergunta" title="Adicionar pergunta">+</button>
+      </div>
+    </header>
+
+    <section class="layout" aria-label="Gerador">
+      <div class="panel editor-panel">
+        <div class="panel__head">
+          <h2>Conteúdo</h2>
+          <button class="button button--soft icon-button" id="addItem" type="button" aria-label="Adicionar pergunta" title="Adicionar pergunta">+</button>
+        </div>
+        <div class="panel__body">
+          <div class="editor-tools" id="editorTools">
+            <div class="editor-tabs" role="tablist" aria-label="Tipo de conteúdo">
+              <button class="editor-tabs__button" type="button" role="tab" data-editor-tab="faq">FAQ</button>
+              <button class="editor-tabs__button" type="button" role="tab" data-editor-tab="table">Tabela</button>
+              <button class="editor-tabs__button" type="button" role="tab" data-editor-tab="stories">Stories</button>
+              <button class="editor-tabs__button" type="button" role="tab" data-editor-tab="article">Artigo</button>
+            </div>
+          </div>
+          <div class="faq-editor" id="faqEditor"></div>
+        </div>
+      </div>
+
+      <div class="panel output-panel">
+        <div class="panel__head">
+          <h2 id="outputTitle">HTML pronto</h2>
+          <div class="actions">
+            <button class="button button--green" id="copyHtml" type="button" data-copy-mode="html">Copiar HTML</button>
+            <button class="button button--green" id="copyHtmlCss" type="button" data-copy-mode="full">Copiar HTML/CSS</button>
+          </div>
+        </div>
+        <div class="panel__body output">
+          <div class="status" id="copyStatus" aria-live="polite"></div>
+          <textarea id="generatedHtml" readonly spellcheck="false" aria-label="HTML gerado"></textarea>
+          <div class="preview-shell">
+            <span class="preview-shell__label">Prévia</span>
+            <iframe class="preview-frame" id="previewFrame" title="Previa do conteudo"></iframe>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const faqStyle = `<style>
+    * {
+        padding: 0;
+        margin: 0;
+    }
+
+    #faq-section {
+        width: 100%;
+        padding: 0rem 16px;
+        box-sizing: border-box;
+        margin: -10px auto 25px;
+        font-family: sans-serif;
+    }
+
+    #faq-section__header {
+        color: #f1f1f1;
+        margin: 0 0 12px;
+        font-size: 14px;
+        line-height: 24px;
+        letter-spacing: 0.15px;
+        font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Helvetica, "Noto Sans", "Liberation Sans", Arial, sans-serif;
+        font-weight: 400;
+        text-decoration: none;
+    }
+
+    #faq-section__title {
+        text-align: center;
+        align-items: flex-start;
+        background: rgb(0, 157, 255);
+        border-radius: 4px;
+        color: rgb(255, 255, 255);
+        display: flex;
+        flex-direction: row;
+        height: 40px;
+        margin: 0 0 8px;
+        padding: 8px;
+        width: 100%;
+        box-sizing: border-box;
+    }
+
+    #faq-section__list {
+        list-style: none;
+        margin: 0 auto;
+        padding: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    #faq-section__item {
+        background: #fff;
+        border: 1px solid #e5e5e5;
+        border-radius: 12px;
+        overflow: hidden;
+    }
+
+    #faq-section__item summary {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 16px 20px;
+        cursor: pointer;
+        list-style: none;
+        transition: background 0.15s ease;
+    }
+
+    #faq-section__item summary::-webkit-details-marker {
+        display: none;
+    }
+
+    #faq-section__item summary:hover {
+        background: #f9f9f9;
+    }
+
+    #faq-section__item summary:focus-visible {
+        outline: 2px solid #ea5b0c;
+        outline-offset: -2px;
+        border-radius: 12px;
+    }
+
+    #faq-section__q-text {
+        font-size: 14px;
+        font-weight: bold;
+        color: #333;
+        flex: 1;
+        margin: 0;
+        transition: color 0.15s ease;
+    }
+
+    #faq-section__icon {
+        width: 20px;
+        height: 20px;
+        flex-shrink: 0;
+        position: relative;
+    }
+
+    #faq-section__icon::before,
+    #faq-section__icon::after {
+        content: '';
+        position: absolute;
+        background: rgb(46, 53, 56);
+        border-radius: 2px;
+        transition: transform 0.25s ease, opacity 0.25s ease;
+    }
+
+    #faq-section__icon::before {
+        width: 12px;
+        height: 1.5px;
+        top: 9px;
+        left: 4px;
+    }
+
+    #faq-section__icon::after {
+        width: 1.5px;
+        height: 12px;
+        top: 4px;
+        left: 9px;
+    }
+
+    #faq-section__item details[open] #faq-section__icon::after {
+        transform: rotate(90deg);
+        opacity: 0;
+    }
+
+    #faq-section__a-inner {
+        padding: 14px 20px 16px;
+        border-top: 1px solid #e5e5e5;
+    }
+
+    #faq-section__a-text {
+        font-size: 12px;
+        color: rgb(46, 53, 56);
+        line-height: 1.6;
+        margin: 0;
+    }
+
+    @media (max-width: 480px) {
+        #faq-section__q-text {
+            font-size: 0.9rem;
+        }
+    }
+</style>`;
+
+    const tableStyle = `<style>
+  .sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+
+  .table-container-custom {
+    background-color: #fff;
+    padding: 20px;
+    border-radius: 10px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    max-width: 800px;
+    width: 100%;
+    margin: 0 auto 25px;
+    display: block;
+  }
+
+  .table-design-custom {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 0 auto;
+  }
+
+  .table-head-custom {
+    color: rgb(255, 255, 255);
+    border-radius: 10px;
+  }
+
+  .table-text-custom {
+    padding: 12px;
+    text-align: left;
+    border-bottom: 1px solid #979797;
+    font-family: sans-serif;
+  }
+
+  .table-tr-custom:hover {
+    background-color: #f1f1f1;
+    filter: brightness(0.9);
+  }
+
+  .table-design-custom td a {
+    color: #000;
+    font-weight: 600;
+    text-decoration: none;
+  }
+
+  .table-design-custom td a:hover {
+     color: #e74011;
+  }
+
+  .table-th-custom {
+    font-weight: bold;
+  }
+
+  .table-td-custom {
+    color: #555;
+  }
+
+  .table-tr-custom:nth-child(even) {
+    background-color: #f1f1f1;
+  }
+</style>`;
+
+    const storiesStyle = `<style>
+  /* Guia rapido de midias:
+     - Slide/story: proporcao 9:16. Recomendado 1080x1920 px. Minimo seguro 860x1530 px.
+     - Poster de video: use a mesma proporcao do slide, preferencialmente 1080x1920 px.
+     - Miniatura da bolinha: proporcao 1:1. Recomendado 400x400 px. Minimo seguro 220x220 px.
+     - Limites do componente: ate 3 containers e ate 4 slides por container.
+     - Imagens horizontais funcionam, mas serao cortadas pelo object-fit: cover.
+     - Formatos comuns: webp, jpg, png para imagem; webm ou mp4 para video.
+  */
+  .lp-stories {
+    --story-max-width: 430px;
+    --story-max-height: min(680px, 78vh);
+    --story-aspect-ratio: 9 / 16;
+    --story-ring-size: 5.25rem;
+    --story-thumb-size: 4.75rem;
+    --story-ring-bg: conic-gradient(from -20deg, #ff9900, #111827, #ffcc66, #ff9900);
+    width: min(100%, 520px);
+    margin: 0 auto 2.5rem;
+    padding: 0 1rem;
+    font-family: sans-serif;
+    color: #111827;
+    position: relative;
+  }
+
+  .lp-stories *,
+  .lp-stories *::before,
+  .lp-stories *::after {
+    box-sizing: border-box;
+  }
+
+  .lp-stories__target {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    scroll-margin-top: 1rem;
+  }
+
+  .lp-stories__options {
+    display: grid;
+    grid-template-columns: repeat(var(--story-groups, 3), minmax(0, 1fr));
+    gap: 0.75rem;
+    margin-bottom: 1.25rem;
+  }
+
+  .lp-stories__option {
+    min-width: 0;
+    padding: 0;
+    color: #111827;
+    background: transparent;
+    display: grid;
+    justify-items: center;
+    gap: 0.45rem;
+    text-align: center;
+    text-decoration: none;
+    transition: transform 160ms ease;
+  }
+
+  .lp-stories__option:hover {
+    transform: translateY(-2px);
+  }
+
+  .lp-stories__option:focus-visible {
+    outline: none;
+  }
+
+  .lp-stories__option:focus-visible .lp-stories__ring,
+  #lp-story-produto-1:target ~ .lp-stories__options [data-group="produto"] .lp-stories__ring,
+  #lp-story-produto-2:target ~ .lp-stories__options [data-group="produto"] .lp-stories__ring,
+  #lp-story-produto-3:target ~ .lp-stories__options [data-group="produto"] .lp-stories__ring,
+  #lp-story-produto-4:target ~ .lp-stories__options [data-group="produto"] .lp-stories__ring,
+  #lp-story-uso-1:target ~ .lp-stories__options [data-group="uso"] .lp-stories__ring,
+  #lp-story-uso-2:target ~ .lp-stories__options [data-group="uso"] .lp-stories__ring,
+  #lp-story-uso-3:target ~ .lp-stories__options [data-group="uso"] .lp-stories__ring,
+  #lp-story-uso-4:target ~ .lp-stories__options [data-group="uso"] .lp-stories__ring,
+  #lp-story-detalhes-1:target ~ .lp-stories__options [data-group="detalhes"] .lp-stories__ring,
+  #lp-story-detalhes-2:target ~ .lp-stories__options [data-group="detalhes"] .lp-stories__ring,
+  #lp-story-detalhes-3:target ~ .lp-stories__options [data-group="detalhes"] .lp-stories__ring,
+  #lp-story-detalhes-4:target ~ .lp-stories__options [data-group="detalhes"] .lp-stories__ring {
+    outline: 3px solid rgba(255, 153, 0, 0.28);
+    outline-offset: 4px;
+  }
+
+  .lp-stories__ring {
+    width: var(--story-ring-size);
+    height: var(--story-ring-size);
+    padding: 3px;
+    border-radius: 50%;
+    background: var(--story-ring-bg);
+    display: grid;
+    place-items: center;
+    box-shadow: 0 8px 24px rgba(15, 23, 42, 0.14);
+  }
+
+  .lp-stories__thumb {
+    width: var(--story-thumb-size);
+    height: var(--story-thumb-size);
+    border: 3px solid #fff;
+    border-radius: 50%;
+    object-fit: cover;
+    background: #f1f5f9;
+  }
+
+  .lp-stories__name {
+    max-width: 6rem;
+    color: #334155;
+    font-size: 0.88rem;
+    line-height: 1.15;
+    overflow-wrap: anywhere;
+  }
+
+  .lp-stories__panel {
+    display: none;
+  }
+
+  .lp-stories__panel.is-default {
+    display: block;
+  }
+
+  .lp-stories__target:target ~ .lp-stories__panels .lp-stories__panel.is-default {
+    display: none;
+  }
+
+  #lp-story-produto-1:target ~ .lp-stories__panels .panel-produto-1,
+  #lp-story-produto-2:target ~ .lp-stories__panels .panel-produto-2,
+  #lp-story-produto-3:target ~ .lp-stories__panels .panel-produto-3,
+  #lp-story-produto-4:target ~ .lp-stories__panels .panel-produto-4,
+  #lp-story-uso-1:target ~ .lp-stories__panels .panel-uso-1,
+  #lp-story-uso-2:target ~ .lp-stories__panels .panel-uso-2,
+  #lp-story-uso-3:target ~ .lp-stories__panels .panel-uso-3,
+  #lp-story-uso-4:target ~ .lp-stories__panels .panel-uso-4,
+  #lp-story-detalhes-1:target ~ .lp-stories__panels .panel-detalhes-1,
+  #lp-story-detalhes-2:target ~ .lp-stories__panels .panel-detalhes-2,
+  #lp-story-detalhes-3:target ~ .lp-stories__panels .panel-detalhes-3,
+  #lp-story-detalhes-4:target ~ .lp-stories__panels .panel-detalhes-4 {
+    display: block;
+  }
+
+  .lp-stories__viewer {
+    width: min(100%, var(--story-max-width));
+    max-height: var(--story-max-height);
+    aspect-ratio: var(--story-aspect-ratio);
+    margin: 0 auto;
+    position: relative;
+    overflow: hidden;
+    border-radius: 16px;
+    background: #020617;
+    color: #fff;
+    box-shadow: 0 18px 54px rgba(15, 23, 42, 0.22);
+    isolation: isolate;
+  }
+
+  .lp-stories__progress {
+    --slides: 3;
+    --index: 1;
+    --gap: 5px;
+    position: absolute;
+    z-index: 4;
+    top: 12px;
+    left: 12px;
+    right: 12px;
+    height: 3px;
+    overflow: hidden;
+    border-radius: 999px;
+    background: repeating-linear-gradient(to right, rgba(255, 255, 255, 0.32) 0 calc((100% / var(--slides)) - var(--gap)), transparent calc((100% / var(--slides)) - var(--gap)) calc(100% / var(--slides)));
+  }
+
+  .lp-stories__progress::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(to right, #fff 0 calc((100% / var(--slides)) * var(--index)), transparent 0);
+    -webkit-mask: repeating-linear-gradient(to right, #000 0 calc((100% / var(--slides)) - var(--gap)), transparent calc((100% / var(--slides)) - var(--gap)) calc(100% / var(--slides)));
+    mask: repeating-linear-gradient(to right, #000 0 calc((100% / var(--slides)) - var(--gap)), transparent calc((100% / var(--slides)) - var(--gap)) calc(100% / var(--slides)));
+  }
+
+  .lp-stories__topbar {
+    position: absolute;
+    z-index: 5;
+    top: 26px;
+    left: 12px;
+    right: 12px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .lp-stories__avatar {
+    width: 36px;
+    height: 36px;
+    flex: 0 0 auto;
+    border: 2px solid rgba(255, 255, 255, 0.78);
+    border-radius: 50%;
+    object-fit: cover;
+  }
+
+  .lp-stories__title {
+    min-width: 0;
+    flex: 1;
+    margin: 0;
+    color: #fff;
+    font-size: 0.96rem;
+    line-height: 1.2;
+    font-weight: 700;
+    text-shadow: 0 1px 14px rgba(0, 0, 0, 0.45);
+  }
+
+  .lp-stories__step {
+    font-size: 0.82rem;
+    font-weight: 700;
+    text-shadow: 0 1px 14px rgba(0, 0, 0, 0.45);
+  }
+
+  .lp-stories__figure,
+  .lp-stories__media {
+    width: 100%;
+    height: 100%;
+    margin: 0;
+  }
+
+  .lp-stories__figure {
+    position: relative;
+  }
+
+  .lp-stories__media img,
+  .lp-stories__media video {
+    width: 100%;
+    height: 100%;
+    display: block;
+    object-fit: cover;
+    object-position: center center;
+    background: #020617;
+  }
+
+  .lp-stories__caption {
+    position: absolute;
+    z-index: 3;
+    left: 16px;
+    right: 16px;
+    margin: 0;
+    padding: 12px 14px;
+    border-radius: 12px;
+    color: #fff;
+    font-size: 1rem;
+    line-height: 1.35;
+    background: linear-gradient(90deg, var(--story-caption-bg-start), var(--story-caption-bg-end));
+    text-shadow: 0 1px 10px rgba(0, 0, 0, 0.38);
+  }
+
+  .lp-stories__caption.is-top {
+    top: 84px;
+  }
+
+  .lp-stories__caption.is-bottom {
+    bottom: 22px;
+  }
+
+  .lp-stories__nav {
+    position: absolute;
+    z-index: 6;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    pointer-events: none;
+  }
+
+  .lp-stories__arrow {
+    width: 46px;
+    height: 54px;
+    border: 1px solid rgba(255, 255, 255, 0.22);
+    color: #fff;
+    background: rgba(15, 23, 42, 0.34);
+    backdrop-filter: blur(10px);
+    cursor: pointer;
+    display: grid;
+    place-items: center;
+    font-size: 2rem;
+    line-height: 1;
+    text-decoration: none;
+    pointer-events: auto;
+  }
+
+  .lp-stories__arrow.prev {
+    border-radius: 0 12px 12px 0;
+  }
+
+  .lp-stories__arrow.next {
+    border-radius: 12px 0 0 12px;
+  }
+
+  @media (max-width: 520px) {
+    .lp-stories {
+      padding-inline: 0.8rem;
+      --story-max-height: 68vh;
+      --story-ring-size: 4.6rem;
+      --story-thumb-size: 4.1rem;
+    }
+
+    .lp-stories__options {
+      gap: 0.6rem;
+    }
+
+    .lp-stories__name {
+      max-width: 5.2rem;
+      font-size: 0.8rem;
+    }
+
+    .lp-stories__caption {
+      border-radius: 8px;
+      font-size: 0.94rem;
+    }
+
+    .lp-stories__viewer {
+      border-radius: 8px;
+    }
+
+    .lp-stories__nav {
+      pointer-events: auto;
+    }
+
+    .lp-stories__arrow.prev {
+      display: none;
+    }
+
+    .lp-stories__arrow.next {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      border: 0;
+      border-radius: 8px;
+      color: transparent;
+      background: transparent;
+      backdrop-filter: none;
+      font-size: 0;
+    }
+  }
+</style>`;
+
+    const storiesPreviewScript = `<script>
+  document.addEventListener("click", function(event) {
+    const link = event.target.closest(".lp-stories a[href^='#lp-story-']");
+    if (!link) {
+      return;
+    }
+
+    event.preventDefault();
+    const targetId = link.getAttribute("href").slice(1);
+    if (document.getElementById(targetId)) {
+      window.location.hash = targetId;
+    }
+  });
+<\/script>`;
+
+    const articleStyle = `<style>
+  .ll-article {
+    --ll-article-bg: linear-gradient(135deg, #111827, #3f3456);
+    --ll-article-ink: #f8f5ec;
+    --ll-article-muted: rgba(248, 245, 236, 0.74);
+    --ll-article-line: rgba(248, 245, 236, 0.22);
+    --ll-article-panel: rgba(18, 20, 25, 0.72);
+    --ll-article-accent: #f0b93e;
+    --ll-article-teal: #0f8f8c;
+    --ll-article-red: #d84d44;
+    --ll-article-blue: #4f7be8;
+    --ll-article-green: #75ad5c;
+    --ll-article-radius: 8px;
+    width: 100%;
+    margin: 0 auto 28px;
+    font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    color: var(--ll-article-ink);
+  }
+
+  .ll-article *,
+  .ll-article *::before,
+  .ll-article *::after {
+    box-sizing: border-box;
+  }
+
+  .ll-article__input {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  .ll-article__shell {
+    position: relative;
+    overflow: hidden;
+    min-height: 640px;
+    isolation: isolate;
+    background: #101217;
+  }
+
+  .ll-article__shell::before {
+    position: absolute;
+    inset: 0;
+    z-index: -3;
+    background-image: var(--ll-article-bg), linear-gradient(135deg, #101217, #2b203c);
+    background-position: center;
+    background-size: cover;
+    content: "";
+    transform: scale(1.03);
+  }
+
+  .ll-article__shell::after {
+    position: absolute;
+    inset: 0;
+    z-index: -2;
+    background:
+      radial-gradient(circle at 72% 22%, rgba(15, 143, 140, 0.36), transparent 28%),
+      linear-gradient(90deg, rgba(7, 8, 12, 0.94) 0 34%, rgba(7, 8, 12, 0.76) 56%, rgba(7, 8, 12, 0.54)),
+      rgba(7, 8, 12, 0.74);
+    content: "";
+  }
+
+  .ll-article__inner {
+    display: grid;
+    grid-template-columns: minmax(220px, 300px) minmax(0, 1fr);
+    gap: clamp(20px, 4vw, 48px);
+    align-items: stretch;
+    width: min(1120px, calc(100% - 36px));
+    margin: 0 auto;
+    padding: clamp(28px, 6vw, 68px) 0;
+  }
+
+  .ll-article__tabs {
+    display: grid;
+    gap: 10px;
+    align-content: start;
+    padding: 14px;
+    border: 1px solid var(--ll-article-line);
+    border-radius: var(--ll-article-radius);
+    background: var(--ll-article-panel);
+    box-shadow: 0 24px 90px rgba(0, 0, 0, 0.36);
+    backdrop-filter: blur(18px);
+  }
+
+  .ll-article__tabs-head {
+    padding: 8px 8px 12px;
+    border-bottom: 1px solid var(--ll-article-line);
+  }
+
+  .ll-article__eyebrow {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0 0 10px;
+    color: var(--ll-article-accent);
+    font-size: 12px;
+    font-weight: 900;
+    text-transform: uppercase;
+  }
+
+  .ll-article__eyebrow::before {
+    width: 28px;
+    height: 2px;
+    background: currentColor;
+    content: "";
+  }
+
+  .ll-article__tabs-head h2 {
+    margin: 0 0 8px;
+    color: var(--ll-article-ink);
+    font-size: clamp(30px, 4vw, 44px);
+    line-height: 0.96;
+    letter-spacing: 0;
+  }
+
+  .ll-article__tabs-head p,
+  .ll-article__panel-copy p {
+    margin: 0;
+    color: var(--ll-article-muted);
+    line-height: 1.6;
+  }
+
+  .ll-article__tabs-head p {
+    font-size: 14px;
+  }
+
+  .ll-article__tab {
+    display: grid;
+    grid-template-columns: 38px minmax(0, 1fr) auto;
+    gap: 12px;
+    align-items: center;
+    min-height: 66px;
+    padding: 12px;
+    border: 1px solid transparent;
+    border-radius: var(--ll-article-radius);
+    color: var(--ll-article-muted);
+    cursor: pointer;
+    transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease, transform 0.2s ease;
+  }
+
+  .ll-article__tab:hover {
+    transform: translateX(2px);
+    border-color: var(--ll-article-line);
+    background: rgba(248, 245, 236, 0.08);
+    color: var(--ll-article-ink);
+  }
+
+  .ll-article__tab-icon {
+    display: grid;
+    width: 38px;
+    height: 38px;
+    place-items: center;
+    border: 1px solid currentColor;
+    border-radius: 50%;
+    font-weight: 900;
+  }
+
+  .ll-article__tab-text strong {
+    display: block;
+    color: inherit;
+    line-height: 1.08;
+  }
+
+  .ll-article__tab-text small {
+    display: block;
+    margin-top: 4px;
+    color: inherit;
+    font-size: 12px;
+    line-height: 1.28;
+    opacity: 0.8;
+  }
+
+  .ll-article__tab-key {
+    display: grid;
+    width: 24px;
+    height: 24px;
+    place-items: center;
+    border: 1px solid currentColor;
+    border-radius: 50%;
+    font-size: 11px;
+    font-weight: 900;
+  }
+
+  #ll-article-tab-1:checked ~ .ll-article__shell label[for="ll-article-tab-1"],
+  #ll-article-tab-2:checked ~ .ll-article__shell label[for="ll-article-tab-2"],
+  #ll-article-tab-3:checked ~ .ll-article__shell label[for="ll-article-tab-3"],
+  #ll-article-tab-4:checked ~ .ll-article__shell label[for="ll-article-tab-4"],
+  #ll-article-tab-5:checked ~ .ll-article__shell label[for="ll-article-tab-5"] {
+    border-color: rgba(248, 245, 236, 0.72);
+    background: rgba(248, 245, 236, 0.15);
+    color: var(--ll-article-ink);
+    box-shadow: 4px 4px 0 rgba(248, 245, 236, 0.12);
+  }
+
+  .ll-article__stage {
+    min-height: 620px;
+    overflow: hidden;
+    border: 1px solid var(--ll-article-line);
+    border-radius: var(--ll-article-radius);
+    background: rgba(18, 20, 25, 0.9);
+    box-shadow: 0 24px 90px rgba(0, 0, 0, 0.36);
+    backdrop-filter: blur(20px);
+  }
+
+  .ll-article__panel {
+    position: relative;
+    display: none;
+    min-height: 620px;
+    overflow: hidden;
+    align-items: end;
+    padding: clamp(24px, 5vw, 54px);
+    isolation: isolate;
+    background: #101217;
+  }
+
+  .ll-article__panel::before {
+    position: absolute;
+    inset: 0;
+    z-index: -2;
+    background-image: var(--ll-panel-bg), linear-gradient(135deg, #101217, #2b203c);
+    background-position: center;
+    background-size: cover;
+    content: "";
+    transform: scale(1.03);
+  }
+
+  .ll-article__panel::after {
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    background:
+      linear-gradient(90deg, rgba(0, 0, 0, 0.82) 0 38%, rgba(0, 0, 0, 0.58) 64%, rgba(0, 0, 0, 0.36)),
+      rgba(0, 0, 0, 0.28);
+    content: "";
+  }
+
+  #ll-article-tab-1:checked ~ .ll-article__shell .ll-article__panel--1,
+  #ll-article-tab-2:checked ~ .ll-article__shell .ll-article__panel--2,
+  #ll-article-tab-3:checked ~ .ll-article__shell .ll-article__panel--3,
+  #ll-article-tab-4:checked ~ .ll-article__shell .ll-article__panel--4,
+  #ll-article-tab-5:checked ~ .ll-article__shell .ll-article__panel--5 {
+    display: grid;
+  }
+
+  .ll-article__panel-copy {
+    max-width: 720px;
+    align-self: end;
+  }
+
+  .ll-article__panel-copy h3 {
+    max-width: 14ch;
+    margin: 0 0 18px;
+    color: var(--ll-article-ink);
+    font-size: clamp(38px, 6vw, 82px);
+    line-height: 0.9;
+    letter-spacing: 0;
+    text-shadow: 0 3px 24px rgba(0, 0, 0, 0.64);
+  }
+
+  .ll-article__panel-copy p {
+    max-width: 62ch;
+    font-size: 17px;
+    text-shadow: 0 2px 18px rgba(0, 0, 0, 0.68);
+  }
+
+  .ll-article__tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 24px;
+  }
+
+  .ll-article__tag {
+    min-height: 36px;
+    padding: 8px 12px;
+    border: 1px solid var(--ll-article-line);
+    border-radius: 999px;
+    background: rgba(248, 245, 236, 0.08);
+    color: var(--ll-article-ink);
+    font-size: 13px;
+    font-weight: 900;
+    backdrop-filter: blur(10px);
+  }
+
+  @media (max-width: 900px) {
+    .ll-article__inner {
+      grid-template-columns: 1fr;
+      align-items: start;
+    }
+
+    .ll-article__tabs {
+      display: flex;
+      gap: 10px;
+      overflow-x: auto;
+      align-items: stretch;
+      scrollbar-gutter: stable;
+    }
+
+    .ll-article__tabs-head {
+      flex: 0 0 220px;
+      border-right: 1px solid var(--ll-article-line);
+      border-bottom: 0;
+    }
+
+    .ll-article__tab {
+      flex: 0 0 190px;
+      grid-template-columns: 34px minmax(0, 1fr);
+    }
+
+    .ll-article__tab-key {
+      display: none;
+    }
+
+    .ll-article__panel::after {
+      background:
+        linear-gradient(180deg, rgba(0, 0, 0, 0.72), rgba(0, 0, 0, 0.48)),
+        rgba(0, 0, 0, 0.28);
+    }
+  }
+
+  @media (max-width: 560px) {
+    .ll-article__shell {
+      min-height: 0;
+    }
+
+    .ll-article__inner {
+      width: min(100%, 340px);
+      padding: 22px 0 36px;
+    }
+
+    .ll-article__tabs {
+      padding: 10px;
+    }
+
+    .ll-article__tabs-head {
+      flex-basis: 200px;
+    }
+
+    .ll-article__stage,
+    .ll-article__panel {
+      min-height: 0;
+    }
+
+    .ll-article__panel {
+      padding: 22px;
+    }
+
+    .ll-article__panel-copy h3 {
+      font-size: clamp(34px, 11vw, 48px);
+    }
+
+    .ll-article__panel-copy p {
+      font-size: 15px;
+    }
+  }
+</style>`;
+
+    const state = {
+      faqBulkInput: "",
+      faqBulkStatus: "",
+      items: [
+        { question: "", answer: "" },
+        { question: "", answer: "" },
+        { question: "", answer: "" }
+      ],
+      table: {
+        caption: "",
+        headerColor: "#ea5b0c",
+        headerColors: ["#ea5b0c", "#ea5b0c"],
+        bulkInput: "",
+        status: "",
+        columns: ["SKU", "TÍTULO"],
+        rows: [
+          ["", ""],
+          ["", ""],
+          ["", ""]
+        ]
+      },
+      stories: {
+        ariaLabel: "Stories visuais e representativos do produto",
+        avatar: "https://imgprd.martinsatacado.com.br/catalogoimg/catalogo/logo-havaianas.webp",
+        ringStyle: "gradient",
+        ringColor: "#ff262b",
+        ringGradientStart: "#ff262b",
+        ringGradientEnd: "#9e070a",
+        captionBackgroundColor: "#020617",
+        previewGroupIndex: 0,
+        previewSlideIndex: 0,
+        openGroupIndex: 0,
+        groups: [
+          {
+            key: "produto",
+            name: "Pra quem ama o mar",
+            thumb: "https://imgprd.martinsatacado.com.br/catalogoimg/catalogo/chinelo-havaianas-top-nautical-listrado-branco-marinho-estudio-1225024-02.webp",
+            slides: [
+              {
+                type: "image",
+                src: "https://imgprd.martinsatacado.com.br/catalogoimg/catalogo/chinelo-havaianas-top-nautical-listrado-branco-marinho-estudio-1225024-02.webp",
+                poster: "",
+                alt: "Havaianas Top Nautical branco e marinho nos pes em estudio com fundo claro",
+                caption: "Listras classicas para quem e do mar.",
+                captionPosition: "top"
+              },
+              {
+                type: "image",
+                src: "https://imgprd.martinsatacado.com.br/catalogoimg/catalogo/chinelo-havaianas-top-nautical-listrado-marinho-branco-estudio-1225024-03.webp",
+                poster: "",
+                alt: "Havaianas Top Nautical marinho e branco nos pes em estudio de moda",
+                caption: "Top Nautical no pe, leveza no dia.",
+                captionPosition: "top"
+              }
+            ]
+          },
+          {
+            key: "uso",
+            name: "Estilo e Conforto",
+            thumb: "https://imgprd.martinsatacado.com.br/catalogoimg/catalogo/chinelo-havaianas-top-nautical-listrado-branco-marinho-rua-cafe-1225024-04.webp",
+            slides: [
+              {
+                type: "image",
+                src: "https://imgprd.martinsatacado.com.br/catalogoimg/catalogo/chinelo-havaianas-top-nautical-listrado-branco-marinho-rua-cafe-1225024-04.webp",
+                poster: "",
+                alt: "Havaianas Top Nautical branco e marinho nos pes em calcada com cafe ao fundo",
+                caption: "Estilo atemporal para sair leve.",
+                captionPosition: "top"
+              },
+              {
+                type: "image",
+                src: "https://imgprd.martinsatacado.com.br/catalogoimg/catalogo/chinelo-havaianas-top-nautical-listrado-marinho-branco-piscina-1225024-05.webp",
+                poster: "",
+                alt: "Havaianas Top Nautical marinho e branco nos pes a beira da piscina",
+                caption: "Solado 100% borracha, pronto para dias de piscina.",
+                captionPosition: "top"
+              }
+            ]
+          },
+          {
+            key: "detalhes",
+            name: "Sempre com voce",
+            thumb: "https://imgprd.martinsatacado.com.br/catalogoimg/catalogo/chinelo-havaianas-top-nautical-listrado-branco-marinho-deck-praia-1225024-06.webp",
+            slides: [
+              {
+                type: "image",
+                src: "https://imgprd.martinsatacado.com.br/catalogoimg/catalogo/chinelo-havaianas-top-nautical-listrado-branco-marinho-deck-praia-1225024-06.webp",
+                poster: "",
+                alt: "Havaianas Top Nautical branco e marinho nos pes sobre deck de madeira na praia",
+                caption: "Do calcadao ao mar em cada passo.",
+                captionPosition: "top"
+              },
+              {
+                type: "image",
+                src: "https://imgprd.martinsatacado.com.br/catalogoimg/catalogo/chinelo-havaianas-top-nautical-listrado-marinho-branco-praia-ondas-1225024-07.webp",
+                poster: "",
+                alt: "Havaianas Top Nautical marinho e branco nos pes na areia com ondas do mar",
+                caption: "Na areia, pertinho do mar.",
+                captionPosition: "top"
+              }
+            ]
+          }
+        ]
+      },
+      article: {
+        ariaLabel: "Layout de artigo com modos de leitura",
+        backgroundImage: "assets/brainstorm-hero.png",
+        eyebrow: "Artigo interativo",
+        title: "Escolha o ritmo da leitura.",
+        intro: "As abas mudam o texto do bloco sobre imagens de fundo escurecidas para manter contraste e leitura confortavel.",
+        openTabIndex: 0,
+        tabs: [
+          {
+            icon: "C",
+            label: "Compacto",
+            summary: "Escanear, comparar e decidir rapido.",
+            eyebrow: "Modo compacto",
+            heading: "Resumo para decidir sem perder tempo.",
+            body: "O layout reduz a leitura a blocos curtos, sinais visuais e comparacoes diretas. E bom para dashboards editoriais, hubs de conteudo e paginas com muitos caminhos.",
+            tags: "Alta densidade, Leitura rapida, Comparacao",
+            image: "assets/brainstorm-hero.png"
+          },
+          {
+            icon: "A",
+            label: "Amplo",
+            summary: "Texto mais editorial e respiro visual.",
+            eyebrow: "Modo amplo",
+            heading: "Uma leitura com mais ar e presenca.",
+            body: "O conteudo ganha imagem, titulo grande e uma coluna de texto mais confortavel. Serve para artigos, ensaios, manifestos e conteudos que precisam de tom editorial.",
+            tags: "Editorial, Imagem forte, Respirado",
+            image: "assets/brainstorm-hero.png"
+          },
+          {
+            icon: "F",
+            label: "Foco",
+            summary: "Uma ideia principal por vez.",
+            eyebrow: "Modo foco",
+            heading: "Uma frase guia a experiencia inteira.",
+            body: "Quando a mensagem principal precisa ficar memoravel, o layout reduz a interface e coloca uma ideia no centro. Bom para insights, citacoes e momentos de decisao.",
+            tags: "Baixo ruido, Contraste alto, Uma ideia",
+            image: "assets/brainstorm-hero.png"
+          },
+          {
+            icon: "E",
+            label: "Estudo",
+            summary: "Notas, marcadores e aprendizado.",
+            eyebrow: "Modo estudo",
+            heading: "Notas em camadas para aprender melhor.",
+            body: "O painel organiza conceitos em passos curtos, marcadores e lembretes. Funciona para aulas, documentacao, guias internos e conteudos explicativos.",
+            tags: "Passo a passo, Notas, Retencao",
+            image: "assets/brainstorm-hero.png"
+          },
+          {
+            icon: "P",
+            label: "Pitch",
+            summary: "Argumento, prova e chamada.",
+            eyebrow: "Modo pitch",
+            heading: "Argumento visual para convencer rapido.",
+            body: "O layout combina promessa, prova e tres argumentos curtos. Bom para landing pages, propostas, ofertas e apresentacoes de produto.",
+            tags: "Promessa, Prova, Acao",
+            image: "assets/brainstorm-hero.png"
+          }
+        ]
+      }
+    };
+
+    const editor = document.querySelector("#faqEditor");
+    const editorTools = document.querySelector("#editorTools");
+    const generatedHtml = document.querySelector("#generatedHtml");
+    const previewFrame = document.querySelector("#previewFrame");
+    const copyStatus = document.querySelector("#copyStatus");
+    const themeToggle = document.querySelector("#themeToggle");
+    const appTitle = document.querySelector("#appTitle");
+    const appSubtitle = document.querySelector("#appSubtitle");
+    const outputTitle = document.querySelector("#outputTitle");
+    const pageLinks = Array.from(document.querySelectorAll("[data-page-link]"));
+    const editorTabButtons = Array.from(document.querySelectorAll("[data-editor-tab]"));
+    const addButtons = [document.querySelector("#addItem"), document.querySelector("#addItemTop")];
+    const htmlCopyButtons = [document.querySelector("#copyHtml")].filter(Boolean);
+    const fullCopyButtons = [document.querySelector("#copyHtmlCss")].filter(Boolean);
+    let currentPage = "conteudo";
+    let currentEditorTab = "faq";
+    const storyLimits = {
+      minContainers: 1,
+      maxContainers: 3,
+      minSlides: 1,
+      maxSlides: 4
+    };
+    const storyGroupPresets = [
+      { key: "produto", name: "Produto" },
+      { key: "uso", name: "Uso" },
+      { key: "detalhes", name: "Detalhes" }
+    ];
+
+    const pageConfigs = {
+      conteudo: {
+        title: "Layout Lab",
+        subtitle: "Monte layouts de conteudo com FAQ, tabela, stories ou artigo e copie HTML ou HTML/CSS conforme a necessidade.",
+        outputTitle: "HTML pronto",
+        copyLabel: "Copiar HTML",
+        fullCopyLabel: "Copiar HTML/CSS",
+        copiedStatus: "HTML copiado.",
+        fullCopiedStatus: "HTML/CSS copiado."
+      },
+      tecnica: {
+        title: "Layout Lab",
+        subtitle: "Monte layouts tecnicos em FAQ e copie o bloco completo com HTML e CSS.",
+        outputTitle: "HTML/CSS pronto",
+        copyLabel: "Copiar HTML/CSS",
+        fullCopyLabel: "",
+        copiedStatus: "HTML/CSS copiado.",
+        fullCopiedStatus: ""
+      }
+    };
+
+    function setTheme(theme) {
+      document.documentElement.dataset.theme = theme;
+      themeToggle.checked = theme === "dark";
+
+      try {
+        localStorage.setItem("faqCompilerTheme", theme);
+      } catch (error) {
+        return;
+      }
+    }
+
+    function getInitialTheme() {
+      try {
+        const savedTheme = localStorage.getItem("faqCompilerTheme");
+        if (savedTheme === "dark" || savedTheme === "light") {
+          return savedTheme;
+        }
+      } catch (error) {
+        return "light";
+      }
+
+      return "light";
+    }
+
+    function escapeHtml(value) {
+      return value
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+    }
+
+    function formatAnswer(value) {
+      return escapeHtml(value.trim()).replace(/\r?\n/g, "<br>");
+    }
+
+    function normalizeHexColor(value) {
+      const rawValue = String(value || "").trim();
+      const colorValue = rawValue.startsWith("#") ? rawValue : `#${rawValue}`;
+      const shortHexMatch = colorValue.match(/^#([0-9a-fA-F]{3})$/);
+
+      if (shortHexMatch) {
+        return `#${shortHexMatch[1].split("").map((char) => char + char).join("")}`.toLowerCase();
+      }
+
+      if (/^#[0-9a-fA-F]{6}$/.test(colorValue)) {
+        return colorValue.toLowerCase();
+      }
+
+      return "#ea5b0c";
+    }
+
+    function hexToRgba(value, alpha) {
+      const color = normalizeHexColor(value).replace("#", "");
+      const red = parseInt(color.slice(0, 2), 16);
+      const green = parseInt(color.slice(2, 4), 16);
+      const blue = parseInt(color.slice(4, 6), 16);
+      return `rgba(${red}, ${green}, ${blue}, ${alpha})`;
+    }
+
+    function getTableHeaderColor(index = 0) {
+      return normalizeHexColor(state.table.headerColors[index] || state.table.headerColor);
+    }
+
+    function normalizeTableHeaderColors() {
+      const columns = getTableColumns();
+      state.table.headerColors = columns.map((column, index) => {
+        return normalizeHexColor(state.table.headerColors[index] || state.table.headerColor);
+      });
+    }
+
+    function getPageFromHash() {
+      return window.location.hash === "#qualidade-tecnica" ? "tecnica" : "conteudo";
+    }
+
+    function updateEditorTabs() {
+      const showTabs = currentPage === "conteudo";
+      editorTools.classList.toggle("is-hidden", !showTabs);
+
+      editorTabButtons.forEach((button) => {
+        const isSelected = button.dataset.editorTab === currentEditorTab;
+        button.setAttribute("aria-selected", String(isSelected));
+        button.setAttribute("tabindex", isSelected ? "0" : "-1");
+      });
+    }
+
+    function updateAddButtons() {
+      const isTableTab = currentPage === "conteudo" && currentEditorTab === "table";
+      const isStoriesTab = currentPage === "conteudo" && currentEditorTab === "stories";
+      const isArticleTab = currentPage === "conteudo" && currentEditorTab === "article";
+      const label = isTableTab ? "Adicionar linha" : "Adicionar pergunta";
+      addButtons.forEach((button) => {
+        button.classList.toggle("is-hidden", isStoriesTab || isArticleTab);
+        button.textContent = "+";
+        button.setAttribute("aria-label", label);
+        button.setAttribute("title", label);
+      });
+    }
+
+    function updateCopyButtons(config) {
+      htmlCopyButtons.forEach((button) => {
+        button.textContent = config.copyLabel;
+        button.classList.remove("is-hidden");
+      });
+
+      fullCopyButtons.forEach((button) => {
+        button.textContent = config.fullCopyLabel;
+        button.classList.toggle("is-hidden", currentPage !== "conteudo");
+      });
+    }
+
+    function applyPage(page) {
+      currentPage = pageConfigs[page] ? page : "conteudo";
+      if (currentPage !== "conteudo") {
+        currentEditorTab = "faq";
+      }
+
+      const config = pageConfigs[currentPage];
+      document.documentElement.dataset.page = currentPage;
+      appTitle.textContent = config.title;
+      appSubtitle.textContent = config.subtitle;
+      outputTitle.textContent = config.outputTitle;
+      updateCopyButtons(config);
+      pageLinks.forEach((link) => {
+        const isCurrent = link.dataset.pageLink === currentPage;
+        if (isCurrent) {
+          link.setAttribute("aria-current", "page");
+        } else {
+          link.removeAttribute("aria-current");
+        }
+      });
+      updateEditorTabs();
+      updateAddButtons();
+      renderEditor();
+    }
+
+    function renderFaqItem(item) {
+      const question = escapeHtml(item.question.trim());
+      const answer = formatAnswer(item.answer);
+
+      return `        <!-- Cole aqui as perguntas e respostas -->
+        <li id="faq-section__item">
+<details>
+<summary>
+<h3 id="faq-section__q-text"> ${question} </h3>
+<span id="faq-section__icon" aria-hidden="true"></span>
+</summary>
+<div id="faq-section__a-inner">
+<p id="faq-section__a-text"> ${answer} </p>
+</div>
+</details>
+</li>
+        <!-------------------------->`;
+    }
+
+    function buildFaqSectionHtml() {
+      const items = state.items
+        .filter((item) => item.question.trim() || item.answer.trim())
+        .map(renderFaqItem)
+        .join("\n\n");
+
+      return `<section id="faq-section" aria-labelledby="faq-section-title">
+<div id="faq-section__header">
+<h2 id="faq-section__title" id="faq-section-title">Dúvidas Frequentes</h2>
+</div>
+<ul id="faq-section__list" role="list">
+${items}
+</ul>
+</section>`;
+    }
+
+    function getTableColumns() {
+      return state.table.columns.length ? state.table.columns : ["SKU", "TÍTULO"];
+    }
+
+    function getVisibleTableRows() {
+      return state.table.rows.filter((row) => row.some((cell) => cell.trim()));
+    }
+
+    function hasTableData() {
+      return getVisibleTableRows().length > 0;
+    }
+
+    function getHeaderRadius(index, total) {
+      if (total === 1) {
+        return "10px 10px 0 0";
+      }
+
+      if (index === 0) {
+        return "10px 0 0 0";
+      }
+
+      if (index === total - 1) {
+        return "0 10px 0 0";
+      }
+
+      return "";
+    }
+
+    function renderTableHeaderCell(label, index, total) {
+      const radius = getHeaderRadius(index, total);
+      const radiusStyle = radius ? ` border-radius: ${radius};` : "";
+      const headerText = escapeHtml(label.trim() || `COLUNA ${index + 1}`);
+
+      return `                 <th class="table-text-custom table-th-custom" style="background-color: ${getTableHeaderColor(index)};${radiusStyle}" scope="col">${headerText}
+                 </th>`;
+    }
+
+    function renderTableRow(row) {
+      const columns = getTableColumns();
+      const cells = columns.map((column, index) => {
+        const cellClass = index === 0 ? "table-td-custom-title" : "table-td-custom-sub";
+        return `                 <td class="table-text-custom ${cellClass}">${escapeHtml((row[index] || "").trim())}</td>`;
+      }).join("\n");
+
+      return `               <tr class="table-tr-custom">
+${cells}
+               </tr>`;
+    }
+
+    function buildTableSectionHtml(forcePreview = false) {
+      if (!forcePreview && !hasTableData()) {
+        return "";
+      }
+
+      const columns = getTableColumns();
+      const caption = escapeHtml(state.table.caption.trim() || "produtos relacionados");
+      const headers = columns.map(renderTableHeaderCell).join("\n");
+      const visibleRows = getVisibleTableRows();
+      const previewRows = visibleRows.length ? visibleRows : [createEmptyTableRow()];
+      const rows = (forcePreview ? previewRows : visibleRows).map(renderTableRow).join("\n");
+
+      return `<section class="table-container-custom" aria-label="tabela contendo produtos relacionados e citados dentre deste conteúdo">
+          <table class="table-design-custom" aria-describedby="table-desc">
+            <caption id="table-desc" class="sr-only" style="text-align:left; padding: 0 0 8px; font-weight:600;">
+          ${caption}
+          </caption>
+            <thead class="table-head-custom">
+               <tr class="table-tr-custom">
+${headers}
+               </tr>
+             </thead>
+             <tbody>
+${rows}
+             </tbody>
+           </table>
+         </section>`;
+    }
+
+    function getStoryId(group, slideIndex) {
+      return `lp-story-${group.key}-${slideIndex + 1}`;
+    }
+
+    function getStoryPanelClass(group, slideIndex) {
+      return `panel-${group.key}-${slideIndex + 1}`;
+    }
+
+    function normalizeStoryType(type) {
+      return type === "video" ? "video" : "image";
+    }
+
+    function normalizeStoryPosition(position) {
+      return position === "top" ? "top" : "bottom";
+    }
+
+    function normalizeStoryRingStyle(value) {
+      return value === "solid" ? "solid" : "gradient";
+    }
+
+    function getStoryRingBackground() {
+      if (normalizeStoryRingStyle(state.stories.ringStyle) === "solid") {
+        return normalizeHexColor(state.stories.ringColor);
+      }
+
+      const start = normalizeHexColor(state.stories.ringGradientStart);
+      const end = normalizeHexColor(state.stories.ringGradientEnd);
+      return `conic-gradient(from -20deg, ${start}, ${end}, ${start})`;
+    }
+
+    function setStoriesPreviewTarget(groupIndex, slideIndex) {
+      const safeGroupIndex = Number.isFinite(groupIndex) ? groupIndex : 0;
+      const group = state.stories.groups[safeGroupIndex] || state.stories.groups[0];
+      const resolvedGroupIndex = Math.max(0, state.stories.groups.indexOf(group));
+      const maxSlideIndex = group ? Math.max(0, group.slides.length - 1) : 0;
+
+      state.stories.previewGroupIndex = resolvedGroupIndex;
+      state.stories.previewSlideIndex = Math.min(Math.max(Number.isFinite(slideIndex) ? slideIndex : 0, 0), maxSlideIndex);
+    }
+
+    function getStoriesPreviewTarget() {
+      setStoriesPreviewTarget(state.stories.previewGroupIndex, state.stories.previewSlideIndex);
+      return {
+        groupIndex: state.stories.previewGroupIndex,
+        slideIndex: state.stories.previewSlideIndex
+      };
+    }
+
+    function getStoryVideoType(src) {
+      return /\.mp4(?:$|\?)/i.test(src) ? "video/mp4" : "video/webm";
+    }
+
+    function getStoryNextHref(groupIndex, slideIndex) {
+      const group = state.stories.groups[groupIndex];
+      if (slideIndex < group.slides.length - 1) {
+        return `#${getStoryId(group, slideIndex + 1)}`;
+      }
+
+      const nextGroup = state.stories.groups[(groupIndex + 1) % state.stories.groups.length];
+      return `#${getStoryId(nextGroup, 0)}`;
+    }
+
+    function getStoryPreviousHref(groupIndex, slideIndex) {
+      const group = state.stories.groups[groupIndex];
+      if (slideIndex > 0) {
+        return `#${getStoryId(group, slideIndex - 1)}`;
+      }
+
+      const previousGroupIndex = (groupIndex - 1 + state.stories.groups.length) % state.stories.groups.length;
+      const previousGroup = state.stories.groups[previousGroupIndex];
+      return `#${getStoryId(previousGroup, previousGroup.slides.length - 1)}`;
+    }
+
+    function getAvailableStoryPreset() {
+      const usedKeys = new Set(state.stories.groups.map((group) => group.key));
+      return storyGroupPresets.find((preset) => !usedKeys.has(preset.key)) || storyGroupPresets[0];
+    }
+
+    function createEmptyStorySlide() {
+      return {
+        type: "image",
+        src: "",
+        poster: "",
+        alt: "",
+        caption: "",
+        captionPosition: "bottom"
+      };
+    }
+
+    function createEmptyStoryGroup() {
+      const preset = getAvailableStoryPreset();
+      return {
+        key: preset.key,
+        name: preset.name,
+        thumb: "",
+        slides: [createEmptyStorySlide()]
+      };
+    }
+
+    function addStoryContainer() {
+      if (state.stories.groups.length >= storyLimits.maxContainers) {
+        return;
+      }
+
+      state.stories.groups.push(createEmptyStoryGroup());
+      state.stories.openGroupIndex = state.stories.groups.length - 1;
+      setStoriesPreviewTarget(state.stories.openGroupIndex, 0);
+      renderEditor(true);
+    }
+
+    function removeStoryContainer(index) {
+      if (state.stories.groups.length <= storyLimits.minContainers) {
+        return;
+      }
+
+      state.stories.groups.splice(index, 1);
+      if (state.stories.openGroupIndex > index) {
+        state.stories.openGroupIndex -= 1;
+      } else if (state.stories.openGroupIndex === index) {
+        state.stories.openGroupIndex = Math.min(index, state.stories.groups.length - 1);
+      }
+      setStoriesPreviewTarget(state.stories.openGroupIndex, 0);
+      renderEditor(true);
+    }
+
+    function addStorySlide(groupIndex) {
+      const group = state.stories.groups[groupIndex];
+      if (!group || group.slides.length >= storyLimits.maxSlides) {
+        return;
+      }
+
+      group.slides.push(createEmptyStorySlide());
+      state.stories.openGroupIndex = groupIndex;
+      setStoriesPreviewTarget(groupIndex, group.slides.length - 1);
+      renderEditor(true);
+    }
+
+    function removeStorySlide(groupIndex, slideIndex) {
+      const group = state.stories.groups[groupIndex];
+      if (!group || group.slides.length <= storyLimits.minSlides) {
+        return;
+      }
+
+      group.slides.splice(slideIndex, 1);
+      state.stories.openGroupIndex = groupIndex;
+      setStoriesPreviewTarget(groupIndex, Math.min(slideIndex, group.slides.length - 1));
+      renderEditor(true);
+    }
+
+    function renderStoryOption(group) {
+      const name = escapeHtml(group.name.trim() || "Story");
+      const thumb = escapeHtml(group.thumb.trim());
+      const firstStoryId = getStoryId(group, 0);
+
+      return `        <a class="lp-stories__option" data-group="${group.key}" href="#${firstStoryId}" aria-label="Abrir container ${name}, slide 1 de ${group.slides.length}">
+          <span class="lp-stories__ring" aria-hidden="true">
+            <img class="lp-stories__thumb" src="${thumb}" alt="" loading="lazy">
+          </span>
+          <span class="lp-stories__name">${name}</span>
+        </a>`;
+    }
+
+    function renderStoryMedia(slide) {
+      const src = escapeHtml(slide.src.trim());
+      const alt = escapeHtml(slide.alt.trim());
+
+      if (normalizeStoryType(slide.type) === "video") {
+        const poster = slide.poster.trim() ? ` poster="${escapeHtml(slide.poster.trim())}"` : "";
+        return `<video autoplay muted loop playsinline preload="auto"${poster} aria-label="${alt}">
+                  <source src="${src}" type="${getStoryVideoType(slide.src)}">
+                </video>`;
+      }
+
+      return `<img src="${src}" alt="${alt}" loading="lazy">`;
+    }
+
+    function renderStoryPanel(group, groupIndex, slide, slideIndex, defaultTarget = { groupIndex: 0, slideIndex: 0 }) {
+      const storyId = getStoryId(group, slideIndex);
+      const title = escapeHtml(group.name.trim() || "Story");
+      const caption = escapeHtml(slide.caption.trim());
+      const position = normalizeStoryPosition(slide.captionPosition);
+      const isDefault = groupIndex === defaultTarget.groupIndex && slideIndex === defaultTarget.slideIndex ? " is-default" : "";
+      const duration = normalizeStoryType(slide.type) === "video" ? "8s" : "5.4s";
+      const previousHref = getStoryPreviousHref(groupIndex, slideIndex);
+      const nextHref = getStoryNextHref(groupIndex, slideIndex);
+      const avatar = escapeHtml(state.stories.avatar.trim());
+
+      return `        <article class="lp-stories__panel ${getStoryPanelClass(group, slideIndex)}${isDefault}" aria-labelledby="${storyId}-title" aria-describedby="${storyId}-caption" style="--story-duration: ${duration}">
+          <div class="lp-stories__viewer">
+            <div class="lp-stories__progress" aria-label="Progresso do container ${title}" style="--slides: ${group.slides.length}; --index: ${slideIndex + 1}"></div>
+            <header class="lp-stories__topbar">
+              <img class="lp-stories__avatar" src="${avatar}" alt="">
+              <h3 class="lp-stories__title" id="${storyId}-title">${title}</h3>
+              <span class="lp-stories__step">${slideIndex + 1}/${group.slides.length}</span>
+            </header>
+            <figure class="lp-stories__figure">
+              <div class="lp-stories__media">
+                ${renderStoryMedia(slide)}
+              </div>
+              <figcaption class="lp-stories__caption is-${position}" id="${storyId}-caption">${caption}</figcaption>
+            </figure>
+            <nav class="lp-stories__nav" aria-label="Navegar slides do container ${title}">
+              <a class="lp-stories__arrow prev" href="${previousHref}" aria-label="Slide anterior de ${title}"><span aria-hidden="true">&lsaquo;</span></a>
+              <a class="lp-stories__arrow next" href="${nextHref}" aria-label="Proximo slide de ${title}"><span aria-hidden="true">&rsaquo;</span></a>
+            </nav>
+          </div>
+        </article>`;
+    }
+
+    function buildStoriesSectionHtml(defaultTarget = { groupIndex: 0, slideIndex: 0 }) {
+      const groups = state.stories.groups;
+      const targets = groups.flatMap((group) => {
+        return group.slides.map((slide, slideIndex) => `      <span class="lp-stories__target" id="${getStoryId(group, slideIndex)}" aria-hidden="true"></span>`);
+      }).join("\n");
+      const options = groups.map(renderStoryOption).join("\n");
+      const panels = groups.flatMap((group, groupIndex) => {
+        return group.slides.map((slide, slideIndex) => renderStoryPanel(group, groupIndex, slide, slideIndex, defaultTarget));
+      }).join("\n\n");
+      const ariaLabel = escapeHtml(state.stories.ariaLabel.trim() || "Stories do produto");
+      const ringBackground = getStoryRingBackground();
+      const captionBgStart = hexToRgba(state.stories.captionBackgroundColor, 0.72);
+      const captionBgEnd = hexToRgba(state.stories.captionBackgroundColor, 0.46);
+
+      return `<section class="lp-stories" aria-label="${ariaLabel}" style="--story-ring-bg: ${ringBackground}; --story-caption-bg-start: ${captionBgStart}; --story-caption-bg-end: ${captionBgEnd}">
+${targets}
+
+      <nav class="lp-stories__options" aria-label="Containers de stories" style="--story-groups: ${groups.length}">
+${options}
+      </nav>
+
+      <div class="lp-stories__panels" aria-live="polite">
+${panels}
+      </div>
+    </section>`;
+    }
+
+    function escapeCssUrl(value) {
+      return String(value || "").trim().replace(/\\/g, "/").replace(/"/g, "%22");
+    }
+
+    function getArticleTags(value) {
+      return String(value || "")
+        .split(/[,|\n]/)
+        .map((tag) => tag.trim())
+        .filter(Boolean)
+        .slice(0, 4);
+    }
+
+    function renderArticleTags(tab) {
+      const tags = getArticleTags(tab.tags);
+      if (!tags.length) {
+        return "";
+      }
+
+      return `<div class="ll-article__tags">
+${tags.map((tag) => `              <span class="ll-article__tag">${escapeHtml(tag)}</span>`).join("\n")}
+            </div>`;
+    }
+
+    function renderArticleTabButton(tab, index) {
+      const tabId = `ll-article-tab-${index + 1}`;
+      return `        <label class="ll-article__tab" for="${tabId}">
+          <span class="ll-article__tab-icon">${escapeHtml(tab.icon.trim() || String(index + 1))}</span>
+          <span class="ll-article__tab-text"><strong>${escapeHtml(tab.label.trim() || `Aba ${index + 1}`)}</strong><small>${escapeHtml(tab.summary.trim())}</small></span>
+          <span class="ll-article__tab-key">${index + 1}</span>
+        </label>`;
+    }
+
+    function renderArticlePanel(tab, index) {
+      const image = escapeCssUrl(tab.image || state.article.backgroundImage);
+      const imageStyle = image ? ` style="--ll-panel-bg: url(&quot;${escapeHtml(image)}&quot;)"` : "";
+
+      return `        <article class="ll-article__panel ll-article__panel--${index + 1}"${imageStyle}>
+          <div class="ll-article__panel-copy">
+            <p class="ll-article__eyebrow">${escapeHtml(tab.eyebrow.trim())}</p>
+            <h3>${escapeHtml(tab.heading.trim())}</h3>
+            <p>${escapeHtml(tab.body.trim())}</p>
+            ${renderArticleTags(tab)}
+          </div>
+        </article>`;
+    }
+
+    function buildArticleSectionHtml() {
+      const tabs = state.article.tabs;
+      const inputs = tabs.map((tab, index) => {
+        return `  <input class="ll-article__input" type="radio" name="ll-article-tabs" id="ll-article-tab-${index + 1}"${index === 0 ? " checked" : ""}>`;
+      }).join("\n");
+      const tabButtons = tabs.map(renderArticleTabButton).join("\n");
+      const panels = tabs.map(renderArticlePanel).join("\n\n");
+      const background = escapeCssUrl(state.article.backgroundImage);
+      const backgroundStyle = background ? ` style="--ll-article-bg: url(&quot;${escapeHtml(background)}&quot;)"` : "";
+
+      return `<section class="ll-article" aria-label="${escapeHtml(state.article.ariaLabel.trim() || "Layout de artigo")}">
+${inputs}
+
+  <div class="ll-article__shell"${backgroundStyle}>
+    <div class="ll-article__inner">
+      <aside class="ll-article__tabs" aria-label="Escolha uma aba do artigo">
+        <div class="ll-article__tabs-head">
+          <p class="ll-article__eyebrow">${escapeHtml(state.article.eyebrow.trim())}</p>
+          <h2>${escapeHtml(state.article.title.trim())}</h2>
+          <p>${escapeHtml(state.article.intro.trim())}</p>
+        </div>
+${tabButtons}
+      </aside>
+
+      <div class="ll-article__stage" aria-live="polite">
+${panels}
+      </div>
+    </div>
+  </div>
+</section>`;
+    }
+
+    function buildBlocksHtml(includeTable) {
+      const blocks = [buildFaqSectionHtml()];
+      const tableHtml = includeTable ? buildTableSectionHtml() : "";
+
+      if (tableHtml) {
+        blocks.push(tableHtml);
+      }
+
+      return blocks.join("\n\n");
+    }
+
+    function buildFullHtml(includeTable) {
+      const styles = includeTable && hasTableData() ? `${faqStyle}\n\n${tableStyle}` : faqStyle;
+
+      return `<meta charset="UTF-8">
+${buildBlocksHtml(includeTable)}
+
+<!-- ESSES CODIGOS ABAIXO VOCE NAO PRECISA MEXER!!! APENAS O HTML ACIMA-->
+
+${styles}`;
+    }
+
+    function buildPreviewHtml() {
+      if (currentPage === "conteudo" && currentEditorTab === "table") {
+        return `<meta charset="UTF-8">
+${buildTableSectionHtml(true)}
+
+${tableStyle}`;
+      }
+
+      if (currentPage === "conteudo" && currentEditorTab === "stories") {
+        return `<meta charset="UTF-8">
+${buildStoriesSectionHtml(getStoriesPreviewTarget())}
+
+${storiesStyle}
+${storiesPreviewScript}`;
+      }
+
+      if (currentPage === "conteudo" && currentEditorTab === "article") {
+        return `<meta charset="UTF-8">
+${buildArticleSectionHtml()}
+
+${articleStyle}`;
+      }
+
+      if (currentPage === "conteudo") {
+        return `<meta charset="UTF-8">
+${buildFaqSectionHtml()}
+
+${faqStyle}`;
+      }
+
+      return buildFullHtml(false);
+    }
+
+    function buildOutputHtml(copyMode = "html") {
+      if (currentPage === "tecnica") {
+        return buildFullHtml(false);
+      }
+
+      if (currentEditorTab === "table") {
+        const tableHtml = buildTableSectionHtml(true);
+
+        if (copyMode === "full") {
+          return `<meta charset="UTF-8">
+${tableHtml}
+
+<!-- ESSES CODIGOS ABAIXO VOCE NAO PRECISA MEXER!!! APENAS O HTML ACIMA-->
+
+${tableStyle}`;
+        }
+
+        return tableHtml;
+      }
+
+      if (currentEditorTab === "stories") {
+        const storiesHtml = buildStoriesSectionHtml();
+
+        if (copyMode === "full") {
+          return `<meta charset="UTF-8">
+${storiesHtml}
+
+<!-- ESSES CODIGOS ABAIXO VOCE NAO PRECISA MEXER!!! APENAS O HTML ACIMA-->
+
+${storiesStyle}`;
+        }
+
+        return storiesHtml;
+      }
+
+      if (currentEditorTab === "article") {
+        const articleHtml = buildArticleSectionHtml();
+
+        if (copyMode === "full") {
+          return `<meta charset="UTF-8">
+${articleHtml}
+
+<!-- ESSES CODIGOS ABAIXO VOCE NAO PRECISA MEXER!!! APENAS O HTML ACIMA-->
+
+${articleStyle}`;
+        }
+
+        return articleHtml;
+      }
+
+      const faqHtml = buildFaqSectionHtml();
+
+      if (copyMode === "full") {
+        return `<meta charset="UTF-8">
+${faqHtml}
+
+<!-- ESSES CODIGOS ABAIXO VOCE NAO PRECISA MEXER!!! APENAS O HTML ACIMA-->
+
+${faqStyle}`;
+      }
+
+      return faqHtml;
+    }
+
+    function updateOutput() {
+      generatedHtml.value = buildOutputHtml("html");
+      previewFrame.srcdoc = buildPreviewHtml();
+      copyStatus.textContent = "";
+    }
+
+    function renderFaqEditorItems() {
+      return state.items.map((item, index) => `
+        <article class="faq-editor__item" data-index="${index}">
+          <div class="faq-editor__bar">
+            <strong>Pergunta ${index + 1}</strong>
+            <button class="button button--danger icon-button" type="button" data-action="remove" aria-label="Remover pergunta ${index + 1}" title="Remover pergunta">${trashIcon()}</button>
+          </div>
+          <div class="faq-editor__fields">
+            <label class="field">
+              <span>Pergunta</span>
+              <input type="text" value="${escapeHtml(item.question)}" data-field="question" autocomplete="off">
+            </label>
+            <label class="field">
+              <span>Resposta</span>
+              <textarea data-field="answer">${escapeHtml(item.answer)}</textarea>
+            </label>
+          </div>
+        </article>
+      `).join("");
+    }
+
+    function renderFaqEditor() {
+      return `
+        <div class="editor-section-title">
+          <div>
+            <h3>FAQ</h3>
+            <p>Perguntas e respostas do bloco de dúvidas frequentes.</p>
+          </div>
+        </div>
+
+        <article class="faq-bulk-panel">
+          <div class="faq-editor__bar">
+            <strong>Colar texto completo do FAQ</strong>
+          </div>
+          <div class="faq-bulk-panel__body">
+            <label class="field">
+              <span>Perguntas e respostas em massa</span>
+              <textarea class="bulk-input" data-faq-bulk="input" spellcheck="false">${escapeHtml(state.faqBulkInput)}</textarea>
+            </label>
+            <div class="bulk-actions">
+              <button class="button button--soft" type="button" data-action="fill-faq-bulk">Preencher FAQ</button>
+              <span class="bulk-status" aria-live="polite">${escapeHtml(state.faqBulkStatus)}</span>
+            </div>
+          </div>
+        </article>
+
+        ${renderFaqEditorItems()}
+      `;
+    }
+
+    function trashIcon() {
+      return `<svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <path d="M4 7h16" stroke-width="2" stroke-linecap="round"></path>
+        <path d="M10 11v6" stroke-width="2" stroke-linecap="round"></path>
+        <path d="M14 11v6" stroke-width="2" stroke-linecap="round"></path>
+        <path d="M6 7l1 14h10l1-14" stroke-width="2" stroke-linejoin="round"></path>
+        <path d="M9 7V4h6v3" stroke-width="2" stroke-linejoin="round"></path>
+      </svg>`;
+    }
+
+    function renderTableEditor() {
+      if (currentPage !== "conteudo") {
+        return "";
+      }
+
+      normalizeTableHeaderColors();
+      const columns = getTableColumns();
+      const columnFields = columns.map((column, index) => `
+              <div class="table-editor__column">
+                <input class="table-header-color" type="color" value="${getTableHeaderColor(index)}" data-table-field="columnHeaderColor" data-column-index="${index}" aria-label="Cor do cabeçalho da coluna ${index + 1}" title="Cor do cabeçalho">
+                <label class="field">
+                  <span>Coluna ${index + 1}</span>
+                  <input type="text" value="${escapeHtml(column)}" data-table-field="column" data-column-index="${index}" autocomplete="off">
+                </label>
+              </div>
+            `).join("");
+
+      const rows = state.table.rows.map((row, rowIndex) => `
+        <article class="table-row-editor" data-table-row="${rowIndex}">
+          <div class="faq-editor__bar">
+            <strong>Linha ${rowIndex + 1}</strong>
+            <button class="button button--danger icon-button" type="button" data-action="remove-table-row" aria-label="Remover linha ${rowIndex + 1}" title="Remover linha">${trashIcon()}</button>
+          </div>
+          <div class="table-row-editor__cells">
+            ${columns.map((column, cellIndex) => `
+              <label class="field">
+                <span>${escapeHtml(column.trim() || `Coluna ${cellIndex + 1}`)}</span>
+                <input type="text" value="${escapeHtml(row[cellIndex] || "")}" data-table-field="cell" data-row-index="${rowIndex}" data-cell-index="${cellIndex}" autocomplete="off">
+              </label>
+            `).join("")}
+          </div>
+        </article>
+      `).join("");
+
+      return `
+        <section class="table-editor" aria-label="Editor da tabela">
+          <div class="editor-section-title">
+            <div class="table-editor__title">
+              <div>
+                <h3>Tabela</h3>
+                <p>Cole da planilha ou edite as células abaixo.</p>
+              </div>
+            </div>
+          </div>
+
+          <article class="table-editor__box table-settings">
+            <div class="table-settings__head">
+              <strong>Configurações</strong>
+              <div class="table-settings__controls">
+                <button class="button button--soft icon-button" type="button" data-action="add-table-column" aria-label="Adicionar coluna" title="Adicionar coluna">+</button>
+              </div>
+            </div>
+            <div class="table-settings__body">
+              <label class="field">
+                <span>Caption de Acessibilidade</span>
+                <input type="text" value="${escapeHtml(state.table.caption)}" data-table-field="caption" autocomplete="off" placeholder="tamanhos de chinelos disponíveis">
+              </label>
+              <div class="table-editor__columns">
+${columnFields}
+              </div>
+            </div>
+          </article>
+
+          <article class="table-editor__box table-editor__box--sheet">
+            <div class="table-editor__box-body">
+              <label class="field sheet-field">
+                <span>Colar conteúdo de planilha ou .txt</span>
+                <textarea class="bulk-input sheet-paste" data-table-field="bulk" spellcheck="false" placeholder="SKU&#9;TÍTULO&#10;1225007&#9;HAVAIANAS TOP.BASIC BRANCO/BRANCO/VERDE 37/8&#10;1225008&#9;HAVAIANAS KIDS ATHLETIC VERDE PATRIA 25/6">${escapeHtml(state.table.bulkInput)}</textarea>
+              </label>
+              <div class="bulk-actions">
+                <button class="button button--soft" type="button" data-action="fill-table-bulk">Preencher tabela</button>
+                <span class="bulk-status" aria-live="polite">${escapeHtml(state.table.status)}</span>
+              </div>
+            </div>
+          </article>
+
+${rows}
+        </section>
+      `;
+    }
+
+    function renderStoriesEditor() {
+      if (currentPage !== "conteudo") {
+        return "";
+      }
+
+      const groups = state.stories.groups.map((group, groupIndex) => {
+        const slides = group.slides.map((slide, slideIndex) => {
+          const type = normalizeStoryType(slide.type);
+          const position = normalizeStoryPosition(slide.captionPosition);
+          const canRemoveSlide = group.slides.length > storyLimits.minSlides;
+          const posterField = type === "video" ? `
+              <label class="field">
+                <span>Poster do video</span>
+                <input type="text" value="${escapeHtml(slide.poster)}" data-stories-field="poster" data-story-group="${groupIndex}" data-story-slide="${slideIndex}" autocomplete="off">
+              </label>` : "";
+
+          return `
+            <article class="stories-slide-editor" data-story-slide-card data-story-group="${groupIndex}" data-story-slide="${slideIndex}">
+              <div class="faq-editor__bar">
+                <strong>Slide ${slideIndex + 1}</strong>
+                <div class="stories-slide-editor__actions">
+                  <button class="button button--danger icon-button" type="button" data-action="remove-story-slide" data-story-group="${groupIndex}" data-story-slide="${slideIndex}" aria-label="Remover slide ${slideIndex + 1}" title="Remover slide"${canRemoveSlide ? "" : " disabled"}>${trashIcon()}</button>
+                </div>
+              </div>
+              <div class="stories-slide-editor__body">
+                <div class="stories-editor__grid">
+                  <label class="field">
+                    <span>Tipo de midia</span>
+                    <select data-stories-field="type" data-story-group="${groupIndex}" data-story-slide="${slideIndex}">
+                      <option value="image"${type === "image" ? " selected" : ""}>Imagem</option>
+                      <option value="video"${type === "video" ? " selected" : ""}>Video</option>
+                    </select>
+                  </label>
+                  <label class="field">
+                    <span>URL da midia</span>
+                    <input type="text" value="${escapeHtml(slide.src)}" data-stories-field="src" data-story-group="${groupIndex}" data-story-slide="${slideIndex}" autocomplete="off">
+                  </label>
+${posterField}
+                  <label class="field">
+                    <span>Alt / aria-label</span>
+                    <input type="text" value="${escapeHtml(slide.alt)}" data-stories-field="alt" data-story-group="${groupIndex}" data-story-slide="${slideIndex}" autocomplete="off">
+                  </label>
+                  <label class="field">
+                    <span>Posicao da legenda</span>
+                    <select data-stories-field="captionPosition" data-story-group="${groupIndex}" data-story-slide="${slideIndex}">
+                      <option value="top"${position === "top" ? " selected" : ""}>Em cima</option>
+                      <option value="bottom"${position === "bottom" ? " selected" : ""}>Embaixo</option>
+                    </select>
+                  </label>
+                </div>
+                <label class="field">
+                  <span>Legenda</span>
+                  <textarea data-stories-field="caption" data-story-group="${groupIndex}" data-story-slide="${slideIndex}">${escapeHtml(slide.caption)}</textarea>
+                </label>
+              </div>
+            </article>
+          `;
+        }).join("");
+
+        const isOpen = state.stories.openGroupIndex === groupIndex ? " open" : "";
+        const canAddSlide = group.slides.length < storyLimits.maxSlides;
+        const canRemoveContainer = state.stories.groups.length > storyLimits.minContainers;
+
+        return `
+          <details class="stories-editor__box stories-container-editor" data-story-container="${groupIndex}"${isOpen}>
+            <summary class="stories-container-editor__summary">
+              <strong>Container ${groupIndex + 1}: ${escapeHtml(group.name.trim() || "sem nome")}</strong>
+              <span class="stories-container-editor__meta">${group.slides.length}/${storyLimits.maxSlides} slides</span>
+              <div class="stories-container-editor__actions">
+                <button class="button button--soft icon-button" type="button" data-action="add-story-slide" data-story-group="${groupIndex}" aria-label="Adicionar slide no container ${groupIndex + 1}" title="Adicionar slide"${canAddSlide ? "" : " disabled"}>+</button>
+                <button class="button button--danger icon-button" type="button" data-action="remove-story-container" data-story-group="${groupIndex}" aria-label="Remover container ${groupIndex + 1}" title="Remover container"${canRemoveContainer ? "" : " disabled"}>${trashIcon()}</button>
+              </div>
+              <span class="stories-container-editor__chevron" aria-hidden="true">&rsaquo;</span>
+            </summary>
+            <div class="stories-editor__body">
+              <div class="stories-editor__grid">
+                <label class="field">
+                  <span>Nome da bolinha</span>
+                  <input type="text" value="${escapeHtml(group.name)}" data-stories-field="groupName" data-story-group="${groupIndex}" autocomplete="off">
+                </label>
+                <label class="field">
+                  <span>Miniatura da bolinha</span>
+                  <input type="text" value="${escapeHtml(group.thumb)}" data-stories-field="groupThumb" data-story-group="${groupIndex}" autocomplete="off">
+                </label>
+              </div>
+${slides}
+            </div>
+          </details>
+        `;
+      }).join("");
+
+      const ringStyle = normalizeStoryRingStyle(state.stories.ringStyle);
+      const ringColorControls = ringStyle === "solid" ? `
+                <label class="field">
+                  <span>Cor da borda</span>
+                  <input type="color" value="${normalizeHexColor(state.stories.ringColor)}" data-stories-field="ringColor">
+                </label>` : `
+                <label class="field">
+                  <span>Cor inicial do degrade</span>
+                  <input type="color" value="${normalizeHexColor(state.stories.ringGradientStart)}" data-stories-field="ringGradientStart">
+                </label>
+                <label class="field">
+                  <span>Cor final do degrade</span>
+                  <input type="color" value="${normalizeHexColor(state.stories.ringGradientEnd)}" data-stories-field="ringGradientEnd">
+                </label>`;
+
+      return `
+        <section class="stories-editor" aria-label="Editor de stories">
+          <div class="editor-section-title">
+            <div>
+              <h3>Stories</h3>
+              <p>Edite ate 3 containers, com ate 4 slides em cada um.</p>
+            </div>
+            <div class="stories-editor__title-actions">
+              <span class="stories-limits">${state.stories.groups.length}/${storyLimits.maxContainers} containers</span>
+              <button class="button button--soft icon-button" type="button" data-action="add-story-container" aria-label="Adicionar container" title="Adicionar container"${state.stories.groups.length < storyLimits.maxContainers ? "" : " disabled"}>+</button>
+            </div>
+          </div>
+
+          <details class="stories-guide" open>
+            <summary class="stories-guide__summary">
+              <strong>Guia rapido de midias</strong>
+              <span aria-hidden="true">&rsaquo;</span>
+            </summary>
+            <div class="stories-guide__body">
+              <p><strong>Slides:</strong> use imagens verticais em 9:16. Recomendado 1080x1920 px; minimo seguro 860x1530 px.</p>
+              <p><strong>Miniaturas:</strong> use imagem quadrada em 1:1. Recomendado 400x400 px; minimo seguro 220x220 px.</p>
+              <p><strong>Limites:</strong> o componente aceita ate 3 containers e ate 4 slides por container.</p>
+              <p><strong>Videos:</strong> use webm ou mp4 vertical em 9:16. O poster do video deve seguir a mesma proporcao.</p>
+              <p><strong>Corte:</strong> imagens horizontais funcionam, mas o centro sera cortado para preencher o story.</p>
+              <p><strong>Alt / aria-label:</strong> descreva o que aparece na midia de forma curta e objetiva.</p>
+            </div>
+          </details>
+
+          <article class="stories-editor__box">
+            <div class="faq-editor__bar">
+              <strong>Base</strong>
+            </div>
+            <div class="stories-editor__body">
+              <div class="stories-editor__grid stories-editor__grid--base">
+                <label class="field">
+                  <span>Aria-label da secao</span>
+                  <input type="text" value="${escapeHtml(state.stories.ariaLabel)}" data-stories-field="ariaLabel" autocomplete="off">
+                </label>
+                <label class="field">
+                  <span>Logo / avatar dos stories</span>
+                  <input type="text" value="${escapeHtml(state.stories.avatar)}" data-stories-field="avatar" autocomplete="off">
+                </label>
+                <label class="field">
+                  <span>Borda das bolinhas</span>
+                  <select data-stories-field="ringStyle">
+                    <option value="gradient"${ringStyle === "gradient" ? " selected" : ""}>Degrade</option>
+                    <option value="solid"${ringStyle === "solid" ? " selected" : ""}>Cor unica</option>
+                  </select>
+                </label>
+                <label class="field">
+                  <span>Fundo da legenda</span>
+                  <input type="color" value="${normalizeHexColor(state.stories.captionBackgroundColor)}" data-stories-field="captionBackgroundColor">
+                </label>
+${ringColorControls}
+              </div>
+            </div>
+          </article>
+
+${groups}
+        </section>
+      `;
+    }
+
+    function renderArticleEditor() {
+      if (currentPage !== "conteudo") {
+        return "";
+      }
+
+      const tabs = state.article.tabs.map((tab, tabIndex) => {
+        const isOpen = state.article.openTabIndex === tabIndex ? " open" : "";
+
+        return `
+          <details class="article-tab-editor" data-article-tab-panel="${tabIndex}"${isOpen}>
+            <summary class="article-tab-editor__summary">
+              <strong>Aba ${tabIndex + 1}: ${escapeHtml(tab.label.trim() || "sem titulo")}</strong>
+              <span class="article-tab-editor__meta">Imagem + texto</span>
+              <span class="article-tab-editor__chevron" aria-hidden="true">&rsaquo;</span>
+            </summary>
+            <div class="article-editor__body">
+              <div class="article-editor__grid">
+                <label class="field">
+                  <span>Icone curto</span>
+                  <input type="text" value="${escapeHtml(tab.icon)}" data-article-field="icon" data-article-tab="${tabIndex}" autocomplete="off">
+                </label>
+                <label class="field">
+                  <span>Nome da aba</span>
+                  <input type="text" value="${escapeHtml(tab.label)}" data-article-field="label" data-article-tab="${tabIndex}" autocomplete="off">
+                </label>
+              </div>
+              <label class="field">
+                <span>Imagem de fundo do bloco</span>
+                <input type="text" value="${escapeHtml(tab.image || "")}" data-article-field="image" data-article-tab="${tabIndex}" autocomplete="off">
+              </label>
+              <label class="field">
+                <span>Resumo da aba</span>
+                <input type="text" value="${escapeHtml(tab.summary)}" data-article-field="summary" data-article-tab="${tabIndex}" autocomplete="off">
+              </label>
+              <div class="article-editor__grid">
+                <label class="field">
+                  <span>Eyebrow do painel</span>
+                  <input type="text" value="${escapeHtml(tab.eyebrow)}" data-article-field="eyebrow" data-article-tab="${tabIndex}" autocomplete="off">
+                </label>
+                <label class="field">
+                  <span>Tags</span>
+                  <input type="text" value="${escapeHtml(tab.tags)}" data-article-field="tags" data-article-tab="${tabIndex}" autocomplete="off">
+                </label>
+              </div>
+              <label class="field">
+                <span>Titulo do painel</span>
+                <input type="text" value="${escapeHtml(tab.heading)}" data-article-field="heading" data-article-tab="${tabIndex}" autocomplete="off">
+              </label>
+              <label class="field">
+                <span>Texto do painel</span>
+                <textarea data-article-field="body" data-article-tab="${tabIndex}">${escapeHtml(tab.body)}</textarea>
+              </label>
+            </div>
+          </details>
+        `;
+      }).join("");
+
+      return `
+        <section class="article-editor" aria-label="Editor de artigo">
+          <div class="editor-section-title">
+            <div>
+              <h3>Artigo</h3>
+              <p>Layout com imagem de fundo, overlay escuro e texto diagramado sobre o bloco.</p>
+            </div>
+          </div>
+
+          <article class="article-editor__box">
+            <div class="faq-editor__bar">
+              <strong>Base</strong>
+            </div>
+            <div class="article-editor__body">
+              <label class="field">
+                <span>Imagem padrao dos blocos</span>
+                <input type="text" value="${escapeHtml(state.article.backgroundImage)}" data-article-field="backgroundImage" autocomplete="off">
+              </label>
+              <label class="field">
+                <span>Aria-label da secao</span>
+                <input type="text" value="${escapeHtml(state.article.ariaLabel)}" data-article-field="ariaLabel" autocomplete="off">
+              </label>
+              <div class="article-editor__grid">
+                <label class="field">
+                  <span>Eyebrow</span>
+                  <input type="text" value="${escapeHtml(state.article.eyebrow)}" data-article-field="eyebrow" autocomplete="off">
+                </label>
+                <label class="field">
+                  <span>Titulo principal</span>
+                  <input type="text" value="${escapeHtml(state.article.title)}" data-article-field="title" autocomplete="off">
+                </label>
+              </div>
+              <label class="field">
+                <span>Texto de apoio</span>
+                <textarea data-article-field="intro">${escapeHtml(state.article.intro)}</textarea>
+              </label>
+            </div>
+          </article>
+
+${tabs}
+        </section>
+      `;
+    }
+
+    function renderEditor(preserveScroll = false) {
+      const previousScrollTop = editor.scrollTop;
+      updateEditorTabs();
+      updateAddButtons();
+      if (currentPage === "conteudo" && currentEditorTab === "table") {
+        editor.innerHTML = renderTableEditor();
+      } else if (currentPage === "conteudo" && currentEditorTab === "stories") {
+        editor.innerHTML = renderStoriesEditor();
+      } else if (currentPage === "conteudo" && currentEditorTab === "article") {
+        editor.innerHTML = renderArticleEditor();
+      } else {
+        editor.innerHTML = renderFaqEditor();
+      }
+      editor.scrollTop = preserveScroll ? previousScrollTop : 0;
+
+      updateOutput();
+    }
+
+    function parseBulkFaq(value) {
+      const normalized = value.replace(/\r\n?/g, "\n");
+      const questionPattern = /(?:^|\n)\s*(?:\d+|[A-Za-z])\.\s*([\s\S]*?\?)/g;
+      const matches = [];
+      const items = [];
+      let match;
+
+      while ((match = questionPattern.exec(normalized)) !== null) {
+        matches.push({
+          start: match.index,
+          end: match.index + match[0].length,
+          question: match[1].replace(/\s+/g, " ").trim()
+        });
+      }
+
+      matches.forEach((item, index) => {
+        const nextItem = matches[index + 1];
+        const answerEnd = nextItem ? nextItem.start : normalized.length;
+        const answer = normalized.slice(item.end, answerEnd).trim();
+
+        if (item.question || answer) {
+          items.push({ question: item.question, answer });
+        }
+      });
+
+      return items;
+    }
+
+    function fillFromBulk() {
+      const parsedItems = parseBulkFaq(state.faqBulkInput);
+
+      if (!parsedItems.length) {
+        state.faqBulkStatus = "Não encontrei perguntas no formato 1. Pergunta?";
+        renderEditor();
+        return;
+      }
+
+      state.items = parsedItems;
+      state.faqBulkStatus = `${parsedItems.length} pergunta${parsedItems.length === 1 ? "" : "s"} preenchida${parsedItems.length === 1 ? "" : "s"}.`;
+      renderEditor();
+    }
+
+    function createEmptyTableRow() {
+      return getTableColumns().map(() => "");
+    }
+
+    function normalizeTableRows() {
+      const columns = getTableColumns();
+      state.table.rows = state.table.rows.map((row) => columns.map((column, index) => row[index] || ""));
+
+      if (!state.table.rows.length) {
+        state.table.rows.push(createEmptyTableRow());
+      }
+    }
+
+    function parseBulkTableHtml(value) {
+      const html = value.includes("<table") ? value : `<table>${value}</table>`;
+      const documentValue = new DOMParser().parseFromString(html, "text/html");
+      const headerCells = Array.from(documentValue.querySelectorAll("thead th"));
+      const columns = headerCells.map((cell) => cell.textContent.replace(/\s+/g, " ").trim()).filter(Boolean);
+      let rowElements = Array.from(documentValue.querySelectorAll("tbody tr"));
+
+      if (!rowElements.length) {
+        rowElements = Array.from(documentValue.querySelectorAll("tr")).filter((row) => row.querySelector("td"));
+      }
+
+      const rows = rowElements
+        .map((row) => Array.from(row.querySelectorAll("td")).map((cell) => cell.textContent.replace(/\s+/g, " ").trim()))
+        .filter((row) => row.some(Boolean));
+
+      return { columns, rows };
+    }
+
+    function parseBulkTableText(value) {
+      const lines = value
+        .replace(/\r\n?/g, "\n")
+        .split("\n")
+        .map((line) => line.trim())
+        .filter(Boolean);
+
+      const rows = lines.map((line) => {
+        if (line.includes("\t")) {
+          return line.split("\t").map((cell) => cell.trim());
+        }
+
+        if (line.includes(";")) {
+          return line.split(";").map((cell) => cell.trim());
+        }
+
+        const skuAndTitle = line.match(/^(\S+)\s+(.+)$/);
+        return skuAndTitle ? [skuAndTitle[1], skuAndTitle[2]] : [line];
+      }).filter((row) => row.some(Boolean));
+
+      const firstRow = rows[0] || [];
+      const firstRowLooksLikeHeader = rows.length > 1 && firstRow.some((cell) => /sku|t[ií]tulo|produto|descri[cç][aã]o/i.test(cell));
+
+      return {
+        columns: firstRowLooksLikeHeader ? firstRow : [],
+        rows: firstRowLooksLikeHeader ? rows.slice(1) : rows
+      };
+    }
+
+    function parseBulkTable(value) {
+      const trimmed = value.trim();
+
+      if (!trimmed) {
+        return { columns: [], rows: [] };
+      }
+
+      if (/<\/?(table|thead|tbody|tr|td|th)\b/i.test(trimmed)) {
+        return parseBulkTableHtml(trimmed);
+      }
+
+      return parseBulkTableText(trimmed);
+    }
+
+    function fillTableFromBulk() {
+      const parsedTable = parseBulkTable(state.table.bulkInput);
+
+      if (!parsedTable.rows.length) {
+        state.table.status = "Não encontrei linhas para preencher.";
+        renderEditor();
+        return;
+      }
+
+      const maxColumns = Math.max(
+        parsedTable.columns.length,
+        state.table.columns.length,
+        ...parsedTable.rows.map((row) => row.length)
+      );
+
+      state.table.columns = Array.from({ length: maxColumns }, (item, index) => {
+        return parsedTable.columns[index] || state.table.columns[index] || `COLUNA ${index + 1}`;
+      });
+      state.table.headerColors = Array.from({ length: maxColumns }, (item, index) => {
+        return normalizeHexColor(state.table.headerColors[index] || state.table.headerColor);
+      });
+
+      state.table.rows = parsedTable.rows.map((row) => {
+        return Array.from({ length: maxColumns }, (item, index) => row[index] || "");
+      });
+
+      state.table.status = `${state.table.rows.length} linha${state.table.rows.length === 1 ? "" : "s"} preenchida${state.table.rows.length === 1 ? "" : "s"}.`;
+      renderEditor();
+    }
+
+    function addTableColumn() {
+      state.table.columns.push("");
+      state.table.headerColors.push(normalizeHexColor(state.table.headerColor));
+      state.table.rows.forEach((row) => row.push(""));
+      state.table.status = "";
+      renderEditor();
+    }
+
+    function removeTableColumn(index) {
+      if (state.table.columns.length <= 1) {
+        return;
+      }
+
+      state.table.columns.splice(index, 1);
+      state.table.headerColors.splice(index, 1);
+      state.table.rows.forEach((row) => row.splice(index, 1));
+      state.table.status = "";
+      normalizeTableRows();
+      normalizeTableHeaderColors();
+      renderEditor();
+    }
+
+    function addTableRow() {
+      state.table.rows.push(createEmptyTableRow());
+      state.table.status = "";
+      renderEditor();
+      const lastRowInput = editor.querySelector(`[data-table-row="${state.table.rows.length - 1}"] input`);
+      if (lastRowInput) {
+        lastRowInput.focus();
+      }
+    }
+
+    function removeTableRow(index) {
+      state.table.rows.splice(index, 1);
+      state.table.status = "";
+      normalizeTableRows();
+      renderEditor();
+    }
+
+    function addItem() {
+      state.items.push({ question: "", answer: "" });
+      renderEditor();
+      const lastItem = editor.querySelector(`.faq-editor__item[data-index="${state.items.length - 1}"] input`);
+      if (lastItem) {
+        lastItem.focus();
+      }
+    }
+
+    function addCurrentItem() {
+      if (currentPage === "conteudo" && currentEditorTab === "table") {
+        addTableRow();
+        return;
+      }
+
+      if (currentPage === "conteudo" && currentEditorTab === "stories") {
+        return;
+      }
+
+      if (currentPage === "conteudo" && currentEditorTab === "article") {
+        return;
+      }
+
+      addItem();
+    }
+
+    async function copyGeneratedHtml(mode = "html") {
+      const copyMode = mode === "full" ? "full" : "html";
+      const value = buildOutputHtml(copyMode);
+      generatedHtml.value = value;
+      generatedHtml.focus();
+      generatedHtml.select();
+
+      try {
+        await navigator.clipboard.writeText(value);
+      } catch (error) {
+        document.execCommand("copy");
+      }
+
+      copyStatus.textContent = copyMode === "full" && currentPage === "conteudo"
+        ? pageConfigs[currentPage].fullCopiedStatus
+        : pageConfigs[currentPage].copiedStatus;
+      window.setTimeout(() => {
+        copyStatus.textContent = "";
+      }, 2400);
+    }
+
+    editor.addEventListener("focusin", (event) => {
+      const slideCard = event.target.closest("[data-story-slide-card]");
+      if (!slideCard) {
+        return;
+      }
+
+      setStoriesPreviewTarget(Number(slideCard.dataset.storyGroup), Number(slideCard.dataset.storySlide));
+      updateOutput();
+    });
+
+    editor.addEventListener("input", (event) => {
+      const faqBulkField = event.target.dataset.faqBulk;
+      if (faqBulkField) {
+        state.faqBulkInput = event.target.value;
+        state.faqBulkStatus = "";
+        return;
+      }
+
+      const storiesField = event.target.dataset.storiesField;
+      if (storiesField) {
+        if (storiesField === "ariaLabel") {
+          state.stories.ariaLabel = event.target.value;
+          updateOutput();
+          return;
+        }
+
+        if (storiesField === "avatar") {
+          state.stories.avatar = event.target.value;
+          updateOutput();
+          return;
+        }
+
+        if (storiesField === "ringStyle") {
+          state.stories.ringStyle = normalizeStoryRingStyle(event.target.value);
+          renderEditor(true);
+          return;
+        }
+
+        if (["ringColor", "ringGradientStart", "ringGradientEnd", "captionBackgroundColor"].includes(storiesField)) {
+          state.stories[storiesField] = normalizeHexColor(event.target.value);
+          updateOutput();
+          return;
+        }
+
+        const groupIndex = Number(event.target.dataset.storyGroup);
+        const slideIndex = Number(event.target.dataset.storySlide);
+        const group = state.stories.groups[groupIndex];
+
+        if (!group) {
+          return;
+        }
+
+        if (storiesField === "groupName") {
+          group.name = event.target.value;
+          setStoriesPreviewTarget(groupIndex, 0);
+          updateOutput();
+          return;
+        }
+
+        if (storiesField === "groupThumb") {
+          group.thumb = event.target.value;
+          setStoriesPreviewTarget(groupIndex, 0);
+          updateOutput();
+          return;
+        }
+
+        const slide = group.slides[slideIndex];
+        if (!slide) {
+          return;
+        }
+
+        setStoriesPreviewTarget(groupIndex, slideIndex);
+
+        if (storiesField === "type") {
+          slide.type = normalizeStoryType(event.target.value);
+          renderEditor(true);
+          return;
+        }
+
+        if (storiesField === "captionPosition") {
+          slide.captionPosition = normalizeStoryPosition(event.target.value);
+          updateOutput();
+          return;
+        }
+
+        slide[storiesField] = event.target.value;
+        updateOutput();
+        return;
+      }
+
+      const articleField = event.target.dataset.articleField;
+      if (articleField) {
+        const tabIndex = event.target.dataset.articleTab;
+
+        if (tabIndex === undefined) {
+          state.article[articleField] = event.target.value;
+          updateOutput();
+          return;
+        }
+
+        const tab = state.article.tabs[Number(tabIndex)];
+        if (!tab) {
+          return;
+        }
+
+        tab[articleField] = event.target.value;
+        updateOutput();
+        return;
+      }
+
+      const tableField = event.target.dataset.tableField;
+      if (tableField) {
+        if (tableField === "caption") {
+          state.table.caption = event.target.value;
+          updateOutput();
+        }
+
+        if (tableField === "headerColor") {
+          state.table.headerColor = event.target.value;
+          if (event.target.type === "color") {
+            renderEditor();
+            return;
+          }
+          updateOutput();
+        }
+
+        if (tableField === "columnHeaderColor") {
+          const columnIndex = Number(event.target.dataset.columnIndex);
+          state.table.headerColors[columnIndex] = event.target.value;
+          renderEditor();
+          return;
+        }
+
+        if (tableField === "bulk") {
+          state.table.bulkInput = event.target.value;
+          state.table.status = "";
+        }
+
+        if (tableField === "column") {
+          const columnIndex = Number(event.target.dataset.columnIndex);
+          state.table.columns[columnIndex] = event.target.value;
+          updateOutput();
+        }
+
+        if (tableField === "cell") {
+          const rowIndex = Number(event.target.dataset.rowIndex);
+          const cellIndex = Number(event.target.dataset.cellIndex);
+          state.table.rows[rowIndex][cellIndex] = event.target.value;
+          updateOutput();
+        }
+
+        return;
+      }
+
+      const field = event.target.dataset.field;
+      if (!field) {
+        return;
+      }
+
+      const itemElement = event.target.closest(".faq-editor__item");
+      const index = Number(itemElement.dataset.index);
+      state.items[index][field] = event.target.value;
+      updateOutput();
+    });
+
+    editor.addEventListener("change", (event) => {
+      if (event.target.matches("select")) {
+        event.target.dispatchEvent(new Event("input", { bubbles: true }));
+      }
+    });
+
+    editor.addEventListener("toggle", (event) => {
+      const container = event.target.closest("[data-story-container]");
+      if (!container || event.target !== container) {
+        return;
+      }
+
+      const groupIndex = Number(container.dataset.storyContainer);
+      if (!container.open) {
+        if (state.stories.openGroupIndex === groupIndex) {
+          state.stories.openGroupIndex = -1;
+        }
+        return;
+      }
+
+      state.stories.openGroupIndex = groupIndex;
+      setStoriesPreviewTarget(groupIndex, 0);
+      updateOutput();
+      editor.querySelectorAll("[data-story-container]").forEach((item) => {
+        if (item !== container) {
+          item.open = false;
+        }
+      });
+    }, true);
+
+    editor.addEventListener("toggle", (event) => {
+      const panel = event.target.closest("[data-article-tab-panel]");
+      if (!panel || event.target !== panel) {
+        return;
+      }
+
+      const tabIndex = Number(panel.dataset.articleTabPanel);
+      if (!panel.open) {
+        if (state.article.openTabIndex === tabIndex) {
+          state.article.openTabIndex = -1;
+        }
+        return;
+      }
+
+      state.article.openTabIndex = tabIndex;
+      editor.querySelectorAll("[data-article-tab-panel]").forEach((item) => {
+        if (item !== panel) {
+          item.open = false;
+        }
+      });
+    }, true);
+
+    editor.addEventListener("click", (event) => {
+      const button = event.target.closest("[data-action]");
+      if (!button) {
+        return;
+      }
+
+      const action = button.dataset.action;
+      if (action.includes("story")) {
+        event.preventDefault();
+        event.stopPropagation();
+      }
+
+      if (action === "remove") {
+        const itemElement = button.closest(".faq-editor__item");
+        const index = Number(itemElement.dataset.index);
+        state.items.splice(index, 1);
+
+        if (state.items.length === 0) {
+          state.items.push({ question: "", answer: "" });
+        }
+
+        renderEditor();
+        return;
+      }
+
+      if (action === "fill-faq-bulk") {
+        fillFromBulk();
+      }
+
+      if (action === "add-table-column") {
+        addTableColumn();
+      }
+
+      if (action === "remove-table-column") {
+        removeTableColumn(Number(button.dataset.columnIndex));
+      }
+
+      if (action === "add-table-row") {
+        addTableRow();
+      }
+
+      if (action === "remove-table-row") {
+        const rowElement = button.closest("[data-table-row]");
+        removeTableRow(Number(rowElement.dataset.tableRow));
+      }
+
+      if (action === "fill-table-bulk") {
+        fillTableFromBulk();
+      }
+
+      if (action === "add-story-container") {
+        addStoryContainer();
+      }
+
+      if (action === "remove-story-container") {
+        removeStoryContainer(Number(button.dataset.storyGroup));
+      }
+
+      if (action === "add-story-slide") {
+        addStorySlide(Number(button.dataset.storyGroup));
+      }
+
+      if (action === "remove-story-slide") {
+        removeStorySlide(Number(button.dataset.storyGroup), Number(button.dataset.storySlide));
+      }
+    });
+
+    editorTabButtons.forEach((button) => {
+      button.addEventListener("click", () => {
+        const requestedTab = button.dataset.editorTab;
+        currentEditorTab = ["faq", "table", "stories", "article"].includes(requestedTab) ? requestedTab : "faq";
+        renderEditor();
+      });
+    });
+
+    document.querySelector("#addItem").addEventListener("click", addCurrentItem);
+    document.querySelector("#addItemTop").addEventListener("click", addCurrentItem);
+    [...htmlCopyButtons, ...fullCopyButtons].forEach((button) => {
+      button.addEventListener("click", () => {
+        copyGeneratedHtml(button.dataset.copyMode);
+      });
+    });
+    window.addEventListener("hashchange", () => {
+      applyPage(getPageFromHash());
+    });
+    themeToggle.addEventListener("change", () => {
+      setTheme(themeToggle.checked ? "dark" : "light");
+    });
+
+    setTheme(getInitialTheme());
+    applyPage(getPageFromHash());
+  </script>
+</body>
+</html>
