@@ -1681,6 +1681,18 @@
     isolation: isolate;
   }
 
+  .lp-stories__viewer::before {
+    content: "";
+    position: absolute;
+    z-index: 2;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 128px;
+    background: linear-gradient(180deg, rgba(0, 0, 0, 0.68), rgba(0, 0, 0, 0));
+    pointer-events: none;
+  }
+
   .lp-stories__progress {
     --slides: 3;
     --index: 1;
