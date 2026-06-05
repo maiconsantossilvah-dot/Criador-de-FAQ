@@ -330,11 +330,11 @@
     }
 
     html[data-page="conteudo"][data-editor-tab="article"] .app {
-      width: min(1520px, calc(100% - 32px));
+      width: min(1640px, calc(100% - 24px));
     }
 
     html[data-page="conteudo"][data-editor-tab="article"] .layout {
-      grid-template-columns: minmax(300px, 0.48fr) minmax(650px, 1.52fr);
+      grid-template-columns: minmax(420px, 0.56fr) minmax(700px, 1.44fr);
     }
 
     .panel {
@@ -928,6 +928,14 @@
       border: 1px solid var(--line);
       border-radius: 8px;
       background: rgba(255, 255, 255, 0.48);
+    }
+
+    .article-protection {
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    }
+
+    .article-protection .field {
+      margin-bottom: 0;
     }
 
     .article-elements__title {
@@ -2060,6 +2068,8 @@ __STORIES_DYNAMIC_COLORS__
     --ll-article-muted: rgba(248, 245, 236, 0.74);
     --ll-article-line: rgba(248, 245, 236, 0.22);
     --ll-article-panel: rgba(18, 20, 25, 0.72);
+    --ll-article-shell-bg: rgba(16, 18, 23, 1);
+    --ll-article-tabs-panel: rgba(18, 20, 25, 0.72);
     --ll-article-accent: #f0b93e;
     --ll-article-teal: #0f8f8c;
     --ll-article-red: #d84d44;
@@ -2084,28 +2094,7 @@ __STORIES_DYNAMIC_COLORS__
     overflow: hidden;
     min-height: 640px;
     isolation: isolate;
-    background: #101217;
-    background-position: center;
-    background-size: cover;
-  }
-
-  /* O background-image inline e usado apenas para injetar a URL escolhida no gerador. */
-  .ll-article__shell::before {
-    position: absolute;
-    inset: 0;
-    z-index: -3;
-    content: "";
-    transform: scale(1.03);
-  }
-
-  .ll-article__shell::after {
-    position: absolute;
-    inset: 0;
-    z-index: -2;
-    background:
-      linear-gradient(90deg, var(--ll-article-overlay-strong) 0 34%, var(--ll-article-overlay-medium) 56%, var(--ll-article-overlay-soft)),
-      var(--ll-article-overlay-medium);
-    content: "";
+    background: var(--ll-article-shell-bg);
   }
 
   .ll-article__inner {
@@ -2125,7 +2114,7 @@ __STORIES_DYNAMIC_COLORS__
     padding: 14px;
     border: 1px solid var(--ll-article-line);
     border-radius: var(--ll-article-radius);
-    background: var(--ll-article-panel);
+    background: var(--ll-article-tabs-panel);
     box-shadow: 0 24px 90px rgba(0, 0, 0, 0.36);
   }
 
@@ -2253,7 +2242,7 @@ __STORIES_DYNAMIC_COLORS__
     overflow: hidden;
     border: 1px solid var(--ll-article-line);
     border-radius: var(--ll-article-radius);
-    background: rgba(18, 20, 25, 0.9);
+    background: transparent;
     box-shadow: 0 24px 90px rgba(0, 0, 0, 0.36);
   }
 
@@ -2265,7 +2254,7 @@ __STORIES_DYNAMIC_COLORS__
     align-items: end;
     padding: clamp(24px, 5vw, 54px);
     isolation: isolate;
-    background: #101217;
+    background: transparent;
     background-position: center;
     background-size: cover;
   }
@@ -2575,6 +2564,13 @@ __ARTICLE_DYNAMIC_COLORS__
       article: {
         ariaLabel: "Layout de artigo com modos de leitura",
         backgroundImage: "assets/brainstorm-hero.png",
+        shellBackgroundEnabled: true,
+        shellBackgroundColor: "#101217",
+        shellBackgroundOpacity: 1,
+        tabsProtectionEnabled: true,
+        tabsProtectionColor: "#121419",
+        tabsProtectionOpacity: 0.72,
+        overlayEnabled: true,
         overlayColor: "#000000",
         overlayOpacity: 0.74,
         eyebrow: "Artigo interativo",
@@ -2766,13 +2762,24 @@ __ARTICLE_DYNAMIC_COLORS__
     }
 
     function buildArticleStyle() {
+      const shellBackgroundOpacity = normalizeArticleOverlayOpacity(state.article.shellBackgroundOpacity);
+      const shellBackground = state.article.shellBackgroundEnabled !== false
+        ? hexToRgba(state.article.shellBackgroundColor, shellBackgroundOpacity.toFixed(2))
+        : "rgba(0, 0, 0, 0)";
       const opacity = normalizeArticleOverlayOpacity(state.article.overlayOpacity);
-      const strong = hexToRgba(state.article.overlayColor, opacity.toFixed(2));
-      const medium = hexToRgba(state.article.overlayColor, Math.max(0, opacity * 0.7).toFixed(2));
-      const soft = hexToRgba(state.article.overlayColor, Math.max(0, opacity * 0.46).toFixed(2));
+      const hasOverlay = state.article.overlayEnabled !== false;
+      const strong = hasOverlay ? hexToRgba(state.article.overlayColor, opacity.toFixed(2)) : "rgba(0, 0, 0, 0)";
+      const medium = hasOverlay ? hexToRgba(state.article.overlayColor, Math.max(0, opacity * 0.7).toFixed(2)) : "rgba(0, 0, 0, 0)";
+      const soft = hasOverlay ? hexToRgba(state.article.overlayColor, Math.max(0, opacity * 0.46).toFixed(2)) : "rgba(0, 0, 0, 0)";
+      const tabsProtectionOpacity = normalizeArticleOverlayOpacity(state.article.tabsProtectionOpacity);
+      const tabsPanel = state.article.tabsProtectionEnabled !== false
+        ? hexToRgba(state.article.tabsProtectionColor, tabsProtectionOpacity.toFixed(2))
+        : "rgba(0, 0, 0, 0)";
 
       return articleStyle.replace("__ARTICLE_DYNAMIC_COLORS__", `
   .ll-article {
+    --ll-article-shell-bg: ${shellBackground};
+    --ll-article-tabs-panel: ${tabsPanel};
     --ll-article-overlay-strong: ${strong};
     --ll-article-overlay-medium: ${medium};
     --ll-article-overlay-soft: ${soft};
@@ -3375,13 +3382,11 @@ ${tags.map((tag) => `              <span class="ll-article__tag">${escapeHtml(ta
       }).join("\n");
       const tabButtons = tabs.map(renderArticleTabButton).join("\n");
       const panels = tabs.map(renderArticlePanel).join("\n\n");
-      const background = escapeCssUrl(state.article.backgroundImage);
-      const backgroundStyle = background ? ` style="background-image: url(&quot;${escapeHtml(background)}&quot;)"` : "";
 
       return `<section class="ll-article" aria-label="${escapeHtml(state.article.ariaLabel.trim() || "Layout de artigo")}">
 ${inputs}
 
-  <div class="ll-article__shell"${backgroundStyle}>
+  <div class="ll-article__shell">
     <div class="ll-article__inner">
       <aside class="ll-article__tabs" aria-label="Escolha uma aba do artigo">
         <div class="ll-article__tabs-head">
@@ -3963,7 +3968,9 @@ ${bodyField}
       }).join("");
       const canAddTab = state.article.tabs.length < articleLimits.maxTabs;
       const baseOpen = state.article.openBase ? " open" : "";
+      const shellBackgroundOpacity = normalizeArticleOverlayOpacity(state.article.shellBackgroundOpacity).toFixed(2);
       const overlayOpacity = normalizeArticleOverlayOpacity(state.article.overlayOpacity).toFixed(2);
+      const tabsProtectionOpacity = normalizeArticleOverlayOpacity(state.article.tabsProtectionOpacity).toFixed(2);
 
       return `
         <section class="article-editor" aria-label="Editor de artigo">
@@ -4016,13 +4023,48 @@ ${bodyField}
                   <input type="text" value="${escapeHtml(state.article.title)}" data-article-field="title" autocomplete="off">
                 </label>
               </div>
-              <div class="article-editor__grid">
+              <div class="article-elements article-protection">
+                <span class="article-elements__title">Fundo geral da seção</span>
+                <label class="article-toggle">
+                  <input type="checkbox" data-article-field="shellBackgroundEnabled"${state.article.shellBackgroundEnabled !== false ? " checked" : ""}>
+                  <span>Usar fundo</span>
+                </label>
                 <label class="field">
-                  <span>Cor da tela escura (RGBA)</span>
+                  <span>Cor</span>
+                  <input type="color" value="${normalizeHexColor(state.article.shellBackgroundColor)}" data-article-field="shellBackgroundColor">
+                </label>
+                <label class="field">
+                  <span>Opacidade</span>
+                  <input type="number" min="0" max="1" step="0.05" value="${shellBackgroundOpacity}" data-article-field="shellBackgroundOpacity">
+                </label>
+              </div>
+              <div class="article-elements article-protection">
+                <span class="article-elements__title">Proteção visual das abas</span>
+                <label class="article-toggle">
+                  <input type="checkbox" data-article-field="tabsProtectionEnabled"${state.article.tabsProtectionEnabled !== false ? " checked" : ""}>
+                  <span>Usar proteção</span>
+                </label>
+                <label class="field">
+                  <span>Cor</span>
+                  <input type="color" value="${normalizeHexColor(state.article.tabsProtectionColor)}" data-article-field="tabsProtectionColor">
+                </label>
+                <label class="field">
+                  <span>Opacidade</span>
+                  <input type="number" min="0" max="0.95" step="0.05" value="${tabsProtectionOpacity}" data-article-field="tabsProtectionOpacity">
+                </label>
+              </div>
+              <div class="article-elements article-protection">
+                <span class="article-elements__title">Proteção visual da imagem</span>
+                <label class="article-toggle">
+                  <input type="checkbox" data-article-field="overlayEnabled"${state.article.overlayEnabled !== false ? " checked" : ""}>
+                  <span>Usar proteção</span>
+                </label>
+                <label class="field">
+                  <span>Cor</span>
                   <input type="color" value="${normalizeHexColor(state.article.overlayColor)}" data-article-field="overlayColor">
                 </label>
                 <label class="field">
-                  <span>Opacidade da tela escura</span>
+                  <span>Opacidade</span>
                   <input type="number" min="0" max="0.95" step="0.05" value="${overlayOpacity}" data-article-field="overlayOpacity">
                 </label>
               </div>
@@ -4402,10 +4444,24 @@ ${tabs}
         const tabIndex = event.target.dataset.articleTab;
 
         if (tabIndex === undefined) {
-          if (articleField === "overlayColor") {
+          if (articleField === "shellBackgroundEnabled") {
+            state.article.shellBackgroundEnabled = event.target.checked;
+          } else if (articleField === "overlayEnabled") {
+            state.article.overlayEnabled = event.target.checked;
+          } else if (articleField === "tabsProtectionEnabled") {
+            state.article.tabsProtectionEnabled = event.target.checked;
+          } else if (articleField === "shellBackgroundColor") {
+            state.article.shellBackgroundColor = normalizeHexColor(event.target.value);
+          } else if (articleField === "overlayColor") {
             state.article.overlayColor = normalizeHexColor(event.target.value);
+          } else if (articleField === "tabsProtectionColor") {
+            state.article.tabsProtectionColor = normalizeHexColor(event.target.value);
+          } else if (articleField === "shellBackgroundOpacity") {
+            state.article.shellBackgroundOpacity = normalizeArticleOverlayOpacity(event.target.value);
           } else if (articleField === "overlayOpacity") {
             state.article.overlayOpacity = normalizeArticleOverlayOpacity(event.target.value);
+          } else if (articleField === "tabsProtectionOpacity") {
+            state.article.tabsProtectionOpacity = normalizeArticleOverlayOpacity(event.target.value);
           } else {
             state.article[articleField] = event.target.value;
           }
@@ -4479,7 +4535,7 @@ ${tabs}
     });
 
     editor.addEventListener("change", (event) => {
-      if (event.target.matches("select")) {
+      if (event.target.matches("select") || event.target.matches('[data-article-field="shellBackgroundEnabled"], [data-article-field="overlayEnabled"], [data-article-field="tabsProtectionEnabled"]')) {
         event.target.dispatchEvent(new Event("input", { bubbles: true }));
       }
     });
