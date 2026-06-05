@@ -800,7 +800,9 @@
 
     .stories-container-editor__actions,
     .stories-editor__title-actions,
-    .stories-slide-editor__actions {
+    .stories-slide-editor__actions,
+    .article-editor__title-actions,
+    .article-tab-editor__actions {
       display: flex;
       align-items: center;
       flex: 0 0 auto;
@@ -916,6 +918,45 @@
 
     .article-editor__grid--base {
       grid-template-columns: minmax(0, 1fr);
+    }
+
+    .article-elements {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+      gap: 8px;
+      padding: 10px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.48);
+    }
+
+    .article-elements__title {
+      grid-column: 1 / -1;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 800;
+    }
+
+    .article-toggle {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      min-width: 0;
+      color: var(--ink);
+      font-size: 12px;
+      font-weight: 750;
+      cursor: pointer;
+    }
+
+    .article-toggle input {
+      width: 16px;
+      height: 16px;
+      accent-color: var(--blue);
+      flex: 0 0 auto;
+    }
+
+    .article-toggle span {
+      overflow-wrap: anywhere;
     }
 
     .stories-slide-editor__body {
@@ -1099,6 +1140,11 @@
     html[data-theme="dark"] .article-editor__box,
     html[data-theme="dark"] .article-tab-editor {
       background: #0d1727;
+      border-color: #273548;
+    }
+
+    html[data-theme="dark"] .article-elements {
+      background: rgba(255, 255, 255, 0.04);
       border-color: #273548;
     }
 
@@ -1575,12 +1621,8 @@ __TABLE_HEADER_COLORS__
     position: relative;
   }
 
-  .lp-stories__target {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    overflow: hidden;
-    scroll-margin-top: 0;
+  .lp-stories__input {
+    display: none;
   }
 
   .lp-stories__options {
@@ -1605,6 +1647,7 @@ __TABLE_HEADER_COLORS__
   .lp-stories__option {
     min-width: 0;
     padding: 0;
+    border: 0;
     color: #111827;
     background: transparent;
     display: grid;
@@ -1612,7 +1655,9 @@ __TABLE_HEADER_COLORS__
     gap: 0.5rem;
     text-align: center;
     text-decoration: none;
+    cursor: pointer;
     transition: transform 160ms ease;
+    user-select: none;
   }
 
   .lp-stories__option:hover {
@@ -1624,18 +1669,30 @@ __TABLE_HEADER_COLORS__
   }
 
   .lp-stories__option:focus-visible .lp-stories__ring,
-  #lp-story-produto-1:target ~ .lp-stories__options .lp-stories__option--produto .lp-stories__ring,
-  #lp-story-produto-2:target ~ .lp-stories__options .lp-stories__option--produto .lp-stories__ring,
-  #lp-story-produto-3:target ~ .lp-stories__options .lp-stories__option--produto .lp-stories__ring,
-  #lp-story-produto-4:target ~ .lp-stories__options .lp-stories__option--produto .lp-stories__ring,
-  #lp-story-uso-1:target ~ .lp-stories__options .lp-stories__option--uso .lp-stories__ring,
-  #lp-story-uso-2:target ~ .lp-stories__options .lp-stories__option--uso .lp-stories__ring,
-  #lp-story-uso-3:target ~ .lp-stories__options .lp-stories__option--uso .lp-stories__ring,
-  #lp-story-uso-4:target ~ .lp-stories__options .lp-stories__option--uso .lp-stories__ring,
-  #lp-story-detalhes-1:target ~ .lp-stories__options .lp-stories__option--detalhes .lp-stories__ring,
-  #lp-story-detalhes-2:target ~ .lp-stories__options .lp-stories__option--detalhes .lp-stories__ring,
-  #lp-story-detalhes-3:target ~ .lp-stories__options .lp-stories__option--detalhes .lp-stories__ring,
-  #lp-story-detalhes-4:target ~ .lp-stories__options .lp-stories__option--detalhes .lp-stories__ring {
+  #lp-story-produto-1:checked ~ .lp-stories__options .lp-stories__option--produto .lp-stories__ring,
+  #lp-story-produto-2:checked ~ .lp-stories__options .lp-stories__option--produto .lp-stories__ring,
+  #lp-story-produto-3:checked ~ .lp-stories__options .lp-stories__option--produto .lp-stories__ring,
+  #lp-story-produto-4:checked ~ .lp-stories__options .lp-stories__option--produto .lp-stories__ring,
+  #lp-story-produto-1:focus-visible ~ .lp-stories__options .lp-stories__option--produto .lp-stories__ring,
+  #lp-story-produto-2:focus-visible ~ .lp-stories__options .lp-stories__option--produto .lp-stories__ring,
+  #lp-story-produto-3:focus-visible ~ .lp-stories__options .lp-stories__option--produto .lp-stories__ring,
+  #lp-story-produto-4:focus-visible ~ .lp-stories__options .lp-stories__option--produto .lp-stories__ring,
+  #lp-story-uso-1:checked ~ .lp-stories__options .lp-stories__option--uso .lp-stories__ring,
+  #lp-story-uso-2:checked ~ .lp-stories__options .lp-stories__option--uso .lp-stories__ring,
+  #lp-story-uso-3:checked ~ .lp-stories__options .lp-stories__option--uso .lp-stories__ring,
+  #lp-story-uso-4:checked ~ .lp-stories__options .lp-stories__option--uso .lp-stories__ring,
+  #lp-story-uso-1:focus-visible ~ .lp-stories__options .lp-stories__option--uso .lp-stories__ring,
+  #lp-story-uso-2:focus-visible ~ .lp-stories__options .lp-stories__option--uso .lp-stories__ring,
+  #lp-story-uso-3:focus-visible ~ .lp-stories__options .lp-stories__option--uso .lp-stories__ring,
+  #lp-story-uso-4:focus-visible ~ .lp-stories__options .lp-stories__option--uso .lp-stories__ring,
+  #lp-story-detalhes-1:checked ~ .lp-stories__options .lp-stories__option--detalhes .lp-stories__ring,
+  #lp-story-detalhes-2:checked ~ .lp-stories__options .lp-stories__option--detalhes .lp-stories__ring,
+  #lp-story-detalhes-3:checked ~ .lp-stories__options .lp-stories__option--detalhes .lp-stories__ring,
+  #lp-story-detalhes-4:checked ~ .lp-stories__options .lp-stories__option--detalhes .lp-stories__ring,
+  #lp-story-detalhes-1:focus-visible ~ .lp-stories__options .lp-stories__option--detalhes .lp-stories__ring,
+  #lp-story-detalhes-2:focus-visible ~ .lp-stories__options .lp-stories__option--detalhes .lp-stories__ring,
+  #lp-story-detalhes-3:focus-visible ~ .lp-stories__options .lp-stories__option--detalhes .lp-stories__ring,
+  #lp-story-detalhes-4:focus-visible ~ .lp-stories__options .lp-stories__option--detalhes .lp-stories__ring {
     outline: 3px solid rgba(255, 153, 0, 0.28);
     outline-offset: 4px;
   }
@@ -1676,22 +1733,22 @@ __TABLE_HEADER_COLORS__
     display: block;
   }
 
-  .lp-stories__target:target ~ .lp-stories__panels .lp-stories__panel.is-default {
+  .lp-stories__input:checked ~ .lp-stories__panels .lp-stories__panel.is-default {
     display: none;
   }
 
-  #lp-story-produto-1:target ~ .lp-stories__panels .panel-produto-1,
-  #lp-story-produto-2:target ~ .lp-stories__panels .panel-produto-2,
-  #lp-story-produto-3:target ~ .lp-stories__panels .panel-produto-3,
-  #lp-story-produto-4:target ~ .lp-stories__panels .panel-produto-4,
-  #lp-story-uso-1:target ~ .lp-stories__panels .panel-uso-1,
-  #lp-story-uso-2:target ~ .lp-stories__panels .panel-uso-2,
-  #lp-story-uso-3:target ~ .lp-stories__panels .panel-uso-3,
-  #lp-story-uso-4:target ~ .lp-stories__panels .panel-uso-4,
-  #lp-story-detalhes-1:target ~ .lp-stories__panels .panel-detalhes-1,
-  #lp-story-detalhes-2:target ~ .lp-stories__panels .panel-detalhes-2,
-  #lp-story-detalhes-3:target ~ .lp-stories__panels .panel-detalhes-3,
-  #lp-story-detalhes-4:target ~ .lp-stories__panels .panel-detalhes-4 {
+  #lp-story-produto-1:checked ~ .lp-stories__panels .panel-produto-1,
+  #lp-story-produto-2:checked ~ .lp-stories__panels .panel-produto-2,
+  #lp-story-produto-3:checked ~ .lp-stories__panels .panel-produto-3,
+  #lp-story-produto-4:checked ~ .lp-stories__panels .panel-produto-4,
+  #lp-story-uso-1:checked ~ .lp-stories__panels .panel-uso-1,
+  #lp-story-uso-2:checked ~ .lp-stories__panels .panel-uso-2,
+  #lp-story-uso-3:checked ~ .lp-stories__panels .panel-uso-3,
+  #lp-story-uso-4:checked ~ .lp-stories__panels .panel-uso-4,
+  #lp-story-detalhes-1:checked ~ .lp-stories__panels .panel-detalhes-1,
+  #lp-story-detalhes-2:checked ~ .lp-stories__panels .panel-detalhes-2,
+  #lp-story-detalhes-3:checked ~ .lp-stories__panels .panel-detalhes-3,
+  #lp-story-detalhes-4:checked ~ .lp-stories__panels .panel-detalhes-4 {
     display: block;
   }
 
@@ -1996,21 +2053,6 @@ __STORIES_DYNAMIC_COLORS__
   }`);
     }
 
-    const storiesPreviewScript = `<script>
-  document.addEventListener("click", function(event) {
-    const link = event.target.closest(".lp-stories a[href^='#lp-story-']");
-    if (!link) {
-      return;
-    }
-
-    event.preventDefault();
-    const targetId = link.getAttribute("href").slice(1);
-    if (document.getElementById(targetId)) {
-      window.location.hash = targetId;
-    }
-  });
-<\/script>`;
-
     const articleStyle = `<style>
   .ll-article {
     --ll-article-bg: linear-gradient(135deg, #111827, #3f3456);
@@ -2024,6 +2066,9 @@ __STORIES_DYNAMIC_COLORS__
     --ll-article-blue: #4f7be8;
     --ll-article-green: #75ad5c;
     --ll-article-radius: 8px;
+    --ll-article-overlay-strong: rgba(0, 0, 0, 0.74);
+    --ll-article-overlay-medium: rgba(0, 0, 0, 0.52);
+    --ll-article-overlay-soft: rgba(0, 0, 0, 0.34);
     width: 100%;
     margin: 0 auto 28px;
     font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
@@ -2031,11 +2076,7 @@ __STORIES_DYNAMIC_COLORS__
   }
 
   .ll-article__input {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    opacity: 0;
-    pointer-events: none;
+    display: none;
   }
 
   .ll-article__shell {
@@ -2062,9 +2103,8 @@ __STORIES_DYNAMIC_COLORS__
     inset: 0;
     z-index: -2;
     background:
-      radial-gradient(circle at 72% 22%, rgba(15, 143, 140, 0.36), transparent 28%),
-      linear-gradient(90deg, rgba(7, 8, 12, 0.94) 0 34%, rgba(7, 8, 12, 0.76) 56%, rgba(7, 8, 12, 0.54)),
-      rgba(7, 8, 12, 0.74);
+      linear-gradient(90deg, var(--ll-article-overlay-strong) 0 34%, var(--ll-article-overlay-medium) 56%, var(--ll-article-overlay-soft)),
+      var(--ll-article-overlay-medium);
     content: "";
   }
 
@@ -2155,6 +2195,10 @@ __STORIES_DYNAMIC_COLORS__
     color: var(--ll-article-ink);
   }
 
+  .ll-article__tab--no-icon {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
   .ll-article__tab-icon {
     display: grid;
     width: 38px;
@@ -2240,8 +2284,8 @@ __STORIES_DYNAMIC_COLORS__
     inset: 0;
     z-index: -1;
     background:
-      linear-gradient(90deg, rgba(0, 0, 0, 0.82) 0 38%, rgba(0, 0, 0, 0.58) 64%, rgba(0, 0, 0, 0.36)),
-      rgba(0, 0, 0, 0.28);
+      linear-gradient(90deg, var(--ll-article-overlay-strong) 0 38%, var(--ll-article-overlay-medium) 64%, var(--ll-article-overlay-soft)),
+      var(--ll-article-overlay-soft);
     content: "";
   }
 
@@ -2254,13 +2298,21 @@ __STORIES_DYNAMIC_COLORS__
   }
 
   .ll-article__panel-copy {
+    display: grid;
+    gap: 16px;
+    justify-items: start;
     max-width: 720px;
     align-self: end;
   }
 
+  .ll-article__panel-copy .ll-article__eyebrow,
+  .ll-article__panel-copy .ll-article__heading,
+  .ll-article__panel-copy .ll-article__body {
+    margin: 0;
+  }
+
   .ll-article__heading {
     max-width: 14ch;
-    margin: 0 0 18px;
     color: var(--ll-article-ink);
     font-size: clamp(38px, 6vw, 82px);
     line-height: 0.9;
@@ -2279,18 +2331,23 @@ __STORIES_DYNAMIC_COLORS__
   .ll-article__tags {
     display: flex;
     flex-wrap: wrap;
-    gap: 10px;
-    margin-top: 24px;
+    gap: 8px;
+    align-items: flex-start;
+    justify-content: flex-start;
+    margin: 0;
   }
 
   .ll-article__tag {
-    min-height: 36px;
+    display: inline-flex;
+    align-items: center;
+    min-height: 32px;
     padding: 8px 12px;
     border: 1px solid var(--ll-article-line);
     border-radius: 999px;
     background: rgba(248, 245, 236, 0.08);
     color: var(--ll-article-ink);
-    font-size: 13px;
+    font-size: clamp(0.75rem, 1vw, 0.8125rem);
+    line-height: 1.2;
     font-weight: 900;
     overflow-wrap: anywhere;
   }
@@ -2302,22 +2359,63 @@ __STORIES_DYNAMIC_COLORS__
     }
 
     .ll-article__tabs {
-      display: flex;
-      gap: 10px;
-      overflow-x: auto;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(112px, 1fr));
+      gap: 8px;
       align-items: stretch;
-      scrollbar-gutter: stable;
+      overflow: visible;
     }
 
     .ll-article__tabs-head {
-      flex: 0 0 220px;
-      border-right: 1px solid var(--ll-article-line);
-      border-bottom: 0;
+      grid-column: 1 / -1;
+      padding: 6px 6px 8px;
+      border-right: 0;
+      border-bottom: 1px solid var(--ll-article-line);
+    }
+
+    .ll-article__eyebrow {
+      margin-bottom: 6px;
+      font-size: 11px;
+    }
+
+    .ll-article__eyebrow::before {
+      width: 20px;
+    }
+
+    .ll-article__title {
+      margin-bottom: 0;
+      font-size: clamp(24px, 6.8vw, 34px);
+      line-height: 1;
+    }
+
+    .ll-article__intro {
+      display: none;
     }
 
     .ll-article__tab {
-      flex: 0 0 190px;
-      grid-template-columns: 34px minmax(0, 1fr);
+      grid-template-columns: 28px minmax(0, 1fr);
+      gap: 8px;
+      min-height: 54px;
+      padding: 8px;
+    }
+
+    .ll-article__tab--no-icon {
+      grid-template-columns: minmax(0, 1fr);
+    }
+
+    .ll-article__tab-icon {
+      width: 28px;
+      height: 28px;
+      font-size: 12px;
+    }
+
+    .ll-article__tab-summary {
+      display: none;
+    }
+
+    .ll-article__tab-title {
+      font-size: 12px;
+      line-height: 1.15;
     }
 
     .ll-article__tab-key {
@@ -2326,8 +2424,8 @@ __STORIES_DYNAMIC_COLORS__
 
     .ll-article__panel::after {
       background:
-        linear-gradient(180deg, rgba(0, 0, 0, 0.72), rgba(0, 0, 0, 0.48)),
-        rgba(0, 0, 0, 0.28);
+        linear-gradient(180deg, var(--ll-article-overlay-strong), var(--ll-article-overlay-medium)),
+        var(--ll-article-overlay-soft);
     }
   }
 
@@ -2338,15 +2436,11 @@ __STORIES_DYNAMIC_COLORS__
 
     .ll-article__inner {
       width: min(100%, 340px);
-      padding: 22px 0 36px;
+      padding: 18px 0 32px;
     }
 
     .ll-article__tabs {
-      padding: 10px;
-    }
-
-    .ll-article__tabs-head {
-      flex-basis: 200px;
+      padding: 8px;
     }
 
     .ll-article__stage,
@@ -2366,6 +2460,7 @@ __STORIES_DYNAMIC_COLORS__
       font-size: 15px;
     }
   }
+__ARTICLE_DYNAMIC_COLORS__
 </style>`;
     const state = {
       faqBulkInput: "",
@@ -2480,12 +2575,16 @@ __STORIES_DYNAMIC_COLORS__
       article: {
         ariaLabel: "Layout de artigo com modos de leitura",
         backgroundImage: "assets/brainstorm-hero.png",
+        overlayColor: "#000000",
+        overlayOpacity: 0.74,
         eyebrow: "Artigo interativo",
         title: "Escolha o ritmo da leitura.",
         intro: "As abas mudam o texto do bloco sobre imagens de fundo escurecidas para manter contraste e leitura confortavel.",
-        openTabIndex: 0,
+        openBase: false,
+        openTabIndex: -1,
         tabs: [
           {
+            elements: { icon: true, summary: true, image: true, eyebrow: true, heading: true, body: true, tags: true },
             icon: "C",
             label: "Compacto",
             summary: "Escanear, comparar e decidir rapido.",
@@ -2496,6 +2595,7 @@ __STORIES_DYNAMIC_COLORS__
             image: "assets/brainstorm-hero.png"
           },
           {
+            elements: { icon: true, summary: true, image: true, eyebrow: true, heading: true, body: true, tags: true },
             icon: "A",
             label: "Amplo",
             summary: "Texto mais editorial e respiro visual.",
@@ -2506,6 +2606,7 @@ __STORIES_DYNAMIC_COLORS__
             image: "assets/brainstorm-hero.png"
           },
           {
+            elements: { icon: true, summary: true, image: true, eyebrow: true, heading: true, body: true, tags: true },
             icon: "F",
             label: "Foco",
             summary: "Uma ideia principal por vez.",
@@ -2516,6 +2617,7 @@ __STORIES_DYNAMIC_COLORS__
             image: "assets/brainstorm-hero.png"
           },
           {
+            elements: { icon: true, summary: true, image: true, eyebrow: true, heading: true, body: true, tags: true },
             icon: "E",
             label: "Estudo",
             summary: "Notas, marcadores e aprendizado.",
@@ -2526,6 +2628,7 @@ __STORIES_DYNAMIC_COLORS__
             image: "assets/brainstorm-hero.png"
           },
           {
+            elements: { icon: true, summary: true, image: true, eyebrow: true, heading: true, body: true, tags: true },
             icon: "P",
             label: "Pitch",
             summary: "Argumento, prova e chamada.",
@@ -2560,6 +2663,10 @@ __STORIES_DYNAMIC_COLORS__
       maxContainers: 3,
       minSlides: 1,
       maxSlides: 4
+    };
+    const articleLimits = {
+      minTabs: 1,
+      maxTabs: 5
     };
     const storyGroupPresets = [
       { key: "produto", name: "Produto" },
@@ -2647,6 +2754,29 @@ __STORIES_DYNAMIC_COLORS__
       const green = parseInt(color.slice(2, 4), 16);
       const blue = parseInt(color.slice(4, 6), 16);
       return `rgba(${red}, ${green}, ${blue}, ${alpha})`;
+    }
+
+    function normalizeArticleOverlayOpacity(value) {
+      const numericValue = Number(String(value ?? "").replace(",", "."));
+      if (!Number.isFinite(numericValue)) {
+        return 0.74;
+      }
+
+      return Math.min(0.95, Math.max(0, numericValue));
+    }
+
+    function buildArticleStyle() {
+      const opacity = normalizeArticleOverlayOpacity(state.article.overlayOpacity);
+      const strong = hexToRgba(state.article.overlayColor, opacity.toFixed(2));
+      const medium = hexToRgba(state.article.overlayColor, Math.max(0, opacity * 0.7).toFixed(2));
+      const soft = hexToRgba(state.article.overlayColor, Math.max(0, opacity * 0.46).toFixed(2));
+
+      return articleStyle.replace("__ARTICLE_DYNAMIC_COLORS__", `
+  .ll-article {
+    --ll-article-overlay-strong: ${strong};
+    --ll-article-overlay-medium: ${medium};
+    --ll-article-overlay-soft: ${soft};
+  }`);
     }
 
     function getTableHeaderColor(index = 0) {
@@ -2921,25 +3051,25 @@ ${rows}
       return `${path}?${params.join("&")}${hash}`;
     }
 
-    function getStoryNextHref(groupIndex, slideIndex) {
+    function getStoryNextId(groupIndex, slideIndex) {
       const group = state.stories.groups[groupIndex];
       if (slideIndex < group.slides.length - 1) {
-        return `#${getStoryId(group, slideIndex + 1)}`;
+        return getStoryId(group, slideIndex + 1);
       }
 
       const nextGroup = state.stories.groups[(groupIndex + 1) % state.stories.groups.length];
-      return `#${getStoryId(nextGroup, 0)}`;
+      return getStoryId(nextGroup, 0);
     }
 
-    function getStoryPreviousHref(groupIndex, slideIndex) {
+    function getStoryPreviousId(groupIndex, slideIndex) {
       const group = state.stories.groups[groupIndex];
       if (slideIndex > 0) {
-        return `#${getStoryId(group, slideIndex - 1)}`;
+        return getStoryId(group, slideIndex - 1);
       }
 
       const previousGroupIndex = (groupIndex - 1 + state.stories.groups.length) % state.stories.groups.length;
       const previousGroup = state.stories.groups[previousGroupIndex];
-      return `#${getStoryId(previousGroup, previousGroup.slides.length - 1)}`;
+      return getStoryId(previousGroup, previousGroup.slides.length - 1);
     }
 
     function getAvailableStoryPreset() {
@@ -3024,12 +3154,12 @@ ${rows}
       const thumb = escapeHtml(group.thumb.trim());
       const firstStoryId = getStoryId(group, 0);
 
-      return `        <a class="lp-stories__option lp-stories__option--${group.key}" href="#${firstStoryId}" aria-label="Abrir container ${name}, slide 1 de ${group.slides.length}">
+      return `        <label class="lp-stories__option lp-stories__option--${group.key}" for="${firstStoryId}" aria-label="Abrir container ${name}, slide 1 de ${group.slides.length}">
           <span class="lp-stories__ring" aria-hidden="true">
             <img class="lp-stories__thumb" src="${thumb}" alt="Miniatura de ${name}" width="400" height="400" loading="lazy">
           </span>
           <span class="lp-stories__name">${name}</span>
-        </a>`;
+        </label>`;
     }
 
     function renderStoryMedia(slide) {
@@ -3062,8 +3192,8 @@ ${rows}
       const position = normalizeStoryPosition(slide.captionPosition);
       const mediaFocus = normalizeStoryMediaFocus(slide.mediaFocus);
       const isDefault = groupIndex === defaultTarget.groupIndex && slideIndex === defaultTarget.slideIndex ? " is-default" : "";
-      const previousHref = getStoryPreviousHref(groupIndex, slideIndex);
-      const nextHref = getStoryNextHref(groupIndex, slideIndex);
+      const previousId = getStoryPreviousId(groupIndex, slideIndex);
+      const nextId = getStoryNextId(groupIndex, slideIndex);
       const avatar = escapeHtml(state.stories.avatar.trim());
 
       return `        <article class="lp-stories__panel ${getStoryPanelClass(group, slideIndex)}${isDefault}" aria-labelledby="${storyId}-title" aria-describedby="${storyId}-caption">
@@ -3081,8 +3211,8 @@ ${rows}
               <figcaption class="lp-stories__caption is-${position}" id="${storyId}-caption">${caption}</figcaption>
             </figure>
             <nav class="lp-stories__nav" aria-label="Navegar slides do container ${title}">
-              <a class="lp-stories__arrow prev" href="${previousHref}" aria-label="Slide anterior de ${title}"><span aria-hidden="true">&lsaquo;</span></a>
-              <a class="lp-stories__arrow next" href="${nextHref}" aria-label="Proximo slide de ${title}"><span aria-hidden="true">&rsaquo;</span></a>
+              <label class="lp-stories__arrow prev" for="${previousId}" aria-label="Slide anterior de ${title}"><span aria-hidden="true">&lsaquo;</span></label>
+              <label class="lp-stories__arrow next" for="${nextId}" aria-label="Proximo slide de ${title}"><span aria-hidden="true">&rsaquo;</span></label>
             </nav>
           </div>
         </article>`;
@@ -3090,8 +3220,12 @@ ${rows}
 
     function buildStoriesSectionHtml(defaultTarget = { groupIndex: 0, slideIndex: 0 }) {
       const groups = state.stories.groups;
-      const targets = groups.flatMap((group) => {
-        return group.slides.map((slide, slideIndex) => `      <span class="lp-stories__target" id="${getStoryId(group, slideIndex)}" aria-hidden="true"></span>`);
+      const inputs = groups.flatMap((group, groupIndex) => {
+        return group.slides.map((slide, slideIndex) => {
+          const storyId = getStoryId(group, slideIndex);
+          const isChecked = groupIndex === defaultTarget.groupIndex && slideIndex === defaultTarget.slideIndex ? " checked" : "";
+          return `      <input class="lp-stories__input" type="radio" name="lp-stories-active" id="${storyId}"${isChecked}>`;
+        });
       }).join("\n");
       const options = groups.map(renderStoryOption).join("\n");
       const panels = groups.flatMap((group, groupIndex) => {
@@ -3099,7 +3233,7 @@ ${rows}
       }).join("\n\n");
       const ariaLabel = escapeHtml(state.stories.ariaLabel.trim() || "Stories do produto");
       return `<section class="lp-stories lp-stories--groups-${groups.length}" aria-label="${ariaLabel}">
-${targets}
+${inputs}
 
       <nav class="lp-stories__options" aria-label="Containers de stories">
 ${options}
@@ -3123,7 +3257,75 @@ ${panels}
         .slice(0, 4);
     }
 
+    function getArticleTabElements(tab) {
+      const defaults = {
+        icon: true,
+        summary: true,
+        image: true,
+        eyebrow: true,
+        heading: true,
+        body: true,
+        tags: true
+      };
+
+      tab.elements = { ...defaults, ...(tab.elements || {}) };
+      return tab.elements;
+    }
+
+    function renderArticleElementToggle(tab, tabIndex, key, label) {
+      const elements = getArticleTabElements(tab);
+      return `<label class="article-toggle">
+                  <input type="checkbox" data-article-element="${key}" data-article-tab="${tabIndex}"${elements[key] ? " checked" : ""}>
+                  <span>${label}</span>
+                </label>`;
+    }
+
+    function createArticleTab(index = state.article.tabs.length) {
+      const tabNumber = index + 1;
+      return {
+        elements: { icon: true, summary: true, image: true, eyebrow: true, heading: true, body: true, tags: true },
+        icon: String(tabNumber),
+        label: `Aba ${tabNumber}`,
+        summary: "Resumo curto da aba.",
+        eyebrow: "Novo bloco",
+        heading: "Titulo do painel.",
+        body: "Texto do painel com a mensagem principal do bloco.",
+        tags: "Tag 1, Tag 2",
+        image: state.article.backgroundImage
+      };
+    }
+
+    function addArticleTab() {
+      if (state.article.tabs.length >= articleLimits.maxTabs) {
+        return;
+      }
+
+      state.article.tabs.push(createArticleTab());
+      state.article.openTabIndex = state.article.tabs.length - 1;
+      renderEditor(true);
+    }
+
+    function removeArticleTab(index) {
+      if (state.article.tabs.length <= articleLimits.minTabs) {
+        return;
+      }
+
+      state.article.tabs.splice(index, 1);
+      if (state.article.openTabIndex > index) {
+        state.article.openTabIndex -= 1;
+      } else if (state.article.openTabIndex === index) {
+        state.article.openTabIndex = Math.min(index, state.article.tabs.length - 1);
+      }
+
+      renderEditor(true);
+    }
+
     function renderArticleTags(tab) {
+      const elements = getArticleTabElements(tab);
+      if (!elements.tags) {
+        return "";
+      }
+
       const tags = getArticleTags(tab.tags);
       if (!tags.length) {
         return "";
@@ -3136,24 +3338,33 @@ ${tags.map((tag) => `              <span class="ll-article__tag">${escapeHtml(ta
 
     function renderArticleTabButton(tab, index) {
       const tabId = `ll-article-tab-${index + 1}`;
-      return `        <label class="ll-article__tab" for="${tabId}">
-          <span class="ll-article__tab-icon">${escapeHtml(tab.icon.trim() || String(index + 1))}</span>
-          <span class="ll-article__tab-text"><strong class="ll-article__tab-title">${escapeHtml(tab.label.trim() || `Aba ${index + 1}`)}</strong><small class="ll-article__tab-summary">${escapeHtml(tab.summary.trim())}</small></span>
+      const elements = getArticleTabElements(tab);
+      const icon = elements.icon ? `<span class="ll-article__tab-icon">${escapeHtml(tab.icon.trim() || String(index + 1))}</span>` : "";
+      const summary = elements.summary && tab.summary.trim() ? `<small class="ll-article__tab-summary">${escapeHtml(tab.summary.trim())}</small>` : "";
+      const noIconClass = elements.icon ? "" : " ll-article__tab--no-icon";
+
+      return `        <label class="ll-article__tab${noIconClass}" for="${tabId}">
+          ${icon}
+          <span class="ll-article__tab-text"><strong class="ll-article__tab-title">${escapeHtml(tab.label.trim() || `Aba ${index + 1}`)}</strong>${summary}</span>
           <span class="ll-article__tab-key">${index + 1}</span>
         </label>`;
     }
 
     function renderArticlePanel(tab, index) {
-      const image = escapeCssUrl(tab.image || state.article.backgroundImage);
+      const elements = getArticleTabElements(tab);
+      const image = elements.image ? escapeCssUrl(tab.image || state.article.backgroundImage) : "";
       const imageStyle = image ? ` style="background-image: url(&quot;${escapeHtml(image)}&quot;)"` : "";
+      const eyebrow = elements.eyebrow && tab.eyebrow.trim() ? `<p class="ll-article__eyebrow">${escapeHtml(tab.eyebrow.trim())}</p>` : "";
+      const heading = elements.heading && tab.heading.trim() ? `<h3 class="ll-article__heading">${escapeHtml(tab.heading.trim())}</h3>` : "";
+      const body = elements.body && tab.body.trim() ? `<p class="ll-article__body">${escapeHtml(tab.body.trim())}</p>` : "";
+      const tags = renderArticleTags(tab);
+      const content = [eyebrow, heading, body, tags].filter(Boolean).join("\n            ");
+      const copy = content ? `<div class="ll-article__panel-copy">
+            ${content}
+          </div>` : "";
 
       return `        <article class="ll-article__panel ll-article__panel--${index + 1}"${imageStyle}>
-          <div class="ll-article__panel-copy">
-            <p class="ll-article__eyebrow">${escapeHtml(tab.eyebrow.trim())}</p>
-            <h3 class="ll-article__heading">${escapeHtml(tab.heading.trim())}</h3>
-            <p class="ll-article__body">${escapeHtml(tab.body.trim())}</p>
-            ${renderArticleTags(tab)}
-          </div>
+          ${copy}
         </article>`;
     }
 
@@ -3220,14 +3431,13 @@ ${buildTableStyle()}`;
       if (currentPage === "conteudo" && currentEditorTab === "stories") {
         return `${buildStoriesSectionHtml(getStoriesPreviewTarget())}
 
-${buildStoriesStyle()}
-${storiesPreviewScript}`;
+${buildStoriesStyle()}`;
       }
 
       if (currentPage === "conteudo" && currentEditorTab === "article") {
         return `${buildArticleSectionHtml()}
 
-${articleStyle}`;
+${buildArticleStyle()}`;
       }
 
       if (currentPage === "conteudo") {
@@ -3280,7 +3490,7 @@ ${buildStoriesStyle()}`;
 
 <!-- ESSES CODIGOS ABAIXO VOCE NAO PRECISA MEXER!!! APENAS O HTML ACIMA-->
 
-${articleStyle}`;
+${buildArticleStyle()}`;
         }
 
         return articleHtml;
@@ -3299,8 +3509,49 @@ ${faqStyle}`;
       return faqHtml;
     }
 
-    function updateOutput() {
+    function getPreviewScrollPosition() {
+      try {
+        const frameWindow = previewFrame.contentWindow;
+        const frameDocument = previewFrame.contentDocument;
+
+        if (!frameWindow || !frameDocument) {
+          return { x: 0, y: 0 };
+        }
+
+        return {
+          x: frameWindow.scrollX || frameDocument.documentElement.scrollLeft || frameDocument.body.scrollLeft || 0,
+          y: frameWindow.scrollY || frameDocument.documentElement.scrollTop || frameDocument.body.scrollTop || 0
+        };
+      } catch (error) {
+        return { x: 0, y: 0 };
+      }
+    }
+
+    function restorePreviewScrollPosition(position) {
+      try {
+        const frameWindow = previewFrame.contentWindow;
+
+        if (!frameWindow || !position) {
+          return;
+        }
+
+        frameWindow.requestAnimationFrame(() => {
+          frameWindow.scrollTo(position.x, position.y);
+        });
+      } catch (error) {
+        return;
+      }
+    }
+
+    function updateOutput(options = {}) {
+      const preservePreviewScroll = options.preservePreviewScroll !== false;
+      const previewScrollPosition = preservePreviewScroll ? getPreviewScrollPosition() : null;
       generatedHtml.value = buildOutputHtml("html");
+      if (previewScrollPosition) {
+        previewFrame.addEventListener("load", () => {
+          restorePreviewScrollPosition(previewScrollPosition);
+        }, { once: true });
+      }
       previewFrame.srcdoc = buildPreviewHtml();
       copyStatus.textContent = "";
     }
@@ -3632,55 +3883,87 @@ ${groups}
 
       const tabs = state.article.tabs.map((tab, tabIndex) => {
         const isOpen = state.article.openTabIndex === tabIndex ? " open" : "";
+        const canRemoveTab = state.article.tabs.length > articleLimits.minTabs;
+        const elements = getArticleTabElements(tab);
+        const iconField = elements.icon ? `
+                <label class="field">
+                  <span>Icone curto</span>
+                  <input type="text" value="${escapeHtml(tab.icon)}" data-article-field="icon" data-article-tab="${tabIndex}" autocomplete="off">
+                </label>` : "";
+        const summaryField = elements.summary ? `
+              <label class="field">
+                <span>Resumo da aba</span>
+                <input type="text" value="${escapeHtml(tab.summary)}" data-article-field="summary" data-article-tab="${tabIndex}" autocomplete="off">
+              </label>` : "";
+        const imageField = elements.image ? `
+              <label class="field">
+                <span>Imagem de fundo do bloco</span>
+                <input type="text" value="${escapeHtml(tab.image || "")}" data-article-field="image" data-article-tab="${tabIndex}" autocomplete="off">
+              </label>` : "";
+        const eyebrowField = elements.eyebrow ? `
+                <label class="field">
+                  <span>Eyebrow do painel</span>
+                  <input type="text" value="${escapeHtml(tab.eyebrow)}" data-article-field="eyebrow" data-article-tab="${tabIndex}" autocomplete="off">
+                </label>` : "";
+        const tagsField = elements.tags ? `
+                <label class="field">
+                  <span>Tags</span>
+                  <input type="text" value="${escapeHtml(tab.tags)}" data-article-field="tags" data-article-tab="${tabIndex}" autocomplete="off">
+                </label>` : "";
+        const headingField = elements.heading ? `
+              <label class="field">
+                <span>Titulo do painel</span>
+                <input type="text" value="${escapeHtml(tab.heading)}" data-article-field="heading" data-article-tab="${tabIndex}" autocomplete="off">
+              </label>` : "";
+        const bodyField = elements.body ? `
+              <label class="field">
+                <span>Texto do painel</span>
+                <textarea data-article-field="body" data-article-tab="${tabIndex}">${escapeHtml(tab.body)}</textarea>
+              </label>` : "";
 
         return `
           <details class="article-tab-editor" data-article-tab-panel="${tabIndex}"${isOpen}>
             <summary class="article-tab-editor__summary">
               <strong>Aba ${tabIndex + 1}: ${escapeHtml(tab.label.trim() || "sem titulo")}</strong>
               <span class="article-tab-editor__meta">Imagem + texto</span>
+              <div class="article-tab-editor__actions">
+                <button class="button button--danger icon-button" type="button" data-action="remove-article-tab" data-article-tab="${tabIndex}" aria-label="Remover aba ${tabIndex + 1}" title="Remover aba"${canRemoveTab ? "" : " disabled"}>${trashIcon()}</button>
+              </div>
               <span class="article-tab-editor__chevron" aria-hidden="true">&rsaquo;</span>
             </summary>
             <div class="article-editor__body">
+              <div class="article-elements" aria-label="Elementos ativos da aba ${tabIndex + 1}">
+                <span class="article-elements__title">Elementos ativos</span>
+                ${renderArticleElementToggle(tab, tabIndex, "icon", "Icone")}
+                ${renderArticleElementToggle(tab, tabIndex, "summary", "Resumo")}
+                ${renderArticleElementToggle(tab, tabIndex, "image", "Imagem")}
+                ${renderArticleElementToggle(tab, tabIndex, "eyebrow", "Eyebrow")}
+                ${renderArticleElementToggle(tab, tabIndex, "heading", "Titulo")}
+                ${renderArticleElementToggle(tab, tabIndex, "body", "Texto")}
+                ${renderArticleElementToggle(tab, tabIndex, "tags", "Tags")}
+              </div>
               <div class="article-editor__grid">
-                <label class="field">
-                  <span>Icone curto</span>
-                  <input type="text" value="${escapeHtml(tab.icon)}" data-article-field="icon" data-article-tab="${tabIndex}" autocomplete="off">
-                </label>
+${iconField}
                 <label class="field">
                   <span>Nome da aba</span>
                   <input type="text" value="${escapeHtml(tab.label)}" data-article-field="label" data-article-tab="${tabIndex}" autocomplete="off">
                 </label>
               </div>
-              <label class="field">
-                <span>Imagem de fundo do bloco</span>
-                <input type="text" value="${escapeHtml(tab.image || "")}" data-article-field="image" data-article-tab="${tabIndex}" autocomplete="off">
-              </label>
-              <label class="field">
-                <span>Resumo da aba</span>
-                <input type="text" value="${escapeHtml(tab.summary)}" data-article-field="summary" data-article-tab="${tabIndex}" autocomplete="off">
-              </label>
+${imageField}
+${summaryField}
               <div class="article-editor__grid">
-                <label class="field">
-                  <span>Eyebrow do painel</span>
-                  <input type="text" value="${escapeHtml(tab.eyebrow)}" data-article-field="eyebrow" data-article-tab="${tabIndex}" autocomplete="off">
-                </label>
-                <label class="field">
-                  <span>Tags</span>
-                  <input type="text" value="${escapeHtml(tab.tags)}" data-article-field="tags" data-article-tab="${tabIndex}" autocomplete="off">
-                </label>
+${eyebrowField}
+${tagsField}
               </div>
-              <label class="field">
-                <span>Titulo do painel</span>
-                <input type="text" value="${escapeHtml(tab.heading)}" data-article-field="heading" data-article-tab="${tabIndex}" autocomplete="off">
-              </label>
-              <label class="field">
-                <span>Texto do painel</span>
-                <textarea data-article-field="body" data-article-tab="${tabIndex}">${escapeHtml(tab.body)}</textarea>
-              </label>
+${headingField}
+${bodyField}
             </div>
           </details>
         `;
       }).join("");
+      const canAddTab = state.article.tabs.length < articleLimits.maxTabs;
+      const baseOpen = state.article.openBase ? " open" : "";
+      const overlayOpacity = normalizeArticleOverlayOpacity(state.article.overlayOpacity).toFixed(2);
 
       return `
         <section class="article-editor" aria-label="Editor de artigo">
@@ -3689,12 +3972,31 @@ ${groups}
               <h3>Artigo</h3>
               <p>Layout com imagem de fundo, overlay escuro e texto diagramado sobre o bloco.</p>
             </div>
+            <div class="article-editor__title-actions">
+              <span class="stories-limits">${state.article.tabs.length}/${articleLimits.maxTabs} abas</span>
+              <button class="button button--soft icon-button" type="button" data-action="add-article-tab" aria-label="Adicionar aba" title="Adicionar aba"${canAddTab ? "" : " disabled"}>+</button>
+            </div>
           </div>
 
-          <article class="article-editor__box">
-            <div class="faq-editor__bar">
-              <strong>Base</strong>
+          <details class="stories-guide article-image-guide">
+            <summary class="stories-guide__summary">
+              <strong>Guia de imagem do artigo</strong>
+              <span aria-hidden="true">&rsaquo;</span>
+            </summary>
+            <div class="stories-guide__body">
+              <p><strong>Imagem recomendada:</strong> 1600x1200 px ou maior, em proporcao 4:3.</p>
+              <p><strong>Minimo seguro:</strong> 1200x900 px. Para imagens mais abertas, 1920x1200 px tambem funciona bem.</p>
+              <p><strong>Corte automatico:</strong> o bloco usa background-size: cover, entao bordas podem ser cortadas conforme a tela.</p>
+              <p><strong>Composicao:</strong> mantenha o objeto principal mais ao centro e evite texto ou detalhes importantes nas extremidades.</p>
             </div>
+          </details>
+
+          <details class="article-tab-editor article-base-editor" data-article-base-panel${baseOpen}>
+            <summary class="article-tab-editor__summary">
+              <strong>Base</strong>
+              <span class="article-tab-editor__meta">Imagem + overlay</span>
+              <span class="article-tab-editor__chevron" aria-hidden="true">&rsaquo;</span>
+            </summary>
             <div class="article-editor__body">
               <label class="field">
                 <span>Imagem padrao dos blocos</span>
@@ -3714,12 +4016,22 @@ ${groups}
                   <input type="text" value="${escapeHtml(state.article.title)}" data-article-field="title" autocomplete="off">
                 </label>
               </div>
+              <div class="article-editor__grid">
+                <label class="field">
+                  <span>Cor da tela escura (RGBA)</span>
+                  <input type="color" value="${normalizeHexColor(state.article.overlayColor)}" data-article-field="overlayColor">
+                </label>
+                <label class="field">
+                  <span>Opacidade da tela escura</span>
+                  <input type="number" min="0" max="0.95" step="0.05" value="${overlayOpacity}" data-article-field="overlayOpacity">
+                </label>
+              </div>
               <label class="field">
                 <span>Texto de apoio</span>
                 <textarea data-article-field="intro">${escapeHtml(state.article.intro)}</textarea>
               </label>
             </div>
-          </article>
+          </details>
 
 ${tabs}
         </section>
@@ -4072,12 +4384,31 @@ ${tabs}
         return;
       }
 
+      const articleElement = event.target.dataset.articleElement;
+      if (articleElement) {
+        const tab = state.article.tabs[Number(event.target.dataset.articleTab)];
+
+        if (!tab) {
+          return;
+        }
+
+        getArticleTabElements(tab)[articleElement] = event.target.checked;
+        renderEditor(true);
+        return;
+      }
+
       const articleField = event.target.dataset.articleField;
       if (articleField) {
         const tabIndex = event.target.dataset.articleTab;
 
         if (tabIndex === undefined) {
-          state.article[articleField] = event.target.value;
+          if (articleField === "overlayColor") {
+            state.article.overlayColor = normalizeHexColor(event.target.value);
+          } else if (articleField === "overlayOpacity") {
+            state.article.overlayOpacity = normalizeArticleOverlayOpacity(event.target.value);
+          } else {
+            state.article[articleField] = event.target.value;
+          }
           updateOutput();
           return;
         }
@@ -4178,6 +4509,15 @@ ${tabs}
     }, true);
 
     editor.addEventListener("toggle", (event) => {
+      const basePanel = event.target.closest("[data-article-base-panel]");
+      if (!basePanel || event.target !== basePanel) {
+        return;
+      }
+
+      state.article.openBase = basePanel.open;
+    }, true);
+
+    editor.addEventListener("toggle", (event) => {
       const panel = event.target.closest("[data-article-tab-panel]");
       if (!panel || event.target !== panel) {
         return;
@@ -4206,7 +4546,7 @@ ${tabs}
       }
 
       const action = button.dataset.action;
-      if (action.includes("story")) {
+      if (action.includes("story") || action.includes("article")) {
         event.preventDefault();
         event.stopPropagation();
       }
@@ -4263,6 +4603,14 @@ ${tabs}
 
       if (action === "remove-story-slide") {
         removeStorySlide(Number(button.dataset.storyGroup), Number(button.dataset.storySlide));
+      }
+
+      if (action === "add-article-tab") {
+        addArticleTab();
+      }
+
+      if (action === "remove-article-tab") {
+        removeArticleTab(Number(button.dataset.articleTab));
       }
     });
 
