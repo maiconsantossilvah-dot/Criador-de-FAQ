@@ -329,6 +329,14 @@
       min-height: 0;
     }
 
+    html[data-page="conteudo"][data-editor-tab="article"] .app {
+      width: min(1520px, calc(100% - 32px));
+    }
+
+    html[data-page="conteudo"][data-editor-tab="article"] .layout {
+      grid-template-columns: minmax(300px, 0.48fr) minmax(650px, 1.52fr);
+    }
+
     .panel {
       min-width: 0;
       min-height: 0;
@@ -2658,6 +2666,7 @@ __STORIES_DYNAMIC_COLORS__
 
     function updateEditorTabs() {
       const showTabs = currentPage === "conteudo";
+      document.documentElement.dataset.editorTab = showTabs ? currentEditorTab : "";
       editorTools.classList.toggle("is-hidden", !showTabs);
 
       editorTabButtons.forEach((button) => {
