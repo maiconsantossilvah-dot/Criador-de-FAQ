@@ -3449,6 +3449,7 @@ __CAROUSEL_DYNAMIC_COLORS__
         dotHoverColor: "#f0f3f5",
         dotActiveColor: "#e7ecef",
         dotActiveBorderColor: "#c8d2da",
+        previewSlideIndex: 0,
         openBase: false,
         openSlideIndex: -1,
         slides: [
@@ -3779,6 +3780,12 @@ __CAROUSEL_DYNAMIC_COLORS__
       return state.carousel.slides.slice(0, carouselLimits.maxSlides);
     }
 
+    function setCarouselPreviewSlide(index) {
+      const maxSlideIndex = Math.max(0, getCarouselSlides().length - 1);
+      const numericIndex = Number(index);
+      state.carousel.previewSlideIndex = Math.min(Math.max(Number.isFinite(numericIndex) ? numericIndex : 0, 0), maxSlideIndex);
+    }
+
     function createCarouselSlide(index = state.carousel.slides.length) {
       const isDecision = index % 2 === 1;
 
@@ -3819,6 +3826,7 @@ __CAROUSEL_DYNAMIC_COLORS__
 
       state.carousel.slides.push(createCarouselSlide());
       state.carousel.openSlideIndex = state.carousel.slides.length - 1;
+      setCarouselPreviewSlide(state.carousel.openSlideIndex);
       renderEditor(true);
     }
 
@@ -3834,6 +3842,7 @@ __CAROUSEL_DYNAMIC_COLORS__
         state.carousel.openSlideIndex = Math.min(index, state.carousel.slides.length - 1);
       }
 
+      setCarouselPreviewSlide(state.carousel.openSlideIndex);
       renderEditor(true);
     }
 
@@ -3888,11 +3897,12 @@ __CAROUSEL_DYNAMIC_COLORS__
       </article>`;
     }
 
-    function buildCarouselSectionHtml() {
+    function buildCarouselSectionHtml(activeIndex = 0) {
       const slides = getCarouselSlides();
       const hideIntroClass = state.carousel.showIntro === false ? " ll-carousel--hide-intro" : "";
+      const activeSlideIndex = Math.min(Math.max(Number(activeIndex) || 0, 0), Math.max(0, slides.length - 1));
       const inputs = slides.map((slide, index) => {
-        return `    <input class="ll-carousel__control ll-carousel__control--${index + 1}" type="radio" name="ll-carousel-active" id="ll-carousel-slide-${index + 1}"${index === 0 ? " checked" : ""}>`;
+        return `    <input class="ll-carousel__control ll-carousel__control--${index + 1}" type="radio" name="ll-carousel-active" id="ll-carousel-slide-${index + 1}"${index === activeSlideIndex ? " checked" : ""}>`;
       }).join("\n");
       const panels = slides.map(renderCarouselPanel).join("\n\n");
       const dots = slides.map((slide, index) => {
@@ -4586,7 +4596,7 @@ ${buildArticleStyle()}`;
       }
 
       if (currentPage === "conteudo" && currentEditorTab === "carousel") {
-        return `${buildCarouselSectionHtml()}
+        return `${buildCarouselSectionHtml(state.carousel.previewSlideIndex)}
 
 ${buildCarouselStyle()}`;
       }
@@ -5684,6 +5694,15 @@ ${slides}
     }
 
     editor.addEventListener("focusin", (event) => {
+      const carouselField = event.target.dataset.carouselField;
+      const carouselSlideIndex = event.target.dataset.carouselSlide;
+      if (carouselField && carouselSlideIndex !== undefined) {
+        setCarouselPreviewSlide(Number(carouselSlideIndex));
+        state.carousel.openSlideIndex = Number(carouselSlideIndex);
+        updateOutput();
+        return;
+      }
+
       const slideCard = event.target.closest("[data-story-slide-card]");
       if (!slideCard) {
         return;
@@ -5848,10 +5867,14 @@ ${slides}
           return;
         }
 
-        const slide = state.carousel.slides[Number(slideIndex)];
+        const slideNumber = Number(slideIndex);
+        const slide = state.carousel.slides[slideNumber];
         if (!slide) {
           return;
         }
+
+        setCarouselPreviewSlide(slideNumber);
+        state.carousel.openSlideIndex = slideNumber;
 
         if (carouselField === "type") {
           slide.type = normalizeCarouselType(event.target.value);
@@ -6023,6 +6046,8 @@ ${slides}
       }
 
       state.carousel.openSlideIndex = slideIndex;
+      setCarouselPreviewSlide(slideIndex);
+      updateOutput();
       editor.querySelectorAll("[data-carousel-slide-panel]").forEach((item) => {
         if (item !== panel) {
           item.open = false;
