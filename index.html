@@ -329,11 +329,13 @@
       min-height: 0;
     }
 
-    html[data-page="conteudo"][data-editor-tab="article"] .app {
+    html[data-page="conteudo"][data-editor-tab="article"] .app,
+    html[data-page="conteudo"][data-editor-tab="carousel"] .app {
       width: min(1640px, calc(100% - 24px));
     }
 
-    html[data-page="conteudo"][data-editor-tab="article"] .layout {
+    html[data-page="conteudo"][data-editor-tab="article"] .layout,
+    html[data-page="conteudo"][data-editor-tab="carousel"] .layout {
       grid-template-columns: minmax(420px, 0.56fr) minmax(700px, 1.44fr);
     }
 
@@ -390,7 +392,7 @@
 
     .editor-tabs {
       display: grid;
-      grid-template-columns: repeat(4, minmax(0, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(96px, 1fr));
       gap: 4px;
       padding: 4px;
       margin-bottom: 16px;
@@ -1312,6 +1314,263 @@
       min-height: 0;
       height: 100%;
     }
+
+    html[data-viewport-mode="tall-workspace"][data-page="conteudo"]:is([data-editor-tab="article"], [data-editor-tab="carousel"]) body {
+      height: auto;
+      overflow: auto;
+    }
+
+    html[data-viewport-mode="tall-workspace"][data-page="conteudo"]:is([data-editor-tab="article"], [data-editor-tab="carousel"]) .app {
+      width: min(1080px, calc(100% - 36px));
+      height: auto;
+      min-height: 100vh;
+      padding: 24px 0;
+    }
+
+    html[data-viewport-mode="tall-workspace"][data-page="conteudo"]:is([data-editor-tab="article"], [data-editor-tab="carousel"]) .topbar {
+      align-items: flex-start;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    html[data-viewport-mode="tall-workspace"][data-page="conteudo"]:is([data-editor-tab="article"], [data-editor-tab="carousel"]) .page-nav {
+      width: 100%;
+    }
+
+    html[data-viewport-mode="tall-workspace"][data-page="conteudo"]:is([data-editor-tab="article"], [data-editor-tab="carousel"]) .page-nav__link {
+      flex: 1;
+      justify-content: center;
+    }
+
+    html[data-viewport-mode="tall-workspace"][data-page="conteudo"]:is([data-editor-tab="article"], [data-editor-tab="carousel"]) .actions {
+      justify-content: flex-start;
+    }
+
+    html[data-viewport-mode="tall-workspace"][data-page="conteudo"]:is([data-editor-tab="article"], [data-editor-tab="carousel"]) .layout {
+      grid-template-columns: minmax(0, 1fr) !important;
+      flex: initial;
+    }
+
+    html[data-viewport-mode="tall-workspace"][data-page="conteudo"]:is([data-editor-tab="article"], [data-editor-tab="carousel"]) .panel,
+    html[data-viewport-mode="tall-workspace"][data-page="conteudo"]:is([data-editor-tab="article"], [data-editor-tab="carousel"]) .editor-panel .panel__body,
+    html[data-viewport-mode="tall-workspace"][data-page="conteudo"]:is([data-editor-tab="article"], [data-editor-tab="carousel"]) .output {
+      display: block;
+      overflow: visible;
+    }
+
+    html[data-viewport-mode="tall-workspace"][data-page="conteudo"]:is([data-editor-tab="article"], [data-editor-tab="carousel"]) .faq-editor {
+      height: auto;
+      overflow: visible;
+    }
+
+    html[data-viewport-mode="tall-workspace"][data-page="conteudo"]:is([data-editor-tab="article"], [data-editor-tab="carousel"]) .preview-shell {
+      display: block;
+      height: 720px;
+      min-height: 520px;
+    }
+
+    html[data-viewport-mode="tall-workspace"][data-page="conteudo"]:is([data-editor-tab="article"], [data-editor-tab="carousel"]) .preview-frame {
+      height: 100%;
+      min-height: 520px;
+    }
+
+    @media (min-width: 921px) and (max-width: 1800px) and (min-height: 1050px) {
+      html[data-page="conteudo"][data-editor-tab="article"] body,
+      html[data-page="conteudo"][data-editor-tab="carousel"] body {
+        height: auto;
+        overflow: auto;
+      }
+
+      html[data-page="conteudo"][data-editor-tab="article"] .app,
+      html[data-page="conteudo"][data-editor-tab="carousel"] .app {
+        width: min(1080px, calc(100% - 36px));
+        height: auto;
+        min-height: 100vh;
+        padding: 24px 0;
+      }
+
+      html[data-page="conteudo"][data-editor-tab="article"] .topbar,
+      html[data-page="conteudo"][data-editor-tab="carousel"] .topbar {
+        align-items: flex-start;
+        flex-direction: column;
+        gap: 14px;
+      }
+
+      html[data-page="conteudo"][data-editor-tab="article"] .page-nav,
+      html[data-page="conteudo"][data-editor-tab="carousel"] .page-nav {
+        width: 100%;
+      }
+
+      html[data-page="conteudo"][data-editor-tab="article"] .page-nav__link,
+      html[data-page="conteudo"][data-editor-tab="carousel"] .page-nav__link {
+        flex: 1;
+        justify-content: center;
+      }
+
+      html[data-page="conteudo"][data-editor-tab="article"] .actions,
+      html[data-page="conteudo"][data-editor-tab="carousel"] .actions {
+        justify-content: flex-start;
+      }
+
+      html[data-page="conteudo"][data-editor-tab="article"] .layout,
+      html[data-page="conteudo"][data-editor-tab="carousel"] .layout {
+        grid-template-columns: minmax(0, 1fr) !important;
+        flex: initial;
+      }
+
+      html[data-page="conteudo"][data-editor-tab="article"] .editor-panel,
+      html[data-page="conteudo"][data-editor-tab="article"] .output-panel,
+      html[data-page="conteudo"][data-editor-tab="carousel"] .editor-panel,
+      html[data-page="conteudo"][data-editor-tab="carousel"] .output-panel {
+        grid-column: 1 / -1 !important;
+        width: 100%;
+      }
+
+      html[data-page="conteudo"][data-editor-tab="article"] .panel,
+      html[data-page="conteudo"][data-editor-tab="article"] .editor-panel .panel__body,
+      html[data-page="conteudo"][data-editor-tab="article"] .output,
+      html[data-page="conteudo"][data-editor-tab="carousel"] .panel,
+      html[data-page="conteudo"][data-editor-tab="carousel"] .editor-panel .panel__body,
+      html[data-page="conteudo"][data-editor-tab="carousel"] .output {
+        display: block;
+        overflow: visible;
+      }
+
+      html[data-page="conteudo"][data-editor-tab="article"] .faq-editor,
+      html[data-page="conteudo"][data-editor-tab="carousel"] .faq-editor {
+        height: auto;
+        overflow: visible;
+      }
+
+      html[data-page="conteudo"][data-editor-tab="article"] .preview-shell,
+      html[data-page="conteudo"][data-editor-tab="carousel"] .preview-shell {
+        display: block;
+        height: 720px;
+        min-height: 520px;
+      }
+
+      html[data-page="conteudo"][data-editor-tab="article"] .preview-frame,
+      html[data-page="conteudo"][data-editor-tab="carousel"] .preview-frame {
+        height: 100%;
+        min-height: 520px;
+      }
+    }
+
+    html.layout-is-stacked body {
+      height: auto !important;
+      overflow: auto !important;
+    }
+
+    html.layout-is-stacked .app {
+      width: min(1080px, calc(100% - 36px)) !important;
+      height: auto !important;
+      min-height: 100vh !important;
+      padding: 24px 0 !important;
+    }
+
+    html.layout-is-stacked .topbar {
+      align-items: flex-start !important;
+      flex-direction: column !important;
+      gap: 14px !important;
+    }
+
+    html.layout-is-stacked .page-nav {
+      width: 100% !important;
+    }
+
+    html.layout-is-stacked .page-nav__link {
+      flex: 1 !important;
+      justify-content: center !important;
+    }
+
+    html.layout-is-stacked .actions {
+      justify-content: flex-start !important;
+    }
+
+    html.layout-is-stacked .layout {
+      display: grid !important;
+      grid-template-columns: minmax(0, 1fr) !important;
+      flex: initial !important;
+    }
+
+    html.layout-is-stacked .editor-panel,
+    html.layout-is-stacked .output-panel {
+      grid-column: 1 / -1 !important;
+      width: 100% !important;
+    }
+
+    html.layout-is-stacked .panel,
+    html.layout-is-stacked .editor-panel .panel__body,
+    html.layout-is-stacked .output {
+      display: block !important;
+      overflow: visible !important;
+    }
+
+    html.layout-is-stacked .faq-editor {
+      height: auto !important;
+      overflow: visible !important;
+    }
+
+    html.layout-is-stacked .preview-shell {
+      display: block !important;
+      height: 720px !important;
+      min-height: 520px !important;
+    }
+
+    html.layout-is-stacked .preview-frame {
+      height: 100% !important;
+      min-height: 520px !important;
+    }
+
+    @media (max-width: 1366px) {
+      body {
+        height: auto !important;
+        overflow: auto !important;
+      }
+
+      .app {
+        width: min(1080px, calc(100% - 16px)) !important;
+        height: auto !important;
+        min-height: 100vh !important;
+        padding: 24px 0 !important;
+      }
+
+      .layout {
+        display: grid !important;
+        grid-template-columns: minmax(0, 1fr) !important;
+        flex: initial !important;
+      }
+
+      .editor-panel,
+      .output-panel {
+        grid-column: 1 / -1 !important;
+        width: 100% !important;
+      }
+
+      .panel,
+      .editor-panel .panel__body,
+      .output {
+        display: block !important;
+        overflow: visible !important;
+      }
+
+      .faq-editor {
+        height: auto !important;
+        overflow: visible !important;
+      }
+
+      .preview-shell {
+        display: block !important;
+        height: 720px !important;
+        min-height: 520px !important;
+      }
+
+      .preview-frame {
+        height: 100% !important;
+        min-height: 520px !important;
+      }
+    }
+
   </style>
 </head>
 <body>
@@ -1350,6 +1609,7 @@
               <button class="editor-tabs__button" type="button" role="tab" data-editor-tab="table">Tabela</button>
               <button class="editor-tabs__button" type="button" role="tab" data-editor-tab="stories">Stories</button>
               <button class="editor-tabs__button" type="button" role="tab" data-editor-tab="article">Artigo</button>
+              <button class="editor-tabs__button" type="button" role="tab" data-editor-tab="carousel">Carrossel</button>
             </div>
           </div>
           <div class="faq-editor" id="faqEditor"></div>
@@ -2451,6 +2711,610 @@ __STORIES_DYNAMIC_COLORS__
   }
 __ARTICLE_DYNAMIC_COLORS__
 </style>`;
+    const carouselStyle = `<style>
+  .ll-carousel {
+    --ll-carousel-brand: #ff9900;
+    --ll-carousel-ink: #14202b;
+    --ll-carousel-muted: #586675;
+    --ll-carousel-soft: #f4f7f9;
+    --ll-carousel-panel: #ffffff;
+    --ll-carousel-line: #d9e2ea;
+    --ll-carousel-dot-hover: #f0f3f5;
+    --ll-carousel-dot-active: #e7ecef;
+    --ll-carousel-dot-active-border: #c8d2da;
+    --ll-carousel-shadow: 0 1.5rem 3rem rgba(13, 35, 51, 0.12);
+    background: var(--ll-carousel-soft);
+    color: var(--ll-carousel-ink);
+    font-family: Arial, Helvetica, sans-serif;
+    overflow: hidden;
+  }
+
+  .ll-carousel__container {
+    box-sizing: border-box;
+    container-name: ll-carousel-container;
+    container-type: inline-size;
+    margin-inline: auto;
+    padding: 2rem 1rem;
+    width: 100%;
+  }
+
+  .ll-carousel__control {
+    display: none;
+  }
+
+  .ll-carousel__intro {
+    display: grid;
+    gap: 1rem;
+    justify-items: center;
+    margin-block-end: 1.5rem;
+    text-align: center;
+  }
+
+  .ll-carousel--hide-intro .ll-carousel__intro {
+    display: none;
+  }
+
+  .ll-carousel__eyebrow,
+  .ll-carousel__title,
+  .ll-carousel__lead,
+  .ll-carousel__dot-number,
+  .ll-carousel__dot-text,
+  .ll-carousel__layout-eyebrow,
+  .ll-carousel__layout-title,
+  .ll-carousel__layout-text {
+    letter-spacing: 0;
+    overflow-wrap: anywhere;
+  }
+
+  .ll-carousel__eyebrow {
+    color: var(--ll-carousel-brand);
+    font-size: clamp(0.75rem, 0.72rem + 0.16vw, 0.875rem);
+    font-weight: 700;
+    line-height: 1.4;
+    margin: 0;
+    text-transform: uppercase;
+  }
+
+  .ll-carousel__title {
+    font-size: clamp(1.75rem, 1.34rem + 1.76vw, 3rem);
+    line-height: 1.08;
+    margin: 0;
+  }
+
+  .ll-carousel__lead {
+    color: var(--ll-carousel-muted);
+    font-size: clamp(0.9375rem, 0.9rem + 0.16vw, 1.0625rem);
+    line-height: 1.6;
+    margin: 0;
+    max-width: 54rem;
+  }
+
+  .ll-carousel__viewport {
+    aspect-ratio: 16 / 10;
+    border: 1px solid var(--ll-carousel-line);
+    border-radius: 1rem;
+    box-shadow: var(--ll-carousel-shadow);
+    box-sizing: border-box;
+    isolation: isolate;
+    margin-inline: auto;
+    max-width: 100%;
+    overflow: hidden;
+    width: min(100%, 1280px);
+  }
+
+  .ll-carousel__track {
+    display: grid;
+    height: 100%;
+    max-width: 100%;
+    overflow: hidden;
+    position: relative;
+    width: 100%;
+  }
+
+  .ll-carousel__panel {
+    background: var(--ll-carousel-panel);
+    box-sizing: border-box;
+    grid-area: 1 / 1;
+    height: 100%;
+    inset: 0;
+    max-width: 100%;
+    min-width: 0;
+    opacity: 0;
+    overflow: hidden;
+    pointer-events: none;
+    position: absolute;
+    transform: translateX(100%);
+    transition: transform 0.8s ease, opacity 0.4s ease;
+    width: 100%;
+    z-index: 1;
+  }
+
+  .ll-carousel__layout {
+    box-sizing: border-box;
+    height: 100%;
+    max-height: 100%;
+    overflow: hidden;
+    width: 100%;
+  }
+
+  .ll-carousel__layout--impact {
+    --ll-carousel-impact-bg: #f16425;
+    --ll-carousel-impact-text: #fff7ef;
+    --ll-carousel-impact-muted: rgba(255, 247, 239, 0.84);
+    align-content: center;
+    align-items: center;
+    background: var(--ll-carousel-impact-bg);
+    color: var(--ll-carousel-impact-text);
+    display: grid;
+    gap: clamp(1.5rem, 3vw, 3.5rem);
+    grid-template-columns: minmax(0, 0.86fr) minmax(0, 1.14fr);
+    grid-template-rows: minmax(0, 1fr);
+    min-height: 0;
+    padding: clamp(1.5rem, 3.4vw, 3.5rem);
+  }
+
+  .ll-carousel__layout--impact > * {
+    min-height: 0;
+    min-width: 0;
+  }
+
+  .ll-carousel__layout-copy {
+    align-self: center;
+    display: grid;
+    gap: clamp(0.7rem, 1vw, 1.05rem);
+    justify-self: start;
+    max-height: 100%;
+    max-width: min(43ch, 100%);
+    min-width: 0;
+  }
+
+  .ll-carousel__layout-eyebrow {
+    font-size: clamp(0.75rem, 0.7rem + 0.25vw, 0.95rem);
+    font-weight: 800;
+    margin: 0;
+    text-transform: uppercase;
+  }
+
+  .ll-carousel__layout-title {
+    font-size: clamp(2rem, 3.25vw, 4rem);
+    font-weight: 800;
+    line-height: 1.02;
+    margin: 0;
+    max-width: 100%;
+    text-wrap: balance;
+  }
+
+  .ll-carousel__layout-text {
+    color: var(--ll-carousel-impact-muted);
+    font-size: clamp(0.95rem, 1vw, 1.12rem);
+    line-height: 1.45;
+    margin: 0;
+    max-width: 100%;
+  }
+
+  .ll-carousel__media-card {
+    aspect-ratio: 4 / 3;
+    border-radius: 1.25rem;
+    box-shadow: 0 1.5rem 3rem rgba(20, 32, 43, 0.22);
+    margin-block: auto;
+    max-height: 76%;
+    max-width: min(100%, 38rem);
+    overflow: hidden;
+    place-self: center end;
+    width: 100%;
+  }
+
+  .ll-carousel__layout--impact-reverse {
+    grid-template-columns: minmax(0, 1.14fr) minmax(0, 0.86fr);
+  }
+
+  .ll-carousel__layout--impact-reverse .ll-carousel__layout-copy {
+    grid-column: 2;
+    grid-row: 1;
+    justify-self: end;
+  }
+
+  .ll-carousel__layout--impact-reverse .ll-carousel__media-card {
+    grid-column: 1;
+    grid-row: 1;
+    place-self: center start;
+  }
+
+  .ll-carousel__image,
+  .ll-carousel__picture,
+  .ll-carousel__video {
+    display: block;
+    height: 100%;
+    width: 100%;
+  }
+
+  .ll-carousel__image,
+  .ll-carousel__video {
+    object-fit: cover;
+    object-position: center;
+  }
+
+  .ll-carousel__layout--media {
+    background: var(--ll-carousel-media-bg, #101217);
+    padding: 0;
+  }
+
+  .ll-carousel__figure {
+    height: 100%;
+    margin: 0;
+    overflow: hidden;
+    position: relative;
+    width: 100%;
+  }
+
+  .ll-carousel__figure .ll-carousel__image,
+  .ll-carousel__figure .ll-carousel__video {
+    aspect-ratio: 16 / 10;
+    object-fit: cover;
+    object-position: center;
+  }
+
+  .ll-carousel__caption {
+    align-items: flex-start;
+    background: rgba(0, 0, 0, 0.48);
+    border: 1px solid rgba(255, 255, 255, 0.22);
+    border-radius: 1.25rem;
+    box-shadow: 0 1.25rem 3rem rgba(0, 0, 0, 0.28);
+    color: #fff;
+    display: grid;
+    gap: 0.65rem;
+    left: clamp(1.25rem, 5vw, 4.75rem);
+    max-width: min(42%, 34rem);
+    padding: clamp(1rem, 2.5vw, 2rem);
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+  }
+
+  .ll-carousel__caption h3 {
+    font-size: clamp(1.35rem, 2.4vw, 3rem);
+    line-height: 1.05;
+    margin: 0;
+    overflow-wrap: anywhere;
+  }
+
+  .ll-carousel__caption p {
+    font-size: clamp(0.85rem, 1.15vw, 1.15rem);
+    line-height: 1.45;
+    margin: 0;
+    overflow-wrap: anywhere;
+  }
+
+  .ll-carousel__nav {
+    display: grid;
+    gap: 0.5rem;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    margin-block-start: 1rem;
+  }
+
+  .ll-carousel__dot {
+    align-items: center;
+    background: var(--ll-carousel-panel);
+    border: 1px solid var(--ll-carousel-line);
+    border-radius: 0.5rem;
+    color: var(--ll-carousel-ink);
+    cursor: pointer;
+    display: grid;
+    gap: 0.5rem;
+    min-height: 4rem;
+    padding: 1rem;
+    transition: background 0.4s ease, border-color 0.4s ease, color 0.4s ease, transform 0.4s ease;
+  }
+
+  .ll-carousel__dot:hover {
+    background: var(--ll-carousel-dot-hover);
+    border-color: var(--ll-carousel-dot-active-border);
+    transform: translateY(-0.25rem);
+  }
+
+  .ll-carousel__dot-number {
+    color: var(--ll-carousel-brand);
+    font-size: clamp(0.75rem, 0.72rem + 0.16vw, 0.875rem);
+    font-weight: 700;
+    line-height: 1;
+  }
+
+  .ll-carousel__dot-text {
+    font-size: clamp(0.875rem, 0.84rem + 0.16vw, 1rem);
+    font-weight: 700;
+    line-height: 1.2;
+  }
+
+  .ll-carousel__control--1:checked ~ .ll-carousel__viewport .ll-carousel__panel--1,
+  .ll-carousel__control--2:checked ~ .ll-carousel__viewport .ll-carousel__panel--2,
+  .ll-carousel__control--3:checked ~ .ll-carousel__viewport .ll-carousel__panel--3,
+  .ll-carousel__control--4:checked ~ .ll-carousel__viewport .ll-carousel__panel--4 {
+    opacity: 1;
+    pointer-events: auto;
+    transform: translateX(0);
+    z-index: 2;
+  }
+
+  .ll-carousel__control--2:checked ~ .ll-carousel__viewport .ll-carousel__panel--1,
+  .ll-carousel__control--3:checked ~ .ll-carousel__viewport .ll-carousel__panel--1,
+  .ll-carousel__control--3:checked ~ .ll-carousel__viewport .ll-carousel__panel--2,
+  .ll-carousel__control--4:checked ~ .ll-carousel__viewport .ll-carousel__panel--1,
+  .ll-carousel__control--4:checked ~ .ll-carousel__viewport .ll-carousel__panel--2,
+  .ll-carousel__control--4:checked ~ .ll-carousel__viewport .ll-carousel__panel--3 {
+    transform: translateX(-100%);
+  }
+
+  .ll-carousel__control--1:checked ~ .ll-carousel__nav .ll-carousel__dot--1,
+  .ll-carousel__control--2:checked ~ .ll-carousel__nav .ll-carousel__dot--2,
+  .ll-carousel__control--3:checked ~ .ll-carousel__nav .ll-carousel__dot--3,
+  .ll-carousel__control--4:checked ~ .ll-carousel__nav .ll-carousel__dot--4 {
+    background: var(--ll-carousel-dot-active);
+    border-color: var(--ll-carousel-dot-active-border);
+    color: var(--ll-carousel-ink);
+  }
+
+  @media (max-width: 760px) {
+    .ll-carousel__container {
+      padding: 1rem 0.75rem;
+    }
+
+    .ll-carousel__intro {
+      gap: 0.65rem;
+      margin-block-end: 1rem;
+    }
+
+    .ll-carousel__title {
+      font-size: clamp(1.45rem, 7vw, 2rem);
+    }
+
+    .ll-carousel__lead {
+      font-size: 0.9rem;
+      line-height: 1.45;
+    }
+
+    .ll-carousel__viewport {
+      aspect-ratio: 4 / 5;
+      border-radius: 0.95rem;
+    }
+
+    .ll-carousel__layout--impact {
+      align-content: center;
+      gap: 0.9rem;
+      grid-template-columns: minmax(0, 1fr);
+      grid-template-rows: auto minmax(0, 1fr);
+      padding: 1rem;
+    }
+
+    .ll-carousel__layout--impact .ll-carousel__layout-copy {
+      grid-column: 1;
+      grid-row: 1;
+      justify-self: stretch;
+      max-width: none;
+    }
+
+    .ll-carousel__layout--impact .ll-carousel__media-card {
+      grid-column: 1;
+      grid-row: 2;
+      place-self: center;
+    }
+
+    .ll-carousel__layout--impact-reverse .ll-carousel__layout-copy {
+      grid-row: 2;
+    }
+
+    .ll-carousel__layout--impact-reverse .ll-carousel__media-card {
+      grid-row: 1;
+    }
+
+    .ll-carousel__layout-title {
+      font-size: clamp(1.3rem, 6vw, 1.85rem);
+      line-height: 1.04;
+    }
+
+    .ll-carousel__layout-text {
+      font-size: 0.8rem;
+      line-height: 1.32;
+    }
+
+    .ll-carousel__media-card {
+      border-radius: 0.8rem;
+      max-height: 100%;
+      max-width: 100%;
+    }
+
+    .ll-carousel__layout--media {
+      background: #0d2333;
+      padding: 0.75rem;
+    }
+
+    .ll-carousel__figure {
+      display: grid;
+      gap: 0.65rem;
+      grid-template-rows: minmax(0, 1fr) auto;
+    }
+
+    .ll-carousel__figure .ll-carousel__picture,
+    .ll-carousel__figure > .ll-carousel__video {
+      background: #101821;
+      border-radius: 0.75rem;
+      min-height: 0;
+      overflow: hidden;
+    }
+
+    .ll-carousel__figure .ll-carousel__image,
+    .ll-carousel__figure .ll-carousel__video {
+      aspect-ratio: auto;
+      object-fit: contain;
+      object-position: center;
+    }
+
+    .ll-carousel__caption {
+      background: rgba(0, 0, 0, 0.62);
+      border-radius: 0.85rem;
+      max-width: none;
+      padding: 0.72rem;
+      position: static;
+      top: auto;
+      transform: none;
+    }
+
+    .ll-carousel__caption h3 {
+      font-size: clamp(1.05rem, 5vw, 1.45rem);
+    }
+
+    .ll-carousel__caption p {
+      font-size: 0.76rem;
+      line-height: 1.3;
+    }
+
+    .ll-carousel__nav {
+      gap: 0.35rem;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      margin-block-start: 0.55rem;
+    }
+
+    .ll-carousel__dot {
+      border-radius: 0.55rem;
+      gap: 0;
+      justify-items: center;
+      min-height: 2.15rem;
+      padding: 0.38rem 0.28rem;
+      text-align: center;
+    }
+
+    .ll-carousel__dot:hover {
+      transform: none;
+    }
+
+    .ll-carousel__dot-number {
+      display: none;
+    }
+
+    .ll-carousel__dot-text {
+      font-size: 0.72rem;
+      line-height: 1.05;
+    }
+  }
+
+  @container ll-carousel-container (max-width: 620px) {
+    .ll-carousel__viewport {
+      aspect-ratio: 4 / 5;
+      border-radius: 0.95rem;
+    }
+
+    .ll-carousel__layout--impact {
+      align-content: center;
+      gap: 0.9rem;
+      grid-template-columns: minmax(0, 1fr);
+      grid-template-rows: auto minmax(0, 1fr);
+      padding: 1rem;
+    }
+
+    .ll-carousel__layout--impact .ll-carousel__layout-copy {
+      grid-column: 1;
+      grid-row: 1;
+      justify-self: stretch;
+      max-width: none;
+    }
+
+    .ll-carousel__layout--impact .ll-carousel__media-card {
+      grid-column: 1;
+      grid-row: 2;
+      place-self: center;
+    }
+
+    .ll-carousel__layout--impact-reverse .ll-carousel__layout-copy {
+      grid-row: 2;
+    }
+
+    .ll-carousel__layout--impact-reverse .ll-carousel__media-card {
+      grid-row: 1;
+    }
+
+    .ll-carousel__layout-title {
+      font-size: clamp(1.3rem, 7.5cqw, 1.85rem);
+    }
+
+    .ll-carousel__layout-text {
+      font-size: 0.8rem;
+      line-height: 1.32;
+    }
+
+    .ll-carousel__layout--media {
+      background: #0d2333;
+      padding: 0.75rem;
+    }
+
+    .ll-carousel__figure {
+      display: grid;
+      gap: 0.65rem;
+      grid-template-rows: minmax(0, 1fr) auto;
+    }
+
+    .ll-carousel__figure .ll-carousel__picture,
+    .ll-carousel__figure > .ll-carousel__video {
+      background: #101821;
+      border-radius: 0.75rem;
+      min-height: 0;
+      overflow: hidden;
+    }
+
+    .ll-carousel__figure .ll-carousel__image,
+    .ll-carousel__figure .ll-carousel__video {
+      aspect-ratio: auto;
+      object-fit: contain;
+      object-position: center;
+    }
+
+    .ll-carousel__caption {
+      background: rgba(0, 0, 0, 0.62);
+      border-radius: 0.85rem;
+      max-width: none;
+      padding: 0.72rem;
+      position: static;
+      top: auto;
+      transform: none;
+    }
+
+    .ll-carousel__caption h3 {
+      font-size: clamp(1.05rem, 5.5cqw, 1.45rem);
+    }
+
+    .ll-carousel__caption p {
+      font-size: 0.76rem;
+      line-height: 1.3;
+    }
+
+    .ll-carousel__nav {
+      gap: 0.35rem;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      margin-block-start: 0.55rem;
+    }
+
+    .ll-carousel__dot {
+      border-radius: 0.55rem;
+      gap: 0;
+      justify-items: center;
+      min-height: 2.15rem;
+      padding: 0.38rem 0.28rem;
+      text-align: center;
+    }
+
+    .ll-carousel__dot:hover {
+      transform: none;
+    }
+
+    .ll-carousel__dot-number {
+      display: none;
+    }
+
+    .ll-carousel__dot-text {
+      font-size: 0.72rem;
+      line-height: 1.05;
+    }
+  }
+__CAROUSEL_DYNAMIC_COLORS__
+</style>`;
     const state = {
       faqBulkInput: "",
       faqBulkStatus: "",
@@ -2558,6 +3422,64 @@ __ARTICLE_DYNAMIC_COLORS__
                 mediaFocus: "bottom"
               }
             ]
+          }
+        ]
+      },
+      carousel: {
+        ariaLabel: "Carrossel de layouts para conteúdo",
+        showIntro: true,
+        eyebrow: "Container modular",
+        title: "Um carrossel para layouts inteiros",
+        lead: "Cada slide recebe uma seção completa, com troca suave em CSS puro e textos curtos para leitura rápida.",
+        brandColor: "#ff9900",
+        softColor: "#f4f7f9",
+        dotHoverColor: "#f0f3f5",
+        dotActiveColor: "#e7ecef",
+        dotActiveBorderColor: "#c8d2da",
+        openBase: false,
+        openSlideIndex: -1,
+        slides: [
+          {
+            type: "impact",
+            navLabel: "Impacto",
+            eyebrow: "Impacto visual",
+            title: "Mensagem curta em destaque",
+            text: "Use este espaço para resumir uma ideia principal com apoio da imagem ao lado.",
+            image: "https://static1.efacil.com.br/wcsstore//AuroraStorefrontAssetStore/PDP/EQUIPE_QUALIDADE_CONTEUDO/sessao4.jpg",
+            alt: "Imagem de apoio do layout de impacto",
+            backgroundColor: "#f16425",
+            textColor: "#fff7ef",
+            reverse: false
+          },
+          {
+            type: "decision",
+            navLabel: "Decisão",
+            captionTitle: "Título curto do destaque",
+            captionText: "Use a legenda para explicar o ponto principal do produto ou da seção.",
+            image: "https://imgprd.martinsatacado.com.br/catalogoimg/catalogo/kit-fixacao-telha-precon-tubozan-parafusos-autobrocantes-10-unidades-410376-02.jpg",
+            alt: "Imagem principal do layout de decisão",
+            backgroundColor: "#0d2333"
+          },
+          {
+            type: "impact",
+            navLabel: "Invertido",
+            eyebrow: "Impacto visual",
+            title: "Mensagem curta em destaque",
+            text: "Use este espaço para resumir uma ideia principal com apoio da imagem ao lado.",
+            image: "https://static1.efacil.com.br/wcsstore//AuroraStorefrontAssetStore/PDP/EQUIPE_QUALIDADE_CONTEUDO/sessao4.jpg",
+            alt: "Imagem de apoio do layout de impacto invertido",
+            backgroundColor: "#f16425",
+            textColor: "#fff7ef",
+            reverse: true
+          },
+          {
+            type: "decision",
+            navLabel: "Decisão",
+            captionTitle: "Título curto do destaque",
+            captionText: "Use a legenda para explicar o ponto principal do produto ou da seção.",
+            image: "https://imgprd.martinsatacado.com.br/catalogoimg/catalogo/kit-fixacao-telha-precon-tubozan-parafusos-autobrocantes-10-unidades-410376-02.jpg",
+            alt: "Imagem principal do layout de decisão",
+            backgroundColor: "#0d2333"
           }
         ]
       },
@@ -2715,6 +3637,24 @@ __ARTICLE_DYNAMIC_COLORS__
       return "light";
     }
 
+    function updateViewportMode() {
+      const isTallInner = window.innerWidth >= 921
+        && window.innerWidth <= 1900
+        && window.innerHeight >= 900
+        && window.innerHeight >= window.innerWidth * 0.85;
+      const isTallWindow = window.outerWidth >= 921
+        && window.outerWidth <= 1250
+        && window.outerHeight >= 1500;
+      const isPortraitScreen = screen.width <= 1200
+        && screen.height >= 1500;
+      const isStackableTab = currentPage === "conteudo"
+        && (currentEditorTab === "article" || currentEditorTab === "carousel");
+      const isTallWorkspace = isTallInner || isTallWindow || isPortraitScreen;
+
+      document.documentElement.dataset.viewportMode = isTallWorkspace ? "tall-workspace" : "";
+      document.documentElement.classList.toggle("layout-is-stacked", isStackableTab && isTallWorkspace);
+    }
+
     function escapeHtml(value) {
       return value
         .replaceAll("&", "&amp;")
@@ -2786,6 +3726,111 @@ __ARTICLE_DYNAMIC_COLORS__
   }`);
     }
 
+    function buildCarouselStyle() {
+      return carouselStyle.replace("__CAROUSEL_DYNAMIC_COLORS__", `
+  .ll-carousel {
+    --ll-carousel-brand: ${normalizeHexColor(state.carousel.brandColor)};
+    --ll-carousel-soft: ${normalizeHexColor(state.carousel.softColor)};
+    --ll-carousel-dot-hover: ${normalizeHexColor(state.carousel.dotHoverColor)};
+    --ll-carousel-dot-active: ${normalizeHexColor(state.carousel.dotActiveColor)};
+    --ll-carousel-dot-active-border: ${normalizeHexColor(state.carousel.dotActiveBorderColor)};
+  }`);
+    }
+
+    function normalizeCarouselType(type) {
+      return type === "decision" ? "decision" : "impact";
+    }
+
+    function getCarouselSlides() {
+      return state.carousel.slides.slice(0, 4);
+    }
+
+    function renderCarouselImage(slide, className = "ll-carousel__image") {
+      const src = escapeHtml(String(slide.image || "").trim());
+      const alt = escapeHtml(String(slide.alt || "").trim());
+      return `<img class="${className}" src="${src}" alt="${alt}" width="1600" height="1000" loading="lazy" decoding="async">`;
+    }
+
+    function renderCarouselImpactSlide(slide) {
+      const reverseClass = slide.reverse ? " ll-carousel__layout--impact-reverse" : "";
+      const impactBg = normalizeHexColor(slide.backgroundColor || "#f16425");
+      const impactText = normalizeHexColor(slide.textColor || "#fff7ef");
+      const muted = hexToRgba(impactText, "0.84");
+
+      return `<section class="ll-carousel__layout ll-carousel__layout--impact${reverseClass}" style="--ll-carousel-impact-bg: ${impactBg}; --ll-carousel-impact-text: ${impactText}; --ll-carousel-impact-muted: ${muted};" aria-label="${escapeHtml(slide.navLabel || "Impacto")}">
+          <div class="ll-carousel__layout-copy">
+            <p class="ll-carousel__layout-eyebrow">${escapeHtml(slide.eyebrow || "")}</p>
+            <h3 class="ll-carousel__layout-title">${escapeHtml(slide.title || "")}</h3>
+            <p class="ll-carousel__layout-text">${escapeHtml(slide.text || "")}</p>
+          </div>
+          <figure class="ll-carousel__media-card">
+            ${renderCarouselImage(slide)}
+          </figure>
+        </section>`;
+    }
+
+    function renderCarouselDecisionSlide(slide) {
+      const backgroundColor = normalizeHexColor(slide.backgroundColor || "#0d2333");
+
+      return `<section class="ll-carousel__layout ll-carousel__layout--media" style="--ll-carousel-media-bg: ${backgroundColor};" aria-label="${escapeHtml(slide.navLabel || "Decisão")}">
+          <figure class="ll-carousel__figure">
+            <picture class="ll-carousel__picture">
+              ${renderCarouselImage(slide)}
+            </picture>
+            <figcaption class="ll-carousel__caption">
+              <h3>${escapeHtml(slide.captionTitle || "")}</h3>
+              <p>${escapeHtml(slide.captionText || "")}</p>
+            </figcaption>
+          </figure>
+        </section>`;
+    }
+
+    function renderCarouselPanel(slide, index) {
+      const type = normalizeCarouselType(slide.type);
+      const content = type === "decision" ? renderCarouselDecisionSlide(slide) : renderCarouselImpactSlide(slide);
+
+      return `      <article class="ll-carousel__panel ll-carousel__panel--${index + 1}" id="ll-carousel-panel-${index + 1}" aria-label="Slide ${index + 1}: ${escapeHtml(slide.navLabel || `Slide ${index + 1}`)}">
+        ${content}
+      </article>`;
+    }
+
+    function buildCarouselSectionHtml() {
+      const slides = getCarouselSlides();
+      const hideIntroClass = state.carousel.showIntro === false ? " ll-carousel--hide-intro" : "";
+      const inputs = slides.map((slide, index) => {
+        return `    <input class="ll-carousel__control ll-carousel__control--${index + 1}" type="radio" name="ll-carousel-active" id="ll-carousel-slide-${index + 1}"${index === 0 ? " checked" : ""}>`;
+      }).join("\n");
+      const panels = slides.map(renderCarouselPanel).join("\n\n");
+      const dots = slides.map((slide, index) => {
+        return `    <label class="ll-carousel__dot ll-carousel__dot--${index + 1}" for="ll-carousel-slide-${index + 1}" role="button" aria-controls="ll-carousel-panel-${index + 1}">
+      <span class="ll-carousel__dot-number">${String(index + 1).padStart(2, "0")}</span>
+      <span class="ll-carousel__dot-text">${escapeHtml(slide.navLabel || `Slide ${index + 1}`)}</span>
+    </label>`;
+      }).join("\n");
+
+      return `<section class="ll-carousel${hideIntroClass}" aria-label="${escapeHtml(state.carousel.ariaLabel || "Carrossel de layouts")}">
+  <div class="ll-carousel__container">
+    <div class="ll-carousel__intro">
+      <p class="ll-carousel__eyebrow">${escapeHtml(state.carousel.eyebrow || "")}</p>
+      <h2 class="ll-carousel__title">${escapeHtml(state.carousel.title || "")}</h2>
+      <p class="ll-carousel__lead">${escapeHtml(state.carousel.lead || "")}</p>
+    </div>
+
+${inputs}
+
+    <div class="ll-carousel__viewport">
+      <div class="ll-carousel__track">
+${panels}
+      </div>
+    </div>
+
+    <nav class="ll-carousel__nav" aria-label="Selecionar slide do carrossel">
+${dots}
+    </nav>
+  </div>
+</section>`;
+    }
+
     function getTableHeaderColor(index = 0) {
       return normalizeHexColor(state.table.headerColors[index] || state.table.headerColor);
     }
@@ -2817,9 +3862,10 @@ __ARTICLE_DYNAMIC_COLORS__
       const isTableTab = currentPage === "conteudo" && currentEditorTab === "table";
       const isStoriesTab = currentPage === "conteudo" && currentEditorTab === "stories";
       const isArticleTab = currentPage === "conteudo" && currentEditorTab === "article";
+      const isCarouselTab = currentPage === "conteudo" && currentEditorTab === "carousel";
       const label = isTableTab ? "Adicionar linha" : "Adicionar pergunta";
       addButtons.forEach((button) => {
-        button.classList.toggle("is-hidden", isStoriesTab || isArticleTab);
+        button.classList.toggle("is-hidden", isStoriesTab || isArticleTab || isCarouselTab);
         button.textContent = "+";
         button.setAttribute("aria-label", label);
         button.setAttribute("title", label);
@@ -3445,6 +4491,12 @@ ${buildStoriesStyle()}`;
 ${buildArticleStyle()}`;
       }
 
+      if (currentPage === "conteudo" && currentEditorTab === "carousel") {
+        return `${buildCarouselSectionHtml()}
+
+${buildCarouselStyle()}`;
+      }
+
       if (currentPage === "conteudo") {
         return `${buildFaqSectionHtml()}
 
@@ -3499,6 +4551,20 @@ ${buildArticleStyle()}`;
         }
 
         return articleHtml;
+      }
+
+      if (currentEditorTab === "carousel") {
+        const carouselHtml = buildCarouselSectionHtml();
+
+        if (copyMode === "full") {
+          return `${carouselHtml}
+
+<!-- ESSES CODIGOS ABAIXO VOCE NAO PRECISA MEXER!!! APENAS O HTML ACIMA-->
+
+${buildCarouselStyle()}`;
+        }
+
+        return carouselHtml;
       }
 
       const faqHtml = buildFaqSectionHtml();
@@ -4080,16 +5146,169 @@ ${tabs}
       `;
     }
 
+    function renderCarouselEditor() {
+      if (currentPage !== "conteudo") {
+        return "";
+      }
+
+      const baseOpen = state.carousel.openBase ? " open" : "";
+      const slides = getCarouselSlides().map((slide, slideIndex) => {
+        const isOpen = state.carousel.openSlideIndex === slideIndex ? " open" : "";
+        const type = normalizeCarouselType(slide.type);
+        const impactFields = type === "impact" ? `
+              <label class="article-toggle">
+                <input type="checkbox" data-carousel-field="reverse" data-carousel-slide="${slideIndex}"${slide.reverse ? " checked" : ""}>
+                <span>Inverter texto e imagem</span>
+              </label>
+              <div class="article-editor__grid">
+                <label class="field">
+                  <span>Cor do fundo</span>
+                  <input type="color" value="${normalizeHexColor(slide.backgroundColor || "#f16425")}" data-carousel-field="backgroundColor" data-carousel-slide="${slideIndex}">
+                </label>
+                <label class="field">
+                  <span>Cor do texto</span>
+                  <input type="color" value="${normalizeHexColor(slide.textColor || "#fff7ef")}" data-carousel-field="textColor" data-carousel-slide="${slideIndex}">
+                </label>
+              </div>
+              <div class="article-editor__grid">
+                <label class="field">
+                  <span>Eyebrow</span>
+                  <input type="text" value="${escapeHtml(slide.eyebrow || "")}" data-carousel-field="eyebrow" data-carousel-slide="${slideIndex}" autocomplete="off">
+                </label>
+                <label class="field">
+                  <span>Título</span>
+                  <input type="text" value="${escapeHtml(slide.title || "")}" data-carousel-field="title" data-carousel-slide="${slideIndex}" autocomplete="off">
+                </label>
+              </div>
+              <label class="field">
+                <span>Texto</span>
+                <textarea data-carousel-field="text" data-carousel-slide="${slideIndex}">${escapeHtml(slide.text || "")}</textarea>
+              </label>` : `
+              <label class="field">
+                <span>Cor do fundo</span>
+                <input type="color" value="${normalizeHexColor(slide.backgroundColor || "#0d2333")}" data-carousel-field="backgroundColor" data-carousel-slide="${slideIndex}">
+              </label>
+              <label class="field">
+                <span>Título da legenda</span>
+                <input type="text" value="${escapeHtml(slide.captionTitle || "")}" data-carousel-field="captionTitle" data-carousel-slide="${slideIndex}" autocomplete="off">
+              </label>
+              <label class="field">
+                <span>Texto da legenda</span>
+                <textarea data-carousel-field="captionText" data-carousel-slide="${slideIndex}">${escapeHtml(slide.captionText || "")}</textarea>
+              </label>`;
+
+        return `
+          <details class="article-tab-editor" data-carousel-slide-panel="${slideIndex}"${isOpen}>
+            <summary class="article-tab-editor__summary">
+              <strong>Slide ${slideIndex + 1}: ${escapeHtml(slide.navLabel || "sem título")}</strong>
+              <span class="article-tab-editor__meta">${type === "impact" ? "Impacto" : "Decisão"}</span>
+              <span class="article-tab-editor__chevron" aria-hidden="true">&rsaquo;</span>
+            </summary>
+            <div class="article-editor__body">
+              <div class="article-editor__grid">
+                <label class="field">
+                  <span>Tipo de layout</span>
+                  <select data-carousel-field="type" data-carousel-slide="${slideIndex}">
+                    <option value="impact"${type === "impact" ? " selected" : ""}>Impacto</option>
+                    <option value="decision"${type === "decision" ? " selected" : ""}>Decisão</option>
+                  </select>
+                </label>
+                <label class="field">
+                  <span>Nome da aba</span>
+                  <input type="text" value="${escapeHtml(slide.navLabel || "")}" data-carousel-field="navLabel" data-carousel-slide="${slideIndex}" autocomplete="off">
+                </label>
+              </div>
+              <label class="field">
+                <span>URL da imagem</span>
+                <input type="text" value="${escapeHtml(slide.image || "")}" data-carousel-field="image" data-carousel-slide="${slideIndex}" autocomplete="off">
+              </label>
+              <label class="field">
+                <span>Alt da imagem</span>
+                <input type="text" value="${escapeHtml(slide.alt || "")}" data-carousel-field="alt" data-carousel-slide="${slideIndex}" autocomplete="off">
+              </label>
+${impactFields}
+            </div>
+          </details>
+        `;
+      }).join("");
+
+      return `
+        <section class="article-editor carousel-editor" aria-label="Editor de carrossel">
+          <div class="editor-section-title">
+            <div>
+              <h3>Carrossel</h3>
+              <p>Monte uma sequência com layouts de impacto e decisão.</p>
+            </div>
+            <div class="article-editor__title-actions">
+              <span class="stories-limits">${getCarouselSlides().length}/4 slides</span>
+            </div>
+          </div>
+
+          <details class="article-tab-editor article-base-editor" data-carousel-base-panel${baseOpen}>
+            <summary class="article-tab-editor__summary">
+              <strong>Base</strong>
+              <span class="article-tab-editor__meta">Introdução + cores</span>
+              <span class="article-tab-editor__chevron" aria-hidden="true">&rsaquo;</span>
+            </summary>
+            <div class="article-editor__body">
+              <label class="article-toggle">
+                <input type="checkbox" data-carousel-field="showIntro"${state.carousel.showIntro !== false ? " checked" : ""}>
+                <span>Mostrar texto introdutório</span>
+              </label>
+              <label class="field">
+                <span>Aria-label da seção</span>
+                <input type="text" value="${escapeHtml(state.carousel.ariaLabel || "")}" data-carousel-field="ariaLabel" autocomplete="off">
+              </label>
+              <div class="article-editor__grid">
+                <label class="field">
+                  <span>Eyebrow</span>
+                  <input type="text" value="${escapeHtml(state.carousel.eyebrow || "")}" data-carousel-field="eyebrow" autocomplete="off">
+                </label>
+                <label class="field">
+                  <span>Título</span>
+                  <input type="text" value="${escapeHtml(state.carousel.title || "")}" data-carousel-field="title" autocomplete="off">
+                </label>
+              </div>
+              <label class="field">
+                <span>Texto de apoio</span>
+                <textarea data-carousel-field="lead">${escapeHtml(state.carousel.lead || "")}</textarea>
+              </label>
+              <div class="article-elements article-protection">
+                <span class="article-elements__title">Cores gerais</span>
+                <label class="field">
+                  <span>Destaque</span>
+                  <input type="color" value="${normalizeHexColor(state.carousel.brandColor)}" data-carousel-field="brandColor">
+                </label>
+                <label class="field">
+                  <span>Fundo</span>
+                  <input type="color" value="${normalizeHexColor(state.carousel.softColor)}" data-carousel-field="softColor">
+                </label>
+                <label class="field">
+                  <span>Aba ativa</span>
+                  <input type="color" value="${normalizeHexColor(state.carousel.dotActiveColor)}" data-carousel-field="dotActiveColor">
+                </label>
+              </div>
+            </div>
+          </details>
+
+${slides}
+        </section>
+      `;
+    }
+
     function renderEditor(preserveScroll = false) {
       const previousScrollTop = editor.scrollTop;
       updateEditorTabs();
       updateAddButtons();
+      updateViewportMode();
       if (currentPage === "conteudo" && currentEditorTab === "table") {
         editor.innerHTML = renderTableEditor();
       } else if (currentPage === "conteudo" && currentEditorTab === "stories") {
         editor.innerHTML = renderStoriesEditor();
       } else if (currentPage === "conteudo" && currentEditorTab === "article") {
         editor.innerHTML = renderArticleEditor();
+      } else if (currentPage === "conteudo" && currentEditorTab === "carousel") {
+        editor.innerHTML = renderCarouselEditor();
       } else {
         editor.innerHTML = renderFaqEditor();
       }
@@ -4306,6 +5525,10 @@ ${tabs}
         return;
       }
 
+      if (currentPage === "conteudo" && currentEditorTab === "carousel") {
+        return;
+      }
+
       addItem();
     }
 
@@ -4479,6 +5702,50 @@ ${tabs}
         return;
       }
 
+      const carouselField = event.target.dataset.carouselField;
+      if (carouselField) {
+        const slideIndex = event.target.dataset.carouselSlide;
+
+        if (slideIndex === undefined) {
+          if (carouselField === "showIntro") {
+            state.carousel.showIntro = event.target.checked;
+          } else if (["brandColor", "softColor", "dotHoverColor", "dotActiveColor", "dotActiveBorderColor"].includes(carouselField)) {
+            state.carousel[carouselField] = normalizeHexColor(event.target.value);
+          } else {
+            state.carousel[carouselField] = event.target.value;
+          }
+          updateOutput();
+          return;
+        }
+
+        const slide = state.carousel.slides[Number(slideIndex)];
+        if (!slide) {
+          return;
+        }
+
+        if (carouselField === "type") {
+          slide.type = normalizeCarouselType(event.target.value);
+          renderEditor(true);
+          return;
+        }
+
+        if (carouselField === "reverse") {
+          slide.reverse = event.target.checked;
+          updateOutput();
+          return;
+        }
+
+        if (["backgroundColor", "textColor"].includes(carouselField)) {
+          slide[carouselField] = normalizeHexColor(event.target.value);
+          updateOutput();
+          return;
+        }
+
+        slide[carouselField] = event.target.value;
+        updateOutput();
+        return;
+      }
+
       const tableField = event.target.dataset.tableField;
       if (tableField) {
         if (tableField === "caption") {
@@ -4535,7 +5802,7 @@ ${tabs}
     });
 
     editor.addEventListener("change", (event) => {
-      if (event.target.matches("select") || event.target.matches('[data-article-field="shellBackgroundEnabled"], [data-article-field="overlayEnabled"], [data-article-field="tabsProtectionEnabled"]')) {
+      if (event.target.matches("select") || event.target.matches('[data-article-field="shellBackgroundEnabled"], [data-article-field="overlayEnabled"], [data-article-field="tabsProtectionEnabled"], [data-carousel-field="showIntro"], [data-carousel-field="reverse"]')) {
         event.target.dispatchEvent(new Event("input", { bubbles: true }));
       }
     });
@@ -4589,6 +5856,37 @@ ${tabs}
 
       state.article.openTabIndex = tabIndex;
       editor.querySelectorAll("[data-article-tab-panel]").forEach((item) => {
+        if (item !== panel) {
+          item.open = false;
+        }
+      });
+    }, true);
+
+    editor.addEventListener("toggle", (event) => {
+      const basePanel = event.target.closest("[data-carousel-base-panel]");
+      if (!basePanel || event.target !== basePanel) {
+        return;
+      }
+
+      state.carousel.openBase = basePanel.open;
+    }, true);
+
+    editor.addEventListener("toggle", (event) => {
+      const panel = event.target.closest("[data-carousel-slide-panel]");
+      if (!panel || event.target !== panel) {
+        return;
+      }
+
+      const slideIndex = Number(panel.dataset.carouselSlidePanel);
+      if (!panel.open) {
+        if (state.carousel.openSlideIndex === slideIndex) {
+          state.carousel.openSlideIndex = -1;
+        }
+        return;
+      }
+
+      state.carousel.openSlideIndex = slideIndex;
+      editor.querySelectorAll("[data-carousel-slide-panel]").forEach((item) => {
         if (item !== panel) {
           item.open = false;
         }
@@ -4673,7 +5971,7 @@ ${tabs}
     editorTabButtons.forEach((button) => {
       button.addEventListener("click", () => {
         const requestedTab = button.dataset.editorTab;
-        currentEditorTab = ["faq", "table", "stories", "article"].includes(requestedTab) ? requestedTab : "faq";
+        currentEditorTab = ["faq", "table", "stories", "article", "carousel"].includes(requestedTab) ? requestedTab : "faq";
         renderEditor();
       });
     });
@@ -4691,7 +5989,9 @@ ${tabs}
     themeToggle.addEventListener("change", () => {
       setTheme(themeToggle.checked ? "dark" : "light");
     });
+    window.addEventListener("resize", updateViewportMode);
 
+    updateViewportMode();
     setTheme(getInitialTheme());
     applyPage(getPageFromHash());
   </script>
