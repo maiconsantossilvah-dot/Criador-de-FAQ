@@ -2956,19 +2956,21 @@ __ARTICLE_DYNAMIC_COLORS__
 
   .ll-carousel__caption {
     align-items: flex-start;
-    background: rgba(0, 0, 0, 0.48);
+    background: var(--ll-carousel-caption-bg, rgba(0, 0, 0, 0.48));
+    bottom: var(--ll-carousel-caption-bottom, auto);
     border: 1px solid rgba(255, 255, 255, 0.22);
     border-radius: 1.25rem;
     box-shadow: 0 1.25rem 3rem rgba(0, 0, 0, 0.28);
     color: #fff;
     display: grid;
     gap: 0.65rem;
-    left: clamp(1.25rem, 5vw, 4.75rem);
+    left: var(--ll-carousel-caption-left, clamp(1.25rem, 5vw, 4.75rem));
     max-width: min(42%, 34rem);
     padding: clamp(1rem, 2.5vw, 2rem);
     position: absolute;
-    top: 50%;
-    transform: translateY(-50%);
+    right: var(--ll-carousel-caption-right, auto);
+    top: var(--ll-carousel-caption-top, 50%);
+    transform: translate(var(--ll-carousel-caption-translate-x, 0), var(--ll-carousel-caption-translate-y, -50%));
   }
 
   .ll-carousel__caption h3 {
@@ -3155,16 +3157,16 @@ __ARTICLE_DYNAMIC_COLORS__
     }
 
     .ll-carousel__caption {
-      background: rgba(0, 0, 0, 0.62);
+      background: var(--ll-carousel-caption-bg, rgba(0, 0, 0, 0.62));
       border-radius: 0.85rem;
-      bottom: 0.72rem;
-      left: 0.72rem;
-      max-width: none;
+      bottom: var(--ll-carousel-caption-bottom, 0.72rem);
+      left: var(--ll-carousel-caption-left, 0.72rem);
+      max-width: min(86%, 26rem);
       padding: 0.72rem;
       position: absolute;
-      right: 0.72rem;
-      top: auto;
-      transform: none;
+      right: var(--ll-carousel-caption-right, auto);
+      top: var(--ll-carousel-caption-top, auto);
+      transform: translate(var(--ll-carousel-caption-translate-x, 0), var(--ll-carousel-caption-translate-y, 0));
     }
 
     .ll-carousel__caption h3 {
@@ -3278,16 +3280,16 @@ __ARTICLE_DYNAMIC_COLORS__
     }
 
     .ll-carousel__caption {
-      background: rgba(0, 0, 0, 0.62);
+      background: var(--ll-carousel-caption-bg, rgba(0, 0, 0, 0.62));
       border-radius: 0.85rem;
-      bottom: 0.72rem;
-      left: 0.72rem;
-      max-width: none;
+      bottom: var(--ll-carousel-caption-bottom, 0.72rem);
+      left: var(--ll-carousel-caption-left, 0.72rem);
+      max-width: min(86%, 26rem);
       padding: 0.72rem;
       position: absolute;
-      right: 0.72rem;
-      top: auto;
-      transform: none;
+      right: var(--ll-carousel-caption-right, auto);
+      top: var(--ll-carousel-caption-top, auto);
+      transform: translate(var(--ll-carousel-caption-translate-x, 0), var(--ll-carousel-caption-translate-y, 0));
     }
 
     .ll-carousel__caption h3 {
@@ -3476,6 +3478,8 @@ __CAROUSEL_DYNAMIC_COLORS__
             alt: "Imagem principal do layout de decisão",
             focusX: 50,
             focusY: 50,
+            captionHorizontal: "left",
+            captionVertical: "center",
             backgroundColor: "#0d2333"
           },
           {
@@ -3501,6 +3505,8 @@ __CAROUSEL_DYNAMIC_COLORS__
             alt: "Imagem principal do layout de decisão",
             focusX: 50,
             focusY: 50,
+            captionHorizontal: "left",
+            captionVertical: "center",
             backgroundColor: "#0d2333"
           }
         ]
@@ -3776,6 +3782,39 @@ __CAROUSEL_DYNAMIC_COLORS__
       return Math.min(100, Math.max(0, Math.round(numericValue)));
     }
 
+    function normalizeCarouselCaptionHorizontal(value) {
+      return ["left", "center", "right"].includes(value) ? value : "left";
+    }
+
+    function normalizeCarouselCaptionVertical(value) {
+      return ["top", "center", "bottom"].includes(value) ? value : "center";
+    }
+
+    function getCarouselCaptionStyle(slide) {
+      const backgroundColor = hexToRgba(normalizeHexColor(slide.backgroundColor || "#0d2333"), "0.64");
+      const horizontal = normalizeCarouselCaptionHorizontal(slide.captionHorizontal);
+      const vertical = normalizeCarouselCaptionVertical(slide.captionVertical);
+      const styles = [`--ll-carousel-caption-bg: ${backgroundColor};`];
+
+      if (horizontal === "center") {
+        styles.push("--ll-carousel-caption-left: 50%;", "--ll-carousel-caption-right: auto;", "--ll-carousel-caption-translate-x: -50%;");
+      } else if (horizontal === "right") {
+        styles.push("--ll-carousel-caption-left: auto;", "--ll-carousel-caption-right: clamp(1.25rem, 5vw, 4.75rem);", "--ll-carousel-caption-translate-x: 0;");
+      } else {
+        styles.push("--ll-carousel-caption-left: clamp(1.25rem, 5vw, 4.75rem);", "--ll-carousel-caption-right: auto;", "--ll-carousel-caption-translate-x: 0;");
+      }
+
+      if (vertical === "top") {
+        styles.push("--ll-carousel-caption-top: clamp(1rem, 4vw, 3.5rem);", "--ll-carousel-caption-bottom: auto;", "--ll-carousel-caption-translate-y: 0;");
+      } else if (vertical === "bottom") {
+        styles.push("--ll-carousel-caption-top: auto;", "--ll-carousel-caption-bottom: clamp(1rem, 4vw, 3.5rem);", "--ll-carousel-caption-translate-y: 0;");
+      } else {
+        styles.push("--ll-carousel-caption-top: 50%;", "--ll-carousel-caption-bottom: auto;", "--ll-carousel-caption-translate-y: -50%;");
+      }
+
+      return styles.join(" ");
+    }
+
     function getCarouselSlides() {
       return state.carousel.slides.slice(0, carouselLimits.maxSlides);
     }
@@ -3799,6 +3838,8 @@ __CAROUSEL_DYNAMIC_COLORS__
           alt: "Imagem principal do layout de decisão",
           focusX: 50,
           focusY: 50,
+          captionHorizontal: "left",
+          captionVertical: "center",
           backgroundColor: "#0d2333"
         };
       }
@@ -3873,14 +3914,14 @@ __CAROUSEL_DYNAMIC_COLORS__
     }
 
     function renderCarouselDecisionSlide(slide) {
-      const backgroundColor = normalizeHexColor(slide.backgroundColor || "#0d2333");
+      const captionStyle = getCarouselCaptionStyle(slide);
 
-      return `<section class="ll-carousel__layout ll-carousel__layout--media" style="--ll-carousel-media-bg: ${backgroundColor};" aria-label="${escapeHtml(slide.navLabel || "Decisão")}">
+      return `<section class="ll-carousel__layout ll-carousel__layout--media" style="--ll-carousel-media-bg: #0d2333;" aria-label="${escapeHtml(slide.navLabel || "Decisão")}">
           <figure class="ll-carousel__figure">
             <picture class="ll-carousel__picture">
               ${renderCarouselImage(slide)}
             </picture>
-            <figcaption class="ll-carousel__caption">
+            <figcaption class="ll-carousel__caption" style="${captionStyle}">
               <h3>${escapeHtml(slide.captionTitle || "")}</h3>
               <p>${escapeHtml(slide.captionText || "")}</p>
             </figcaption>
@@ -5262,6 +5303,8 @@ ${tabs}
       const slides = carouselSlides.map((slide, slideIndex) => {
         const isOpen = state.carousel.openSlideIndex === slideIndex ? " open" : "";
         const type = normalizeCarouselType(slide.type);
+        const captionHorizontal = normalizeCarouselCaptionHorizontal(slide.captionHorizontal);
+        const captionVertical = normalizeCarouselCaptionVertical(slide.captionVertical);
         const impactFields = type === "impact" ? `
               <label class="article-toggle">
                 <input type="checkbox" data-carousel-field="reverse" data-carousel-slide="${slideIndex}"${slide.reverse ? " checked" : ""}>
@@ -5292,9 +5335,27 @@ ${tabs}
                 <textarea data-carousel-field="text" data-carousel-slide="${slideIndex}">${escapeHtml(slide.text || "")}</textarea>
               </label>` : `
               <label class="field">
-                <span>Cor do fundo</span>
+                <span>Cor do bloco de texto</span>
                 <input type="color" value="${normalizeHexColor(slide.backgroundColor || "#0d2333")}" data-carousel-field="backgroundColor" data-carousel-slide="${slideIndex}">
               </label>
+              <div class="article-editor__grid">
+                <label class="field">
+                  <span>Posição horizontal</span>
+                  <select data-carousel-field="captionHorizontal" data-carousel-slide="${slideIndex}">
+                    <option value="left"${captionHorizontal === "left" ? " selected" : ""}>Esquerda</option>
+                    <option value="center"${captionHorizontal === "center" ? " selected" : ""}>Centro</option>
+                    <option value="right"${captionHorizontal === "right" ? " selected" : ""}>Direita</option>
+                  </select>
+                </label>
+                <label class="field">
+                  <span>Posição vertical</span>
+                  <select data-carousel-field="captionVertical" data-carousel-slide="${slideIndex}">
+                    <option value="top"${captionVertical === "top" ? " selected" : ""}>Topo</option>
+                    <option value="center"${captionVertical === "center" ? " selected" : ""}>Centro</option>
+                    <option value="bottom"${captionVertical === "bottom" ? " selected" : ""}>Rodapé</option>
+                  </select>
+                </label>
+              </div>
               <label class="field">
                 <span>Título da legenda</span>
                 <input type="text" value="${escapeHtml(slide.captionTitle || "")}" data-carousel-field="captionTitle" data-carousel-slide="${slideIndex}" autocomplete="off">
@@ -5379,6 +5440,7 @@ ${impactFields}
               <p><strong>Como o corte funciona:</strong> o carrossel usa cover. No desktop ele abre mais na horizontal; nas telas menores ele fica mais vertical e pode cortar laterais.</p>
               <p><strong>Foco da imagem:</strong> em cada slide, ajuste Left (%) e Top (%) para escolher onde o produto fica preso durante o corte. 50/50 é centro.</p>
               <p><strong>Referência rápida:</strong> produto à direita, aumente Left; produto à esquerda, diminua Left; produto no topo, diminua Top; produto embaixo, aumente Top.</p>
+              <p><strong>Texto no layout Decisão:</strong> a cor do bloco de texto altera o overlay da legenda. Use posição horizontal e vertical para mover esse bloco sem editar CSS.</p>
               <p><strong>Área segura:</strong> evite texto, logos e detalhes importantes perto das bordas. O produto principal deve ficar dentro da região central da imagem.</p>
               <p><strong>Texto do slide:</strong> use título curto e legenda objetiva para não cobrir demais o visual.</p>
             </div>
@@ -5897,6 +5959,18 @@ ${slides}
         if (["focusX", "focusY"].includes(carouselField)) {
           slide[carouselField] = normalizeCarouselFocus(event.target.value);
           event.target.value = String(slide[carouselField]);
+          updateOutput();
+          return;
+        }
+
+        if (carouselField === "captionHorizontal") {
+          slide.captionHorizontal = normalizeCarouselCaptionHorizontal(event.target.value);
+          updateOutput();
+          return;
+        }
+
+        if (carouselField === "captionVertical") {
+          slide.captionVertical = normalizeCarouselCaptionVertical(event.target.value);
           updateOutput();
           return;
         }
