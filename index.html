@@ -1825,7 +1825,7 @@
 
   .table-th-custom {
     background-color: var(--table-header-color, #ea5b0c);
-    color: #fff;
+    color: var(--ll-carousel-caption-text, #fff);
     font-weight: bold;
   }
 
@@ -2719,11 +2719,18 @@ __ARTICLE_DYNAMIC_COLORS__
     --ll-carousel-soft: #f4f7f9;
     --ll-carousel-panel: #ffffff;
     --ll-carousel-line: #d9e2ea;
+    --ll-carousel-section-bg: var(--ll-carousel-soft);
     --ll-carousel-dot-hover: #f0f3f5;
     --ll-carousel-dot-active: #e7ecef;
     --ll-carousel-dot-active-border: #c8d2da;
+    --ll-carousel-dot-icon-bg: #f0ede8;
+    --ll-carousel-dot-icon-color: var(--ll-carousel-ink);
+    --ll-carousel-dot-icon-active-bg: var(--ll-carousel-brand);
+    --ll-carousel-dot-icon-active-color: #ffffff;
+    --ll-carousel-indicator-color: rgba(255, 255, 255, 0.5);
+    --ll-carousel-indicator-active-color: #ffffff;
     --ll-carousel-shadow: 0 1.5rem 3rem rgba(13, 35, 51, 0.12);
-    background: var(--ll-carousel-soft);
+    background: var(--ll-carousel-section-bg);
     color: var(--ll-carousel-ink);
     font-family: Arial, Helvetica, sans-serif;
     overflow: hidden;
@@ -2799,6 +2806,7 @@ __ARTICLE_DYNAMIC_COLORS__
     margin-inline: auto;
     max-width: 100%;
     overflow: hidden;
+    position: relative;
     width: min(100%, 1280px);
   }
 
@@ -2844,6 +2852,7 @@ __ARTICLE_DYNAMIC_COLORS__
     align-content: center;
     align-items: center;
     background: var(--ll-carousel-impact-bg);
+    background-image: var(--ll-carousel-impact-gradient, none);
     color: var(--ll-carousel-impact-text);
     display: grid;
     gap: clamp(1.5rem, 3vw, 3.5rem);
@@ -2893,11 +2902,12 @@ __ARTICLE_DYNAMIC_COLORS__
   }
 
   .ll-carousel__media-card {
-    aspect-ratio: 4 / 3;
+    aspect-ratio: auto;
     border-radius: 1.25rem;
     box-shadow: 0 1.5rem 3rem rgba(20, 32, 43, 0.22);
+    height: 100%;
     margin-block: auto;
-    max-height: 76%;
+    max-height: 82%;
     max-width: min(100%, 38rem);
     overflow: hidden;
     place-self: center end;
@@ -2961,7 +2971,7 @@ __ARTICLE_DYNAMIC_COLORS__
     border: 1px solid rgba(255, 255, 255, 0.22);
     border-radius: 1.25rem;
     box-shadow: 0 1.25rem 3rem rgba(0, 0, 0, 0.28);
-    color: #fff;
+    color: var(--ll-carousel-caption-text, #fff);
     display: grid;
     gap: 0.65rem;
     left: var(--ll-carousel-caption-left, clamp(1.25rem, 5vw, 4.75rem));
@@ -2991,7 +3001,7 @@ __ARTICLE_DYNAMIC_COLORS__
     display: grid;
     gap: 0.5rem;
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    margin: 1rem auto 0;
+    margin: 0.75rem auto 0;
     max-width: 1280px;
     width: min(100%, 1280px);
   }
@@ -3000,14 +3010,15 @@ __ARTICLE_DYNAMIC_COLORS__
     align-items: center;
     background: var(--ll-carousel-panel);
     border: 1px solid var(--ll-carousel-line);
-    border-radius: 0.5rem;
+    border-radius: 0.75rem;
     box-sizing: border-box;
     color: var(--ll-carousel-ink);
     cursor: pointer;
-    display: grid;
+    display: flex;
     gap: 0.5rem;
-    min-height: 4rem;
-    padding: 1rem;
+    justify-content: space-between;
+    min-height: 3.9rem;
+    padding: 0.75rem 1rem;
     transition: background 0.4s ease, border-color 0.4s ease, color 0.4s ease, transform 0.4s ease;
   }
 
@@ -3015,6 +3026,13 @@ __ARTICLE_DYNAMIC_COLORS__
     background: var(--ll-carousel-dot-hover);
     border-color: var(--ll-carousel-dot-active-border);
     transform: translateY(-0.25rem);
+  }
+
+  .ll-carousel__dot-copy {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+    min-width: 0;
   }
 
   .ll-carousel__dot-number {
@@ -3030,6 +3048,60 @@ __ARTICLE_DYNAMIC_COLORS__
     line-height: 1.2;
   }
 
+  .ll-carousel__dot-icon {
+    align-items: center;
+    background: var(--ll-carousel-dot-icon-bg);
+    border-radius: 50%;
+    color: var(--ll-carousel-dot-icon-color);
+    display: flex;
+    flex: 0 0 auto;
+    height: 42px;
+    justify-content: center;
+    transition: background 0.25s ease, color 0.25s ease;
+    width: 42px;
+  }
+
+  .ll-carousel__dot-icon svg {
+    display: block;
+    height: 22px;
+    width: 22px;
+  }
+
+  .ll-carousel__dot-icon-img {
+    display: block;
+    height: 70%;
+    object-fit: contain;
+    width: 70%;
+  }
+
+  .ll-carousel__side-hint {
+    align-items: center;
+    background: transparent;
+    border: 0;
+    color: transparent;
+    cursor: pointer;
+    display: none;
+    font-size: 0;
+    height: 100%;
+    justify-content: center;
+    line-height: 1;
+    opacity: 1;
+    pointer-events: auto;
+    position: absolute;
+    top: 0;
+    transform: none;
+    width: min(18%, 9rem);
+    z-index: 25;
+  }
+
+  .ll-carousel__side-hint--prev {
+    left: 0;
+  }
+
+  .ll-carousel__side-hint--next {
+    right: 0;
+  }
+
   .ll-carousel__control--1:checked ~ .ll-carousel__viewport .ll-carousel__panel--1,
   .ll-carousel__control--2:checked ~ .ll-carousel__viewport .ll-carousel__panel--2,
   .ll-carousel__control--3:checked ~ .ll-carousel__viewport .ll-carousel__panel--3,
@@ -3038,6 +3110,13 @@ __ARTICLE_DYNAMIC_COLORS__
     pointer-events: auto;
     transform: translateX(0);
     z-index: 2;
+  }
+
+  .ll-carousel__control--1:checked ~ .ll-carousel__viewport .ll-carousel__side-hint--1,
+  .ll-carousel__control--2:checked ~ .ll-carousel__viewport .ll-carousel__side-hint--2,
+  .ll-carousel__control--3:checked ~ .ll-carousel__viewport .ll-carousel__side-hint--3,
+  .ll-carousel__control--4:checked ~ .ll-carousel__viewport .ll-carousel__side-hint--4 {
+    display: flex;
   }
 
   .ll-carousel__control--2:checked ~ .ll-carousel__viewport .ll-carousel__panel--1,
@@ -3056,6 +3135,58 @@ __ARTICLE_DYNAMIC_COLORS__
     background: var(--ll-carousel-dot-active);
     border-color: var(--ll-carousel-dot-active-border);
     color: var(--ll-carousel-ink);
+  }
+
+  .ll-carousel__control--1:checked ~ .ll-carousel__nav .ll-carousel__dot--1 .ll-carousel__dot-number,
+  .ll-carousel__control--2:checked ~ .ll-carousel__nav .ll-carousel__dot--2 .ll-carousel__dot-number,
+  .ll-carousel__control--3:checked ~ .ll-carousel__nav .ll-carousel__dot--3 .ll-carousel__dot-number,
+  .ll-carousel__control--4:checked ~ .ll-carousel__nav .ll-carousel__dot--4 .ll-carousel__dot-number,
+  .ll-carousel__control--1:checked ~ .ll-carousel__nav .ll-carousel__dot--1 .ll-carousel__dot-text,
+  .ll-carousel__control--2:checked ~ .ll-carousel__nav .ll-carousel__dot--2 .ll-carousel__dot-text,
+  .ll-carousel__control--3:checked ~ .ll-carousel__nav .ll-carousel__dot--3 .ll-carousel__dot-text,
+  .ll-carousel__control--4:checked ~ .ll-carousel__nav .ll-carousel__dot--4 .ll-carousel__dot-text {
+    color: var(--ll-carousel-brand);
+  }
+
+  .ll-carousel__control--1:checked ~ .ll-carousel__nav .ll-carousel__dot--1 .ll-carousel__dot-icon,
+  .ll-carousel__control--2:checked ~ .ll-carousel__nav .ll-carousel__dot--2 .ll-carousel__dot-icon,
+  .ll-carousel__control--3:checked ~ .ll-carousel__nav .ll-carousel__dot--3 .ll-carousel__dot-icon,
+  .ll-carousel__control--4:checked ~ .ll-carousel__nav .ll-carousel__dot--4 .ll-carousel__dot-icon {
+    background: var(--ll-carousel-dot-icon-active-bg);
+    color: var(--ll-carousel-dot-icon-active-color);
+  }
+
+  .ll-carousel__indicators {
+    bottom: 1rem;
+    display: flex;
+    gap: 7px;
+    left: 50%;
+    pointer-events: none;
+    position: absolute;
+    transform: translateX(-50%);
+    z-index: 20;
+  }
+
+  .ll-carousel--hide-indicators .ll-carousel__indicators {
+    display: none;
+  }
+
+  .ll-carousel__indicator {
+    background: var(--ll-carousel-indicator-color);
+    border-radius: 50%;
+    display: block;
+    height: 8px;
+    transition: background 0.3s ease, width 0.3s ease;
+    width: 8px;
+  }
+
+  .ll-carousel__control--1:checked ~ .ll-carousel__viewport .ll-carousel__indicator--1,
+  .ll-carousel__control--2:checked ~ .ll-carousel__viewport .ll-carousel__indicator--2,
+  .ll-carousel__control--3:checked ~ .ll-carousel__viewport .ll-carousel__indicator--3,
+  .ll-carousel__control--4:checked ~ .ll-carousel__viewport .ll-carousel__indicator--4 {
+    background: var(--ll-carousel-indicator-active-color);
+    border-radius: 4px;
+    width: 20px;
   }
 
   @media (max-width: 760px) {
@@ -3128,7 +3259,7 @@ __ARTICLE_DYNAMIC_COLORS__
     }
 
     .ll-carousel__layout--media {
-      background: #0d2333;
+      background: var(--ll-carousel-media-bg, #0d2333);
       padding: 0.65rem;
     }
 
@@ -3185,8 +3316,8 @@ __ARTICLE_DYNAMIC_COLORS__
 
     .ll-carousel__dot {
       border-radius: 0.55rem;
-      gap: 0;
-      justify-items: center;
+      gap: 0.45rem;
+      justify-content: space-between;
       min-height: 3rem;
       padding: 0.55rem 0.42rem;
       text-align: center;
@@ -3203,6 +3334,20 @@ __ARTICLE_DYNAMIC_COLORS__
     .ll-carousel__dot-text {
       font-size: 0.78rem;
       line-height: 1.05;
+    }
+
+    .ll-carousel__dot-icon {
+      height: 36px;
+      width: 36px;
+    }
+
+    .ll-carousel__dot-icon svg {
+      height: 18px;
+      width: 18px;
+    }
+
+    .ll-carousel__side-hint {
+      width: 28%;
     }
   }
 
@@ -3251,7 +3396,7 @@ __ARTICLE_DYNAMIC_COLORS__
     }
 
     .ll-carousel__layout--media {
-      background: #0d2333;
+      background: var(--ll-carousel-media-bg, #0d2333);
       padding: 0.65rem;
     }
 
@@ -3441,73 +3586,100 @@ __CAROUSEL_DYNAMIC_COLORS__
         ]
       },
       carousel: {
-        ariaLabel: "Carrossel de layouts para conteúdo",
+        ariaLabel: "Diferenciais do Difusor de Aromas Glade Frutas e Flores Vibrantes 100ml",
         showIntro: true,
-        eyebrow: "Container modular",
-        title: "Um carrossel para layouts inteiros",
-        lead: "Cada slide recebe uma seção completa, com troca suave em CSS puro e textos curtos para leitura rápida.",
-        brandColor: "#ff9900",
-        softColor: "#f4f7f9",
-        dotHoverColor: "#f0f3f5",
-        dotActiveColor: "#e7ecef",
-        dotActiveBorderColor: "#c8d2da",
+        eyebrow: "",
+        title: "",
+        lead: "",
+        brandColor: "#ee6911",
+        softColor: "#f3f6fb",
+        sectionGradientEnabled: true,
+        sectionGradientStart: "#ffffff",
+        sectionGradientEnd: "#fff0f6",
+        dotHoverColor: "#fff9f2",
+        dotActiveColor: "#fff4e0",
+        dotActiveBorderColor: "#ee6911",
+        dotIconBackgroundColor: "#f0ede8",
+        dotIconActiveBackgroundColor: "#ee6911",
+        dotIconActiveColor: "#ffffff",
+        showIndicators: true,
+        indicatorColor: "#ffffff",
+        indicatorActiveColor: "#ffffff",
         previewSlideIndex: 0,
         openBase: false,
         openSlideIndex: -1,
         slides: [
           {
             type: "impact",
-            navLabel: "Impacto",
-            eyebrow: "Impacto visual",
-            title: "Mensagem curta em destaque",
-            text: "Use este espaço para resumir uma ideia principal com apoio da imagem ao lado.",
-            image: "https://static1.efacil.com.br/wcsstore//AuroraStorefrontAssetStore/PDP/EQUIPE_QUALIDADE_CONTEUDO/sessao4.jpg",
-            alt: "Imagem de apoio do layout de impacto",
-            backgroundColor: "#f16425",
-            textColor: "#fff7ef",
+            navLabel: "Aroma",
+            navIcon: "heart",
+            navIconImage: "",
+            eyebrow: "Ambiente perfumado",
+            title: "Frutas e flores vibrantes no ambiente",
+            text: "Fragrância envolvente para deixar o ambiente mais agradável, com difusão contínua pelas varetas.",
+            image: "https://imgprd.martinsatacado.com.br/catalogoimg/catalogo/difusor-aromas-glade-frutas-flores-vibrantes-varetas-frasco-detalhe-1704533-01.webp",
+            alt: "Difusor de Aromas Glade Frutas e Flores Vibrantes 100ml",
+            backgroundColor: "#c82a57",
+            gradientEnabled: true,
+            gradientEndColor: "#f26d93",
+            gradientAngle: 323,
+            textColor: "#fffdf8",
             focusX: 50,
             focusY: 50,
             reverse: false
           },
           {
             type: "decision",
-            navLabel: "Decisão",
-            captionTitle: "Título curto do destaque",
-            captionText: "Use a legenda para explicar o ponto principal do produto ou da seção.",
-            image: "https://imgprd.martinsatacado.com.br/catalogoimg/catalogo/kit-fixacao-telha-precon-tubozan-parafusos-autobrocantes-10-unidades-410376-02.jpg",
-            alt: "Imagem principal do layout de decisão",
-            focusX: 50,
+            navLabel: "Varetas",
+            navIcon: "bottle",
+            navIconImage: "",
+            captionTitle: "Uso simples com varetas",
+            captionText: "Desenrosque e remova a tampa, insira as varetas na garrafa, separe as varetas e mantenha o frasco em pé.",
+            image: "https://imgprd.martinsatacado.com.br/catalogoimg/catalogo/difusor-aromas-glade-frutas-flores-vibrantes-embalagem-frasco-hero-banner-1704533-02.webp",
+            alt: "Difusor Glade com embalagem, frasco e varetas",
+            focusX: 86,
             focusY: 50,
             captionHorizontal: "left",
             captionVertical: "center",
-            backgroundColor: "#0d2333"
+            textColor: "#ffffff",
+            backgroundColor: "#000000",
+            mediaBackgroundColor: "#c82a57"
           },
           {
             type: "impact",
-            navLabel: "Invertido",
-            eyebrow: "Impacto visual",
-            title: "Mensagem curta em destaque",
-            text: "Use este espaço para resumir uma ideia principal com apoio da imagem ao lado.",
-            image: "https://static1.efacil.com.br/wcsstore//AuroraStorefrontAssetStore/PDP/EQUIPE_QUALIDADE_CONTEUDO/sessao4.jpg",
-            alt: "Imagem de apoio do layout de impacto invertido",
-            backgroundColor: "#f16425",
-            textColor: "#fff7ef",
+            navLabel: "Fragrância",
+            navIcon: "sparkles",
+            navIconImage: "",
+            eyebrow: "Fragrância",
+            title: "Aroma vibrante para decorar e perfumar",
+            text: "Composição com álcool etílico, dipropileno glicol metil éter acetato e fragrância.",
+            image: "https://imgprd.martinsatacado.com.br/catalogoimg/catalogo/difusor-aromas-glade-frutas-flores-vibrantes-ingredientes-cereja-textura-1704533-03.webp",
+            alt: "Ingredientes visuais do Difusor Glade Frutas e Flores Vibrantes",
+            backgroundColor: "#c82a57",
+            gradientEnabled: true,
+            gradientEndColor: "#f26d93",
+            gradientAngle: 323,
+            textColor: "#fffdf8",
             focusX: 50,
             focusY: 50,
             reverse: true
           },
           {
             type: "decision",
-            navLabel: "Decisão",
-            captionTitle: "Título curto do destaque",
-            captionText: "Use a legenda para explicar o ponto principal do produto ou da seção.",
-            image: "https://imgprd.martinsatacado.com.br/catalogoimg/catalogo/kit-fixacao-telha-precon-tubozan-parafusos-autobrocantes-10-unidades-410376-02.jpg",
-            alt: "Imagem principal do layout de decisão",
-            focusX: 50,
+            navLabel: "Cuidados",
+            navIcon: "box",
+            navIconImage: "",
+            captionTitle: "Cuidados no uso",
+            captionText: "Use apenas em áreas bem ventiladas, mantenha longe do fogo e de fontes de ignição, e limpe a superfície em caso de derramamento.",
+            image: "https://imgprd.martinsatacado.com.br/catalogoimg/catalogo/difusor-aromas-glade-frutas-flores-vibrantes-sala-estar-decoracao-lifestyle-1704533-04.webp",
+            alt: "Difusor Glade Frutas e Flores Vibrantes em ambiente decorado",
+            focusX: 22,
             focusY: 50,
-            captionHorizontal: "left",
+            captionHorizontal: "center",
             captionVertical: "center",
-            backgroundColor: "#0d2333"
+            textColor: "#ffffff",
+            backgroundColor: "#000000",
+            mediaBackgroundColor: "#c82a57"
           }
         ]
       },
@@ -3759,13 +3931,23 @@ __CAROUSEL_DYNAMIC_COLORS__
     }
 
     function buildCarouselStyle() {
+      const sectionBackground = state.carousel.sectionGradientEnabled !== false
+        ? `linear-gradient(180deg, ${normalizeHexColor(state.carousel.sectionGradientStart || "#ffffff")}, ${normalizeHexColor(state.carousel.sectionGradientEnd || state.carousel.softColor)})`
+        : normalizeHexColor(state.carousel.softColor);
+
       return carouselStyle.replace("__CAROUSEL_DYNAMIC_COLORS__", `
   .ll-carousel {
     --ll-carousel-brand: ${normalizeHexColor(state.carousel.brandColor)};
     --ll-carousel-soft: ${normalizeHexColor(state.carousel.softColor)};
+    --ll-carousel-section-bg: ${sectionBackground};
     --ll-carousel-dot-hover: ${normalizeHexColor(state.carousel.dotHoverColor)};
     --ll-carousel-dot-active: ${normalizeHexColor(state.carousel.dotActiveColor)};
     --ll-carousel-dot-active-border: ${normalizeHexColor(state.carousel.dotActiveBorderColor)};
+    --ll-carousel-dot-icon-bg: ${normalizeHexColor(state.carousel.dotIconBackgroundColor || "#f0ede8")};
+    --ll-carousel-dot-icon-active-bg: ${normalizeHexColor(state.carousel.dotIconActiveBackgroundColor || state.carousel.brandColor)};
+    --ll-carousel-dot-icon-active-color: ${normalizeHexColor(state.carousel.dotIconActiveColor || "#ffffff")};
+    --ll-carousel-indicator-color: ${hexToRgba(normalizeHexColor(state.carousel.indicatorColor || "#ffffff"), "0.5")};
+    --ll-carousel-indicator-active-color: ${normalizeHexColor(state.carousel.indicatorActiveColor || "#ffffff")};
   }`);
     }
 
@@ -3790,11 +3972,21 @@ __CAROUSEL_DYNAMIC_COLORS__
       return ["top", "center", "bottom"].includes(value) ? value : "center";
     }
 
+    function normalizeCarouselGradientAngle(value) {
+      const numericValue = Number(value);
+      if (!Number.isFinite(numericValue)) {
+        return 323;
+      }
+
+      return Math.min(360, Math.max(0, Math.round(numericValue)));
+    }
+
     function getCarouselCaptionStyle(slide) {
       const backgroundColor = hexToRgba(normalizeHexColor(slide.backgroundColor || "#0d2333"), "0.64");
+      const textColor = normalizeHexColor(slide.textColor || "#ffffff");
       const horizontal = normalizeCarouselCaptionHorizontal(slide.captionHorizontal);
       const vertical = normalizeCarouselCaptionVertical(slide.captionVertical);
-      const styles = [`--ll-carousel-caption-bg: ${backgroundColor};`];
+      const styles = [`--ll-carousel-caption-bg: ${backgroundColor};`, `--ll-carousel-caption-text: ${textColor};`];
 
       if (horizontal === "center") {
         styles.push("--ll-carousel-caption-left: 50%;", "--ll-carousel-caption-right: auto;", "--ll-carousel-caption-translate-x: -50%;");
@@ -3815,6 +4007,53 @@ __CAROUSEL_DYNAMIC_COLORS__
       return styles.join(" ");
     }
 
+    function getCarouselIconName(value) {
+      return ["heart", "bottle", "sparkles", "box", "check", "none"].includes(value) ? value : "heart";
+    }
+
+    function renderCarouselIcon(slide) {
+      const iconImage = String(slide.navIconImage || "").trim();
+      if (iconImage) {
+        return `<span class="ll-carousel__dot-icon"><img class="ll-carousel__dot-icon-img" src="${escapeHtml(iconImage)}" alt="" loading="lazy"></span>`;
+      }
+
+      const icon = getCarouselIconName(slide.navIcon);
+      const icons = {
+        heart: `<svg aria-hidden="true" fill="currentColor" viewBox="0 0 24 24"><path d="M20.393 5.879A5.5 5.5 0 0 0 12 4.376a5.5 5.5 0 0 0-8.393 1.503C2.195 7.823 2.5 10.5 4.5 12.5L12 20l7.5-7.5c2-2 2.305-4.677.893-6.621z"></path></svg>`,
+        bottle: `<svg aria-hidden="true" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" viewBox="0 0 24 24"><path d="M9 2h6l1 4H8z"></path><path d="M8 6c0 8 8 8 8 14a4 4 0 0 1-8 0c0-6 8-6 8-14"></path><line x1="12" x2="12" y1="10" y2="14"></line></svg>`,
+        sparkles: `<svg aria-hidden="true" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"></circle><path d="M12 2v2M12 20v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M2 12h2M20 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"></path></svg>`,
+        box: `<svg aria-hidden="true" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" viewBox="0 0 24 24"><rect height="16" rx="2" width="20" x="2" y="4"></rect><circle cx="12" cy="12" r="3"></circle><path d="M2 9h3M19 9h3M2 15h3M19 15h3"></path></svg>`,
+        check: `<svg aria-hidden="true" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"></path></svg>`
+      };
+
+      if (icon === "none") {
+        return "";
+      }
+
+      return `<span class="ll-carousel__dot-icon">${icons[icon]}</span>`;
+    }
+
+    function buildCarouselImageVariant(src, size) {
+      const value = String(src || "").trim();
+      if (!value) {
+        return "";
+      }
+
+      const hashIndex = value.indexOf("#");
+      const hash = hashIndex >= 0 ? value.slice(hashIndex) : "";
+      const withoutHash = hashIndex >= 0 ? value.slice(0, hashIndex) : value;
+      const queryIndex = withoutHash.indexOf("?");
+      const path = queryIndex >= 0 ? withoutHash.slice(0, queryIndex) : withoutHash;
+      const query = queryIndex >= 0 ? withoutHash.slice(queryIndex + 1) : "";
+      const params = query
+        .split("&")
+        .map((param) => param.trim())
+        .filter((param) => param && !/^ims=/i.test(param));
+
+      params.push(`ims=${size}`);
+      return `${path}?${params.join("&")}${hash}`;
+    }
+
     function getCarouselSlides() {
       return state.carousel.slides.slice(0, carouselLimits.maxSlides);
     }
@@ -3832,6 +4071,8 @@ __CAROUSEL_DYNAMIC_COLORS__
         return {
           type: "decision",
           navLabel: "Decisão",
+          navIcon: index === 3 ? "box" : "bottle",
+          navIconImage: "",
           captionTitle: "Título curto do destaque",
           captionText: "Use a legenda para explicar o ponto principal do produto ou da seção.",
           image: "",
@@ -3840,19 +4081,26 @@ __CAROUSEL_DYNAMIC_COLORS__
           focusY: 50,
           captionHorizontal: "left",
           captionVertical: "center",
-          backgroundColor: "#0d2333"
+          textColor: "#ffffff",
+          backgroundColor: "#000000",
+          mediaBackgroundColor: "#0d2333"
         };
       }
 
       return {
         type: "impact",
         navLabel: index === 2 ? "Invertido" : "Impacto",
+        navIcon: index === 2 ? "sparkles" : "heart",
+        navIconImage: "",
         eyebrow: "Impacto visual",
         title: "Mensagem curta em destaque",
         text: "Use este espaço para resumir uma ideia principal com apoio da imagem ao lado.",
         image: "",
         alt: "Imagem de apoio do layout de impacto",
         backgroundColor: "#f16425",
+        gradientEnabled: true,
+        gradientEndColor: "#ff8a4f",
+        gradientAngle: 323,
         textColor: "#fff7ef",
         focusX: 50,
         focusY: 50,
@@ -3895,32 +4143,53 @@ __CAROUSEL_DYNAMIC_COLORS__
       return `<img class="${className}" src="${src}" alt="${alt}" width="1800" height="1600" loading="lazy" decoding="async" style="object-position: ${focusX}% ${focusY}%;">`;
     }
 
+    function renderCarouselPicture(slide) {
+      const src = String(slide.image || "").trim();
+      const sources = [
+        ["(max-width: 320px)", "242x"],
+        ["(max-width: 375px)", "297x"],
+        ["(max-width: 425px)", "347x"],
+        ["(max-width: 768px)", "702x"],
+        ["(max-width: 1024px)", "958x"],
+        ["(max-width: 1440px)", "1214x"]
+      ].map(([media, size]) => {
+        return `<source media="${media}" srcset="${escapeHtml(buildCarouselImageVariant(src, size))}">`;
+      }).join("\n              ");
+
+      return `<picture class="ll-carousel__picture">
+              ${sources}
+              ${renderCarouselImage(slide)}
+            </picture>`;
+    }
+
     function renderCarouselImpactSlide(slide) {
       const reverseClass = slide.reverse ? " ll-carousel__layout--impact-reverse" : "";
       const impactBg = normalizeHexColor(slide.backgroundColor || "#f16425");
       const impactText = normalizeHexColor(slide.textColor || "#fff7ef");
       const muted = hexToRgba(impactText, "0.84");
+      const gradient = slide.gradientEnabled === false
+        ? "none"
+        : `linear-gradient(${normalizeCarouselGradientAngle(slide.gradientAngle)}deg, ${impactBg}, ${normalizeHexColor(slide.gradientEndColor || impactBg)})`;
 
-      return `<section class="ll-carousel__layout ll-carousel__layout--impact${reverseClass}" style="--ll-carousel-impact-bg: ${impactBg}; --ll-carousel-impact-text: ${impactText}; --ll-carousel-impact-muted: ${muted};" aria-label="${escapeHtml(slide.navLabel || "Impacto")}">
+      return `<section class="ll-carousel__layout ll-carousel__layout--impact${reverseClass}" style="--ll-carousel-impact-bg: ${impactBg}; --ll-carousel-impact-text: ${impactText}; --ll-carousel-impact-muted: ${muted}; --ll-carousel-impact-gradient: ${gradient};" aria-label="${escapeHtml(slide.navLabel || "Impacto")}">
           <div class="ll-carousel__layout-copy">
             <p class="ll-carousel__layout-eyebrow">${escapeHtml(slide.eyebrow || "")}</p>
             <h3 class="ll-carousel__layout-title">${escapeHtml(slide.title || "")}</h3>
             <p class="ll-carousel__layout-text">${escapeHtml(slide.text || "")}</p>
           </div>
           <figure class="ll-carousel__media-card">
-            ${renderCarouselImage(slide)}
+            ${renderCarouselPicture(slide)}
           </figure>
         </section>`;
     }
 
     function renderCarouselDecisionSlide(slide) {
       const captionStyle = getCarouselCaptionStyle(slide);
+      const mediaBackgroundColor = normalizeHexColor(slide.mediaBackgroundColor || "#0d2333");
 
-      return `<section class="ll-carousel__layout ll-carousel__layout--media" style="--ll-carousel-media-bg: #0d2333;" aria-label="${escapeHtml(slide.navLabel || "Decisão")}">
+      return `<section class="ll-carousel__layout ll-carousel__layout--media" style="--ll-carousel-media-bg: ${mediaBackgroundColor}; background-color: ${mediaBackgroundColor};" aria-label="${escapeHtml(slide.navLabel || "Decisão")}">
           <figure class="ll-carousel__figure">
-            <picture class="ll-carousel__picture">
-              ${renderCarouselImage(slide)}
-            </picture>
+            ${renderCarouselPicture(slide)}
             <figcaption class="ll-carousel__caption" style="${captionStyle}">
               <h3>${escapeHtml(slide.captionTitle || "")}</h3>
               <p>${escapeHtml(slide.captionText || "")}</p>
@@ -3941,19 +4210,32 @@ __CAROUSEL_DYNAMIC_COLORS__
     function buildCarouselSectionHtml(activeIndex = 0) {
       const slides = getCarouselSlides();
       const hideIntroClass = state.carousel.showIntro === false ? " ll-carousel--hide-intro" : "";
+      const hideIndicatorsClass = state.carousel.showIndicators === false ? " ll-carousel--hide-indicators" : "";
       const activeSlideIndex = Math.min(Math.max(Number(activeIndex) || 0, 0), Math.max(0, slides.length - 1));
       const inputs = slides.map((slide, index) => {
         return `    <input class="ll-carousel__control ll-carousel__control--${index + 1}" type="radio" name="ll-carousel-active" id="ll-carousel-slide-${index + 1}"${index === activeSlideIndex ? " checked" : ""}>`;
       }).join("\n");
       const panels = slides.map(renderCarouselPanel).join("\n\n");
+      const indicators = slides.map((slide, index) => {
+        return `        <span class="ll-carousel__indicator ll-carousel__indicator--${index + 1}"></span>`;
+      }).join("\n");
+      const sideHints = slides.length > 1 ? slides.map((slide, index) => {
+        const previousIndex = (index - 1 + slides.length) % slides.length;
+        const nextIndex = (index + 1) % slides.length;
+        return `      <label class="ll-carousel__side-hint ll-carousel__side-hint--prev ll-carousel__side-hint--${index + 1}" for="ll-carousel-slide-${previousIndex + 1}" role="button" aria-label="Voltar para o slide ${previousIndex + 1}">Anterior</label>
+      <label class="ll-carousel__side-hint ll-carousel__side-hint--next ll-carousel__side-hint--${index + 1}" for="ll-carousel-slide-${nextIndex + 1}" role="button" aria-label="Avançar para o slide ${nextIndex + 1}">Próximo</label>`;
+      }).join("\n") : "";
       const dots = slides.map((slide, index) => {
         return `    <label class="ll-carousel__dot ll-carousel__dot--${index + 1}" for="ll-carousel-slide-${index + 1}" role="button" aria-controls="ll-carousel-panel-${index + 1}">
-      <span class="ll-carousel__dot-number">${String(index + 1).padStart(2, "0")}</span>
-      <span class="ll-carousel__dot-text">${escapeHtml(slide.navLabel || `Slide ${index + 1}`)}</span>
+      <span class="ll-carousel__dot-copy">
+        <span class="ll-carousel__dot-number">${String(index + 1).padStart(2, "0")}</span>
+        <span class="ll-carousel__dot-text">${escapeHtml(slide.navLabel || `Slide ${index + 1}`)}</span>
+      </span>
+      ${renderCarouselIcon(slide)}
     </label>`;
       }).join("\n");
 
-      return `<section class="ll-carousel${hideIntroClass}" aria-label="${escapeHtml(state.carousel.ariaLabel || "Carrossel de layouts")}">
+      return `<section class="ll-carousel${hideIntroClass}${hideIndicatorsClass}" aria-label="${escapeHtml(state.carousel.ariaLabel || "Carrossel de layouts")}">
   <div class="ll-carousel__container">
     <div class="ll-carousel__intro">
       <p class="ll-carousel__eyebrow">${escapeHtml(state.carousel.eyebrow || "")}</p>
@@ -3964,6 +4246,10 @@ __CAROUSEL_DYNAMIC_COLORS__
 ${inputs}
 
     <div class="ll-carousel__viewport">
+      <div class="ll-carousel__indicators">
+${indicators}
+      </div>
+${sideHints}
       <div class="ll-carousel__track">
 ${panels}
       </div>
@@ -5303,6 +5589,7 @@ ${tabs}
       const slides = carouselSlides.map((slide, slideIndex) => {
         const isOpen = state.carousel.openSlideIndex === slideIndex ? " open" : "";
         const type = normalizeCarouselType(slide.type);
+        const icon = getCarouselIconName(slide.navIcon);
         const captionHorizontal = normalizeCarouselCaptionHorizontal(slide.captionHorizontal);
         const captionVertical = normalizeCarouselCaptionVertical(slide.captionVertical);
         const impactFields = type === "impact" ? `
@@ -5310,14 +5597,28 @@ ${tabs}
                 <input type="checkbox" data-carousel-field="reverse" data-carousel-slide="${slideIndex}"${slide.reverse ? " checked" : ""}>
                 <span>Inverter texto e imagem</span>
               </label>
+              <label class="article-toggle">
+                <input type="checkbox" data-carousel-field="gradientEnabled" data-carousel-slide="${slideIndex}"${slide.gradientEnabled !== false ? " checked" : ""}>
+                <span>Usar degradê no fundo</span>
+              </label>
               <div class="article-editor__grid">
                 <label class="field">
                   <span>Cor do fundo</span>
                   <input type="color" value="${normalizeHexColor(slide.backgroundColor || "#f16425")}" data-carousel-field="backgroundColor" data-carousel-slide="${slideIndex}">
                 </label>
                 <label class="field">
+                  <span>Fim do degradê</span>
+                  <input type="color" value="${normalizeHexColor(slide.gradientEndColor || slide.backgroundColor || "#ff8a4f")}" data-carousel-field="gradientEndColor" data-carousel-slide="${slideIndex}">
+                </label>
+              </div>
+              <div class="article-editor__grid">
+                <label class="field">
                   <span>Cor do texto</span>
                   <input type="color" value="${normalizeHexColor(slide.textColor || "#fff7ef")}" data-carousel-field="textColor" data-carousel-slide="${slideIndex}">
+                </label>
+                <label class="field">
+                  <span>Ângulo do degradê</span>
+                  <input type="number" min="0" max="360" step="1" value="${normalizeCarouselGradientAngle(slide.gradientAngle)}" data-carousel-field="gradientAngle" data-carousel-slide="${slideIndex}">
                 </label>
               </div>
               <div class="article-editor__grid">
@@ -5334,9 +5635,19 @@ ${tabs}
                 <span>Texto</span>
                 <textarea data-carousel-field="text" data-carousel-slide="${slideIndex}">${escapeHtml(slide.text || "")}</textarea>
               </label>` : `
+              <div class="article-editor__grid">
+                <label class="field">
+                  <span>Fundo do slide</span>
+                  <input type="color" value="${normalizeHexColor(slide.mediaBackgroundColor || "#0d2333")}" data-carousel-field="mediaBackgroundColor" data-carousel-slide="${slideIndex}">
+                </label>
+                <label class="field">
+                  <span>Cor do bloco de texto</span>
+                  <input type="color" value="${normalizeHexColor(slide.backgroundColor || "#000000")}" data-carousel-field="backgroundColor" data-carousel-slide="${slideIndex}">
+                </label>
+              </div>
               <label class="field">
-                <span>Cor do bloco de texto</span>
-                <input type="color" value="${normalizeHexColor(slide.backgroundColor || "#0d2333")}" data-carousel-field="backgroundColor" data-carousel-slide="${slideIndex}">
+                <span>Cor do texto</span>
+                <input type="color" value="${normalizeHexColor(slide.textColor || "#ffffff")}" data-carousel-field="textColor" data-carousel-slide="${slideIndex}">
               </label>
               <div class="article-editor__grid">
                 <label class="field">
@@ -5390,6 +5701,21 @@ ${tabs}
                 </label>
               </div>
               <label class="field">
+                <span>Ícone da aba</span>
+                <select data-carousel-field="navIcon" data-carousel-slide="${slideIndex}">
+                  <option value="heart"${icon === "heart" ? " selected" : ""}>Coração</option>
+                  <option value="bottle"${icon === "bottle" ? " selected" : ""}>Frasco</option>
+                  <option value="sparkles"${icon === "sparkles" ? " selected" : ""}>Brilho</option>
+                  <option value="box"${icon === "box" ? " selected" : ""}>Embalagem</option>
+                  <option value="check"${icon === "check" ? " selected" : ""}>Check</option>
+                  <option value="none"${icon === "none" ? " selected" : ""}>Sem ícone</option>
+                </select>
+              </label>
+              <label class="field">
+                <span>Ícone custom .webp</span>
+                <input type="text" value="${escapeHtml(slide.navIconImage || "")}" data-carousel-field="navIconImage" data-carousel-slide="${slideIndex}" autocomplete="off">
+              </label>
+              <label class="field">
                 <span>URL da imagem</span>
                 <input type="text" value="${escapeHtml(slide.image || "")}" data-carousel-field="image" data-carousel-slide="${slideIndex}" autocomplete="off">
               </label>
@@ -5440,7 +5766,10 @@ ${impactFields}
               <p><strong>Como o corte funciona:</strong> o carrossel usa cover. No desktop ele abre mais na horizontal; nas telas menores ele fica mais vertical e pode cortar laterais.</p>
               <p><strong>Foco da imagem:</strong> em cada slide, ajuste Left (%) e Top (%) para escolher onde o produto fica preso durante o corte. 50/50 é centro.</p>
               <p><strong>Referência rápida:</strong> produto à direita, aumente Left; produto à esquerda, diminua Left; produto no topo, diminua Top; produto embaixo, aumente Top.</p>
-              <p><strong>Texto no layout Decisão:</strong> a cor do bloco de texto altera o overlay da legenda. Use posição horizontal e vertical para mover esse bloco sem editar CSS.</p>
+              <p><strong>Texto no layout Decisão:</strong> a cor do bloco de texto altera o overlay da legenda, e a cor do texto controla a leitura por cima dele. Use posição horizontal e vertical para mover esse bloco sem editar CSS.</p>
+              <p><strong>Versão com cards:</strong> os ícones das abas, as bolinhas internas, o hover e o estado ativo podem ser editados na base do carrossel.</p>
+              <p><strong>Ícone custom:</strong> cole a URL do .webp no slide. Quando esse campo estiver preenchido, ele substitui o ícone pronto da aba.</p>
+              <p><strong>Degradês:</strong> o fundo geral da seção e o fundo dos slides de impacto podem usar degradê. Se quiser algo mais seco, desative e trabalhe só com uma cor sólida.</p>
               <p><strong>Área segura:</strong> evite texto, logos e detalhes importantes perto das bordas. O produto principal deve ficar dentro da região central da imagem.</p>
               <p><strong>Texto do slide:</strong> use título curto e legenda objetiva para não cobrir demais o visual.</p>
             </div>
@@ -5482,13 +5811,70 @@ ${impactFields}
                   <input type="color" value="${normalizeHexColor(state.carousel.brandColor)}" data-carousel-field="brandColor">
                 </label>
                 <label class="field">
-                  <span>Fundo</span>
+                  <span>Fundo sólido</span>
                   <input type="color" value="${normalizeHexColor(state.carousel.softColor)}" data-carousel-field="softColor">
                 </label>
-                <label class="field">
-                  <span>Aba ativa</span>
-                  <input type="color" value="${normalizeHexColor(state.carousel.dotActiveColor)}" data-carousel-field="dotActiveColor">
+                <label class="article-toggle">
+                  <input type="checkbox" data-carousel-field="sectionGradientEnabled"${state.carousel.sectionGradientEnabled !== false ? " checked" : ""}>
+                  <span>Usar degradê no fundo da seção</span>
                 </label>
+                <div class="article-editor__grid">
+                  <label class="field">
+                    <span>Início do fundo</span>
+                    <input type="color" value="${normalizeHexColor(state.carousel.sectionGradientStart || "#ffffff")}" data-carousel-field="sectionGradientStart">
+                  </label>
+                  <label class="field">
+                    <span>Fim do fundo</span>
+                    <input type="color" value="${normalizeHexColor(state.carousel.sectionGradientEnd || state.carousel.softColor)}" data-carousel-field="sectionGradientEnd">
+                  </label>
+                </div>
+              </div>
+              <div class="article-elements article-protection">
+                <span class="article-elements__title">Navegação</span>
+                <div class="article-editor__grid">
+                  <label class="field">
+                    <span>Hover da aba</span>
+                    <input type="color" value="${normalizeHexColor(state.carousel.dotHoverColor)}" data-carousel-field="dotHoverColor">
+                  </label>
+                  <label class="field">
+                    <span>Aba ativa</span>
+                    <input type="color" value="${normalizeHexColor(state.carousel.dotActiveColor)}" data-carousel-field="dotActiveColor">
+                  </label>
+                </div>
+                <div class="article-editor__grid">
+                  <label class="field">
+                    <span>Borda ativa</span>
+                    <input type="color" value="${normalizeHexColor(state.carousel.dotActiveBorderColor)}" data-carousel-field="dotActiveBorderColor">
+                  </label>
+                  <label class="field">
+                    <span>Fundo do ícone</span>
+                    <input type="color" value="${normalizeHexColor(state.carousel.dotIconBackgroundColor || "#f0ede8")}" data-carousel-field="dotIconBackgroundColor">
+                  </label>
+                </div>
+                <div class="article-editor__grid">
+                  <label class="field">
+                    <span>Ícone ativo</span>
+                    <input type="color" value="${normalizeHexColor(state.carousel.dotIconActiveBackgroundColor || state.carousel.brandColor)}" data-carousel-field="dotIconActiveBackgroundColor">
+                  </label>
+                  <label class="field">
+                    <span>Texto do ícone ativo</span>
+                    <input type="color" value="${normalizeHexColor(state.carousel.dotIconActiveColor || "#ffffff")}" data-carousel-field="dotIconActiveColor">
+                  </label>
+                </div>
+                <label class="article-toggle">
+                  <input type="checkbox" data-carousel-field="showIndicators"${state.carousel.showIndicators !== false ? " checked" : ""}>
+                  <span>Mostrar bolinhas dentro do slide</span>
+                </label>
+                <div class="article-editor__grid">
+                  <label class="field">
+                    <span>Indicador</span>
+                    <input type="color" value="${normalizeHexColor(state.carousel.indicatorColor || "#ffffff")}" data-carousel-field="indicatorColor">
+                  </label>
+                  <label class="field">
+                    <span>Indicador ativo</span>
+                    <input type="color" value="${normalizeHexColor(state.carousel.indicatorActiveColor || "#ffffff")}" data-carousel-field="indicatorActiveColor">
+                  </label>
+                </div>
               </div>
             </div>
           </details>
@@ -5920,7 +6306,11 @@ ${slides}
         if (slideIndex === undefined) {
           if (carouselField === "showIntro") {
             state.carousel.showIntro = event.target.checked;
-          } else if (["brandColor", "softColor", "dotHoverColor", "dotActiveColor", "dotActiveBorderColor"].includes(carouselField)) {
+          } else if (carouselField === "sectionGradientEnabled") {
+            state.carousel.sectionGradientEnabled = event.target.checked;
+          } else if (carouselField === "showIndicators") {
+            state.carousel.showIndicators = event.target.checked;
+          } else if (["brandColor", "softColor", "sectionGradientStart", "sectionGradientEnd", "dotHoverColor", "dotActiveColor", "dotActiveBorderColor", "dotIconBackgroundColor", "dotIconActiveBackgroundColor", "dotIconActiveColor", "indicatorColor", "indicatorActiveColor"].includes(carouselField)) {
             state.carousel[carouselField] = normalizeHexColor(event.target.value);
           } else {
             state.carousel[carouselField] = event.target.value;
@@ -5950,8 +6340,21 @@ ${slides}
           return;
         }
 
-        if (["backgroundColor", "textColor"].includes(carouselField)) {
+        if (carouselField === "gradientEnabled") {
+          slide.gradientEnabled = event.target.checked;
+          updateOutput();
+          return;
+        }
+
+        if (["backgroundColor", "textColor", "gradientEndColor", "mediaBackgroundColor"].includes(carouselField)) {
           slide[carouselField] = normalizeHexColor(event.target.value);
+          updateOutput();
+          return;
+        }
+
+        if (carouselField === "gradientAngle") {
+          slide.gradientAngle = normalizeCarouselGradientAngle(event.target.value);
+          event.target.value = String(slide.gradientAngle);
           updateOutput();
           return;
         }
@@ -6036,7 +6439,7 @@ ${slides}
     });
 
     editor.addEventListener("change", (event) => {
-      if (event.target.matches("select") || event.target.matches('[data-article-field="shellBackgroundEnabled"], [data-article-field="overlayEnabled"], [data-article-field="tabsProtectionEnabled"], [data-carousel-field="showIntro"], [data-carousel-field="reverse"]')) {
+      if (event.target.matches("select") || event.target.matches('[data-article-field="shellBackgroundEnabled"], [data-article-field="overlayEnabled"], [data-article-field="tabsProtectionEnabled"], [data-carousel-field="showIntro"], [data-carousel-field="sectionGradientEnabled"], [data-carousel-field="showIndicators"], [data-carousel-field="reverse"], [data-carousel-field="gradientEnabled"]')) {
         event.target.dispatchEvent(new Event("input", { bubbles: true }));
       }
     });
