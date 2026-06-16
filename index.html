@@ -339,6 +339,34 @@
       grid-template-columns: minmax(420px, 0.56fr) minmax(700px, 1.44fr);
     }
 
+    @media (min-width: 1280px) {
+      html[data-page="conteudo"] .app {
+        width: min(1840px, calc(100% - 24px));
+      }
+
+      html[data-page="conteudo"] .layout {
+        grid-template-columns: minmax(420px, 0.48fr) minmax(760px, 1.52fr);
+      }
+
+      html[data-page="conteudo"][data-editor-tab="article"] .app,
+      html[data-page="conteudo"][data-editor-tab="carousel"] .app {
+        width: min(1880px, calc(100% - 20px));
+      }
+
+      html[data-page="conteudo"][data-editor-tab="article"] .layout,
+      html[data-page="conteudo"][data-editor-tab="carousel"] .layout {
+        grid-template-columns: minmax(440px, 0.44fr) minmax(900px, 1.56fr);
+      }
+
+      html[data-page="conteudo"] .preview-shell {
+        padding: 18px;
+      }
+
+      html[data-page="conteudo"] .preview-canvas {
+        padding: 16px;
+      }
+    }
+
     .panel {
       min-width: 0;
       min-height: 0;
@@ -382,11 +410,14 @@
 
     .editor-tools {
       flex: 0 0 auto;
+      display: grid;
+      gap: 10px;
       padding: 18px 18px 0;
     }
 
     .editor-tools.is-hidden,
-    .button.is-hidden {
+    .button.is-hidden,
+    .home-return.is-hidden {
       display: none;
     }
 
@@ -416,6 +447,168 @@
     .editor-tabs__button[aria-selected="true"] {
       color: #ffffff;
       background: var(--blue);
+    }
+
+    .home-return {
+      width: max-content;
+      min-height: 34px;
+      padding: 7px 11px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      color: var(--field-label);
+      background: var(--editor-item-bg);
+      font-size: 13px;
+      font-weight: 850;
+      cursor: pointer;
+    }
+
+    .home-return:hover,
+    .home-return:focus-visible {
+      color: #ffffff;
+      background: var(--blue);
+      outline: none;
+    }
+
+    .dashboard-home {
+      display: grid;
+      gap: 18px;
+      padding: 2px;
+    }
+
+    .dashboard-home__hero {
+      display: grid;
+      gap: 8px;
+      min-height: 170px;
+      align-content: end;
+      padding: clamp(18px, 4vw, 30px);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background:
+        linear-gradient(135deg, rgba(124, 58, 237, 0.13), rgba(234, 91, 12, 0.08)),
+        var(--editor-item-bg);
+    }
+
+    .dashboard-home__eyebrow {
+      margin: 0;
+      color: var(--blue);
+      font-size: 12px;
+      font-weight: 900;
+      text-transform: uppercase;
+    }
+
+    .dashboard-home__hero h3 {
+      max-width: 640px;
+      margin: 0;
+      color: var(--ink);
+      font-size: clamp(26px, 5vw, 44px);
+      line-height: 1.02;
+    }
+
+    .dashboard-home__hero p {
+      max-width: 560px;
+      margin: 0;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
+    .dashboard-home__section-title {
+      display: grid;
+      gap: 4px;
+      margin: 0;
+    }
+
+    .dashboard-home__section-title strong {
+      color: var(--brand-ink);
+      font-size: 15px;
+    }
+
+    .dashboard-home__section-title span {
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.45;
+    }
+
+    .dashboard-home__back {
+      display: inline-flex;
+      width: max-content;
+      min-height: 34px;
+      align-items: center;
+      justify-content: center;
+      padding: 7px 11px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      color: #ffffff;
+      background: var(--blue);
+      font-size: 13px;
+      font-weight: 850;
+      cursor: pointer;
+    }
+
+    .dashboard-home__back:hover,
+    .dashboard-home__back:focus-visible {
+      filter: brightness(0.96);
+      outline: none;
+    }
+
+    .dashboard-home__grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 12px;
+    }
+
+    .dashboard-home__card {
+      display: grid;
+      gap: 12px;
+      min-height: 128px;
+      padding: 16px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      color: var(--ink);
+      background: var(--editor-item-bg);
+      text-align: left;
+      cursor: pointer;
+    }
+
+    .dashboard-home__card:hover,
+    .dashboard-home__card:focus-visible,
+    .dashboard-home__card[aria-current="page"] {
+      border-color: var(--blue);
+      box-shadow: 0 16px 34px rgba(124, 58, 237, 0.16);
+      outline: none;
+      transform: translateY(-1px);
+    }
+
+    .dashboard-home__icon {
+      display: inline-flex;
+      width: 38px;
+      height: 38px;
+      align-items: center;
+      justify-content: center;
+      border-radius: 8px;
+      color: #ffffff;
+      background: var(--blue);
+      font-size: 13px;
+      font-weight: 900;
+    }
+
+    .dashboard-home__card strong {
+      color: var(--ink);
+      font-size: 17px;
+      line-height: 1.15;
+    }
+
+    .dashboard-home__card span:not(.dashboard-home__icon) {
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.35;
+    }
+
+    .dashboard-home__meta {
+      align-self: end;
+      color: var(--field-label);
+      font-size: 12px;
+      font-weight: 850;
     }
 
     .field {
@@ -1046,23 +1239,419 @@
       overflow: hidden;
     }
 
+    .preview-toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin: 0 0 12px;
+    }
+
     .preview-shell__label {
       display: block;
-      margin: 0 0 12px;
+      margin: 0 0 2px;
       color: var(--muted);
       font-size: 13px;
       font-weight: 750;
     }
 
-    .preview-frame {
+    .preview-toolbar__device {
+      display: block;
+      color: var(--brand-ink);
+      font-size: 12px;
+      line-height: 1.2;
+    }
+
+    .preview-devices {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+      gap: 4px;
+    }
+
+    .preview-devices__button {
+      min-height: 30px;
+      padding: 6px 9px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      color: var(--muted);
+      background: rgba(255, 255, 255, 0.74);
+      font-size: 12px;
+      font-weight: 800;
+      cursor: pointer;
+    }
+
+    .preview-devices__button:hover,
+    .preview-devices__button[aria-pressed="true"] {
+      color: #ffffff;
+      background: var(--blue);
+      border-color: var(--blue);
+    }
+
+    .preview-canvas {
+      display: flex;
       flex: 1;
-      width: 100%;
+      justify-content: center;
+      min-height: 0;
+      padding: 12px;
+      border-radius: 8px;
+      background: rgba(15, 23, 42, 0.035);
+      overflow: auto;
+    }
+
+    html[data-preview-device="desktop"] .preview-canvas {
+      overflow-x: hidden;
+    }
+
+    .preview-frame {
+      flex: 0 0 auto;
+      height: 100%;
       min-height: 0;
       padding: 16px 0;
       border: 0;
       background: #ffffff;
       border-radius: 8px;
       overflow: auto;
+    }
+
+    html[data-page="conteudo"][data-editor-tab="stories"] .preview-canvas {
+      align-items: flex-start;
+    }
+
+    html[data-page="conteudo"][data-editor-tab="stories"] .preview-frame {
+      height: 100%;
+      max-height: 100%;
+    }
+
+    html[data-page="conteudo"][data-editor-tab="dashboard"] .output-panel .panel__head {
+      display: none;
+    }
+
+    html[data-page="conteudo"][data-editor-tab="dashboard"] .output {
+      display: block;
+      padding: 0;
+      overflow: hidden;
+    }
+
+    html[data-page="conteudo"][data-editor-tab="dashboard"] .preview-shell {
+      display: block;
+      height: 100%;
+      padding: 0;
+      border: 0;
+      border-radius: 8px;
+      background: transparent;
+    }
+
+    html[data-page="conteudo"][data-editor-tab="dashboard"] .preview-toolbar {
+      display: none;
+    }
+
+    html[data-page="conteudo"][data-editor-tab="dashboard"] .preview-canvas {
+      display: block;
+      height: 100%;
+      padding: 0;
+      border-radius: 8px;
+      background: transparent;
+      overflow: hidden;
+    }
+
+    html[data-page="conteudo"][data-editor-tab="dashboard"] .preview-frame {
+      width: 100% !important;
+      max-width: none !important;
+      height: 100%;
+      padding: 0;
+      border-radius: 8px;
+      background: var(--bg);
+    }
+
+    .preview-edit-popover {
+      position: fixed;
+      z-index: 1000;
+      display: grid;
+      width: min(360px, calc(100vw - 24px));
+      gap: 10px;
+      padding: 12px;
+      border: 1px solid var(--panel-border);
+      border-radius: 8px;
+      color: var(--ink);
+      background: var(--panel);
+      box-shadow: 0 18px 44px rgba(15, 23, 42, 0.24);
+    }
+
+    .preview-edit-popover--text-style {
+      width: min(460px, calc(100vw - 24px));
+    }
+
+    .preview-edit-popover__title {
+      margin: 0;
+      color: var(--field-label);
+      font-size: 13px;
+      font-weight: 850;
+    }
+
+    .preview-edit-popover__field {
+      width: 100%;
+      min-height: 40px;
+      padding: 10px 11px;
+      border: 1px solid var(--field-border);
+      border-radius: 8px;
+      color: var(--field-text);
+      background: var(--field-bg);
+      outline: none;
+    }
+
+    .preview-edit-popover__field:focus {
+      border-color: var(--blue);
+      box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.18);
+    }
+
+    textarea.preview-edit-popover__field {
+      min-height: 92px;
+      resize: vertical;
+    }
+
+    .preview-edit-popover__grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .preview-edit-popover__mini-field {
+      display: grid;
+      gap: 5px;
+      color: var(--field-label);
+      font-size: 12px;
+      font-weight: 800;
+    }
+
+    .preview-edit-popover__mini-field input,
+    .preview-edit-popover__mini-field select {
+      min-height: 38px;
+      padding: 8px 9px;
+      border: 1px solid var(--field-border);
+      border-radius: 8px;
+      color: var(--field-text);
+      background: var(--field-bg);
+      font: inherit;
+      outline: none;
+    }
+
+    .preview-edit-popover__mini-field input:focus,
+    .preview-edit-popover__mini-field select:focus {
+      border-color: var(--blue);
+      box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.18);
+    }
+
+    .preview-edit-popover__color-row {
+      display: grid;
+      grid-template-columns: 48px minmax(0, 1fr);
+      gap: 8px;
+      align-items: center;
+    }
+
+    .preview-edit-popover__color {
+      width: 48px;
+      height: 40px;
+      padding: 4px;
+      border: 1px solid var(--field-border);
+      border-radius: 8px;
+      background: var(--field-bg);
+      cursor: pointer;
+    }
+
+    .preview-edit-popover__actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+    }
+
+    .preview-edit-popover__actions .button {
+      min-height: 34px;
+      padding: 8px 11px;
+      font-size: 12px;
+    }
+
+    .responsive-editor,
+    .preset-panel {
+      flex: 0 0 auto;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--editor-item-bg);
+      overflow: hidden;
+    }
+
+    .responsive-editor {
+      margin: 0 0 14px;
+    }
+
+    .preset-panel {
+      margin: 0 0 10px;
+      padding: 0;
+    }
+
+    .preset-panel summary {
+      cursor: pointer;
+      list-style: none;
+    }
+
+    .preset-panel summary::-webkit-details-marker {
+      display: none;
+    }
+
+    .preset-panel__summary {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 10px 12px;
+      color: var(--editor-bar-text);
+      background: var(--editor-bar-bg);
+      font-size: 13px;
+      font-weight: 850;
+    }
+
+    .preset-panel__summary span {
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 800;
+    }
+
+    .preset-panel[open] .preset-panel__summary {
+      border-bottom: 1px solid var(--line);
+    }
+
+    .preset-panel__body {
+      display: grid;
+      gap: 10px;
+      padding: 12px;
+      overflow-x: hidden;
+      overflow-y: visible;
+      overscroll-behavior: contain;
+      scrollbar-gutter: stable;
+    }
+
+    .preset-panel__row {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 10px;
+      align-items: end;
+    }
+
+    .preset-panel__row--file {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .preset-panel__import {
+      display: none;
+    }
+
+    .preset-panel .field {
+      margin-bottom: 0;
+    }
+
+    .responsive-editor summary {
+      cursor: pointer;
+      list-style: none;
+    }
+
+    .responsive-editor summary::-webkit-details-marker {
+      display: none;
+    }
+
+    .responsive-editor__summary {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 11px 12px;
+      color: var(--editor-bar-text);
+      background: var(--editor-bar-bg);
+      border-bottom: 1px solid var(--line);
+      font-size: 13px;
+      font-weight: 850;
+    }
+
+    .responsive-editor:not([open]) .responsive-editor__summary {
+      border-bottom: 0;
+    }
+
+    .responsive-editor__summary span {
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 800;
+    }
+
+    .responsive-editor[open] .responsive-editor__summary span {
+      transform: rotate(90deg);
+    }
+
+    .responsive-editor__body {
+      display: grid;
+      gap: 12px;
+      max-height: none;
+      padding: 12px;
+      overflow-x: hidden;
+      overflow-y: visible;
+      overscroll-behavior: contain;
+      scrollbar-gutter: stable;
+    }
+
+    .responsive-editor__modes {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(118px, 1fr));
+      gap: 8px;
+      padding: 8px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.55);
+    }
+
+    .responsive-editor__mode {
+      min-height: 40px;
+      padding: 8px 12px;
+      border-radius: 6px;
+      color: var(--muted);
+      background: transparent;
+      font-size: 13px;
+      line-height: 1.15;
+      font-weight: 850;
+      cursor: pointer;
+    }
+
+    .responsive-editor__mode:hover,
+    .responsive-editor__mode[aria-pressed="true"] {
+      color: #ffffff;
+      background: var(--blue);
+    }
+
+    .responsive-editor__notice {
+      margin: 0;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.45;
+    }
+
+    .responsive-editor__notice.is-warning {
+      color: #a16207;
+      font-weight: 750;
+    }
+
+    .responsive-editor__grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .responsive-editor textarea {
+      min-height: 76px;
+      font-family: Consolas, "Courier New", monospace;
+      font-size: 12px;
+    }
+
+    .responsive-editor__actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
     }
 
     html[data-theme="dark"] body {
@@ -1144,6 +1733,8 @@
     html[data-theme="dark"] .table-editor__box,
     html[data-theme="dark"] .table-row-editor,
     html[data-theme="dark"] .faq-bulk-panel,
+    html[data-theme="dark"] .responsive-editor,
+    html[data-theme="dark"] .preset-panel,
     html[data-theme="dark"] .stories-guide,
     html[data-theme="dark"] .stories-editor__box,
     html[data-theme="dark"] .stories-slide-editor,
@@ -1158,9 +1749,44 @@
       border-color: #273548;
     }
 
+    html[data-theme="dark"] .responsive-editor__summary {
+      background: #122138;
+      border-bottom-color: #273548;
+    }
+
+    html[data-theme="dark"] .responsive-editor__modes {
+      border-color: #273548;
+      background: rgba(255, 255, 255, 0.04);
+    }
+
+    html[data-theme="dark"] .responsive-editor__mode {
+      color: #d8e6f3;
+    }
+
     html[data-theme="dark"] .preview-shell {
       border-color: #36556f;
       background: #0b1422;
+    }
+
+    html[data-theme="dark"] .preview-toolbar__device {
+      color: #f8fafc;
+    }
+
+    html[data-theme="dark"] .preview-devices__button {
+      border-color: #33465e;
+      color: #d8e6f3;
+      background: #0d1727;
+    }
+
+    html[data-theme="dark"] .preview-devices__button:hover,
+    html[data-theme="dark"] .preview-devices__button[aria-pressed="true"] {
+      color: #ffffff;
+      background: var(--blue);
+      border-color: var(--blue);
+    }
+
+    html[data-theme="dark"] .preview-canvas {
+      background: rgba(255, 255, 255, 0.04);
     }
 
     html[data-theme="dark"] .preview-frame {
@@ -1240,6 +1866,19 @@
         display: block;
       }
 
+      .preview-toolbar {
+        align-items: flex-start;
+        flex-direction: column;
+      }
+
+      .preview-devices {
+        justify-content: flex-start;
+      }
+
+      .preview-canvas {
+        min-height: 180px;
+      }
+
       .preview-frame {
         min-height: 180px;
       }
@@ -1280,6 +1919,15 @@
       .panel__head,
       .panel__body {
         padding: 14px;
+      }
+
+      .preset-panel__row,
+      .responsive-editor__grid {
+        grid-template-columns: 1fr;
+      }
+
+      .responsive-editor__modes {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
       }
 
       .actions,
@@ -1592,7 +2240,6 @@
           </span>
           <span class="theme-toggle__text">Modo escuro</span>
         </label>
-        <button class="button button--soft icon-button" id="addItemTop" type="button" aria-label="Adicionar pergunta" title="Adicionar pergunta">+</button>
       </div>
     </header>
 
@@ -1600,6 +2247,7 @@
       <div class="panel editor-panel">
         <div class="panel__head">
           <h2>Conteúdo</h2>
+          <button class="home-return is-hidden" type="button" data-dashboard-home-return aria-label="Voltar para o início">← Voltar pro início</button>
           <button class="button button--soft icon-button" id="addItem" type="button" aria-label="Adicionar pergunta" title="Adicionar pergunta">+</button>
         </div>
         <div class="panel__body">
@@ -1628,8 +2276,21 @@
           <div class="status" id="copyStatus" aria-live="polite"></div>
           <textarea id="generatedHtml" readonly spellcheck="false" aria-label="HTML gerado"></textarea>
           <div class="preview-shell">
-            <span class="preview-shell__label">Prévia</span>
-            <iframe class="preview-frame" id="previewFrame" title="Previa do conteudo"></iframe>
+            <div class="preview-toolbar" aria-label="Controles da previa">
+              <div>
+                <span class="preview-shell__label">Prévia</span>
+                <strong class="preview-toolbar__device" id="previewDeviceLabel">Desktop</strong>
+              </div>
+              <div class="preview-devices" role="group" aria-label="Tamanho da prévia">
+                <button class="preview-devices__button" type="button" data-preview-device="mobile">Celular</button>
+                <button class="preview-devices__button" type="button" data-preview-device="tablet">Tablet</button>
+                <button class="preview-devices__button" type="button" data-preview-device="notebook">Notebook</button>
+                <button class="preview-devices__button" type="button" data-preview-device="desktop">Desktop</button>
+              </div>
+            </div>
+            <div class="preview-canvas" id="previewCanvas">
+              <iframe class="preview-frame" id="previewFrame" title="Previa do conteudo"></iframe>
+            </div>
           </div>
         </div>
       </div>
@@ -3478,6 +4139,47 @@ __CAROUSEL_DYNAMIC_COLORS__
     const state = {
       faqBulkInput: "",
       faqBulkStatus: "",
+      responsive: {
+        previewDevice: "desktop",
+        editDevice: "base",
+        dirty: false,
+        baseSnapshots: {},
+        saved: {
+          faq: {},
+          table: {},
+          stories: {},
+          article: {},
+          carousel: {}
+        }
+      },
+      presets: {
+        name: "",
+        dirty: false,
+        selected: {
+          faq: "",
+          table: "",
+          stories: "",
+          article: "",
+          carousel: ""
+        },
+        items: {
+          faq: [],
+          table: [],
+          stories: [],
+          article: [],
+          carousel: []
+        }
+      },
+      dashboard: {
+        view: "layouts"
+      },
+      textStyles: {
+        faq: {},
+        table: {},
+        stories: {},
+        article: {},
+        carousel: {}
+      },
       items: [
         { question: "", answer: "" },
         { question: "", answer: "" },
@@ -3763,7 +4465,10 @@ __CAROUSEL_DYNAMIC_COLORS__
     const editor = document.querySelector("#faqEditor");
     const editorTools = document.querySelector("#editorTools");
     const generatedHtml = document.querySelector("#generatedHtml");
+    const previewCanvas = document.querySelector("#previewCanvas");
     const previewFrame = document.querySelector("#previewFrame");
+    const previewDeviceLabel = document.querySelector("#previewDeviceLabel");
+    const previewDeviceButtons = Array.from(document.querySelectorAll("[data-preview-device]"));
     const copyStatus = document.querySelector("#copyStatus");
     const themeToggle = document.querySelector("#themeToggle");
     const appTitle = document.querySelector("#appTitle");
@@ -3771,11 +4476,39 @@ __CAROUSEL_DYNAMIC_COLORS__
     const outputTitle = document.querySelector("#outputTitle");
     const pageLinks = Array.from(document.querySelectorAll("[data-page-link]"));
     const editorTabButtons = Array.from(document.querySelectorAll("[data-editor-tab]"));
-    const addButtons = [document.querySelector("#addItem"), document.querySelector("#addItemTop")];
+    const homeReturnButtons = Array.from(document.querySelectorAll("[data-dashboard-home-return]"));
+    const addButtons = [document.querySelector("#addItem")].filter(Boolean);
     const htmlCopyButtons = [document.querySelector("#copyHtml")].filter(Boolean);
     const fullCopyButtons = [document.querySelector("#copyHtmlCss")].filter(Boolean);
+    let previewEditPopover = null;
+    let previewEditOutsideHandler = null;
+    let previewEditKeyHandler = null;
     let currentPage = "conteudo";
-    let currentEditorTab = "faq";
+    let currentEditorTab = "dashboard";
+    const previewDevices = [
+      { key: "mobile", label: "Celular", width: 390 },
+      { key: "tablet", label: "Tablet", width: 768 },
+      { key: "notebook", label: "Notebook", width: 1024 },
+      { key: "desktop", label: "Desktop", width: 1280 }
+    ];
+    const responsiveEditDevices = [
+      { key: "base", label: "Geral", note: "Os campos normais continuam valendo para todos os tamanhos." },
+      { key: "mobile", label: "Celular", note: "Esses ajustes entram em telas pequenas, ate 560px." },
+      { key: "tablet", label: "Tablet", note: "Esses ajustes entram entre 561px e 1024px." },
+      { key: "desktop", label: "Desktop", note: "Esses ajustes entram acima de 1025px." }
+    ];
+    const responsiveDefaults = {
+      titleScale: 100,
+      textScale: 100,
+      spacingScale: 100,
+      radiusScale: 100,
+      extraCss: ""
+    };
+    const responsiveMediaQueries = {
+      mobile: "(max-width: 560px)",
+      tablet: "(min-width: 561px) and (max-width: 1024px)",
+      desktop: "(min-width: 1025px)"
+    };
     const storyLimits = {
       minContainers: 1,
       maxContainers: 3,
@@ -3816,6 +4549,705 @@ __CAROUSEL_DYNAMIC_COLORS__
         fullCopiedStatus: ""
       }
     };
+
+    function cloneValue(value) {
+      return JSON.parse(JSON.stringify(value));
+    }
+
+    function getCurrentPresetTab() {
+      return currentPage === "conteudo" && currentEditorTab !== "dashboard" ? currentEditorTab : "faq";
+    }
+
+    function getResponsiveTab() {
+      return currentPage === "conteudo" && currentEditorTab !== "dashboard" ? currentEditorTab : "faq";
+    }
+
+    function getSnapshotTextStyles(tab) {
+      return cloneValue((state.textStyles && state.textStyles[tab]) || {});
+    }
+
+    function applySnapshotTextStyles(tab, snapshot) {
+      state.textStyles = state.textStyles || {};
+      state.textStyles[tab] = cloneValue(snapshot && snapshot.textStyles ? snapshot.textStyles : {});
+    }
+
+    function getTabSnapshot(tab = getResponsiveTab()) {
+      if (tab === "table") {
+        return { table: cloneValue(state.table), textStyles: getSnapshotTextStyles(tab) };
+      }
+
+      if (tab === "stories") {
+        return { stories: cloneValue(state.stories), textStyles: getSnapshotTextStyles(tab) };
+      }
+
+      if (tab === "article") {
+        return { article: cloneValue(state.article), textStyles: getSnapshotTextStyles(tab) };
+      }
+
+      if (tab === "carousel") {
+        return { carousel: cloneValue(state.carousel), textStyles: getSnapshotTextStyles(tab) };
+      }
+
+      return {
+        items: cloneValue(state.items),
+        faqBulkInput: state.faqBulkInput,
+        faqBulkStatus: state.faqBulkStatus,
+        textStyles: getSnapshotTextStyles("faq")
+      };
+    }
+
+    function applyTabSnapshot(tab, snapshot) {
+      if (!snapshot) {
+        return;
+      }
+
+      if (tab === "table" && snapshot.table) {
+        state.table = cloneValue(snapshot.table);
+        applySnapshotTextStyles(tab, snapshot);
+        return;
+      }
+
+      if (tab === "stories" && snapshot.stories) {
+        state.stories = cloneValue(snapshot.stories);
+        applySnapshotTextStyles(tab, snapshot);
+        return;
+      }
+
+      if (tab === "article" && snapshot.article) {
+        state.article = cloneValue(snapshot.article);
+        applySnapshotTextStyles(tab, snapshot);
+        return;
+      }
+
+      if (tab === "carousel" && snapshot.carousel) {
+        state.carousel = cloneValue(snapshot.carousel);
+        applySnapshotTextStyles(tab, snapshot);
+        return;
+      }
+
+      if (Array.isArray(snapshot.items)) {
+        state.items = cloneValue(snapshot.items);
+        state.faqBulkInput = snapshot.faqBulkInput || "";
+        state.faqBulkStatus = snapshot.faqBulkStatus || "";
+        applySnapshotTextStyles("faq", snapshot);
+      }
+    }
+
+    function getBaseSnapshot(tab = getResponsiveTab()) {
+      if (state.responsive.editDevice === "base" && tab === getResponsiveTab()) {
+        return getTabSnapshot(tab);
+      }
+
+      return cloneValue(state.responsive.baseSnapshots[tab] || getTabSnapshot(tab));
+    }
+
+    function rememberBaseSnapshot(tab = getResponsiveTab()) {
+      if (state.responsive.editDevice === "base") {
+        state.responsive.baseSnapshots[tab] = getTabSnapshot(tab);
+      }
+    }
+
+    function markResponsiveDirty() {
+      if (currentPage === "conteudo" && state.responsive.editDevice !== "base") {
+        state.responsive.dirty = true;
+      }
+    }
+
+    function confirmDiscardResponsiveDraft() {
+      if (!state.responsive.dirty) {
+        return true;
+      }
+
+      const shouldDiscard = window.confirm("Existem alterações responsivas sem salvar. Sair sem salvar vai descartar essa versão. Continuar?");
+      if (shouldDiscard) {
+        state.responsive.dirty = false;
+      }
+
+      return shouldDiscard;
+    }
+
+    function returnToBaseVersion() {
+      const tab = getResponsiveTab();
+      if (state.responsive.editDevice === "base") {
+        rememberBaseSnapshot(tab);
+        return true;
+      }
+
+      if (!confirmDiscardResponsiveDraft()) {
+        return false;
+      }
+
+      applyTabSnapshot(tab, getBaseSnapshot(tab));
+      state.responsive.editDevice = "base";
+      state.responsive.dirty = false;
+      return true;
+    }
+
+    function setResponsiveEditDevice(device) {
+      const validDevice = responsiveEditDevices.some((item) => item.key === device) ? device : "base";
+      const tab = getResponsiveTab();
+
+      if (validDevice === state.responsive.editDevice) {
+        return;
+      }
+
+      if (!confirmDiscardResponsiveDraft()) {
+        return;
+      }
+
+      if (state.responsive.editDevice === "base") {
+        rememberBaseSnapshot(tab);
+      }
+
+      if (validDevice === "base") {
+        applyTabSnapshot(tab, getBaseSnapshot(tab));
+      } else {
+        const versionSnapshot = state.responsive.saved[tab] && state.responsive.saved[tab][validDevice]
+          ? state.responsive.saved[tab][validDevice]
+          : getBaseSnapshot(tab);
+        applyTabSnapshot(tab, versionSnapshot);
+        state.responsive.previewDevice = validDevice === "desktop" ? "desktop" : validDevice;
+      }
+
+      state.responsive.editDevice = validDevice;
+      state.responsive.dirty = false;
+      renderEditor(true);
+    }
+
+    function saveResponsiveDraft() {
+      const tab = getResponsiveTab();
+      const device = state.responsive.editDevice;
+
+      if (device === "base") {
+        rememberBaseSnapshot(tab);
+        return;
+      }
+
+      state.responsive.saved[tab] = state.responsive.saved[tab] || {};
+      state.responsive.saved[tab][device] = getTabSnapshot(tab);
+      state.responsive.dirty = false;
+      renderEditor(true);
+    }
+
+    function discardResponsiveDraft() {
+      const tab = getResponsiveTab();
+      const device = state.responsive.editDevice;
+
+      if (device === "base") {
+        return;
+      }
+
+      const savedVersion = state.responsive.saved[tab] && state.responsive.saved[tab][device];
+      applyTabSnapshot(tab, savedVersion || getBaseSnapshot(tab));
+      state.responsive.dirty = false;
+      renderEditor(true);
+    }
+
+    function removeResponsiveVersion() {
+      const tab = getResponsiveTab();
+      const device = state.responsive.editDevice;
+
+      if (device === "base") {
+        return;
+      }
+
+      const shouldRemove = window.confirm("Remover esta versão responsiva salva?");
+      if (!shouldRemove) {
+        return;
+      }
+
+      if (state.responsive.saved[tab]) {
+        delete state.responsive.saved[tab][device];
+      }
+      applyTabSnapshot(tab, getBaseSnapshot(tab));
+      state.responsive.dirty = false;
+      renderEditor(true);
+    }
+
+    function resetResponsiveForTab(tab) {
+      state.responsive.saved[tab] = {};
+      delete state.responsive.baseSnapshots[tab];
+      state.responsive.dirty = false;
+      state.responsive.editDevice = "base";
+    }
+
+    function hasResponsiveVersion(tab, device) {
+      return Boolean(state.responsive.saved[tab] && state.responsive.saved[tab][device]);
+    }
+
+    function getResponsiveVersionList(tab = getResponsiveTab()) {
+      return ["mobile", "tablet", "desktop"].filter((device) => hasResponsiveVersion(tab, device));
+    }
+
+    function normalizeResponsiveScale(value) {
+      const numericValue = Number(value);
+      if (!Number.isFinite(numericValue)) {
+        return 100;
+      }
+
+      return Math.min(160, Math.max(60, Math.round(numericValue)));
+    }
+
+    function sanitizeResponsiveCss(value) {
+      return String(value || "").replace(/<\/style/gi, "<\\/style");
+    }
+
+    function scaledPx(value, scale) {
+      return `${(value * scale).toFixed(2).replace(/\.?0+$/, "")}px`;
+    }
+
+    function scaledRem(value, scale) {
+      return `${(value * scale).toFixed(3).replace(/\.?0+$/, "")}rem`;
+    }
+
+    function buildResponsiveRulesForTab(tab, settings) {
+      const titleScale = normalizeResponsiveScale(settings.titleScale) / 100;
+      const textScale = normalizeResponsiveScale(settings.textScale) / 100;
+      const spacingScale = normalizeResponsiveScale(settings.spacingScale) / 100;
+      const radiusScale = normalizeResponsiveScale(settings.radiusScale) / 100;
+      const extraCss = sanitizeResponsiveCss(settings.extraCss).trim();
+      const rules = [];
+
+      if (tab === "faq") {
+        rules.push(`#faq-section { padding-inline: ${scaledPx(16, spacingScale)}; }`);
+        rules.push(`#faq-section__title { font-size: ${scaledPx(20, titleScale)}; border-radius: ${scaledPx(4, radiusScale)}; }`);
+        rules.push(`#faq-section__q-text, #faq-section__a-text { font-size: ${scaledPx(14, textScale)}; }`);
+        rules.push(`.faq-section__summary, #faq-section__a-inner { padding: ${scaledPx(14, spacingScale)}; }`);
+      }
+
+      if (tab === "table") {
+        rules.push(`.table-container-custom { padding: ${scaledPx(20, spacingScale)}; border-radius: ${scaledPx(10, radiusScale)}; }`);
+        rules.push(`.table-text-custom { font-size: ${scaledPx(14, textScale)}; padding: ${scaledPx(12, spacingScale)}; }`);
+        rules.push(`.table-th-custom { font-size: ${scaledPx(14, titleScale)}; }`);
+      }
+
+      if (tab === "stories") {
+        rules.push(`.lp-stories { padding: ${scaledPx(16, spacingScale)}; }`);
+        rules.push(`.lp-stories__viewer { border-radius: ${scaledPx(18, radiusScale)}; }`);
+        rules.push(`.lp-stories__title, .lp-stories__caption { font-size: ${scaledPx(16, titleScale)}; }`);
+        rules.push(`.lp-stories__name, .lp-stories__step { font-size: ${scaledPx(12, textScale)}; }`);
+      }
+
+      if (tab === "article") {
+        rules.push(`.ll-article__inner { padding-block: ${scaledPx(28, spacingScale)}; }`);
+        rules.push(`.ll-article__tabs, .ll-article__stage, .ll-article__panel { border-radius: ${scaledPx(8, radiusScale)}; }`);
+        rules.push(`.ll-article__title { font-size: clamp(${scaledPx(30, titleScale)}, ${scaledPx(40, titleScale)}, ${scaledPx(58, titleScale)}); }`);
+        rules.push(`.ll-article__heading { font-size: clamp(${scaledPx(34, titleScale)}, ${scaledPx(52, titleScale)}, ${scaledPx(76, titleScale)}); }`);
+        rules.push(`.ll-article__intro, .ll-article__body, .ll-article__tab-summary { font-size: ${scaledPx(15, textScale)}; }`);
+      }
+
+      if (tab === "carousel") {
+        rules.push(`.ll-carousel__container { padding: ${scaledRem(2, spacingScale)} ${scaledRem(1, spacingScale)}; }`);
+        rules.push(`.ll-carousel__viewport, .ll-carousel__dot, .ll-carousel__caption, .ll-carousel__media-card { border-radius: ${scaledRem(1, radiusScale)}; }`);
+        rules.push(`.ll-carousel__title { font-size: clamp(${scaledRem(1.75, titleScale)}, ${scaledRem(2.35, titleScale)}, ${scaledRem(3, titleScale)}); }`);
+        rules.push(`.ll-carousel__layout-title { font-size: clamp(${scaledRem(2, titleScale)}, ${scaledRem(3, titleScale)}, ${scaledRem(4, titleScale)}); }`);
+        rules.push(`.ll-carousel__lead, .ll-carousel__layout-text, .ll-carousel__caption p, .ll-carousel__dot-text { font-size: ${scaledRem(1, textScale)}; }`);
+      }
+
+      if (extraCss) {
+        rules.push(extraCss);
+      }
+
+      return rules.join("\n  ");
+    }
+
+    function hasResponsiveSettings(settings) {
+      return ["titleScale", "textScale", "spacingScale", "radiusScale"].some((key) => {
+        return normalizeResponsiveScale(settings[key]) !== responsiveDefaults[key];
+      }) || String(settings.extraCss || "").trim();
+    }
+
+    function buildResponsiveStyle(tab = getResponsiveTab(), options = {}) {
+      return "";
+    }
+
+    function renderPresetPanel() {
+      const tab = getCurrentPresetTab();
+      const presets = getUserPresets(tab);
+      if (!state.presets.selected[tab] && presets[0]) {
+        state.presets.selected[tab] = presets[0].id;
+      }
+      const selectedId = state.presets.selected[tab] || "";
+      const optionMarkup = presets.length ? presets.map((preset) => {
+        return `<option value="${preset.id}"${preset.id === selectedId ? " selected" : ""}>${escapeHtml(preset.name)}</option>`;
+      }).join("") : `<option value="">Nenhum preset salvo</option>`;
+      const hasSelection = Boolean(selectedId && presets.some((preset) => preset.id === selectedId));
+
+      const hasAnyPreset = ["faq", "table", "stories", "article", "carousel"].some((presetTab) => getUserPresets(presetTab).length > 0);
+
+      return `
+        <details class="preset-panel" aria-label="Presets salvos">
+          <summary class="preset-panel__summary">
+            <strong>Presets</strong>
+            <span aria-hidden="true">&rsaquo;</span>
+          </summary>
+          <div class="preset-panel__body">
+            <div class="preset-panel__row">
+              <label class="field">
+                <span>Nome do preset</span>
+                <input type="text" value="${escapeHtml(state.presets.name)}" data-preset-name autocomplete="off">
+              </label>
+              <button class="button button--soft" type="button" data-action="save-user-preset">Salvar preset</button>
+            </div>
+            <div class="preset-panel__row preset-panel__row--saved">
+              <label class="field">
+                <span>Presets importados ou salvos nesta sessão</span>
+                <select data-user-preset-select="${tab}"${presets.length ? "" : " disabled"}>
+${optionMarkup}
+                </select>
+              </label>
+              <div class="responsive-editor__actions">
+                <button class="button button--soft" type="button" data-action="load-user-preset"${hasSelection ? "" : " disabled"}>Carregar</button>
+                <button class="button button--danger icon-button" type="button" data-action="delete-user-preset" aria-label="Excluir preset" title="Excluir preset"${hasSelection ? "" : " disabled"}>${trashIcon()}</button>
+              </div>
+            </div>
+            <div class="preset-panel__row preset-panel__row--file">
+              <button class="button button--soft" type="button" data-action="import-user-presets">Importar JSON</button>
+              <button class="button button--soft" type="button" data-action="export-user-presets"${hasAnyPreset ? "" : " disabled"}>Exportar JSON</button>
+              <input class="preset-panel__import" type="file" accept="application/json,.json" data-preset-import>
+            </div>
+            <p class="responsive-editor__notice${state.presets.dirty ? " is-warning" : ""}">${state.presets.dirty ? "Há presets ainda não exportados." : "Presets não ficam no cache do navegador."} Exporte um JSON para guardar ou compartilhar.</p>
+          </div>
+        </details>
+      `;
+    }
+
+    function getUserPresets(tab = getCurrentPresetTab()) {
+      return state.presets.items[tab] || [];
+    }
+
+    function loadUserPresets() {
+      return;
+    }
+
+    function persistUserPresets() {
+      return;
+    }
+
+    function normalizePresetItems(items) {
+      const normalizedItems = {};
+
+      ["faq", "table", "stories", "article", "carousel"].forEach((tab) => {
+        normalizedItems[tab] = (Array.isArray(items && items[tab]) ? items[tab] : [])
+          .map((preset) => ({
+            id: preset && preset.id ? String(preset.id) : `preset-${Date.now()}-${Math.random().toString(16).slice(2)}`,
+            name: preset && preset.name ? String(preset.name) : "Preset sem nome",
+            snapshot: preset ? preset.snapshot : null,
+            responsiveVersions: cloneValue(preset && preset.responsiveVersions ? preset.responsiveVersions : {})
+          }))
+          .filter((preset) => preset.snapshot);
+      });
+
+      return normalizedItems;
+    }
+
+    function importUserPresetFile(file) {
+      if (!file) {
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.addEventListener("load", () => {
+        try {
+          const parsedValue = JSON.parse(String(reader.result || "{}"));
+          const items = parsedValue && parsedValue.items ? parsedValue.items : parsedValue;
+          state.presets.items = normalizePresetItems(items);
+          state.presets.dirty = false;
+
+          ["faq", "table", "stories", "article", "carousel"].forEach((tab) => {
+            state.presets.selected[tab] = state.presets.items[tab][0]?.id || "";
+          });
+
+          renderEditor(true);
+        } catch (error) {
+          window.alert("Não consegui ler esse arquivo de presets.");
+        }
+      });
+      reader.readAsText(file);
+    }
+
+    function exportUserPresets() {
+      const hasAnyPreset = ["faq", "table", "stories", "article", "carousel"].some((tab) => getUserPresets(tab).length > 0);
+
+      if (!hasAnyPreset) {
+        window.alert("Nenhum preset salvo para exportar.");
+        return;
+      }
+
+      const payload = {
+        version: 1,
+        exportedAt: new Date().toISOString(),
+        items: state.presets.items
+      };
+      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = "layout-lab-presets.json";
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+      state.presets.dirty = false;
+      renderEditor(true);
+    }
+
+    function saveUserPreset() {
+      const tab = getCurrentPresetTab();
+      const name = state.presets.name.trim();
+
+      if (!name) {
+        window.alert("Dê um nome para o preset antes de salvar.");
+        return;
+      }
+
+      if (state.responsive.editDevice !== "base" && state.responsive.dirty) {
+        window.alert("Salve ou descarte a versão responsiva aberta antes de salvar o preset.");
+        return;
+      }
+
+      const presets = getUserPresets(tab);
+      const existingIndex = presets.findIndex((preset) => preset.name.toLowerCase() === name.toLowerCase());
+      const baseSnapshot = getBaseSnapshot(tab);
+      const preset = {
+        id: existingIndex >= 0 ? presets[existingIndex].id : `preset-${Date.now()}`,
+        name,
+        snapshot: baseSnapshot,
+        responsiveVersions: cloneValue(state.responsive.saved[tab] || {})
+      };
+
+      if (existingIndex >= 0) {
+        const shouldReplace = window.confirm("Já existe um preset com esse nome. Substituir?");
+        if (!shouldReplace) {
+          return;
+        }
+        presets[existingIndex] = preset;
+      } else {
+        presets.push(preset);
+      }
+
+      state.presets.selected[tab] = preset.id;
+      state.presets.dirty = true;
+      persistUserPresets();
+      renderEditor(true);
+    }
+
+    function loadSelectedUserPreset() {
+      const tab = getCurrentPresetTab();
+      const preset = getUserPresets(tab).find((item) => item.id === state.presets.selected[tab]);
+
+      if (!preset) {
+        return;
+      }
+
+      const shouldLoad = window.confirm("Carregar este preset vai substituir o layout atual desta aba. Continuar?");
+      if (!shouldLoad || !returnToBaseVersion()) {
+        return;
+      }
+
+      applyTabSnapshot(tab, preset.snapshot);
+      state.responsive.baseSnapshots[tab] = cloneValue(preset.snapshot);
+      state.responsive.saved[tab] = cloneValue(preset.responsiveVersions || {});
+      state.responsive.editDevice = "base";
+      state.responsive.dirty = false;
+      renderEditor();
+    }
+
+    function deleteSelectedUserPreset() {
+      const tab = getCurrentPresetTab();
+      const selectedId = state.presets.selected[tab];
+      const preset = getUserPresets(tab).find((item) => item.id === selectedId);
+
+      if (!preset) {
+        return;
+      }
+
+      const shouldDelete = window.confirm(`Excluir o preset "${preset.name}"?`);
+      if (!shouldDelete) {
+        return;
+      }
+
+      state.presets.items[tab] = getUserPresets(tab).filter((item) => item.id !== selectedId);
+      state.presets.selected[tab] = "";
+      state.presets.dirty = true;
+      persistUserPresets();
+      renderEditor(true);
+    }
+
+    function updateSelectedPreset(id) {
+      const tab = getCurrentPresetTab();
+      state.presets.selected[tab] = id || "";
+      renderEditor(true);
+    }
+
+    function prefixResponsiveIds(value, suffix) {
+      return String(value || "")
+        .replace(/\bid="([^"]+)"/g, `id="$1-${suffix}"`)
+        .replace(/\bfor="([^"]+)"/g, `for="$1-${suffix}"`)
+        .replace(/\baria-labelledby="([^"]+)"/g, (match, ids) => {
+          return `aria-labelledby="${ids.split(/\s+/).map((id) => `${id}-${suffix}`).join(" ")}"`;
+        })
+        .replace(/\baria-describedby="([^"]+)"/g, (match, ids) => {
+          return `aria-describedby="${ids.split(/\s+/).map((id) => `${id}-${suffix}`).join(" ")}"`;
+        })
+        .replace(/\baria-controls="([^"]+)"/g, (match, ids) => {
+          return `aria-controls="${ids.split(/\s+/).map((id) => `${id}-${suffix}`).join(" ")}"`;
+        })
+        .replace(/\bname="([^"]+)"/g, `name="$1-${suffix}"`);
+    }
+
+    function prefixResponsiveCss(value, suffix) {
+      return String(value || "").replace(/#(?![0-9a-fA-F]{3,8}\b)([A-Za-z_][\w-]*)/g, `#$1-${suffix}`);
+    }
+
+    function scopeResponsiveCss(value, scope) {
+      return String(value || "").replace(/(^|[{}])\s*([^@{}][^{]+)\{/g, (match, prefix, selectors) => {
+        const scopedSelectors = selectors
+          .split(",")
+          .map((selector) => selector.trim())
+          .filter(Boolean)
+          .map((selector) => selector.startsWith(scope) ? selector : `${scope} ${selector}`)
+          .join(", ");
+
+        return `${prefix}\n${scopedSelectors} {`;
+      });
+    }
+
+    function scopeResponsiveStyle(value, scope) {
+      return String(value || "").replace(/<style>([\s\S]*?)<\/style>/g, (match, css) => {
+        return `<style>\n${scopeResponsiveCss(css, scope)}\n</style>`;
+      });
+    }
+
+    function buildWithSnapshot(tab, snapshot, builder) {
+      const activeSnapshot = getTabSnapshot(tab);
+      applyTabSnapshot(tab, snapshot);
+      const output = builder();
+      applyTabSnapshot(tab, activeSnapshot);
+      return output;
+    }
+
+    function buildResponsiveSwitchStyle(versionDevices) {
+      if (!versionDevices.length) {
+        return "";
+      }
+
+      return `<style>
+.ll-responsive-output > .ll-responsive-version--mobile,
+.ll-responsive-output > .ll-responsive-version--tablet,
+.ll-responsive-output > .ll-responsive-version--desktop {
+  display: none;
+}
+@media (max-width: 560px) {
+  .ll-responsive-output--has-mobile > .ll-responsive-version { display: none; }
+  .ll-responsive-output--has-mobile > .ll-responsive-version--mobile { display: block; }
+}
+@media (min-width: 561px) and (max-width: 1024px) {
+  .ll-responsive-output--has-tablet > .ll-responsive-version { display: none; }
+  .ll-responsive-output--has-tablet > .ll-responsive-version--tablet { display: block; }
+}
+@media (min-width: 1025px) {
+  .ll-responsive-output--has-desktop > .ll-responsive-version { display: none; }
+  .ll-responsive-output--has-desktop > .ll-responsive-version--desktop { display: block; }
+}
+</style>`;
+    }
+
+    function buildResponsivePackage(tab, htmlBuilder, styleBuilder) {
+      const versionDevices = getResponsiveVersionList(tab);
+      const baseSnapshot = getBaseSnapshot(tab);
+
+      if (!versionDevices.length) {
+        return `${buildWithSnapshot(tab, baseSnapshot, htmlBuilder)}
+
+<!-- ESSES CODIGOS ABAIXO VOCE NAO PRECISA MEXER!!! APENAS O HTML ACIMA-->
+
+${buildWithSnapshot(tab, baseSnapshot, styleBuilder)}`;
+      }
+
+      const baseHtml = buildWithSnapshot(tab, baseSnapshot, htmlBuilder);
+      const baseCss = scopeResponsiveStyle(buildWithSnapshot(tab, baseSnapshot, styleBuilder), ".ll-responsive-version--base");
+      const versionBlocks = versionDevices.map((device) => {
+        const suffix = `ll-${tab}-${device}`;
+        const snapshot = state.responsive.saved[tab][device];
+        const scopedCss = scopeResponsiveStyle(
+          prefixResponsiveCss(buildWithSnapshot(tab, snapshot, styleBuilder), suffix),
+          `.ll-responsive-version--${device}`
+        );
+        return {
+          device,
+          html: prefixResponsiveIds(buildWithSnapshot(tab, snapshot, htmlBuilder), suffix),
+          css: scopedCss
+        };
+      });
+      const wrapperClasses = [
+        "ll-responsive-output",
+        ...versionDevices.map((device) => `ll-responsive-output--has-${device}`)
+      ].join(" ");
+
+      return `<div class="${wrapperClasses}">
+  <div class="ll-responsive-version ll-responsive-version--base">
+${baseHtml}
+  </div>
+${versionBlocks.map((block) => `  <div class="ll-responsive-version ll-responsive-version--${block.device}">
+${block.html}
+  </div>`).join("\n")}
+</div>
+
+<!-- ESSES CODIGOS ABAIXO VOCE NAO PRECISA MEXER!!! APENAS O HTML ACIMA-->
+
+${baseCss}
+
+${versionBlocks.map((block) => block.css).join("\n\n")}
+
+${buildResponsiveSwitchStyle(versionDevices)}`;
+    }
+
+    function renderResponsiveEditor() {
+      if (currentPage !== "conteudo") {
+        return "";
+      }
+
+      const currentDevice = state.responsive.editDevice;
+      const currentMeta = responsiveEditDevices.find((device) => device.key === currentDevice) || responsiveEditDevices[0];
+      const modeButtons = responsiveEditDevices.map((device) => {
+        const isActive = device.key === currentDevice;
+        return `<button class="responsive-editor__mode" type="button" data-responsive-edit-device="${device.key}" aria-pressed="${isActive}">${device.label}</button>`;
+      }).join("");
+      const hasSavedCurrent = currentDevice !== "base" && hasResponsiveVersion(getResponsiveTab(), currentDevice);
+      const controls = currentDevice === "base" ? `
+              <p class="responsive-editor__notice">Edite o layout geral nos campos abaixo. Para uma mudança existir só no celular, tablet ou desktop, abra a versão correspondente e edite os mesmos campos.</p>
+            ` : `
+              <p class="responsive-editor__notice${state.responsive.dirty ? " is-warning" : ""}">${state.responsive.dirty ? "Existem alterações não salvas nesta versão." : currentMeta.note} Os campos abaixo agora pertencem só a esta versão.</p>
+              <div class="responsive-editor__actions">
+                <button class="button button--green" type="button" data-action="save-responsive">Salvar versão</button>
+                <button class="button button--soft" type="button" data-action="discard-responsive">Descartar</button>
+                <button class="button button--danger icon-button" type="button" data-action="remove-responsive-version" aria-label="Remover versão salva" title="Remover versão salva"${hasSavedCurrent ? "" : " disabled"}>${trashIcon()}</button>
+              </div>
+            `;
+
+      return `
+        <details class="responsive-editor">
+          <summary class="responsive-editor__summary">
+            <strong>Versões responsivas</strong>
+            <span aria-hidden="true">&rsaquo;</span>
+          </summary>
+          <div class="responsive-editor__body">
+            <div class="responsive-editor__modes" role="group" aria-label="Editar versão responsiva">
+${modeButtons}
+            </div>
+${controls}
+          </div>
+        </details>
+      `;
+    }
+
+    function resetResponsiveForTab(tab) {
+      state.responsive.saved[tab] = {};
+      delete state.responsive.baseSnapshots[tab];
+      state.responsive.dirty = false;
+      state.responsive.editDevice = "base";
+    }
 
     function setTheme(theme) {
       document.documentElement.dataset.theme = theme;
@@ -4162,7 +5594,7 @@ __CAROUSEL_DYNAMIC_COLORS__
             </picture>`;
     }
 
-    function renderCarouselImpactSlide(slide) {
+    function renderCarouselImpactSlide(slide, slideIndex) {
       const reverseClass = slide.reverse ? " ll-carousel__layout--impact-reverse" : "";
       const impactBg = normalizeHexColor(slide.backgroundColor || "#f16425");
       const impactText = normalizeHexColor(slide.textColor || "#fff7ef");
@@ -4173,9 +5605,9 @@ __CAROUSEL_DYNAMIC_COLORS__
 
       return `<section class="ll-carousel__layout ll-carousel__layout--impact${reverseClass}" style="--ll-carousel-impact-bg: ${impactBg}; --ll-carousel-impact-text: ${impactText}; --ll-carousel-impact-muted: ${muted}; --ll-carousel-impact-gradient: ${gradient};" aria-label="${escapeHtml(slide.navLabel || "Impacto")}">
           <div class="ll-carousel__layout-copy">
-            <p class="ll-carousel__layout-eyebrow">${escapeHtml(slide.eyebrow || "")}</p>
-            <h3 class="ll-carousel__layout-title">${escapeHtml(slide.title || "")}</h3>
-            <p class="ll-carousel__layout-text">${escapeHtml(slide.text || "")}</p>
+            <p class="ll-carousel__layout-eyebrow"${previewTextStyleAttr({ scope: "carousel", slideIndex, field: "eyebrow" })}>${escapeHtml(slide.eyebrow || "")}</p>
+            <h3 class="ll-carousel__layout-title"${previewTextStyleAttr({ scope: "carousel", slideIndex, field: "title" })}>${escapeHtml(slide.title || "")}</h3>
+            <p class="ll-carousel__layout-text"${previewTextStyleAttr({ scope: "carousel", slideIndex, field: "text" })}>${escapeHtml(slide.text || "")}</p>
           </div>
           <figure class="ll-carousel__media-card">
             ${renderCarouselPicture(slide)}
@@ -4183,7 +5615,7 @@ __CAROUSEL_DYNAMIC_COLORS__
         </section>`;
     }
 
-    function renderCarouselDecisionSlide(slide) {
+    function renderCarouselDecisionSlide(slide, slideIndex) {
       const captionStyle = getCarouselCaptionStyle(slide);
       const mediaBackgroundColor = normalizeHexColor(slide.mediaBackgroundColor || "#0d2333");
 
@@ -4191,8 +5623,8 @@ __CAROUSEL_DYNAMIC_COLORS__
           <figure class="ll-carousel__figure">
             ${renderCarouselPicture(slide)}
             <figcaption class="ll-carousel__caption" style="${captionStyle}">
-              <h3>${escapeHtml(slide.captionTitle || "")}</h3>
-              <p>${escapeHtml(slide.captionText || "")}</p>
+              <h3${previewTextStyleAttr({ scope: "carousel", slideIndex, field: "captionTitle" })}>${escapeHtml(slide.captionTitle || "")}</h3>
+              <p${previewTextStyleAttr({ scope: "carousel", slideIndex, field: "captionText" })}>${escapeHtml(slide.captionText || "")}</p>
             </figcaption>
           </figure>
         </section>`;
@@ -4200,7 +5632,7 @@ __CAROUSEL_DYNAMIC_COLORS__
 
     function renderCarouselPanel(slide, index) {
       const type = normalizeCarouselType(slide.type);
-      const content = type === "decision" ? renderCarouselDecisionSlide(slide) : renderCarouselImpactSlide(slide);
+      const content = type === "decision" ? renderCarouselDecisionSlide(slide, index) : renderCarouselImpactSlide(slide, index);
 
       return `      <article class="ll-carousel__panel ll-carousel__panel--${index + 1}" id="ll-carousel-panel-${index + 1}" aria-label="Slide ${index + 1}: ${escapeHtml(slide.navLabel || `Slide ${index + 1}`)}">
         ${content}
@@ -4229,7 +5661,7 @@ __CAROUSEL_DYNAMIC_COLORS__
         return `    <label class="ll-carousel__dot ll-carousel__dot--${index + 1}" for="ll-carousel-slide-${index + 1}" role="button" aria-controls="ll-carousel-panel-${index + 1}">
       <span class="ll-carousel__dot-copy">
         <span class="ll-carousel__dot-number">${String(index + 1).padStart(2, "0")}</span>
-        <span class="ll-carousel__dot-text">${escapeHtml(slide.navLabel || `Slide ${index + 1}`)}</span>
+        <span class="ll-carousel__dot-text"${previewTextStyleAttr({ scope: "carousel", slideIndex: index, field: "navLabel" })}>${escapeHtml(slide.navLabel || `Slide ${index + 1}`)}</span>
       </span>
       ${renderCarouselIcon(slide)}
     </label>`;
@@ -4238,9 +5670,9 @@ __CAROUSEL_DYNAMIC_COLORS__
       return `<section class="ll-carousel${hideIntroClass}${hideIndicatorsClass}" aria-label="${escapeHtml(state.carousel.ariaLabel || "Carrossel de layouts")}">
   <div class="ll-carousel__container">
     <div class="ll-carousel__intro">
-      <p class="ll-carousel__eyebrow">${escapeHtml(state.carousel.eyebrow || "")}</p>
-      <h2 class="ll-carousel__title">${escapeHtml(state.carousel.title || "")}</h2>
-      <p class="ll-carousel__lead">${escapeHtml(state.carousel.lead || "")}</p>
+      <p class="ll-carousel__eyebrow"${previewTextStyleAttr({ scope: "carousel", field: "eyebrow" })}>${escapeHtml(state.carousel.eyebrow || "")}</p>
+      <h2 class="ll-carousel__title"${previewTextStyleAttr({ scope: "carousel", field: "title" })}>${escapeHtml(state.carousel.title || "")}</h2>
+      <p class="ll-carousel__lead"${previewTextStyleAttr({ scope: "carousel", field: "lead" })}>${escapeHtml(state.carousel.lead || "")}</p>
     </div>
 
 ${inputs}
@@ -4277,10 +5709,847 @@ ${dots}
       return window.location.hash === "#qualidade-tecnica" ? "tecnica" : "conteudo";
     }
 
+    function getContentDashboardSections() {
+      const filledFaqItems = state.items.filter((item) => item.question.trim() || item.answer.trim()).length;
+      const visibleTableRows = getVisibleTableRows().length;
+      const storySlides = state.stories.groups.reduce((total, group) => total + group.slides.length, 0);
+
+      return [
+        {
+          tab: "faq",
+          icon: "FAQ",
+          title: "FAQ",
+          summary: "Perguntas e respostas",
+          meta: `${filledFaqItems || state.items.length} pergunta${(filledFaqItems || state.items.length) === 1 ? "" : "s"}`
+        },
+        {
+          tab: "table",
+          icon: "TAB",
+          title: "Tabela",
+          summary: "Produtos, SKUs e listas",
+          meta: `${visibleTableRows || state.table.rows.length} linha${(visibleTableRows || state.table.rows.length) === 1 ? "" : "s"}`
+        },
+        {
+          tab: "stories",
+          icon: "ST",
+          title: "Stories",
+          summary: "Containers e slides",
+          meta: `${state.stories.groups.length} container${state.stories.groups.length === 1 ? "" : "s"}`
+        },
+        {
+          tab: "article",
+          icon: "ART",
+          title: "Artigo",
+          summary: "Blocos com abas",
+          meta: `${state.article.tabs.length} aba${state.article.tabs.length === 1 ? "" : "s"}`
+        },
+        {
+          tab: "carousel",
+          icon: "CAR",
+          title: "Carrossel",
+          summary: "Slides de impacto",
+          meta: `${state.carousel.slides.length} slide${state.carousel.slides.length === 1 ? "" : "s"}`
+        }
+      ].map((section) => section.tab === "stories" ? {
+        ...section,
+        meta: `${state.stories.groups.length} container${state.stories.groups.length === 1 ? "" : "s"} / ${storySlides} slide${storySlides === 1 ? "" : "s"}`
+      } : section);
+    }
+
+    function getContentDashboardGuides() {
+      return [
+        {
+          id: "ecommerce-insights",
+          icon: "EC",
+          title: "Guia de conteúdo para e-commerce",
+          summary: "Insights visuais, textuais e checklists para montar conteúdo melhor.",
+          meta: "Visual + texto + validação"
+        }
+      ];
+    }
+
+    function renderDashboardEditor() {
+      const cards = getContentDashboardGuides().map((guide) => {
+        const selected = state.dashboard.view === guide.id ? " aria-current=\"page\"" : "";
+        return `<button class="dashboard-home__card" type="button" data-dashboard-guide="${guide.id}" aria-label="Abrir ${escapeHtml(guide.title)}"${selected}>
+          <span class="dashboard-home__icon" aria-hidden="true">${escapeHtml(guide.icon)}</span>
+          <strong>${escapeHtml(guide.title)}</strong>
+          <span>${escapeHtml(guide.summary)}</span>
+          <small class="dashboard-home__meta">${escapeHtml(guide.meta)}</small>
+        </button>`;
+      }).join("");
+
+      return `<section class="dashboard-home" aria-label="Dashboard de layouts">
+        <div class="dashboard-home__hero">
+          <p class="dashboard-home__eyebrow">Layout Lab</p>
+          <h3>Índices e guias de conteúdo.</h3>
+          <p>Use esta coluna como biblioteca rápida. Os layouts ficam na área grande da prévia, prontos para abrir.</p>
+        </div>
+        <p class="dashboard-home__section-title">
+          <strong>Guias disponíveis</strong>
+          <span>Abra um guia para consultar sem sair do início.</span>
+        </p>
+        <div class="dashboard-home__grid">
+${cards}
+        </div>
+      </section>`;
+    }
+
+    function buildDashboardGuidePreviewHtml() {
+      const isDark = document.documentElement.dataset.theme === "dark";
+      const colors = isDark ? {
+        ink: "#f8fafc",
+        muted: "#b8c4d6",
+        bg: "#11101a",
+        bgEnd: "#181326",
+        paper: "#171323",
+        soft: "#211936",
+        line: "#35284c",
+        accent: "#8b5cf6",
+        warm: "#f97316",
+        green: "#34d399",
+        rose: "#fb7185",
+        amber: "#fbbf24",
+        quoteBg: "linear-gradient(135deg, #24163a, #3a1826)",
+        quoteInk: "#ffffff",
+        quoteMuted: "rgba(255, 255, 255, 0.78)",
+        shadow: "0 20px 48px rgba(0, 0, 0, 0.34)"
+      } : {
+        ink: "#21172d",
+        muted: "#665775",
+        bg: "#fbf8ff",
+        bgEnd: "#fff8f1",
+        paper: "#fffefd",
+        soft: "#f7efff",
+        line: "#e8dcef",
+        accent: "#7c3aed",
+        warm: "#ea5b0c",
+        green: "#16815e",
+        rose: "#be3f6b",
+        amber: "#b76a10",
+        quoteBg: "linear-gradient(135deg, #ffffff, #fff4ea)",
+        quoteInk: "#21172d",
+        quoteMuted: "#665775",
+        shadow: "0 18px 42px rgba(124, 58, 237, 0.13)"
+      };
+
+      return `<section class="ll-guide" aria-label="Guia de conteúdo para e-commerce">
+  <header class="ll-guide__hero">
+    <span class="ll-guide__eyebrow">Guia de conteúdo</span>
+    <h1>Conteúdo para e-commerce com imagem que cria desejo e texto que dá motivo.</h1>
+    <p>Uma base prática para validar imagens, frases e argumentos antes de montar FAQ, tabela, stories, artigo ou carrossel.</p>
+    <div class="ll-guide__pill-row" aria-label="Partes do guia">
+      <span>Visual</span>
+      <span>Texto</span>
+      <span>Checklist</span>
+    </div>
+  </header>
+
+  <nav class="ll-guide__tabs" aria-label="Partes do guia">
+    <button class="ll-guide__tab is-active" type="button" data-guide-tab="visual" aria-selected="true">Insights visuais <small>imagens para conteúdo</small></button>
+    <button class="ll-guide__tab" type="button" data-guide-tab="texto" aria-selected="false">Insights textuais <small>textos para conteúdo</small></button>
+  </nav>
+
+  <main class="ll-guide__content">
+    <section class="ll-guide__panel is-active" data-guide-panel="visual">
+      <div class="ll-guide__chapter">
+        <article class="ll-guide__quote">
+          <strong>Se a imagem só mostra o item, ela informa. Se mostra uso, sensação e motivo, ela vende.</strong>
+          <p>O visual precisa resolver rápido: o que é, por que chama atenção e qual sensação ele passa.</p>
+        </article>
+        <article class="ll-guide__card">
+          <header>
+            <h2>O que a imagem precisa fazer</h2>
+            <span class="ll-guide__badge">visual</span>
+          </header>
+          <div class="ll-guide__steps">
+            <div><b>1</b><strong>Mostrar exatamente o produto</strong><span>Forma, cor, proporção e detalhe precisam ser fáceis de entender.</span></div>
+            <div><b>2</b><strong>Criar vontade de clicar</strong><span>A composição precisa gerar desejo, não só registrar o objeto.</span></div>
+            <div><b>3</b><strong>Passar uma sensação clara</strong><span>Conforto, elegância, praticidade, exclusividade, durabilidade ou preço bom.</span></div>
+          </div>
+        </article>
+      </div>
+
+      <section class="ll-guide__card">
+        <header>
+          <h2>Tipos de imagem para conteúdo</h2>
+          <span class="ll-guide__badge">linha visual</span>
+        </header>
+        <div class="ll-guide__mini-grid">
+          <article><span>01</span><h3>Foto principal limpa</h3><p>Produto bem recortado, fundo neutro e sem distração.</p></article>
+          <article><span>02</span><h3>Imagem de uso</h3><p>Produto sendo usado ou em contexto real para criar identificação.</p></article>
+          <article><span>03</span><h3>Imagem de benefício</h3><p>Foco em conforto, leveza, design, praticidade ou durabilidade.</p></article>
+          <article><span>04</span><h3>Imagem de detalhe</h3><p>Close para acabamento, textura, material e qualidade percebida.</p></article>
+          <article><span>05</span><h3>Imagem de composição</h3><p>Produto em uma cena bonita, com contexto de estilo de vida.</p></article>
+          <article><span>06</span><h3>Imagem comparativa</h3><p>Reforça diferenciais sem precisar explicar demais.</p></article>
+        </div>
+      </section>
+
+      <section class="ll-guide__card">
+        <header>
+          <h2>Checklist visual</h2>
+          <span class="ll-guide__badge" id="visual-score">0 de 12</span>
+        </header>
+        <div class="ll-guide__progress"><span id="visual-bar" style="--value: 0%;"></span></div>
+        <div class="ll-guide__check-grid" data-checklist="visual">
+          <label><input type="checkbox"><span>O produto é entendido em até 3 segundos.</span></label>
+          <label><input type="checkbox"><span>O produto é o primeiro ponto de atenção.</span></label>
+          <label><input type="checkbox"><span>A imagem passa uma sensação clara.</span></label>
+          <label><input type="checkbox"><span>Não há ruído visual competindo com o produto.</span></label>
+          <label><input type="checkbox"><span>Existe espaço vazio suficiente para leitura.</span></label>
+          <label><input type="checkbox"><span>O contraste destaca o produto do fundo.</span></label>
+          <label><input type="checkbox"><span>Há pelo menos uma imagem de uso ou contexto real.</span></label>
+          <label><input type="checkbox"><span>Há pelo menos uma imagem de detalhe ou acabamento.</span></label>
+          <label><input type="checkbox"><span>A composição parece elegante, não exagerada.</span></label>
+          <label><input type="checkbox"><span>Texto na imagem é curto e fácil de ler.</span></label>
+          <label><input type="checkbox"><span>A imagem dá vontade de clicar.</span></label>
+          <label><input type="checkbox"><span>A sequência visual tem intenção, não repetição.</span></label>
+        </div>
+        <div class="ll-guide__actions">
+          <button type="button" data-clear="visual">Limpar</button>
+          <button type="button" data-essential="visual">Marcar essenciais</button>
+        </div>
+      </section>
+    </section>
+
+    <section class="ll-guide__panel" data-guide-panel="texto">
+      <div class="ll-guide__chapter">
+        <article class="ll-guide__quote">
+          <strong>Texto bom em conteúdo não explica demais. Ele dá nome ao desejo.</strong>
+          <p>Uma linha principal e, no máximo, uma linha de apoio. Clareza, leveza, objetividade, ritmo e benefício visível.</p>
+        </article>
+        <article class="ll-guide__card">
+          <header>
+            <h2>O que o texto precisa fazer</h2>
+            <span class="ll-guide__badge ll-guide__badge--warm">texto</span>
+          </header>
+          <div class="ll-guide__steps">
+            <div><b>1</b><strong>Dar benefício concreto</strong><span>Não diga só “qualidade”. Diga o que a pessoa sente ou ganha.</span></div>
+            <div><b>2</b><strong>Ser curto para ler sem esforço</strong><span>Uma frase boa funciona como legenda, headline e direção criativa.</span></div>
+            <div><b>3</b><strong>Combinar com a imagem</strong><span>Texto e visual precisam vender a mesma ideia.</span></div>
+          </div>
+        </article>
+      </div>
+
+      <section class="ll-guide__card">
+        <header>
+          <h2>Frases melhores para usar como ponto de partida</h2>
+          <span class="ll-guide__badge">exemplos</span>
+        </header>
+        <div class="ll-guide__mini-grid">
+          <article><h3>Conforto em cada passo.</h3><p>Curto, sensorial e direto.</p></article>
+          <article><h3>Design versátil para o dia a dia.</h3><p>Une estilo e uso real.</p></article>
+          <article><h3>Estilo que acompanha sua rotina.</h3><p>Coloca o produto dentro da vida da pessoa.</p></article>
+          <article><h3>O essencial com mais estilo.</h3><p>Posiciona sem exagerar.</p></article>
+          <article><h3>Mais leveza para o seu dia.</h3><p>Foca sensação antes de técnica.</p></article>
+          <article><h3>Design que combina com qualquer ocasião.</h3><p>Ajuda a vender versatilidade.</p></article>
+        </div>
+      </section>
+
+      <section class="ll-guide__card">
+        <header>
+          <h2>Checklist textual</h2>
+          <span class="ll-guide__badge" id="text-score">0 de 12</span>
+        </header>
+        <div class="ll-guide__progress"><span id="text-bar" style="--value: 0%;"></span></div>
+        <div class="ll-guide__check-grid" data-checklist="text">
+          <label><input type="checkbox"><span>O texto comunica um benefício concreto.</span></label>
+          <label><input type="checkbox"><span>A frase é curta o bastante para ler rápido.</span></label>
+          <label><input type="checkbox"><span>O texto combina com a imagem usada.</span></label>
+          <label><input type="checkbox"><span>A primeira linha não é genérica.</span></label>
+          <label><input type="checkbox"><span>Existe sensação clara: conforto, leveza, estilo ou praticidade.</span></label>
+          <label><input type="checkbox"><span>O texto evita promessas vagas como “melhor opção”.</span></label>
+          <label><input type="checkbox"><span>Existe ritmo bom ao ler em voz alta.</span></label>
+          <label><input type="checkbox"><span>Se houver CTA, ele é direto e único.</span></label>
+          <label><input type="checkbox"><span>A linha de apoio não repete a headline.</span></label>
+          <label><input type="checkbox"><span>O texto reforça desejo ou confiança.</span></label>
+          <label><input type="checkbox"><span>A mensagem não explica demais.</span></label>
+          <label><input type="checkbox"><span>O texto dá motivo para prestar atenção.</span></label>
+        </div>
+        <div class="ll-guide__actions">
+          <button type="button" data-clear="text">Limpar</button>
+          <button type="button" data-essential="text">Marcar essenciais</button>
+        </div>
+      </section>
+    </section>
+  </main>
+</section>
+
+<style>
+  html,
+  body {
+    min-height: 100%;
+    margin: 0;
+    background: ${colors.bgEnd};
+  }
+
+  .ll-guide {
+    min-height: 100vh;
+    padding: clamp(20px, 3.5vw, 42px);
+    color: ${colors.ink};
+    background: linear-gradient(180deg, ${colors.bg}, ${colors.bgEnd});
+    font-family: Inter, Arial, sans-serif;
+  }
+
+  .ll-guide * {
+    box-sizing: border-box;
+  }
+
+  .ll-guide button,
+  .ll-guide input {
+    font: inherit;
+  }
+
+  .ll-guide__hero,
+  .ll-guide__card,
+  .ll-guide__quote,
+  .ll-guide__tab {
+    border: 1px solid ${colors.line};
+    border-radius: 8px;
+    background: ${colors.paper};
+    box-shadow: ${colors.shadow};
+  }
+
+  .ll-guide__hero {
+    display: grid;
+    gap: 12px;
+    min-height: 280px;
+    align-content: end;
+    padding: clamp(22px, 5vw, 48px);
+    background: linear-gradient(135deg, rgba(124, 58, 237, 0.24), rgba(234, 91, 12, 0.11)), ${colors.paper};
+  }
+
+  .ll-guide__eyebrow,
+  .ll-guide__badge,
+  .ll-guide__mini-grid span {
+    color: ${colors.accent};
+    font-size: 12px;
+    font-weight: 900;
+    text-transform: uppercase;
+  }
+
+  .ll-guide__hero h1 {
+    max-width: 980px;
+    margin: 0;
+    font-size: clamp(38px, 6vw, 78px);
+    line-height: 0.98;
+  }
+
+  .ll-guide__hero p {
+    max-width: 760px;
+    margin: 0;
+    color: ${colors.muted};
+    font-size: 17px;
+    line-height: 1.5;
+  }
+
+  .ll-guide__pill-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .ll-guide__pill-row span {
+    padding: 7px 11px;
+    border: 1px solid ${colors.line};
+    border-radius: 999px;
+    background: ${colors.soft};
+    color: ${colors.ink};
+    font-size: 12px;
+    font-weight: 900;
+  }
+
+  .ll-guide__tabs {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+    margin: 18px 0;
+    padding: 10px 0;
+    background: linear-gradient(180deg, ${colors.bg}, rgba(255, 255, 255, 0));
+  }
+
+  .ll-guide__tab {
+    min-height: 58px;
+    padding: 10px 14px;
+    color: ${colors.muted};
+    text-align: left;
+    cursor: pointer;
+  }
+
+  .ll-guide__tab.is-active {
+    color: #ffffff;
+    border-color: ${colors.accent};
+    background: linear-gradient(135deg, ${colors.accent}, ${colors.warm});
+  }
+
+  .ll-guide__tab small {
+    display: block;
+    margin-top: 2px;
+    font-size: 12px;
+    opacity: 0.78;
+  }
+
+  .ll-guide__content,
+  .ll-guide__panel {
+    display: grid;
+    gap: 16px;
+  }
+
+  .ll-guide__panel {
+    display: none;
+  }
+
+  .ll-guide__panel.is-active {
+    display: grid;
+  }
+
+  .ll-guide__chapter {
+    display: grid;
+    grid-template-columns: minmax(0, 0.95fr) minmax(320px, 1.05fr);
+    gap: 16px;
+  }
+
+  .ll-guide__quote {
+    display: grid;
+    gap: 18px;
+    align-content: space-between;
+    padding: 24px;
+    color: ${colors.quoteInk};
+    background: ${colors.quoteBg};
+  }
+
+  .ll-guide__quote strong {
+    font-size: clamp(25px, 3vw, 42px);
+    line-height: 1.05;
+  }
+
+  .ll-guide__quote p,
+  .ll-guide__card p,
+  .ll-guide__steps span {
+    color: ${colors.muted};
+  }
+
+  .ll-guide__quote p {
+    color: ${colors.quoteMuted};
+    margin: 0;
+  }
+
+  .ll-guide__card {
+    display: grid;
+    gap: 16px;
+    padding: 20px;
+  }
+
+  .ll-guide__card header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 14px;
+  }
+
+  .ll-guide__card h2,
+  .ll-guide__card h3,
+  .ll-guide__card p {
+    margin: 0;
+  }
+
+  .ll-guide__badge {
+    width: max-content;
+    padding: 5px 9px;
+    border-radius: 999px;
+    background: ${colors.soft};
+  }
+
+  .ll-guide__badge--warm {
+    color: ${colors.warm};
+  }
+
+  .ll-guide__steps,
+  .ll-guide__mini-grid,
+  .ll-guide__check-grid {
+    display: grid;
+    gap: 10px;
+  }
+
+  .ll-guide__steps div,
+  .ll-guide__mini-grid article,
+  .ll-guide__check-grid label {
+    border: 1px solid ${colors.line};
+    border-radius: 8px;
+    background: ${colors.soft};
+  }
+
+  .ll-guide__steps div {
+    display: grid;
+    grid-template-columns: 38px 1fr;
+    gap: 4px 12px;
+    padding: 12px;
+  }
+
+  .ll-guide__steps b {
+    grid-row: span 2;
+    display: grid;
+    width: 32px;
+    height: 32px;
+    place-items: center;
+    border-radius: 7px;
+    color: #fff;
+    background: ${colors.accent};
+  }
+
+  .ll-guide__steps strong {
+    font-size: 14px;
+  }
+
+  .ll-guide__steps span {
+    font-size: 13px;
+  }
+
+  .ll-guide__mini-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .ll-guide__mini-grid article {
+    min-height: 144px;
+    padding: 15px;
+  }
+
+  .ll-guide__mini-grid h3 {
+    margin-top: 8px;
+    font-size: 17px;
+  }
+
+  .ll-guide__mini-grid p {
+    margin-top: 8px;
+    font-size: 13px;
+    line-height: 1.45;
+  }
+
+  .ll-guide__progress {
+    height: 8px;
+    border-radius: 999px;
+    overflow: hidden;
+    background: ${colors.soft};
+  }
+
+  .ll-guide__progress span {
+    display: block;
+    width: var(--value);
+    height: 100%;
+    background: linear-gradient(90deg, ${colors.accent}, ${colors.warm});
+  }
+
+  .ll-guide__check-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .ll-guide__check-grid label {
+    display: flex;
+    align-items: flex-start;
+    gap: 9px;
+    min-height: 46px;
+    padding: 10px;
+    color: ${colors.ink};
+    font-size: 13px;
+  }
+
+  .ll-guide__check-grid input {
+    margin-top: 2px;
+    accent-color: ${colors.accent};
+  }
+
+  .ll-guide__actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+  }
+
+  .ll-guide__actions button {
+    min-height: 36px;
+    padding: 0 12px;
+    border: 1px solid ${colors.line};
+    border-radius: 7px;
+    color: ${colors.ink};
+    background: ${colors.paper};
+    font-weight: 850;
+    cursor: pointer;
+  }
+
+  .ll-guide__actions button:last-child {
+    color: #fff;
+    border-color: ${colors.accent};
+    background: ${colors.accent};
+  }
+
+  @media (max-width: 900px) {
+    .ll-guide__chapter,
+    .ll-guide__mini-grid,
+    .ll-guide__check-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>
+
+<script>
+  (() => {
+    const tabs = Array.from(document.querySelectorAll("[data-guide-tab]"));
+    const panels = Array.from(document.querySelectorAll("[data-guide-panel]"));
+    const config = {
+      visual: { score: document.querySelector("#visual-score"), bar: document.querySelector("#visual-bar"), essential: [0, 1, 2, 3, 9, 10] },
+      text: { score: document.querySelector("#text-score"), bar: document.querySelector("#text-bar"), essential: [0, 1, 2, 3, 7, 11] }
+    };
+
+    function activateTab(name) {
+      const y = window.scrollY;
+      tabs.forEach((tab) => {
+        const active = tab.dataset.guideTab === name;
+        tab.classList.toggle("is-active", active);
+        tab.setAttribute("aria-selected", String(active));
+      });
+      panels.forEach((panel) => {
+        panel.classList.toggle("is-active", panel.dataset.guidePanel === name);
+      });
+      requestAnimationFrame(() => window.scrollTo(0, y));
+    }
+
+    function updateChecklist(name) {
+      const boxes = Array.from(document.querySelectorAll('[data-checklist="' + name + '"] input'));
+      const done = boxes.filter((box) => box.checked).length;
+      const total = boxes.length || 1;
+      const item = config[name];
+      if (!item) return;
+      item.score.textContent = done + " de " + total;
+      item.bar.style.setProperty("--value", Math.round((done / total) * 100) + "%");
+    }
+
+    tabs.forEach((tab) => {
+      tab.addEventListener("click", (event) => {
+        event.preventDefault();
+        activateTab(tab.dataset.guideTab);
+      });
+    });
+
+    Object.keys(config).forEach((name) => {
+      document.querySelectorAll('[data-checklist="' + name + '"] input').forEach((box) => {
+        box.addEventListener("change", () => updateChecklist(name));
+      });
+      updateChecklist(name);
+    });
+
+    document.querySelectorAll("[data-clear]").forEach((button) => {
+      button.addEventListener("click", (event) => {
+        event.preventDefault();
+        const name = button.dataset.clear;
+        document.querySelectorAll('[data-checklist="' + name + '"] input').forEach((box) => {
+          box.checked = false;
+        });
+        updateChecklist(name);
+      });
+    });
+
+    document.querySelectorAll("[data-essential]").forEach((button) => {
+      button.addEventListener("click", (event) => {
+        event.preventDefault();
+        const name = button.dataset.essential;
+        const boxes = Array.from(document.querySelectorAll('[data-checklist="' + name + '"] input'));
+        (config[name]?.essential || []).forEach((index) => {
+          if (boxes[index]) boxes[index].checked = true;
+        });
+        updateChecklist(name);
+      });
+    });
+  })();
+<\/script>`;
+    }
+
+    function buildDashboardPreviewHtml() {
+      if (state.dashboard.view === "ecommerce-insights") {
+        return buildDashboardGuidePreviewHtml();
+      }
+
+      const isDark = document.documentElement.dataset.theme === "dark";
+      const colors = isDark ? {
+        ink: "#f8fafc",
+        muted: "#b8c4d6",
+        bg: "#11101a",
+        bgEnd: "#181326",
+        hero: "linear-gradient(135deg, rgba(124, 58, 237, 0.26), rgba(234, 91, 12, 0.13))",
+        card: "#171323",
+        cardHover: "#211936",
+        line: "#35284c",
+        accent: "#8b5cf6",
+        warm: "#f97316",
+        shadow: "0 20px 48px rgba(0, 0, 0, 0.34)"
+      } : {
+        ink: "#21172d",
+        muted: "#6b5b7b",
+        bg: "#fbf8ff",
+        bgEnd: "#fff8f1",
+        hero: "linear-gradient(135deg, rgba(124, 58, 237, 0.12), rgba(234, 91, 12, 0.09)), #fffefd",
+        card: "#fffefd",
+        cardHover: "#fff7ef",
+        line: "#e8dcef",
+        accent: "#7c3aed",
+        warm: "#ea5b0c",
+        shadow: "0 18px 42px rgba(124, 58, 237, 0.14)"
+      };
+      const cards = getContentDashboardSections().map((section) => {
+        return `<button class="ll-dashboard__card" type="button" data-dashboard-preview-tab="${section.tab}" aria-label="Abrir ${escapeHtml(section.title)}">
+          <span>${escapeHtml(section.icon)}</span>
+          <strong>${escapeHtml(section.title)}</strong>
+          <em>${escapeHtml(section.summary)}</em>
+          <small>${escapeHtml(section.meta)}</small>
+        </button>`;
+      }).join("");
+
+      return `<section class="ll-dashboard" aria-label="Dashboard do Layout Lab">
+  <div class="ll-dashboard__hero">
+    <button class="ll-dashboard__home-chip" type="button" data-dashboard-preview-home aria-label="Início do Layout Lab">⌂ Layout Lab</button>
+    <h1>Qualidade Conteúdo</h1>
+    <small>Escolha um layout para começar. Os guias ficam na coluna da esquerda.</small>
+  </div>
+  <div class="ll-dashboard__grid">
+${cards}
+  </div>
+</section>
+
+<style>
+  html,
+  body {
+    min-height: 100%;
+    margin: 0;
+    background: ${colors.bgEnd};
+  }
+
+  .ll-dashboard {
+    min-height: 100vh;
+    padding: clamp(22px, 4vw, 46px);
+    color: ${colors.ink};
+    background: linear-gradient(180deg, ${colors.bg}, ${colors.bgEnd});
+    font-family: Inter, Arial, sans-serif;
+  }
+
+  .ll-dashboard__hero {
+    display: grid;
+    gap: 8px;
+    min-height: 260px;
+    align-content: end;
+    margin: 0 0 22px;
+    padding: clamp(24px, 5vw, 48px);
+    border-radius: 8px;
+    border: 1px solid ${colors.line};
+    background: ${colors.hero};
+    box-shadow: ${colors.shadow};
+  }
+
+  .ll-dashboard__home-chip {
+    width: max-content;
+    min-height: 30px;
+    padding: 5px 10px;
+    border: 1px solid ${colors.line};
+    border-radius: 999px;
+    color: ${colors.accent};
+    background: ${colors.card};
+    font: inherit;
+    font-size: 12px;
+    font-weight: 900;
+    cursor: pointer;
+  }
+
+  .ll-dashboard__hero p,
+  .ll-dashboard__hero h1,
+  .ll-dashboard__hero small {
+    margin: 0;
+  }
+
+  .ll-dashboard__hero p {
+    color: ${colors.accent};
+    font-size: 13px;
+    font-weight: 900;
+    text-transform: uppercase;
+  }
+
+  .ll-dashboard__hero h1 {
+    max-width: 760px;
+    font-size: clamp(40px, 7vw, 86px);
+    line-height: 0.96;
+  }
+
+  .ll-dashboard__hero small {
+    color: ${colors.muted};
+    font-size: 14px;
+    font-weight: 700;
+  }
+
+  .ll-dashboard__grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 12px;
+  }
+
+  .ll-dashboard__card {
+    display: grid;
+    gap: 10px;
+    min-height: 136px;
+    padding: 18px;
+    border: 1px solid ${colors.line};
+    border-radius: 8px;
+    color: ${colors.ink};
+    background: ${colors.card};
+    text-align: left;
+    cursor: pointer;
+    box-shadow: none;
+    transition: transform 0.14s ease, border-color 0.14s ease, background 0.14s ease, box-shadow 0.14s ease;
+  }
+
+  .ll-dashboard__card:hover,
+  .ll-dashboard__card:focus-visible {
+    border-color: ${colors.accent};
+    background: ${colors.cardHover};
+    box-shadow: ${colors.shadow};
+    outline: none;
+    transform: translateY(-2px);
+  }
+
+  .ll-dashboard__card span {
+    display: inline-grid;
+    width: 38px;
+    height: 38px;
+    place-items: center;
+    border-radius: 8px;
+    color: #ffffff;
+    background: linear-gradient(135deg, ${colors.accent}, ${colors.warm});
+    font-size: 12px;
+    font-weight: 900;
+  }
+
+  .ll-dashboard__card strong {
+    font-size: 18px;
+  }
+
+  .ll-dashboard__card em {
+    color: ${colors.muted};
+    font-size: 13px;
+    font-style: normal;
+    line-height: 1.35;
+  }
+
+  .ll-dashboard__card small {
+    align-self: end;
+    color: ${colors.muted};
+    font-size: 12px;
+    font-weight: 800;
+  }
+</style>`;
+    }
+
     function updateEditorTabs() {
-      const showTabs = currentPage === "conteudo";
-      document.documentElement.dataset.editorTab = showTabs ? currentEditorTab : "";
-      editorTools.classList.toggle("is-hidden", !showTabs);
+      const showTools = currentPage === "conteudo" && currentEditorTab !== "dashboard";
+      document.documentElement.dataset.editorTab = currentPage === "conteudo" ? currentEditorTab : "";
+      editorTools.classList.toggle("is-hidden", !showTools);
 
       editorTabButtons.forEach((button) => {
         const isSelected = button.dataset.editorTab === currentEditorTab;
@@ -4290,13 +6559,18 @@ ${dots}
     }
 
     function updateAddButtons() {
+      const isDashboardTab = currentPage === "conteudo" && currentEditorTab === "dashboard";
       const isTableTab = currentPage === "conteudo" && currentEditorTab === "table";
       const isStoriesTab = currentPage === "conteudo" && currentEditorTab === "stories";
       const isArticleTab = currentPage === "conteudo" && currentEditorTab === "article";
       const isCarouselTab = currentPage === "conteudo" && currentEditorTab === "carousel";
+      const showHomeReturn = currentPage === "conteudo" && (!isDashboardTab || state.dashboard.view !== "layouts");
       const label = isTableTab ? "Adicionar linha" : "Adicionar pergunta";
+      homeReturnButtons.forEach((button) => {
+        button.classList.toggle("is-hidden", !showHomeReturn);
+      });
       addButtons.forEach((button) => {
-        button.classList.toggle("is-hidden", isStoriesTab || isArticleTab || isCarouselTab);
+        button.classList.toggle("is-hidden", isDashboardTab || isStoriesTab || isArticleTab || isCarouselTab);
         button.textContent = "+";
         button.setAttribute("aria-label", label);
         button.setAttribute("title", label);
@@ -4304,28 +6578,52 @@ ${dots}
     }
 
     function updateCopyButtons(config) {
+      const isDashboardTab = currentPage === "conteudo" && currentEditorTab === "dashboard";
+      outputTitle.textContent = isDashboardTab
+        ? state.dashboard.view === "ecommerce-insights" ? "Guia de conteúdo" : "Visão geral"
+        : config.outputTitle;
+
       htmlCopyButtons.forEach((button) => {
         button.textContent = config.copyLabel;
-        button.classList.remove("is-hidden");
+        button.classList.toggle("is-hidden", isDashboardTab);
       });
 
       fullCopyButtons.forEach((button) => {
         button.textContent = config.fullCopyLabel;
-        button.classList.toggle("is-hidden", currentPage !== "conteudo");
+        button.classList.toggle("is-hidden", currentPage !== "conteudo" || isDashboardTab);
       });
     }
 
+    function returnDashboardHome() {
+      if (!returnToBaseVersion()) {
+        return;
+      }
+
+      currentPage = "conteudo";
+      currentEditorTab = "dashboard";
+      state.dashboard.view = "layouts";
+      renderEditor();
+    }
+
     function applyPage(page) {
-      currentPage = pageConfigs[page] ? page : "conteudo";
+      const nextPage = pageConfigs[page] ? page : "conteudo";
+      const previousPage = currentPage;
+      if (nextPage !== currentPage && !returnToBaseVersion()) {
+        window.location.hash = currentPage === "tecnica" ? "#qualidade-tecnica" : "#qualidade-conteudo";
+        return;
+      }
+
+      currentPage = nextPage;
       if (currentPage !== "conteudo") {
         currentEditorTab = "faq";
+      } else if (previousPage !== "conteudo") {
+        currentEditorTab = "dashboard";
       }
 
       const config = pageConfigs[currentPage];
       document.documentElement.dataset.page = currentPage;
       appTitle.textContent = config.title;
       appSubtitle.textContent = config.subtitle;
-      outputTitle.textContent = config.outputTitle;
       updateCopyButtons(config);
       pageLinks.forEach((link) => {
         const isCurrent = link.dataset.pageLink === currentPage;
@@ -4340,7 +6638,7 @@ ${dots}
       renderEditor();
     }
 
-    function renderFaqItem(item) {
+    function renderFaqItem(item, index) {
       const question = escapeHtml(item.question.trim());
       const answer = formatAnswer(item.answer);
 
@@ -4348,11 +6646,11 @@ ${dots}
         <li id="faq-section__item">
 <details class="faq-section__details">
 <summary class="faq-section__summary">
-<h3 id="faq-section__q-text"> ${question} </h3>
+<h3 id="faq-section__q-text"${previewTextStyleAttr({ scope: "faq", index, field: "question" })}> ${question} </h3>
 <span id="faq-section__icon" aria-hidden="true"></span>
 </summary>
 <div id="faq-section__a-inner">
-<p id="faq-section__a-text"> ${answer} </p>
+<p id="faq-section__a-text"${previewTextStyleAttr({ scope: "faq", index, field: "answer" })}> ${answer} </p>
 </div>
 </details>
 </li>
@@ -4361,8 +6659,9 @@ ${dots}
 
     function buildFaqSectionHtml() {
       const items = state.items
-        .filter((item) => item.question.trim() || item.answer.trim())
-        .map(renderFaqItem)
+        .map((item, index) => ({ item, index }))
+        .filter(({ item }) => item.question.trim() || item.answer.trim())
+        .map(({ item, index }) => renderFaqItem(item, index))
         .join("\n\n");
 
       return `<section id="faq-section" aria-labelledby="faq-section__title">
@@ -4413,15 +6712,15 @@ ${items}
             : "";
       const headerText = escapeHtml(label.trim() || `COLUNA ${index + 1}`);
 
-      return `                 <th class="table-text-custom table-th-custom table-th-custom--col-${index + 1}${radiusClass}" scope="col">${headerText}
+      return `                 <th class="table-text-custom table-th-custom table-th-custom--col-${index + 1}${radiusClass}" scope="col"${previewTextStyleAttr({ scope: "table", field: "column", columnIndex: index })}>${headerText}
                  </th>`;
     }
 
-    function renderTableRow(row) {
+    function renderTableRow(row, rowIndex) {
       const columns = getTableColumns();
       const cells = columns.map((column, index) => {
         const cellClass = index === 0 ? "table-td-custom-title" : "table-td-custom-sub";
-        return `                 <td class="table-text-custom ${cellClass}">${escapeHtml((row[index] || "").trim())}</td>`;
+        return `                 <td class="table-text-custom ${cellClass}"${previewTextStyleAttr({ scope: "table", field: "cell", rowIndex, cellIndex: index })}>${escapeHtml((row[index] || "").trim())}</td>`;
       }).join("\n");
 
       return `               <tr class="table-tr-custom">
@@ -4633,7 +6932,7 @@ ${rows}
       renderEditor(true);
     }
 
-    function renderStoryOption(group) {
+    function renderStoryOption(group, groupIndex) {
       const name = escapeHtml(group.name.trim() || "Story");
       const thumb = escapeHtml(group.thumb.trim());
       const firstStoryId = getStoryId(group, 0);
@@ -4642,7 +6941,7 @@ ${rows}
           <span class="lp-stories__ring" aria-hidden="true">
             <img class="lp-stories__thumb" src="${thumb}" alt="Miniatura de ${name}" width="400" height="400" loading="lazy">
           </span>
-          <span class="lp-stories__name">${name}</span>
+          <span class="lp-stories__name"${previewTextStyleAttr({ scope: "stories", field: "groupName", groupIndex })}>${name}</span>
         </label>`;
     }
 
@@ -4685,14 +6984,14 @@ ${rows}
             <div class="lp-stories__progress lp-stories__progress--slides-${group.slides.length} lp-stories__progress--index-${slideIndex + 1}" aria-label="Progresso do container ${title}"></div>
             <header class="lp-stories__topbar" aria-label="Identificação do container ${title}">
               <img class="lp-stories__avatar" src="${avatar}" alt="Logo dos stories" width="400" height="400" loading="lazy">
-              <h3 class="lp-stories__title" id="${storyId}-title">${title}</h3>
+              <h3 class="lp-stories__title" id="${storyId}-title"${previewTextStyleAttr({ scope: "stories", field: "groupName", groupIndex })}>${title}</h3>
               <span class="lp-stories__step">${slideIndex + 1}/${group.slides.length}</span>
             </header>
             <figure class="lp-stories__figure lp-stories__figure--focus-${mediaFocus}">
               <div class="lp-stories__media">
                 ${renderStoryMedia(slide)}
               </div>
-              <figcaption class="lp-stories__caption is-${position}" id="${storyId}-caption">${caption}</figcaption>
+              <figcaption class="lp-stories__caption is-${position}" id="${storyId}-caption"${previewTextStyleAttr({ scope: "stories", field: "caption", groupIndex, slideIndex })}>${caption}</figcaption>
             </figure>
             <nav class="lp-stories__nav" aria-label="Navegar slides do container ${title}">
               <label class="lp-stories__arrow prev" for="${previousId}" aria-label="Slide anterior de ${title}"><span aria-hidden="true">&lsaquo;</span></label>
@@ -4804,7 +7103,7 @@ ${panels}
       renderEditor(true);
     }
 
-    function renderArticleTags(tab) {
+    function renderArticleTags(tab, tabIndex) {
       const elements = getArticleTabElements(tab);
       if (!elements.tags) {
         return "";
@@ -4816,20 +7115,20 @@ ${panels}
       }
 
       return `<div class="ll-article__tags">
-${tags.map((tag) => `              <span class="ll-article__tag">${escapeHtml(tag)}</span>`).join("\n")}
+${tags.map((tag, tagIndex) => `              <span class="ll-article__tag"${previewTextStyleAttr({ scope: "article", tabIndex, field: "tag", tagIndex })}>${escapeHtml(tag)}</span>`).join("\n")}
             </div>`;
     }
 
     function renderArticleTabButton(tab, index) {
       const tabId = `ll-article-tab-${index + 1}`;
       const elements = getArticleTabElements(tab);
-      const icon = elements.icon ? `<span class="ll-article__tab-icon">${escapeHtml(tab.icon.trim() || String(index + 1))}</span>` : "";
-      const summary = elements.summary && tab.summary.trim() ? `<small class="ll-article__tab-summary">${escapeHtml(tab.summary.trim())}</small>` : "";
+      const icon = elements.icon ? `<span class="ll-article__tab-icon"${previewTextStyleAttr({ scope: "article", tabIndex: index, field: "icon" })}>${escapeHtml(tab.icon.trim() || String(index + 1))}</span>` : "";
+      const summary = elements.summary && tab.summary.trim() ? `<small class="ll-article__tab-summary"${previewTextStyleAttr({ scope: "article", tabIndex: index, field: "summary" })}>${escapeHtml(tab.summary.trim())}</small>` : "";
       const noIconClass = elements.icon ? "" : " ll-article__tab--no-icon";
 
       return `        <label class="ll-article__tab${noIconClass}" for="${tabId}">
           ${icon}
-          <span class="ll-article__tab-text"><strong class="ll-article__tab-title">${escapeHtml(tab.label.trim() || `Aba ${index + 1}`)}</strong>${summary}</span>
+          <span class="ll-article__tab-text"><strong class="ll-article__tab-title"${previewTextStyleAttr({ scope: "article", tabIndex: index, field: "label" })}>${escapeHtml(tab.label.trim() || `Aba ${index + 1}`)}</strong>${summary}</span>
           <span class="ll-article__tab-key">${index + 1}</span>
         </label>`;
     }
@@ -4838,10 +7137,10 @@ ${tags.map((tag) => `              <span class="ll-article__tag">${escapeHtml(ta
       const elements = getArticleTabElements(tab);
       const image = elements.image ? escapeCssUrl(tab.image || state.article.backgroundImage) : "";
       const imageStyle = image ? ` style="background-image: url(&quot;${escapeHtml(image)}&quot;)"` : "";
-      const eyebrow = elements.eyebrow && tab.eyebrow.trim() ? `<p class="ll-article__eyebrow">${escapeHtml(tab.eyebrow.trim())}</p>` : "";
-      const heading = elements.heading && tab.heading.trim() ? `<h3 class="ll-article__heading">${escapeHtml(tab.heading.trim())}</h3>` : "";
-      const body = elements.body && tab.body.trim() ? `<p class="ll-article__body">${escapeHtml(tab.body.trim())}</p>` : "";
-      const tags = renderArticleTags(tab);
+      const eyebrow = elements.eyebrow && tab.eyebrow.trim() ? `<p class="ll-article__eyebrow"${previewTextStyleAttr({ scope: "article", tabIndex: index, field: "eyebrow" })}>${escapeHtml(tab.eyebrow.trim())}</p>` : "";
+      const heading = elements.heading && tab.heading.trim() ? `<h3 class="ll-article__heading"${previewTextStyleAttr({ scope: "article", tabIndex: index, field: "heading" })}>${escapeHtml(tab.heading.trim())}</h3>` : "";
+      const body = elements.body && tab.body.trim() ? `<p class="ll-article__body"${previewTextStyleAttr({ scope: "article", tabIndex: index, field: "body" })}>${escapeHtml(tab.body.trim())}</p>` : "";
+      const tags = renderArticleTags(tab, index);
       const content = [eyebrow, heading, body, tags].filter(Boolean).join("\n            ");
       const copy = content ? `<div class="ll-article__panel-copy">
             ${content}
@@ -4867,9 +7166,9 @@ ${inputs}
     <div class="ll-article__inner">
       <aside class="ll-article__tabs" aria-label="Escolha uma aba do artigo">
         <div class="ll-article__tabs-head">
-          <p class="ll-article__eyebrow">${escapeHtml(state.article.eyebrow.trim())}</p>
-          <h2 class="ll-article__title">${escapeHtml(state.article.title.trim())}</h2>
-          <p class="ll-article__intro">${escapeHtml(state.article.intro.trim())}</p>
+          <p class="ll-article__eyebrow"${previewTextStyleAttr({ scope: "article", field: "eyebrow" })}>${escapeHtml(state.article.eyebrow.trim())}</p>
+          <h2 class="ll-article__title"${previewTextStyleAttr({ scope: "article", field: "title" })}>${escapeHtml(state.article.title.trim())}</h2>
+          <p class="ll-article__intro"${previewTextStyleAttr({ scope: "article", field: "intro" })}>${escapeHtml(state.article.intro.trim())}</p>
         </div>
 ${tabButtons}
       </aside>
@@ -4900,38 +7199,54 @@ ${panels}
 
 <!-- ESSES CODIGOS ABAIXO VOCE NAO PRECISA MEXER!!! APENAS O HTML ACIMA-->
 
-${styles}`;
+${styles}
+
+${buildResponsiveStyle("faq")}`;
     }
 
     function buildPreviewHtml() {
+      if (currentPage === "conteudo" && currentEditorTab === "dashboard") {
+        return buildDashboardPreviewHtml();
+      }
+
       if (currentPage === "conteudo" && currentEditorTab === "table") {
         return `${buildTableSectionHtml(true)}
 
-${buildTableStyle()}`;
+${buildTableStyle()}
+
+${buildResponsiveStyle("table", { includeDraft: true })}`;
       }
 
       if (currentPage === "conteudo" && currentEditorTab === "stories") {
         return `${buildStoriesSectionHtml(getStoriesPreviewTarget())}
 
-${buildStoriesStyle()}`;
+${buildStoriesStyle()}
+
+${buildResponsiveStyle("stories", { includeDraft: true })}`;
       }
 
       if (currentPage === "conteudo" && currentEditorTab === "article") {
         return `${buildArticleSectionHtml()}
 
-${buildArticleStyle()}`;
+${buildArticleStyle()}
+
+${buildResponsiveStyle("article", { includeDraft: true })}`;
       }
 
       if (currentPage === "conteudo" && currentEditorTab === "carousel") {
         return `${buildCarouselSectionHtml(state.carousel.previewSlideIndex)}
 
-${buildCarouselStyle()}`;
+${buildCarouselStyle()}
+
+${buildResponsiveStyle("carousel", { includeDraft: true })}`;
       }
 
       if (currentPage === "conteudo") {
         return `${buildFaqSectionHtml()}
 
-${faqStyle}`;
+${faqStyle}
+
+${buildResponsiveStyle("faq", { includeDraft: true })}`;
       }
 
       return buildFullHtml(false);
@@ -4942,15 +7257,15 @@ ${faqStyle}`;
         return buildFullHtml(false);
       }
 
+      if (currentEditorTab === "dashboard") {
+        return "";
+      }
+
       if (currentEditorTab === "table") {
         const tableHtml = buildTableSectionHtml(true);
 
         if (copyMode === "full") {
-          return `${tableHtml}
-
-<!-- ESSES CODIGOS ABAIXO VOCE NAO PRECISA MEXER!!! APENAS O HTML ACIMA-->
-
-${buildTableStyle()}`;
+          return buildResponsivePackage("table", () => buildTableSectionHtml(true), buildTableStyle);
         }
 
         return tableHtml;
@@ -4960,11 +7275,7 @@ ${buildTableStyle()}`;
         const storiesHtml = buildStoriesSectionHtml();
 
         if (copyMode === "full") {
-          return `${storiesHtml}
-
-<!-- ESSES CODIGOS ABAIXO VOCE NAO PRECISA MEXER!!! APENAS O HTML ACIMA-->
-
-${buildStoriesStyle()}`;
+          return buildResponsivePackage("stories", () => buildStoriesSectionHtml(), buildStoriesStyle);
         }
 
         return storiesHtml;
@@ -4974,11 +7285,7 @@ ${buildStoriesStyle()}`;
         const articleHtml = buildArticleSectionHtml();
 
         if (copyMode === "full") {
-          return `${articleHtml}
-
-<!-- ESSES CODIGOS ABAIXO VOCE NAO PRECISA MEXER!!! APENAS O HTML ACIMA-->
-
-${buildArticleStyle()}`;
+          return buildResponsivePackage("article", () => buildArticleSectionHtml(), buildArticleStyle);
         }
 
         return articleHtml;
@@ -4988,11 +7295,7 @@ ${buildArticleStyle()}`;
         const carouselHtml = buildCarouselSectionHtml();
 
         if (copyMode === "full") {
-          return `${carouselHtml}
-
-<!-- ESSES CODIGOS ABAIXO VOCE NAO PRECISA MEXER!!! APENAS O HTML ACIMA-->
-
-${buildCarouselStyle()}`;
+          return buildResponsivePackage("carousel", () => buildCarouselSectionHtml(), buildCarouselStyle);
         }
 
         return carouselHtml;
@@ -5001,11 +7304,7 @@ ${buildCarouselStyle()}`;
       const faqHtml = buildFaqSectionHtml();
 
       if (copyMode === "full") {
-        return `${faqHtml}
-
-<!-- ESSES CODIGOS ABAIXO VOCE NAO PRECISA MEXER!!! APENAS O HTML ACIMA-->
-
-${faqStyle}`;
+        return buildResponsivePackage("faq", () => buildFaqSectionHtml(), () => faqStyle);
       }
 
       return faqHtml;
@@ -5045,15 +7344,1038 @@ ${faqStyle}`;
       }
     }
 
+    function closePreviewEditPopover() {
+      if (previewEditPopover) {
+        previewEditPopover.remove();
+        previewEditPopover = null;
+      }
+
+      if (previewEditOutsideHandler) {
+        document.removeEventListener("mousedown", previewEditOutsideHandler, true);
+        previewEditOutsideHandler = null;
+      }
+
+      if (previewEditKeyHandler) {
+        document.removeEventListener("keydown", previewEditKeyHandler, true);
+        previewEditKeyHandler = null;
+      }
+    }
+
+    function getPreviewEditPoint(sourceEvent) {
+      const frameRect = previewFrame.getBoundingClientRect();
+      return {
+        x: frameRect.left + (sourceEvent?.clientX || 0),
+        y: frameRect.top + (sourceEvent?.clientY || 0)
+      };
+    }
+
+    function positionPreviewEditPopover(sourceEvent) {
+      if (!previewEditPopover) {
+        return;
+      }
+
+      const point = getPreviewEditPoint(sourceEvent);
+      const rect = previewEditPopover.getBoundingClientRect();
+      const margin = 12;
+      let left = point.x + margin;
+      let top = point.y + margin;
+
+      if (left + rect.width > window.innerWidth - margin) {
+        left = Math.max(margin, window.innerWidth - rect.width - margin);
+      }
+
+      if (top + rect.height > window.innerHeight - margin) {
+        top = Math.max(margin, point.y - rect.height - margin);
+      }
+
+      previewEditPopover.style.left = `${left}px`;
+      previewEditPopover.style.top = `${top}px`;
+    }
+
+    function openPreviewEditPopover(sourceEvent, meta, options = {}) {
+      closePreviewEditPopover();
+
+      const kind = options.kind || meta.type || "text";
+      const isColor = kind === "color";
+      const isTextStyle = kind === "text-style";
+      const currentValue = isColor
+        ? normalizeHexColor(readPreviewEditValue(meta))
+        : String(readPreviewEditValue(meta) || "");
+      const currentTextStyle = isTextStyle
+        ? {
+            ...getComputedPreviewTextStyle(options.sourceElement || sourceEvent?.target || document.body),
+            ...getPreviewTextStyle(meta)
+          }
+        : {};
+
+      const form = document.createElement("form");
+      form.className = `preview-edit-popover preview-edit-popover--${kind}`;
+      form.setAttribute("role", "dialog");
+      form.setAttribute("aria-label", options.label || "Editar item da prévia");
+
+      const title = document.createElement("p");
+      title.className = "preview-edit-popover__title";
+      title.textContent = options.label || "Editar";
+      form.appendChild(title);
+
+      let valueInput;
+      let colorInput;
+      let styleInputs = null;
+
+      if (isColor) {
+        const row = document.createElement("div");
+        row.className = "preview-edit-popover__color-row";
+
+        colorInput = document.createElement("input");
+        colorInput.className = "preview-edit-popover__color";
+        colorInput.type = "color";
+        colorInput.value = currentValue;
+
+        valueInput = document.createElement("input");
+        valueInput.className = "preview-edit-popover__field";
+        valueInput.type = "text";
+        valueInput.value = currentValue;
+        valueInput.placeholder = "#ea5b0c";
+
+        colorInput.addEventListener("input", () => {
+          valueInput.value = colorInput.value;
+        });
+        valueInput.addEventListener("input", () => {
+          if (/^#[0-9a-fA-F]{6}$/.test(valueInput.value.trim())) {
+            colorInput.value = normalizeHexColor(valueInput.value);
+          }
+        });
+
+        row.append(colorInput, valueInput);
+        form.appendChild(row);
+      } else if (isTextStyle) {
+        valueInput = document.createElement(options.multiline ? "textarea" : "input");
+        valueInput.className = "preview-edit-popover__field";
+        if (!options.multiline) {
+          valueInput.type = "text";
+        }
+        valueInput.value = currentValue;
+        valueInput.placeholder = options.placeholder || "";
+        form.appendChild(valueInput);
+        valueInput.addEventListener("input", () => {
+          valueInput.dataset.touched = "true";
+        });
+
+        const grid = document.createElement("div");
+        grid.className = "preview-edit-popover__grid";
+
+        const createMiniField = (labelText, input) => {
+          const label = document.createElement("label");
+          label.className = "preview-edit-popover__mini-field";
+          const span = document.createElement("span");
+          span.textContent = labelText;
+          label.append(span, input);
+          grid.appendChild(label);
+        };
+
+        const textColorInput = document.createElement("input");
+        textColorInput.type = "color";
+        textColorInput.value = colorToHex(currentTextStyle.color);
+
+        const fontSizeInput = document.createElement("input");
+        fontSizeInput.type = "number";
+        fontSizeInput.min = "8";
+        fontSizeInput.max = "96";
+        fontSizeInput.step = "1";
+        fontSizeInput.value = String(currentTextStyle.fontSize || 16);
+
+        const fontWeightSelect = document.createElement("select");
+        [
+          ["300", "Leve"],
+          ["400", "Normal"],
+          ["500", "Médio"],
+          ["600", "Semibold"],
+          ["700", "Bold"],
+          ["800", "Extra bold"],
+          ["900", "Black"]
+        ].forEach(([value, label]) => {
+          const option = document.createElement("option");
+          option.value = value;
+          option.textContent = label;
+          option.selected = normalizePreviewFontWeight(currentTextStyle.fontWeight) === value;
+          fontWeightSelect.appendChild(option);
+        });
+
+        const textAlignSelect = document.createElement("select");
+        [
+          ["left", "Esquerda"],
+          ["center", "Centro"],
+          ["right", "Direita"],
+          ["justify", "Justificado"]
+        ].forEach(([value, label]) => {
+          const option = document.createElement("option");
+          option.value = value;
+          option.textContent = label;
+          option.selected = normalizePreviewTextAlign(currentTextStyle.textAlign) === value;
+          textAlignSelect.appendChild(option);
+        });
+
+        const fontStyleSelect = document.createElement("select");
+        [
+          ["normal", "Normal"],
+          ["italic", "Itálico"]
+        ].forEach(([value, label]) => {
+          const option = document.createElement("option");
+          option.value = value;
+          option.textContent = label;
+          option.selected = (currentTextStyle.fontStyle || "normal") === value;
+          fontStyleSelect.appendChild(option);
+        });
+
+        const lineHeightInput = document.createElement("input");
+        lineHeightInput.type = "number";
+        lineHeightInput.min = "0.8";
+        lineHeightInput.max = "2.6";
+        lineHeightInput.step = "0.05";
+        lineHeightInput.value = String(currentTextStyle.lineHeight || 1.35);
+
+        createMiniField("Cor", textColorInput);
+        createMiniField("Tamanho", fontSizeInput);
+        createMiniField("Peso", fontWeightSelect);
+        createMiniField("Alinhamento", textAlignSelect);
+        createMiniField("Estilo", fontStyleSelect);
+        createMiniField("Altura da linha", lineHeightInput);
+        form.appendChild(grid);
+
+        styleInputs = {
+          color: textColorInput,
+          fontSize: fontSizeInput,
+          fontWeight: fontWeightSelect,
+          textAlign: textAlignSelect,
+          fontStyle: fontStyleSelect,
+          lineHeight: lineHeightInput
+        };
+
+        if (options.multiline) {
+          valueInput.addEventListener("keydown", (event) => {
+            if (event.key === "Enter" && (event.ctrlKey || event.metaKey)) {
+              event.preventDefault();
+              form.requestSubmit();
+            }
+          });
+        }
+      } else {
+        valueInput = document.createElement("input");
+        valueInput.className = "preview-edit-popover__field";
+        valueInput.type = options.inputType || "text";
+        valueInput.value = currentValue;
+        valueInput.placeholder = options.placeholder || "";
+        form.appendChild(valueInput);
+      }
+
+      const actions = document.createElement("div");
+      actions.className = "preview-edit-popover__actions";
+
+      const resetStyleButton = document.createElement("button");
+      resetStyleButton.className = "button button--soft";
+      resetStyleButton.type = "button";
+      resetStyleButton.textContent = "Limpar estilo";
+
+      const cancelButton = document.createElement("button");
+      cancelButton.className = "button button--soft";
+      cancelButton.type = "button";
+      cancelButton.textContent = "Cancelar";
+
+      const applyButton = document.createElement("button");
+      applyButton.className = "button";
+      applyButton.type = "submit";
+      applyButton.textContent = "Aplicar";
+
+      if (isTextStyle) {
+        actions.appendChild(resetStyleButton);
+      }
+      actions.append(cancelButton, applyButton);
+      form.appendChild(actions);
+
+      const applyValue = (options = {}) => {
+        const nextValue = isColor ? normalizeHexColor(valueInput.value) : String(valueInput.value || "").trim();
+        const previousValue = isColor ? normalizeHexColor(currentValue) : String(currentValue || "").trim();
+        closePreviewEditPopover();
+
+        if (isTextStyle) {
+          const textWasEdited = valueInput.dataset.touched === "true";
+          const nextText = textWasEdited
+            ? normalizePreviewText(nextValue, Boolean(options.multiline))
+            : readPreviewEditValue(meta);
+          const nextStyle = options.clearStyle ? {} : {
+            color: styleInputs.color.value,
+            fontSize: styleInputs.fontSize.value,
+            fontWeight: styleInputs.fontWeight.value,
+            textAlign: styleInputs.textAlign.value,
+            fontStyle: styleInputs.fontStyle.value,
+            lineHeight: styleInputs.lineHeight.value
+          };
+
+          updatePreviewEditValue({ ...meta, type: "textStyle", multiline: options.multiline }, {
+            text: nextText,
+            style: nextStyle
+          });
+          return;
+        }
+
+        if (nextValue !== previousValue) {
+          updatePreviewEditValue({ ...meta, type: kind }, nextValue);
+        }
+      };
+
+      form.addEventListener("submit", (event) => {
+        event.preventDefault();
+        applyValue({ multiline: options.multiline });
+      });
+
+      resetStyleButton.addEventListener("click", () => {
+        applyValue({ clearStyle: true, multiline: options.multiline });
+      });
+      cancelButton.addEventListener("click", closePreviewEditPopover);
+
+      previewEditKeyHandler = (event) => {
+        if (event.key === "Escape") {
+          closePreviewEditPopover();
+        }
+      };
+
+      previewEditOutsideHandler = (event) => {
+        if (previewEditPopover && !previewEditPopover.contains(event.target)) {
+          closePreviewEditPopover();
+        }
+      };
+
+      document.body.appendChild(form);
+      previewEditPopover = form;
+      positionPreviewEditPopover(sourceEvent);
+      window.setTimeout(() => {
+        document.addEventListener("mousedown", previewEditOutsideHandler, true);
+        document.addEventListener("keydown", previewEditKeyHandler, true);
+      }, 0);
+      if (isTextStyle && styleInputs) {
+        styleInputs.fontSize.focus();
+      } else {
+        valueInput.focus();
+        valueInput.select();
+      }
+    }
+
+    function getPreviewEditTab() {
+      return currentPage === "conteudo" ? currentEditorTab : "faq";
+    }
+
+    function normalizePreviewText(value, multiline = false) {
+      const text = String(value || "")
+        .replace(/\u00a0/g, " ")
+        .replace(/\r\n?/g, "\n")
+        .trim();
+
+      return multiline ? text : text.replace(/\s+/g, " ");
+    }
+
+    function colorToHex(value, fallback = "#111827") {
+      const rawValue = String(value || "").trim();
+      if (/^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.test(rawValue)) {
+        return normalizeHexColor(rawValue);
+      }
+
+      const rgbMatch = rawValue.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/i);
+      if (!rgbMatch) {
+        return normalizeHexColor(fallback);
+      }
+
+      return `#${rgbMatch.slice(1, 4).map((part) => {
+        return Math.min(255, Math.max(0, Number(part))).toString(16).padStart(2, "0");
+      }).join("")}`;
+    }
+
+    function normalizeTextStyleNumber(value, fallback, min, max, decimals = 0) {
+      const numericValue = Number(String(value ?? "").replace(",", "."));
+      if (!Number.isFinite(numericValue)) {
+        return fallback;
+      }
+
+      const clamped = Math.min(max, Math.max(min, numericValue));
+      return decimals ? Number(clamped.toFixed(decimals)) : Math.round(clamped);
+    }
+
+    function normalizePreviewFontWeight(value) {
+      if (value === "bold") {
+        return "700";
+      }
+
+      if (value === "normal") {
+        return "400";
+      }
+
+      const numericValue = Number(value);
+      if (!Number.isFinite(numericValue)) {
+        return "700";
+      }
+
+      return String(Math.min(900, Math.max(300, Math.round(numericValue / 100) * 100)));
+    }
+
+    function normalizePreviewTextAlign(value) {
+      return ["left", "center", "right", "justify"].includes(value) ? value : "left";
+    }
+
+    function getTextStyleTab(meta) {
+      return ["table", "stories", "article", "carousel"].includes(meta.scope) ? meta.scope : "faq";
+    }
+
+    function getPreviewTextStyleKey(meta) {
+      return [
+        meta.scope,
+        meta.field,
+        meta.index,
+        meta.columnIndex,
+        meta.rowIndex,
+        meta.cellIndex,
+        meta.groupIndex,
+        meta.slideIndex,
+        meta.tabIndex,
+        meta.tagIndex
+      ].filter((part) => part !== undefined && part !== null && part !== "").join(":");
+    }
+
+    function getPreviewTextStyle(meta) {
+      const tab = getTextStyleTab(meta);
+      const key = getPreviewTextStyleKey(meta);
+      return cloneValue((state.textStyles && state.textStyles[tab] && state.textStyles[tab][key]) || {});
+    }
+
+    function normalizePreviewTextStyle(style = {}) {
+      const normalized = {};
+
+      if (style.color) {
+        normalized.color = colorToHex(style.color);
+      }
+
+      if (style.fontSize !== undefined && style.fontSize !== "") {
+        normalized.fontSize = normalizeTextStyleNumber(style.fontSize, 16, 8, 96);
+      }
+
+      if (style.fontWeight !== undefined && style.fontWeight !== "") {
+        normalized.fontWeight = normalizePreviewFontWeight(style.fontWeight);
+      }
+
+      if (style.fontStyle === "italic") {
+        normalized.fontStyle = "italic";
+      }
+
+      if (style.textAlign) {
+        normalized.textAlign = normalizePreviewTextAlign(style.textAlign);
+      }
+
+      if (style.lineHeight !== undefined && style.lineHeight !== "") {
+        normalized.lineHeight = normalizeTextStyleNumber(style.lineHeight, 1.35, 0.8, 2.6, 2);
+      }
+
+      return normalized;
+    }
+
+    function setPreviewTextStyle(meta, style = {}) {
+      const tab = getTextStyleTab(meta);
+      const key = getPreviewTextStyleKey(meta);
+      const normalized = normalizePreviewTextStyle(style);
+
+      state.textStyles = state.textStyles || {};
+      state.textStyles[tab] = state.textStyles[tab] || {};
+
+      if (Object.keys(normalized).length) {
+        state.textStyles[tab][key] = normalized;
+      } else {
+        delete state.textStyles[tab][key];
+      }
+    }
+
+    function buildPreviewTextStyle(meta) {
+      const style = getPreviewTextStyle(meta);
+      const declarations = [];
+
+      if (style.color) {
+        declarations.push(`color: ${style.color}`);
+      }
+
+      if (style.fontSize) {
+        declarations.push(`font-size: ${style.fontSize}px`);
+      }
+
+      if (style.fontWeight) {
+        declarations.push(`font-weight: ${style.fontWeight}`);
+      }
+
+      if (style.fontStyle) {
+        declarations.push(`font-style: ${style.fontStyle}`);
+      }
+
+      if (style.textAlign) {
+        declarations.push(`text-align: ${style.textAlign}`);
+      }
+
+      if (style.lineHeight) {
+        declarations.push(`line-height: ${style.lineHeight}`);
+      }
+
+      return declarations.join("; ");
+    }
+
+    function previewTextStyleAttr(meta) {
+      const style = buildPreviewTextStyle(meta);
+      return style ? ` style="${escapeHtml(style)}"` : "";
+    }
+
+    function getComputedPreviewTextStyle(element) {
+      const view = element.ownerDocument?.defaultView;
+      const computed = view ? view.getComputedStyle(element) : null;
+      const fontSize = computed ? normalizeTextStyleNumber(parseFloat(computed.fontSize), 16, 8, 96) : 16;
+      const lineHeightValue = computed && computed.lineHeight !== "normal"
+        ? normalizeTextStyleNumber(parseFloat(computed.lineHeight) / Math.max(fontSize, 1), 1.35, 0.8, 2.6, 2)
+        : 1.35;
+
+      return {
+        color: colorToHex(computed?.color || "#111827"),
+        fontSize,
+        fontWeight: normalizePreviewFontWeight(computed?.fontWeight || "700"),
+        fontStyle: computed?.fontStyle === "italic" ? "italic" : "normal",
+        textAlign: normalizePreviewTextAlign(computed?.textAlign || "left"),
+        lineHeight: lineHeightValue
+      };
+    }
+
+    function readPreviewEditValue(meta) {
+      if (meta.scope === "faq") {
+        const item = state.items[meta.index];
+        return item ? item[meta.field] || "" : "";
+      }
+
+      if (meta.scope === "table") {
+        if (meta.field === "column") {
+          return state.table.columns[meta.columnIndex] || "";
+        }
+
+        if (meta.field === "columnHeaderColor") {
+          return state.table.headerColors[meta.columnIndex] || state.table.headerColor;
+        }
+
+        if (meta.field === "cell") {
+          return state.table.rows[meta.rowIndex]?.[meta.cellIndex] || "";
+        }
+      }
+
+      if (meta.scope === "stories") {
+        if (meta.field === "avatar" || meta.field === "ringColor" || meta.field === "captionBackgroundColor") {
+          return state.stories[meta.field] || "";
+        }
+
+        const group = state.stories.groups[meta.groupIndex];
+        if (!group) {
+          return "";
+        }
+
+        if (meta.field === "groupName") {
+          return group.name || "";
+        }
+
+        if (meta.field === "groupThumb") {
+          return group.thumb || "";
+        }
+
+        const slide = group.slides[meta.slideIndex];
+        return slide ? slide[meta.field] || "" : "";
+      }
+
+      if (meta.scope === "article") {
+        if (meta.tabIndex === undefined) {
+          return state.article[meta.field] || "";
+        }
+
+        const tab = state.article.tabs[meta.tabIndex];
+        if (!tab) {
+          return "";
+        }
+
+        if (meta.field === "tag") {
+          return getArticleTags(tab.tags)[meta.tagIndex] || "";
+        }
+
+        return tab[meta.field] || "";
+      }
+
+      if (meta.scope === "carousel") {
+        if (meta.slideIndex === undefined) {
+          return state.carousel[meta.field] || "";
+        }
+
+        const slide = state.carousel.slides[meta.slideIndex];
+        return slide ? slide[meta.field] || "" : "";
+      }
+
+      return "";
+    }
+
+    function updatePreviewEditValue(meta, rawValue) {
+      const isColor = meta.type === "color";
+      const isTextStyle = meta.type === "textStyle";
+      const value = isTextStyle
+        ? normalizePreviewText(rawValue && rawValue.text, Boolean(meta.multiline))
+        : isColor
+          ? normalizeHexColor(rawValue)
+          : String(rawValue || "");
+
+      if (currentPage === "conteudo") {
+        markResponsiveDirty();
+      }
+
+      if (isTextStyle) {
+        setPreviewTextStyle(meta, rawValue && rawValue.style ? rawValue.style : {});
+      }
+
+      if (meta.scope === "faq") {
+        const item = state.items[meta.index];
+        if (item) {
+          item[meta.field] = value;
+        }
+      }
+
+      if (meta.scope === "table") {
+        if (meta.field === "column") {
+          state.table.columns[meta.columnIndex] = value;
+        } else if (meta.field === "columnHeaderColor") {
+          state.table.headerColors[meta.columnIndex] = value;
+        } else if (meta.field === "cell") {
+          state.table.rows[meta.rowIndex][meta.cellIndex] = value;
+        }
+      }
+
+      if (meta.scope === "stories") {
+        if (meta.field === "avatar" || meta.field === "ringColor" || meta.field === "captionBackgroundColor") {
+          state.stories[meta.field] = value;
+          if (meta.field === "ringColor") {
+            state.stories.ringStyle = "solid";
+          }
+        } else {
+          const group = state.stories.groups[meta.groupIndex];
+          if (group) {
+            if (meta.field === "groupName") {
+              group.name = value;
+              setStoriesPreviewTarget(meta.groupIndex, 0);
+            } else if (meta.field === "groupThumb") {
+              group.thumb = value;
+              setStoriesPreviewTarget(meta.groupIndex, 0);
+            } else {
+              const slide = group.slides[meta.slideIndex];
+              if (slide) {
+                slide[meta.field] = value;
+                setStoriesPreviewTarget(meta.groupIndex, meta.slideIndex);
+              }
+            }
+          }
+        }
+      }
+
+      if (meta.scope === "article") {
+        if (meta.tabIndex === undefined) {
+          state.article[meta.field] = value;
+        } else {
+          const tab = state.article.tabs[meta.tabIndex];
+          if (tab) {
+            if (meta.field === "tag") {
+              const tags = getArticleTags(tab.tags);
+              tags[meta.tagIndex] = value;
+              tab.tags = tags.filter(Boolean).join(", ");
+            } else {
+              tab[meta.field] = value;
+            }
+            state.article.openTabIndex = meta.tabIndex;
+          }
+        }
+      }
+
+      if (meta.scope === "carousel") {
+        if (meta.slideIndex === undefined) {
+          state.carousel[meta.field] = value;
+        } else {
+          const slide = state.carousel.slides[meta.slideIndex];
+          if (slide) {
+            slide[meta.field] = value;
+            state.carousel.openSlideIndex = meta.slideIndex;
+            setCarouselPreviewSlide(meta.slideIndex);
+          }
+        }
+      }
+
+      renderEditor(true);
+    }
+
+    function setupPreviewEditing() {
+      const doc = previewFrame.contentDocument;
+      if (!doc) {
+        return;
+      }
+
+      const style = doc.createElement("style");
+      style.textContent = `
+        [data-ll-preview-text],
+        [data-ll-preview-media],
+        [data-ll-preview-color] {
+          outline-offset: 3px;
+          transition: outline-color 0.12s ease, box-shadow 0.12s ease;
+        }
+        [data-ll-preview-text] {
+          cursor: pointer;
+        }
+        [data-ll-preview-inline] {
+          cursor: text;
+        }
+        [data-ll-preview-text]:hover,
+        [data-ll-preview-text]:focus {
+          outline: 2px dashed rgba(124, 58, 237, 0.8);
+          box-shadow: 0 0 0 4px rgba(124, 58, 237, 0.12);
+        }
+        [data-ll-preview-media] {
+          cursor: pointer;
+        }
+        [data-ll-preview-media]:hover {
+          outline: 2px dashed rgba(14, 165, 233, 0.9);
+          box-shadow: 0 0 0 4px rgba(14, 165, 233, 0.12);
+        }
+        [data-ll-preview-color]:hover {
+          outline: 2px dashed rgba(234, 91, 12, 0.9);
+        }
+      `;
+      doc.head.appendChild(style);
+      doc.addEventListener("mousedown", (event) => {
+        if (!event.target.closest("[data-ll-preview-text], [data-ll-preview-media], [data-ll-preview-color]")) {
+          closePreviewEditPopover();
+        }
+      }, true);
+
+      const attachText = (element, meta, options = {}) => {
+        if (!element) {
+          return;
+        }
+
+        const multiline = Boolean(options.multiline);
+        element.dataset.llPreviewText = "true";
+        element.setAttribute("title", "Clique para editar texto e estilo.");
+        element.addEventListener("click", (event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          openPreviewEditPopover(event, { ...meta, type: "textStyle" }, {
+            kind: "text-style",
+            label: "Editar texto",
+            multiline,
+            sourceElement: element
+          });
+        });
+      };
+
+      const syncTablePreviewField = (meta, rawValue, options = {}) => {
+        const value = normalizePreviewText(rawValue, Boolean(options.multiline));
+
+        markResponsiveDirty();
+
+        if (meta.field === "column") {
+          state.table.columns[meta.columnIndex] = value;
+          const input = editor.querySelector(`[data-table-field="column"][data-column-index="${meta.columnIndex}"]`);
+          if (input) {
+            input.value = value;
+          }
+        } else if (meta.field === "cell") {
+          state.table.rows[meta.rowIndex][meta.cellIndex] = value;
+          const input = editor.querySelector(`[data-table-field="cell"][data-row-index="${meta.rowIndex}"][data-cell-index="${meta.cellIndex}"]`);
+          if (input) {
+            input.value = value;
+          }
+        }
+
+        generatedHtml.value = buildOutputHtml("html");
+        copyStatus.textContent = "";
+      };
+
+      const attachInlineText = (element, meta, options = {}) => {
+        if (!element) {
+          return;
+        }
+
+        const multiline = Boolean(options.multiline);
+        element.dataset.llPreviewText = "true";
+        element.dataset.llPreviewInline = "true";
+        element.setAttribute("contenteditable", "plaintext-only");
+        element.setAttribute("spellcheck", "false");
+        element.setAttribute("title", "Clique e digite para editar em tempo real.");
+
+        element.addEventListener("keydown", (event) => {
+          if (event.key === "Enter" && !multiline) {
+            event.preventDefault();
+            element.blur();
+          }
+        });
+
+        element.addEventListener("input", () => {
+          syncTablePreviewField(meta, element.innerText, { multiline });
+        });
+
+        element.addEventListener("blur", () => {
+          const normalizedValue = readPreviewEditValue(meta);
+          if (normalizePreviewText(element.innerText, multiline) !== normalizedValue) {
+            syncTablePreviewField(meta, element.innerText, { multiline });
+          }
+          element.textContent = normalizedValue;
+        });
+      };
+
+      const attachMedia = (element, meta, label = "URL da mídia") => {
+        if (!element) {
+          return;
+        }
+
+        element.dataset.llPreviewMedia = "true";
+        element.setAttribute("title", `Clique para trocar ${label}.`);
+        element.addEventListener("click", (event) => {
+          const nestedEditable = event.target.closest("[data-ll-preview-text], [data-ll-preview-media]");
+          if (nestedEditable && nestedEditable !== element) {
+            return;
+          }
+
+          event.preventDefault();
+          event.stopPropagation();
+
+          const clickPoint = { clientX: event.clientX, clientY: event.clientY };
+          const openEditor = () => {
+            openPreviewEditPopover(clickPoint, { ...meta, type: "media" }, {
+              inputType: "url",
+              label
+            });
+          };
+
+          if (element.dataset.llPreviewColor) {
+            window.clearTimeout(element.__llPreviewMediaTimer);
+            element.__llPreviewMediaTimer = window.setTimeout(() => {
+              if (!element.__llPreviewSkipMedia) {
+                openEditor();
+              }
+              element.__llPreviewSkipMedia = false;
+            }, 220);
+            return;
+          }
+
+          openEditor();
+        });
+      };
+
+      const attachColor = (element, meta, label = "cor") => {
+        if (!element) {
+          return;
+        }
+
+        element.dataset.llPreviewColor = "true";
+        element.setAttribute("title", `Duplo clique para editar ${label}.`);
+        element.addEventListener("dblclick", (event) => {
+          const nestedEditable = event.target.closest("[data-ll-preview-text], [data-ll-preview-media]");
+          if (nestedEditable && nestedEditable !== element) {
+            return;
+          }
+
+          event.preventDefault();
+          event.stopPropagation();
+          element.__llPreviewSkipMedia = true;
+          window.clearTimeout(element.__llPreviewMediaTimer);
+
+          openPreviewEditPopover(event, { ...meta, type: "color" }, {
+            kind: "color",
+            label
+          });
+        });
+      };
+
+      const tab = getPreviewEditTab();
+
+      if (tab === "dashboard") {
+        doc.querySelectorAll("[data-dashboard-preview-home]").forEach((button) => {
+          button.addEventListener("click", (event) => {
+            event.preventDefault();
+            returnDashboardHome();
+          });
+        });
+
+        doc.querySelectorAll("[data-dashboard-preview-tab]").forEach((button) => {
+          button.addEventListener("click", (event) => {
+            event.preventDefault();
+            const nextDashboardTab = button.dataset.dashboardPreviewTab;
+            if (["faq", "table", "stories", "article", "carousel"].includes(nextDashboardTab)) {
+              currentEditorTab = nextDashboardTab;
+              state.dashboard.view = "layouts";
+              renderEditor();
+            }
+          });
+        });
+        return;
+      }
+
+      if (tab === "faq") {
+        doc.querySelectorAll('[id="faq-section__q-text"]').forEach((element, index) => {
+          attachText(element, { scope: "faq", index, field: "question" });
+        });
+        doc.querySelectorAll('[id="faq-section__a-text"]').forEach((element, index) => {
+          attachText(element, { scope: "faq", index, field: "answer" }, { multiline: true });
+        });
+      }
+
+      if (tab === "table") {
+        doc.querySelectorAll(".table-th-custom").forEach((element, columnIndex) => {
+          attachInlineText(element, { scope: "table", field: "column", columnIndex });
+        });
+        doc.querySelectorAll(".table-design-custom tbody tr").forEach((row, rowIndex) => {
+          row.querySelectorAll("td").forEach((cell, cellIndex) => {
+            attachInlineText(cell, { scope: "table", field: "cell", rowIndex, cellIndex });
+          });
+        });
+      }
+
+      if (tab === "stories") {
+        doc.querySelectorAll(".lp-stories__option").forEach((option, groupIndex) => {
+          attachText(option.querySelector(".lp-stories__name"), { scope: "stories", field: "groupName", groupIndex });
+          attachMedia(option.querySelector(".lp-stories__thumb"), { scope: "stories", field: "groupThumb", groupIndex }, "URL da miniatura");
+          attachColor(option.querySelector(".lp-stories__ring"), { scope: "stories", field: "ringColor" }, "cor da borda");
+        });
+
+        let panelIndex = 0;
+        state.stories.groups.forEach((group, groupIndex) => {
+          group.slides.forEach((slide, slideIndex) => {
+            const panel = doc.querySelectorAll(".lp-stories__panel")[panelIndex];
+            panelIndex += 1;
+            if (!panel) {
+              return;
+            }
+
+            attachText(panel.querySelector(".lp-stories__title"), { scope: "stories", field: "groupName", groupIndex });
+            attachText(panel.querySelector(".lp-stories__caption"), { scope: "stories", field: "caption", groupIndex, slideIndex }, { multiline: true });
+            attachMedia(panel.querySelector(".lp-stories__avatar"), { scope: "stories", field: "avatar" }, "URL do avatar");
+            attachMedia(panel.querySelector(".lp-stories__image, .lp-stories__video"), { scope: "stories", field: "src", groupIndex, slideIndex }, "URL da mídia");
+            attachColor(panel.querySelector(".lp-stories__caption"), { scope: "stories", field: "captionBackgroundColor" }, "cor do fundo da legenda");
+          });
+        });
+      }
+
+      if (tab === "article") {
+        attachText(doc.querySelector(".ll-article__tabs-head .ll-article__eyebrow"), { scope: "article", field: "eyebrow" });
+        attachText(doc.querySelector(".ll-article__tabs-head .ll-article__title"), { scope: "article", field: "title" });
+        attachText(doc.querySelector(".ll-article__tabs-head .ll-article__intro"), { scope: "article", field: "intro" }, { multiline: true });
+        attachColor(doc.querySelector(".ll-article__shell"), { scope: "article", field: "shellBackgroundColor" }, "cor do fundo geral");
+        attachColor(doc.querySelector(".ll-article__tabs"), { scope: "article", field: "tabsProtectionColor" }, "cor da proteção das abas");
+
+        doc.querySelectorAll(".ll-article__tab").forEach((button, tabIndex) => {
+          attachText(button.querySelector(".ll-article__tab-icon"), { scope: "article", tabIndex, field: "icon" });
+          attachText(button.querySelector(".ll-article__tab-title"), { scope: "article", tabIndex, field: "label" });
+          attachText(button.querySelector(".ll-article__tab-summary"), { scope: "article", tabIndex, field: "summary" });
+        });
+
+        doc.querySelectorAll(".ll-article__panel").forEach((panel, tabIndex) => {
+          attachMedia(panel, { scope: "article", tabIndex, field: "image" }, "URL da imagem de fundo");
+          attachColor(panel, { scope: "article", field: "overlayColor" }, "cor da proteção da imagem");
+          attachText(panel.querySelector(".ll-article__eyebrow"), { scope: "article", tabIndex, field: "eyebrow" });
+          attachText(panel.querySelector(".ll-article__heading"), { scope: "article", tabIndex, field: "heading" });
+          attachText(panel.querySelector(".ll-article__body"), { scope: "article", tabIndex, field: "body" }, { multiline: true });
+          panel.querySelectorAll(".ll-article__tag").forEach((tag, tagIndex) => {
+            attachText(tag, { scope: "article", tabIndex, field: "tag", tagIndex });
+          });
+        });
+      }
+
+      if (tab === "carousel") {
+        attachText(doc.querySelector(".ll-carousel__intro .ll-carousel__eyebrow"), { scope: "carousel", field: "eyebrow" });
+        attachText(doc.querySelector(".ll-carousel__intro .ll-carousel__title"), { scope: "carousel", field: "title" });
+        attachText(doc.querySelector(".ll-carousel__intro .ll-carousel__lead"), { scope: "carousel", field: "lead" }, { multiline: true });
+        attachColor(doc.querySelector(".ll-carousel"), { scope: "carousel", field: "softColor" }, "cor de fundo da seção");
+        attachColor(doc.querySelector(".ll-carousel__eyebrow"), { scope: "carousel", field: "brandColor" }, "cor de destaque");
+
+        doc.querySelectorAll(".ll-carousel__dot").forEach((dot, slideIndex) => {
+          attachText(dot.querySelector(".ll-carousel__dot-text"), { scope: "carousel", slideIndex, field: "navLabel" });
+          attachMedia(dot.querySelector(".ll-carousel__dot-icon"), { scope: "carousel", slideIndex, field: "navIconImage" }, "URL do ícone");
+        });
+
+        doc.querySelectorAll(".ll-carousel__panel").forEach((panel, slideIndex) => {
+          const slide = state.carousel.slides[slideIndex];
+          if (!slide) {
+            return;
+          }
+
+          attachMedia(panel.querySelector(".ll-carousel__image"), { scope: "carousel", slideIndex, field: "image" }, "URL da imagem");
+          attachColor(panel.querySelector(".ll-carousel__layout--impact"), { scope: "carousel", slideIndex, field: "backgroundColor" }, "cor do fundo");
+          attachColor(panel.querySelector(".ll-carousel__layout-copy"), { scope: "carousel", slideIndex, field: "textColor" }, "cor do texto");
+          attachColor(panel.querySelector(".ll-carousel__layout--media"), { scope: "carousel", slideIndex, field: "mediaBackgroundColor" }, "cor do fundo da mídia");
+          attachColor(panel.querySelector(".ll-carousel__caption"), { scope: "carousel", slideIndex, field: "backgroundColor" }, "cor do fundo da legenda");
+          attachColor(panel.querySelector(".ll-carousel__caption h3"), { scope: "carousel", slideIndex, field: "textColor" }, "cor do texto");
+          attachText(panel.querySelector(".ll-carousel__layout-eyebrow"), { scope: "carousel", slideIndex, field: "eyebrow" });
+          attachText(panel.querySelector(".ll-carousel__layout-title"), { scope: "carousel", slideIndex, field: "title" });
+          attachText(panel.querySelector(".ll-carousel__layout-text"), { scope: "carousel", slideIndex, field: "text" }, { multiline: true });
+          attachText(panel.querySelector(".ll-carousel__caption h3"), { scope: "carousel", slideIndex, field: "captionTitle" });
+          attachText(panel.querySelector(".ll-carousel__caption p"), { scope: "carousel", slideIndex, field: "captionText" }, { multiline: true });
+        });
+      }
+    }
+
+    function getPreviewDeviceConfig(device = state.responsive.previewDevice) {
+      return previewDevices.find((item) => item.key === device) || previewDevices[previewDevices.length - 1];
+    }
+
+    function getPreviewIdealWidth(config) {
+      if (config.key !== "desktop" || currentPage !== "conteudo") {
+        return config.width;
+      }
+
+      const widths = {
+        faq: 820,
+        table: 900,
+        stories: 520,
+        article: 1280,
+        carousel: 1280
+      };
+
+      return widths[currentEditorTab] || config.width;
+    }
+
+    function updatePreviewDeviceUi() {
+      const config = getPreviewDeviceConfig();
+      const idealWidth = getPreviewIdealWidth(config);
+      const fidelityLabel = config.key === "desktop" && currentPage === "conteudo" ? "largura fiel" : `${config.width}px`;
+      previewDeviceLabel.textContent = config.key === "desktop" && currentPage === "conteudo"
+        ? `${config.label} - ${idealWidth}px (${fidelityLabel})`
+        : `${config.label} - ${config.width}px`;
+      document.documentElement.dataset.previewDevice = config.key;
+      if (currentPage === "conteudo" && currentEditorTab === "dashboard") {
+        previewFrame.style.width = "100%";
+        previewFrame.style.maxWidth = "none";
+      } else {
+        previewFrame.style.width = config.key === "desktop" ? `min(100%, ${idealWidth}px)` : `${config.width}px`;
+        previewFrame.style.maxWidth = config.key === "desktop" ? "100%" : "none";
+      }
+      previewDeviceButtons.forEach((button) => {
+        button.setAttribute("aria-pressed", String(button.dataset.previewDevice === config.key));
+      });
+    }
+
+    function setPreviewDevice(device) {
+      const config = getPreviewDeviceConfig(device);
+      state.responsive.previewDevice = config.key;
+      updatePreviewDeviceUi();
+      updateOutput({ preservePreviewScroll: false });
+    }
+
     function updateOutput(options = {}) {
       const preservePreviewScroll = options.preservePreviewScroll !== false;
       const previewScrollPosition = preservePreviewScroll ? getPreviewScrollPosition() : null;
       generatedHtml.value = buildOutputHtml("html");
-      if (previewScrollPosition) {
-        previewFrame.addEventListener("load", () => {
+      updatePreviewDeviceUi();
+      previewFrame.addEventListener("load", () => {
+        setupPreviewEditing();
+        if (previewScrollPosition) {
           restorePreviewScrollPosition(previewScrollPosition);
-        }, { once: true });
-      }
+        }
+      }, { once: true });
       previewFrame.srcdoc = buildPreviewHtml();
       copyStatus.textContent = "";
     }
@@ -5888,8 +9210,11 @@ ${slides}
       const previousScrollTop = editor.scrollTop;
       updateEditorTabs();
       updateAddButtons();
+      updateCopyButtons(pageConfigs[currentPage]);
       updateViewportMode();
-      if (currentPage === "conteudo" && currentEditorTab === "table") {
+      if (currentPage === "conteudo" && currentEditorTab === "dashboard") {
+        editor.innerHTML = renderDashboardEditor();
+      } else if (currentPage === "conteudo" && currentEditorTab === "table") {
         editor.innerHTML = renderTableEditor();
       } else if (currentPage === "conteudo" && currentEditorTab === "stories") {
         editor.innerHTML = renderStoriesEditor();
@@ -5899,6 +9224,9 @@ ${slides}
         editor.innerHTML = renderCarouselEditor();
       } else {
         editor.innerHTML = renderFaqEditor();
+      }
+      if (currentPage === "conteudo" && currentEditorTab !== "dashboard") {
+        editor.insertAdjacentHTML("afterbegin", `${renderPresetPanel()}${renderResponsiveEditor()}`);
       }
       editor.scrollTop = preserveScroll ? previousScrollTop : 0;
 
@@ -6100,6 +9428,12 @@ ${slides}
     }
 
     function addCurrentItem() {
+      markResponsiveDirty();
+
+      if (currentPage === "conteudo" && currentEditorTab === "dashboard") {
+        return;
+      }
+
       if (currentPage === "conteudo" && currentEditorTab === "table") {
         addTableRow();
         return;
@@ -6122,6 +9456,13 @@ ${slides}
 
     async function copyGeneratedHtml(mode = "html") {
       const copyMode = mode === "full" ? "full" : "html";
+      if (state.responsive.dirty && copyMode === "full") {
+        const shouldCopy = window.confirm("Existe uma versão responsiva com alterações não salvas. Copiar agora não inclui esse rascunho. Copiar mesmo assim?");
+        if (!shouldCopy) {
+          return;
+        }
+      }
+
       const value = buildOutputHtml(copyMode);
       generatedHtml.value = value;
       generatedHtml.focus();
@@ -6161,6 +9502,18 @@ ${slides}
     });
 
     editor.addEventListener("input", (event) => {
+      if (event.target.matches("[data-preset-name]")) {
+        state.presets.name = event.target.value;
+        return;
+      }
+
+      if (event.target.matches("[data-user-preset-select]")) {
+        updateSelectedPreset(event.target.value);
+        return;
+      }
+
+      markResponsiveDirty();
+
       const faqBulkField = event.target.dataset.faqBulk;
       if (faqBulkField) {
         state.faqBulkInput = event.target.value;
@@ -6439,6 +9792,12 @@ ${slides}
     });
 
     editor.addEventListener("change", (event) => {
+      if (event.target.matches("[data-preset-import]")) {
+        importUserPresetFile(event.target.files && event.target.files[0]);
+        event.target.value = "";
+        return;
+      }
+
       if (event.target.matches("select") || event.target.matches('[data-article-field="shellBackgroundEnabled"], [data-article-field="overlayEnabled"], [data-article-field="tabsProtectionEnabled"], [data-carousel-field="showIntro"], [data-carousel-field="sectionGradientEnabled"], [data-carousel-field="showIndicators"], [data-carousel-field="reverse"], [data-carousel-field="gradientEnabled"]')) {
         event.target.dispatchEvent(new Event("input", { bubbles: true }));
       }
@@ -6533,15 +9892,116 @@ ${slides}
     }, true);
 
     editor.addEventListener("click", (event) => {
+      const homeReturnButton = event.target.closest("[data-dashboard-home-return]");
+      if (homeReturnButton) {
+        event.preventDefault();
+        returnDashboardHome();
+        return;
+      }
+
+      const guideButton = event.target.closest("[data-dashboard-guide]");
+      if (guideButton) {
+        event.preventDefault();
+        const nextDashboardView = guideButton.dataset.dashboardGuide || "layouts";
+        if (state.dashboard.view === nextDashboardView) {
+          return;
+        }
+        state.dashboard.view = nextDashboardView;
+        renderEditor(true);
+        return;
+      }
+
+      const dashboardButton = event.target.closest("[data-dashboard-tab]");
+      if (dashboardButton) {
+        event.preventDefault();
+        const nextDashboardTab = dashboardButton.dataset.dashboardTab;
+        if (["faq", "table", "stories", "article", "carousel"].includes(nextDashboardTab)) {
+          currentEditorTab = nextDashboardTab;
+          renderEditor();
+        }
+        return;
+      }
+
+      const responsiveModeButton = event.target.closest("[data-responsive-edit-device]");
+      if (responsiveModeButton) {
+        event.preventDefault();
+        setResponsiveEditDevice(responsiveModeButton.dataset.responsiveEditDevice);
+        return;
+      }
+
       const button = event.target.closest("[data-action]");
       if (!button) {
         return;
       }
 
       const action = button.dataset.action;
-      if (action.includes("story") || action.includes("article") || action.includes("carousel")) {
+      if (action.includes("story") || action.includes("article") || action.includes("carousel") || action.includes("responsive") || action.includes("preset")) {
         event.preventDefault();
         event.stopPropagation();
+      }
+
+      if (action === "save-user-preset") {
+        saveUserPreset();
+        return;
+      }
+
+      if (action === "load-user-preset") {
+        loadSelectedUserPreset();
+        return;
+      }
+
+      if (action === "delete-user-preset") {
+        deleteSelectedUserPreset();
+        return;
+      }
+
+      if (action === "import-user-presets") {
+        const input = editor.querySelector("[data-preset-import]");
+        if (input) {
+          input.click();
+        }
+        return;
+      }
+
+      if (action === "export-user-presets") {
+        exportUserPresets();
+        return;
+      }
+
+      if (action === "save-responsive") {
+        saveResponsiveDraft();
+        return;
+      }
+
+      if (action === "discard-responsive") {
+        discardResponsiveDraft();
+        return;
+      }
+
+      if (action === "remove-responsive-version") {
+        removeResponsiveVersion();
+        return;
+      }
+
+      const mutatingActions = [
+        "remove",
+        "fill-faq-bulk",
+        "add-table-column",
+        "remove-table-column",
+        "add-table-row",
+        "remove-table-row",
+        "fill-table-bulk",
+        "add-story-container",
+        "remove-story-container",
+        "add-story-slide",
+        "remove-story-slide",
+        "add-article-tab",
+        "remove-article-tab",
+        "add-carousel-slide",
+        "remove-carousel-slide"
+      ];
+      if (mutatingActions.includes(action)) {
+        markResponsiveDirty();
       }
 
       if (action === "remove") {
@@ -6618,16 +10078,33 @@ ${slides}
     editorTabButtons.forEach((button) => {
       button.addEventListener("click", () => {
         const requestedTab = button.dataset.editorTab;
-        currentEditorTab = ["faq", "table", "stories", "article", "carousel"].includes(requestedTab) ? requestedTab : "faq";
+        const nextEditorTab = ["faq", "table", "stories", "article", "carousel"].includes(requestedTab) ? requestedTab : "faq";
+        if (nextEditorTab !== currentEditorTab && !returnToBaseVersion()) {
+          return;
+        }
+        currentEditorTab = nextEditorTab;
         renderEditor();
       });
     });
 
-    document.querySelector("#addItem").addEventListener("click", addCurrentItem);
-    document.querySelector("#addItemTop").addEventListener("click", addCurrentItem);
+    homeReturnButtons.forEach((button) => {
+      button.addEventListener("click", (event) => {
+        event.preventDefault();
+        returnDashboardHome();
+      });
+    });
+
+    addButtons.forEach((button) => {
+      button.addEventListener("click", addCurrentItem);
+    });
     [...htmlCopyButtons, ...fullCopyButtons].forEach((button) => {
       button.addEventListener("click", () => {
         copyGeneratedHtml(button.dataset.copyMode);
+      });
+    });
+    previewDeviceButtons.forEach((button) => {
+      button.addEventListener("click", () => {
+        setPreviewDevice(button.dataset.previewDevice);
       });
     });
     window.addEventListener("hashchange", () => {
@@ -6635,10 +10112,21 @@ ${slides}
     });
     themeToggle.addEventListener("change", () => {
       setTheme(themeToggle.checked ? "dark" : "light");
+      updateOutput();
     });
     window.addEventListener("resize", updateViewportMode);
+    window.addEventListener("beforeunload", (event) => {
+      if (!state.responsive.dirty && !state.presets.dirty) {
+        return;
+      }
+
+      event.preventDefault();
+      event.returnValue = "";
+    });
 
     updateViewportMode();
+    updatePreviewDeviceUi();
+    loadUserPresets();
     setTheme(getInitialTheme());
     applyPage(getPageFromHash());
   </script>
