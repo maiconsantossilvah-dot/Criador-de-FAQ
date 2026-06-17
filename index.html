@@ -623,6 +623,15 @@
       font-weight: 750;
     }
 
+    .muted-note {
+      margin: 0;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 650;
+      line-height: 1.45;
+      opacity: 0.82;
+    }
+
     .field input,
     .field textarea,
     .field select {
@@ -1698,6 +1707,10 @@
       color: #d8e6f3;
     }
 
+    html[data-theme="dark"] .muted-note {
+      color: #9fb1c8;
+    }
+
     html[data-theme="dark"] .field input,
     html[data-theme="dark"] .field textarea,
     html[data-theme="dark"] .field select,
@@ -2486,8 +2499,9 @@
 
   .table-th-custom {
     background-color: var(--table-header-color, #ea5b0c);
-    color: var(--ll-carousel-caption-text, #fff);
+    color: #fff;
     font-weight: bold;
+    text-align: left;
   }
 
   .table-th-custom--first {
@@ -2812,6 +2826,12 @@ __TABLE_HEADER_COLORS__
     position: relative;
   }
 
+  .lp-stories__media {
+    position: relative;
+    z-index: 1;
+    cursor: pointer;
+  }
+
   .lp-stories__image,
   .lp-stories__video {
     width: 100%;
@@ -2839,7 +2859,7 @@ __TABLE_HEADER_COLORS__
 
   .lp-stories__caption {
     position: absolute;
-    z-index: 3;
+    z-index: 8;
     left: 16px;
     right: 16px;
     margin: 0;
@@ -2851,6 +2871,7 @@ __TABLE_HEADER_COLORS__
     overflow-wrap: anywhere;
     background: linear-gradient(90deg, var(--story-caption-bg-start), var(--story-caption-bg-end));
     text-shadow: 0 1px 10px rgba(0, 0, 0, 0.38);
+    pointer-events: auto;
   }
 
   .lp-stories__caption.is-top {
@@ -2863,18 +2884,19 @@ __TABLE_HEADER_COLORS__
 
   .lp-stories__nav {
     position: absolute;
-    z-index: 6;
+    z-index: 5;
     inset: 0;
     display: flex;
     align-items: center;
     justify-content: space-between;
-    pointer-events: auto;
+    pointer-events: none;
   }
 
   .lp-stories__arrow {
     position: absolute;
-    inset: 0;
-    width: 100%;
+    top: 0;
+    bottom: 0;
+    width: min(18%, 96px);
     height: 100%;
     border: 0;
     border-radius: 8px;
@@ -2890,7 +2912,11 @@ __TABLE_HEADER_COLORS__
   }
 
   .lp-stories__arrow.prev {
-    display: none;
+    left: 0;
+  }
+
+  .lp-stories__arrow.next {
+    right: 0;
   }
 
   @media (min-width: 576px) {
@@ -3161,7 +3187,7 @@ __STORIES_DYNAMIC_COLORS__
   .ll-article__stage {
     min-height: 620px;
     overflow: hidden;
-    border: 1px solid var(--ll-article-line);
+    border: 0;
     border-radius: var(--ll-article-radius);
     background: transparent;
     box-shadow: 0 24px 90px rgba(0, 0, 0, 0.36);
@@ -3209,6 +3235,8 @@ __STORIES_DYNAMIC_COLORS__
 
   .ll-article__panel-copy {
     display: grid;
+    position: relative;
+    z-index: 3;
     gap: 16px;
     justify-items: start;
     max-width: 720px;
@@ -3572,6 +3600,7 @@ __ARTICLE_DYNAMIC_COLORS__
     max-width: min(100%, 38rem);
     overflow: hidden;
     place-self: center end;
+    position: relative;
     width: 100%;
   }
 
@@ -3642,6 +3671,7 @@ __ARTICLE_DYNAMIC_COLORS__
     right: var(--ll-carousel-caption-right, auto);
     top: var(--ll-carousel-caption-top, 50%);
     transform: translate(var(--ll-carousel-caption-translate-x, 0), var(--ll-carousel-caption-translate-y, -50%));
+    z-index: 5;
   }
 
   .ll-carousel__caption h3 {
@@ -6712,7 +6742,7 @@ ${items}
             : "";
       const headerText = escapeHtml(label.trim() || `COLUNA ${index + 1}`);
 
-      return `                 <th class="table-text-custom table-th-custom table-th-custom--col-${index + 1}${radiusClass}" scope="col"${previewTextStyleAttr({ scope: "table", field: "column", columnIndex: index })}>${headerText}
+      return `                 <th class="table-text-custom table-th-custom table-th-custom--col-${index + 1}${radiusClass}" scope="col">${headerText}
                  </th>`;
     }
 
@@ -6720,7 +6750,7 @@ ${items}
       const columns = getTableColumns();
       const cells = columns.map((column, index) => {
         const cellClass = index === 0 ? "table-td-custom-title" : "table-td-custom-sub";
-        return `                 <td class="table-text-custom ${cellClass}"${previewTextStyleAttr({ scope: "table", field: "cell", rowIndex, cellIndex: index })}>${escapeHtml((row[index] || "").trim())}</td>`;
+        return `                 <td class="table-text-custom ${cellClass}">${escapeHtml((row[index] || "").trim())}</td>`;
       }).join("\n");
 
       return `               <tr class="table-tr-custom">
@@ -7439,10 +7469,12 @@ ${buildResponsiveStyle("faq", { includeDraft: true })}`;
 
         colorInput.addEventListener("input", () => {
           valueInput.value = colorInput.value;
+          applyLiveValue();
         });
         valueInput.addEventListener("input", () => {
           if (/^#[0-9a-fA-F]{6}$/.test(valueInput.value.trim())) {
             colorInput.value = normalizeHexColor(valueInput.value);
+            applyLiveValue();
           }
         });
 
@@ -7459,6 +7491,7 @@ ${buildResponsiveStyle("faq", { includeDraft: true })}`;
         form.appendChild(valueInput);
         valueInput.addEventListener("input", () => {
           valueInput.dataset.touched = "true";
+          applyLiveValue();
         });
 
         const grid = document.createElement("div");
@@ -7555,7 +7588,7 @@ ${buildResponsiveStyle("faq", { includeDraft: true })}`;
           valueInput.addEventListener("keydown", (event) => {
             if (event.key === "Enter" && (event.ctrlKey || event.metaKey)) {
               event.preventDefault();
-              form.requestSubmit();
+              closePreviewEditPopover();
             }
           });
         }
@@ -7566,6 +7599,7 @@ ${buildResponsiveStyle("faq", { includeDraft: true })}`;
         valueInput.value = currentValue;
         valueInput.placeholder = options.placeholder || "";
         form.appendChild(valueInput);
+        valueInput.addEventListener("input", () => applyLiveValue());
       }
 
       const actions = document.createElement("div");
@@ -7576,32 +7610,22 @@ ${buildResponsiveStyle("faq", { includeDraft: true })}`;
       resetStyleButton.type = "button";
       resetStyleButton.textContent = "Limpar estilo";
 
-      const cancelButton = document.createElement("button");
-      cancelButton.className = "button button--soft";
-      cancelButton.type = "button";
-      cancelButton.textContent = "Cancelar";
-
-      const applyButton = document.createElement("button");
-      applyButton.className = "button";
-      applyButton.type = "submit";
-      applyButton.textContent = "Aplicar";
+      const closeButton = document.createElement("button");
+      closeButton.className = "button";
+      closeButton.type = "button";
+      closeButton.textContent = "Fechar";
 
       if (isTextStyle) {
         actions.appendChild(resetStyleButton);
       }
-      actions.append(cancelButton, applyButton);
+      actions.appendChild(closeButton);
       form.appendChild(actions);
 
-      const applyValue = (options = {}) => {
+      const applyLiveValue = (options = {}) => {
         const nextValue = isColor ? normalizeHexColor(valueInput.value) : String(valueInput.value || "").trim();
-        const previousValue = isColor ? normalizeHexColor(currentValue) : String(currentValue || "").trim();
-        closePreviewEditPopover();
 
         if (isTextStyle) {
-          const textWasEdited = valueInput.dataset.touched === "true";
-          const nextText = textWasEdited
-            ? normalizePreviewText(nextValue, Boolean(options.multiline))
-            : readPreviewEditValue(meta);
+          const nextText = normalizePreviewText(nextValue, Boolean(options.multiline));
           const nextStyle = options.clearStyle ? {} : {
             color: styleInputs.color.value,
             fontSize: styleInputs.fontSize.value,
@@ -7618,20 +7642,25 @@ ${buildResponsiveStyle("faq", { includeDraft: true })}`;
           return;
         }
 
-        if (nextValue !== previousValue) {
-          updatePreviewEditValue({ ...meta, type: kind }, nextValue);
-        }
+        updatePreviewEditValue({ ...meta, type: kind }, nextValue);
       };
 
       form.addEventListener("submit", (event) => {
         event.preventDefault();
-        applyValue({ multiline: options.multiline });
+        closePreviewEditPopover();
       });
 
       resetStyleButton.addEventListener("click", () => {
-        applyValue({ clearStyle: true, multiline: options.multiline });
+        applyLiveValue({ clearStyle: true, multiline: options.multiline });
       });
-      cancelButton.addEventListener("click", closePreviewEditPopover);
+      closeButton.addEventListener("click", closePreviewEditPopover);
+
+      if (isTextStyle && styleInputs) {
+        Object.values(styleInputs).forEach((input) => {
+          input.addEventListener("input", () => applyLiveValue({ multiline: options.multiline }));
+          input.addEventListener("change", () => applyLiveValue({ multiline: options.multiline }));
+        });
+      }
 
       previewEditKeyHandler = (event) => {
         if (event.key === "Escape") {
@@ -8044,6 +8073,10 @@ ${buildResponsiveStyle("faq", { includeDraft: true })}`;
         [data-ll-preview-color]:hover {
           outline: 2px dashed rgba(234, 91, 12, 0.9);
         }
+        .ll-carousel__side-hint,
+        .lp-stories__arrow {
+          pointer-events: none !important;
+        }
       `;
       doc.head.appendChild(style);
       doc.addEventListener("mousedown", (event) => {
@@ -8051,6 +8084,19 @@ ${buildResponsiveStyle("faq", { includeDraft: true })}`;
           closePreviewEditPopover();
         }
       }, true);
+
+      const openMediaEditor = (event, element, meta, label) => {
+        if (!meta.scope || !meta.field) {
+          return;
+        }
+
+        event.preventDefault();
+        event.stopPropagation();
+        openPreviewEditPopover(event, { ...meta, type: "media" }, {
+          inputType: "url",
+          label
+        });
+      };
 
       const attachText = (element, meta, options = {}) => {
         if (!element) {
@@ -8135,34 +8181,18 @@ ${buildResponsiveStyle("faq", { includeDraft: true })}`;
         element.dataset.llPreviewMedia = "true";
         element.setAttribute("title", `Clique para trocar ${label}.`);
         element.addEventListener("click", (event) => {
-          const nestedEditable = event.target.closest("[data-ll-preview-text], [data-ll-preview-media]");
-          if (nestedEditable && nestedEditable !== element) {
-            return;
-          }
-
-          event.preventDefault();
-          event.stopPropagation();
-
-          const clickPoint = { clientX: event.clientX, clientY: event.clientY };
-          const openEditor = () => {
-            openPreviewEditPopover(clickPoint, { ...meta, type: "media" }, {
-              inputType: "url",
-              label
-            });
-          };
-
           if (element.dataset.llPreviewColor) {
             window.clearTimeout(element.__llPreviewMediaTimer);
             element.__llPreviewMediaTimer = window.setTimeout(() => {
               if (!element.__llPreviewSkipMedia) {
-                openEditor();
+                openMediaEditor(event, element, meta, label);
               }
               element.__llPreviewSkipMedia = false;
             }, 220);
             return;
           }
 
-          openEditor();
+          openMediaEditor(event, element, meta, label);
         });
       };
 
@@ -8221,17 +8251,6 @@ ${buildResponsiveStyle("faq", { includeDraft: true })}`;
         });
         doc.querySelectorAll('[id="faq-section__a-text"]').forEach((element, index) => {
           attachText(element, { scope: "faq", index, field: "answer" }, { multiline: true });
-        });
-      }
-
-      if (tab === "table") {
-        doc.querySelectorAll(".table-th-custom").forEach((element, columnIndex) => {
-          attachInlineText(element, { scope: "table", field: "column", columnIndex });
-        });
-        doc.querySelectorAll(".table-design-custom tbody tr").forEach((row, rowIndex) => {
-          row.querySelectorAll("td").forEach((cell, cellIndex) => {
-            attachInlineText(cell, { scope: "table", field: "cell", rowIndex, cellIndex });
-          });
         });
       }
 
@@ -8388,14 +8407,7 @@ ${buildResponsiveStyle("faq", { includeDraft: true })}`;
             <button class="button button--danger icon-button" type="button" data-action="remove" aria-label="Remover pergunta ${index + 1}" title="Remover pergunta">${trashIcon()}</button>
           </div>
           <div class="faq-editor__fields">
-            <label class="field">
-              <span>Pergunta</span>
-              <input type="text" value="${escapeHtml(item.question)}" data-field="question" autocomplete="off">
-            </label>
-            <label class="field">
-              <span>Resposta</span>
-              <textarea data-field="answer">${escapeHtml(item.answer)}</textarea>
-            </label>
+            <p class="muted-note">Edite a pergunta e a resposta clicando no texto da prévia.</p>
           </div>
         </article>
       `).join("");
@@ -8557,7 +8569,7 @@ ${rows}
                   </label>
                   <label class="field">
                     <span>URL da midia</span>
-                    <input type="text" value="${escapeHtml(slide.src)}" data-stories-field="src" data-story-group="${groupIndex}" data-story-slide="${slideIndex}" autocomplete="off">
+                    <span class="muted-note">Clique na mídia da prévia para trocar.</span>
                   </label>
 ${posterField}
                   <label class="field">
@@ -8580,10 +8592,7 @@ ${posterField}
                     </select>
                   </label>
                 </div>
-                <label class="field">
-                  <span>Legenda</span>
-                  <textarea data-stories-field="caption" data-story-group="${groupIndex}" data-story-slide="${slideIndex}">${escapeHtml(slide.caption)}</textarea>
-                </label>
+                <p class="muted-note">Texto, miniatura, avatar e fundo da legenda podem ser editados direto na prévia.</p>
               </div>
             </article>
           `;
@@ -8606,14 +8615,7 @@ ${posterField}
             </summary>
             <div class="stories-editor__body">
               <div class="stories-editor__grid">
-                <label class="field">
-                  <span>Nome da bolinha</span>
-                  <input type="text" value="${escapeHtml(group.name)}" data-stories-field="groupName" data-story-group="${groupIndex}" autocomplete="off">
-                </label>
-                <label class="field">
-                  <span>Miniatura da bolinha</span>
-                  <input type="text" value="${escapeHtml(group.thumb)}" data-stories-field="groupThumb" data-story-group="${groupIndex}" autocomplete="off">
-                </label>
+                <p class="muted-note">Clique no nome ou na miniatura da bolinha na prévia para editar.</p>
               </div>
 ${slides}
             </div>
@@ -8676,21 +8678,14 @@ ${slides}
                   <input type="text" value="${escapeHtml(state.stories.ariaLabel)}" data-stories-field="ariaLabel" autocomplete="off">
                 </label>
                 <label class="field">
-                  <span>Logo / avatar dos stories</span>
-                  <input type="text" value="${escapeHtml(state.stories.avatar)}" data-stories-field="avatar" autocomplete="off">
-                </label>
-                <label class="field">
                   <span>Borda das bolinhas</span>
                   <select data-stories-field="ringStyle">
                     <option value="gradient"${ringStyle === "gradient" ? " selected" : ""}>Degrade</option>
                     <option value="solid"${ringStyle === "solid" ? " selected" : ""}>Cor unica</option>
                   </select>
                 </label>
-                <label class="field">
-                  <span>Fundo da legenda</span>
-                  <input type="color" value="${normalizeHexColor(state.stories.captionBackgroundColor)}" data-stories-field="captionBackgroundColor">
-                </label>
 ${ringColorControls}
+                <p class="muted-note">Avatar e fundo da legenda também são editáveis pelo preview.</p>
               </div>
             </div>
           </details>
@@ -8709,41 +8704,6 @@ ${groups}
         const isOpen = state.article.openTabIndex === tabIndex ? " open" : "";
         const canRemoveTab = state.article.tabs.length > articleLimits.minTabs;
         const elements = getArticleTabElements(tab);
-        const iconField = elements.icon ? `
-                <label class="field">
-                  <span>Icone curto</span>
-                  <input type="text" value="${escapeHtml(tab.icon)}" data-article-field="icon" data-article-tab="${tabIndex}" autocomplete="off">
-                </label>` : "";
-        const summaryField = elements.summary ? `
-              <label class="field">
-                <span>Resumo da aba</span>
-                <input type="text" value="${escapeHtml(tab.summary)}" data-article-field="summary" data-article-tab="${tabIndex}" autocomplete="off">
-              </label>` : "";
-        const imageField = elements.image ? `
-              <label class="field">
-                <span>Imagem de fundo do bloco</span>
-                <input type="text" value="${escapeHtml(tab.image || "")}" data-article-field="image" data-article-tab="${tabIndex}" autocomplete="off">
-              </label>` : "";
-        const eyebrowField = elements.eyebrow ? `
-                <label class="field">
-                  <span>Eyebrow do painel</span>
-                  <input type="text" value="${escapeHtml(tab.eyebrow)}" data-article-field="eyebrow" data-article-tab="${tabIndex}" autocomplete="off">
-                </label>` : "";
-        const tagsField = elements.tags ? `
-                <label class="field">
-                  <span>Tags</span>
-                  <input type="text" value="${escapeHtml(tab.tags)}" data-article-field="tags" data-article-tab="${tabIndex}" autocomplete="off">
-                </label>` : "";
-        const headingField = elements.heading ? `
-              <label class="field">
-                <span>Titulo do painel</span>
-                <input type="text" value="${escapeHtml(tab.heading)}" data-article-field="heading" data-article-tab="${tabIndex}" autocomplete="off">
-              </label>` : "";
-        const bodyField = elements.body ? `
-              <label class="field">
-                <span>Texto do painel</span>
-                <textarea data-article-field="body" data-article-tab="${tabIndex}">${escapeHtml(tab.body)}</textarea>
-              </label>` : "";
 
         return `
           <details class="article-tab-editor" data-article-tab-panel="${tabIndex}"${isOpen}>
@@ -8766,21 +8726,7 @@ ${groups}
                 ${renderArticleElementToggle(tab, tabIndex, "body", "Texto")}
                 ${renderArticleElementToggle(tab, tabIndex, "tags", "Tags")}
               </div>
-              <div class="article-editor__grid">
-${iconField}
-                <label class="field">
-                  <span>Nome da aba</span>
-                  <input type="text" value="${escapeHtml(tab.label)}" data-article-field="label" data-article-tab="${tabIndex}" autocomplete="off">
-                </label>
-              </div>
-${imageField}
-${summaryField}
-              <div class="article-editor__grid">
-${eyebrowField}
-${tagsField}
-              </div>
-${headingField}
-${bodyField}
+              <p class="muted-note">Edite textos, tags, ícones e imagem clicando nos elementos da prévia.</p>
             </div>
           </details>
         `;
@@ -8832,25 +8778,12 @@ ${bodyField}
                 <span>Aria-label da secao</span>
                 <input type="text" value="${escapeHtml(state.article.ariaLabel)}" data-article-field="ariaLabel" autocomplete="off">
               </label>
-              <div class="article-editor__grid">
-                <label class="field">
-                  <span>Eyebrow</span>
-                  <input type="text" value="${escapeHtml(state.article.eyebrow)}" data-article-field="eyebrow" autocomplete="off">
-                </label>
-                <label class="field">
-                  <span>Titulo principal</span>
-                  <input type="text" value="${escapeHtml(state.article.title)}" data-article-field="title" autocomplete="off">
-                </label>
-              </div>
+              <p class="muted-note">Título, texto de apoio e cores principais podem ser alterados direto na prévia.</p>
               <div class="article-elements article-protection">
                 <span class="article-elements__title">Fundo geral da seção</span>
                 <label class="article-toggle">
                   <input type="checkbox" data-article-field="shellBackgroundEnabled"${state.article.shellBackgroundEnabled !== false ? " checked" : ""}>
                   <span>Usar fundo</span>
-                </label>
-                <label class="field">
-                  <span>Cor</span>
-                  <input type="color" value="${normalizeHexColor(state.article.shellBackgroundColor)}" data-article-field="shellBackgroundColor">
                 </label>
                 <label class="field">
                   <span>Opacidade</span>
@@ -8864,10 +8797,6 @@ ${bodyField}
                   <span>Usar proteção</span>
                 </label>
                 <label class="field">
-                  <span>Cor</span>
-                  <input type="color" value="${normalizeHexColor(state.article.tabsProtectionColor)}" data-article-field="tabsProtectionColor">
-                </label>
-                <label class="field">
                   <span>Opacidade</span>
                   <input type="number" min="0" max="0.95" step="0.05" value="${tabsProtectionOpacity}" data-article-field="tabsProtectionOpacity">
                 </label>
@@ -8879,18 +8808,10 @@ ${bodyField}
                   <span>Usar proteção</span>
                 </label>
                 <label class="field">
-                  <span>Cor</span>
-                  <input type="color" value="${normalizeHexColor(state.article.overlayColor)}" data-article-field="overlayColor">
-                </label>
-                <label class="field">
                   <span>Opacidade</span>
                   <input type="number" min="0" max="0.95" step="0.05" value="${overlayOpacity}" data-article-field="overlayOpacity">
                 </label>
               </div>
-              <label class="field">
-                <span>Texto de apoio</span>
-                <textarea data-article-field="intro">${escapeHtml(state.article.intro)}</textarea>
-              </label>
             </div>
           </details>
 
@@ -8925,52 +8846,12 @@ ${tabs}
               </label>
               <div class="article-editor__grid">
                 <label class="field">
-                  <span>Cor do fundo</span>
-                  <input type="color" value="${normalizeHexColor(slide.backgroundColor || "#f16425")}" data-carousel-field="backgroundColor" data-carousel-slide="${slideIndex}">
-                </label>
-                <label class="field">
-                  <span>Fim do degradê</span>
-                  <input type="color" value="${normalizeHexColor(slide.gradientEndColor || slide.backgroundColor || "#ff8a4f")}" data-carousel-field="gradientEndColor" data-carousel-slide="${slideIndex}">
-                </label>
-              </div>
-              <div class="article-editor__grid">
-                <label class="field">
-                  <span>Cor do texto</span>
-                  <input type="color" value="${normalizeHexColor(slide.textColor || "#fff7ef")}" data-carousel-field="textColor" data-carousel-slide="${slideIndex}">
-                </label>
-                <label class="field">
                   <span>Ângulo do degradê</span>
                   <input type="number" min="0" max="360" step="1" value="${normalizeCarouselGradientAngle(slide.gradientAngle)}" data-carousel-field="gradientAngle" data-carousel-slide="${slideIndex}">
                 </label>
               </div>
-              <div class="article-editor__grid">
-                <label class="field">
-                  <span>Eyebrow</span>
-                  <input type="text" value="${escapeHtml(slide.eyebrow || "")}" data-carousel-field="eyebrow" data-carousel-slide="${slideIndex}" autocomplete="off">
-                </label>
-                <label class="field">
-                  <span>Título</span>
-                  <input type="text" value="${escapeHtml(slide.title || "")}" data-carousel-field="title" data-carousel-slide="${slideIndex}" autocomplete="off">
-                </label>
-              </div>
-              <label class="field">
-                <span>Texto</span>
-                <textarea data-carousel-field="text" data-carousel-slide="${slideIndex}">${escapeHtml(slide.text || "")}</textarea>
-              </label>` : `
-              <div class="article-editor__grid">
-                <label class="field">
-                  <span>Fundo do slide</span>
-                  <input type="color" value="${normalizeHexColor(slide.mediaBackgroundColor || "#0d2333")}" data-carousel-field="mediaBackgroundColor" data-carousel-slide="${slideIndex}">
-                </label>
-                <label class="field">
-                  <span>Cor do bloco de texto</span>
-                  <input type="color" value="${normalizeHexColor(slide.backgroundColor || "#000000")}" data-carousel-field="backgroundColor" data-carousel-slide="${slideIndex}">
-                </label>
-              </div>
-              <label class="field">
-                <span>Cor do texto</span>
-                <input type="color" value="${normalizeHexColor(slide.textColor || "#ffffff")}" data-carousel-field="textColor" data-carousel-slide="${slideIndex}">
-              </label>
+              <p class="muted-note">Cores, título e texto do slide são editáveis direto na prévia.</p>` : `
+              <p class="muted-note">Cores e textos da legenda são editáveis direto na prévia.</p>
               <div class="article-editor__grid">
                 <label class="field">
                   <span>Posição horizontal</span>
@@ -8989,14 +8870,7 @@ ${tabs}
                   </select>
                 </label>
               </div>
-              <label class="field">
-                <span>Título da legenda</span>
-                <input type="text" value="${escapeHtml(slide.captionTitle || "")}" data-carousel-field="captionTitle" data-carousel-slide="${slideIndex}" autocomplete="off">
-              </label>
-              <label class="field">
-                <span>Texto da legenda</span>
-                <textarea data-carousel-field="captionText" data-carousel-slide="${slideIndex}">${escapeHtml(slide.captionText || "")}</textarea>
-              </label>`;
+              `;
 
         return `
           <details class="article-tab-editor" data-carousel-slide-panel="${slideIndex}"${isOpen}>
@@ -9017,10 +8891,6 @@ ${tabs}
                     <option value="decision"${type === "decision" ? " selected" : ""}>Decisão</option>
                   </select>
                 </label>
-                <label class="field">
-                  <span>Nome da aba</span>
-                  <input type="text" value="${escapeHtml(slide.navLabel || "")}" data-carousel-field="navLabel" data-carousel-slide="${slideIndex}" autocomplete="off">
-                </label>
               </div>
               <label class="field">
                 <span>Ícone da aba</span>
@@ -9034,17 +8904,10 @@ ${tabs}
                 </select>
               </label>
               <label class="field">
-                <span>Ícone custom .webp</span>
-                <input type="text" value="${escapeHtml(slide.navIconImage || "")}" data-carousel-field="navIconImage" data-carousel-slide="${slideIndex}" autocomplete="off">
-              </label>
-              <label class="field">
-                <span>URL da imagem</span>
-                <input type="text" value="${escapeHtml(slide.image || "")}" data-carousel-field="image" data-carousel-slide="${slideIndex}" autocomplete="off">
-              </label>
-              <label class="field">
                 <span>Alt da imagem</span>
                 <input type="text" value="${escapeHtml(slide.alt || "")}" data-carousel-field="alt" data-carousel-slide="${slideIndex}" autocomplete="off">
               </label>
+              <p class="muted-note">Nome da aba, ícone custom e imagem principal podem ser alterados clicando na prévia.</p>
               <div class="article-elements article-protection">
                 <span class="article-elements__title">Foco da imagem</span>
                 <div class="article-editor__grid">
@@ -9112,30 +8975,9 @@ ${impactFields}
                 <span>Aria-label da seção</span>
                 <input type="text" value="${escapeHtml(state.carousel.ariaLabel || "")}" data-carousel-field="ariaLabel" autocomplete="off">
               </label>
-              <div class="article-editor__grid">
-                <label class="field">
-                  <span>Eyebrow</span>
-                  <input type="text" value="${escapeHtml(state.carousel.eyebrow || "")}" data-carousel-field="eyebrow" autocomplete="off">
-                </label>
-                <label class="field">
-                  <span>Título</span>
-                  <input type="text" value="${escapeHtml(state.carousel.title || "")}" data-carousel-field="title" autocomplete="off">
-                </label>
-              </div>
-              <label class="field">
-                <span>Texto de apoio</span>
-                <textarea data-carousel-field="lead">${escapeHtml(state.carousel.lead || "")}</textarea>
-              </label>
+              <p class="muted-note">Título, texto de apoio e cor de destaque da introdução podem ser editados no preview.</p>
               <div class="article-elements article-protection">
                 <span class="article-elements__title">Cores gerais</span>
-                <label class="field">
-                  <span>Destaque</span>
-                  <input type="color" value="${normalizeHexColor(state.carousel.brandColor)}" data-carousel-field="brandColor">
-                </label>
-                <label class="field">
-                  <span>Fundo sólido</span>
-                  <input type="color" value="${normalizeHexColor(state.carousel.softColor)}" data-carousel-field="softColor">
-                </label>
                 <label class="article-toggle">
                   <input type="checkbox" data-carousel-field="sectionGradientEnabled"${state.carousel.sectionGradientEnabled !== false ? " checked" : ""}>
                   <span>Usar degradê no fundo da seção</span>
