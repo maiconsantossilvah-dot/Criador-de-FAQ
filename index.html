@@ -4632,6 +4632,7 @@ __CAROUSEL_DYNAMIC_COLORS__
     let previewEditOutsideHandler = null;
     let previewEditKeyHandler = null;
     let isPreviewFullscreen = false;
+    let templatePreviewUpdateTimer = 0;
     let currentPage = "conteudo";
     let currentEditorTab = "dashboard";
     const previewDevices = [
@@ -5592,9 +5593,52 @@ ${controls}
       return ["heart", "bottle", "sparkles", "box", "check", "none"].includes(value) ? value : "heart";
     }
 
+    function isInlineSvgMarkup(value) {
+      const text = String(value || "")
+        .trim()
+        .replace(/^<\?xml[\s\S]*?\?>\s*/i, "");
+      return /^<svg(?:\s|>)/i.test(text);
+    }
+
+    function sanitizeInlineSvgMarkup(value) {
+      const text = String(value || "")
+        .trim()
+        .replace(/^<\?xml[\s\S]*?\?>\s*/i, "");
+
+      if (!isInlineSvgMarkup(text)) {
+        return "";
+      }
+
+      return text
+        .replace(/<script[\s\S]*?<\/script>/gi, "")
+        .replace(/<(?:script|iframe|object|embed|link|meta)\b[^>]*\/?>/gi, "")
+        .replace(/\son\w+\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]+)/gi, "")
+        .replace(/\s(?:href|xlink:href)\s*=\s*(["'])\s*javascript:[\s\S]*?\1/gi, "")
+        .replace(/\s(?:href|xlink:href)\s*=\s*javascript:[^\s>]+/gi, "");
+    }
+
+    function createSvgElementFromMarkup(doc, value) {
+      const markup = sanitizeInlineSvgMarkup(value);
+      if (!markup) {
+        return null;
+      }
+
+      const parsed = new DOMParser().parseFromString(markup, "image/svg+xml");
+      const parsedSvg = parsed.documentElement;
+      if (!parsedSvg || parsedSvg.nodeName.toLowerCase() === "parsererror" || parsedSvg.tagName.toLowerCase() !== "svg") {
+        return null;
+      }
+
+      return doc.importNode(parsedSvg, true);
+    }
+
     function renderCarouselIcon(slide) {
       const iconImage = String(slide.navIconImage || "").trim();
       if (iconImage) {
+        if (isInlineSvgMarkup(iconImage)) {
+          return `<span class="ll-carousel__dot-icon ll-carousel__dot-icon--svg">${sanitizeInlineSvgMarkup(iconImage)}</span>`;
+        }
+
         return `<span class="ll-carousel__dot-icon"><img class="ll-carousel__dot-icon-img" src="${escapeHtml(iconImage)}" alt="" loading="lazy"></span>`;
       }
 
@@ -5807,9 +5851,10 @@ ${controls}
       <label class="ll-carousel__side-hint ll-carousel__side-hint--next ll-carousel__side-hint--${index + 1}" for="ll-carousel-slide-${nextIndex + 1}" role="button" aria-label="Avançar para o slide ${nextIndex + 1}">Próximo</label>`;
       }).join("\n") : "";
       const dots = slides.map((slide, index) => {
+        const dotNumber = slide.navNumber || String(index + 1).padStart(2, "0");
         return `    <label class="ll-carousel__dot ll-carousel__dot--${index + 1}" for="ll-carousel-slide-${index + 1}" role="button" aria-controls="ll-carousel-panel-${index + 1}">
       <span class="ll-carousel__dot-copy">
-        <span class="ll-carousel__dot-number">${String(index + 1).padStart(2, "0")}</span>
+        <span class="ll-carousel__dot-number"${previewTextStyleAttr({ scope: "carousel", slideIndex: index, field: "navNumber" })}>${escapeHtml(dotNumber)}</span>
         <span class="ll-carousel__dot-text"${previewTextStyleAttr({ scope: "carousel", slideIndex: index, field: "navLabel" })}>${escapeHtml(slide.navLabel || `Slide ${index + 1}`)}</span>
       </span>
       ${renderCarouselIcon(slide)}
@@ -8894,9 +8939,13 @@ ${buildResponsiveStyle("faq", { includeDraft: true })}`;
           });
         }
       } else {
-        valueInput = document.createElement("input");
+        valueInput = document.createElement(options.multiline ? "textarea" : "input");
         valueInput.className = "preview-edit-popover__field";
-        valueInput.type = options.inputType || "text";
+        if (!options.multiline) {
+          valueInput.type = options.inputType || "text";
+        } else if (options.rows) {
+          valueInput.rows = options.rows;
+        }
         valueInput.value = currentValue;
         valueInput.placeholder = options.placeholder || "";
         form.appendChild(valueInput);
@@ -9839,6 +9888,108 @@ ${buildResponsiveStyle("faq", { includeDraft: true })}`;
       urlInput.select();
     }
 
+    function openTemplateSvgPopover(sourceEvent, element) {
+      closePreviewEditPopover();
+
+      const form = document.createElement("form");
+      form.className = "preview-edit-popover preview-edit-popover--svg";
+      form.setAttribute("role", "dialog");
+      form.setAttribute("aria-label", "Editar SVG");
+
+      const title = document.createElement("p");
+      title.className = "preview-edit-popover__title";
+      title.textContent = "Editar SVG";
+      form.appendChild(title);
+
+      const field = document.createElement("label");
+      field.className = "field";
+      const fieldText = document.createElement("span");
+      fieldText.textContent = "Código SVG";
+      const textarea = document.createElement("textarea");
+      textarea.rows = 8;
+      textarea.value = element.outerHTML;
+      textarea.placeholder = "<svg ...>...</svg>";
+      field.append(fieldText, textarea);
+      form.appendChild(field);
+
+      const hint = document.createElement("p");
+      hint.className = "muted-note";
+      hint.textContent = "Cole o SVG completo. Scripts e eventos inline são removidos antes de entrar no HTML.";
+      form.appendChild(hint);
+
+      const actions = document.createElement("div");
+      actions.className = "preview-edit-popover__actions";
+      const closeButton = document.createElement("button");
+      closeButton.className = "button";
+      closeButton.type = "button";
+      closeButton.textContent = "Fechar";
+      actions.appendChild(closeButton);
+      form.appendChild(actions);
+
+      const attachSvgEditor = (svgElement) => {
+        svgElement.dataset.llPreviewMedia = "true";
+        svgElement.setAttribute("title", "Duplo clique para editar SVG.");
+        svgElement.addEventListener("dblclick", (event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          openTemplateSvgPopover(event, svgElement);
+        });
+      };
+
+      let currentElement = element;
+      let applyTimer = 0;
+      const applySvg = () => {
+        const nextSvg = createSvgElementFromMarkup(currentElement.ownerDocument, textarea.value);
+        if (!nextSvg) {
+          return;
+        }
+
+        const currentNodeId = currentElement.dataset.llTemplateNode;
+        if (currentNodeId) {
+          nextSvg.dataset.llTemplateNode = currentNodeId;
+        }
+        attachSvgEditor(nextSvg);
+        currentElement.replaceWith(nextSvg);
+        currentElement = nextSvg;
+        syncTemplateHtmlFromPreview();
+      };
+
+      textarea.addEventListener("input", () => {
+        window.clearTimeout(applyTimer);
+        applyTimer = window.setTimeout(applySvg, 300);
+      });
+      textarea.addEventListener("change", applySvg);
+      textarea.addEventListener("blur", applySvg);
+
+      form.addEventListener("submit", (event) => {
+        event.preventDefault();
+        applySvg();
+        closePreviewEditPopover();
+      });
+      closeButton.addEventListener("click", closePreviewEditPopover);
+
+      previewEditKeyHandler = (event) => {
+        if (event.key === "Escape") {
+          closePreviewEditPopover();
+        }
+      };
+      previewEditOutsideHandler = (event) => {
+        if (previewEditPopover && !previewEditPopover.contains(event.target)) {
+          closePreviewEditPopover();
+        }
+      };
+
+      document.body.appendChild(form);
+      previewEditPopover = form;
+      positionPreviewEditPopover(sourceEvent);
+      window.setTimeout(() => {
+        document.addEventListener("mousedown", previewEditOutsideHandler, true);
+        document.addEventListener("keydown", previewEditKeyHandler, true);
+      }, 0);
+      textarea.focus();
+      textarea.select();
+    }
+
     function updateTemplatePreviewEditValue(meta, rawValue, normalizedValue) {
       const element = getTemplatePreviewNode(meta);
       if (!element) {
@@ -9955,7 +10106,15 @@ ${buildResponsiveStyle("faq", { includeDraft: true })}`;
         }
 
         const slide = state.carousel.slides[meta.slideIndex];
-        return slide ? slide[meta.field] || "" : "";
+        if (!slide) {
+          return "";
+        }
+
+        if (meta.field === "navNumber") {
+          return slide.navNumber || String(Number(meta.slideIndex) + 1).padStart(2, "0");
+        }
+
+        return slide[meta.field] || "";
       }
 
       return "";
@@ -10142,9 +10301,13 @@ ${buildResponsiveStyle("faq", { includeDraft: true })}`;
 
         event.preventDefault();
         event.stopPropagation();
+        const acceptsSvg = /svg/i.test(label);
         openPreviewEditPopover(event, { ...meta, type: "media" }, {
-          inputType: "url",
-          label
+          inputType: acceptsSvg ? "text" : "url",
+          label,
+          multiline: acceptsSvg,
+          rows: 5,
+          placeholder: acceptsSvg ? "Cole uma URL .svg/.webp ou o código <svg>...</svg>" : ""
         });
       };
 
@@ -10275,6 +10438,20 @@ ${buildResponsiveStyle("faq", { includeDraft: true })}`;
         element.insertAdjacentElement("afterend", overlay);
       };
 
+      const attachTemplateSvg = (element) => {
+        if (!element) {
+          return;
+        }
+
+        element.dataset.llPreviewMedia = "true";
+        element.setAttribute("title", "Duplo clique para editar SVG.");
+        element.addEventListener("dblclick", (event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          openTemplateSvgPopover(event, element);
+        });
+      };
+
       const attachColor = (element, meta, label = "cor") => {
         if (!element) {
           return;
@@ -10386,6 +10563,12 @@ ${buildResponsiveStyle("faq", { includeDraft: true })}`;
         [root, ...root.querySelectorAll("*")].forEach((element) => {
           const header = findTemplateHeaderRoot(element, root);
           if (header && isTemplateHeaderBannerTarget(element, header)) {
+            return;
+          }
+
+          if (element.tagName === "SVG") {
+            markTemplateNode(element);
+            attachTemplateSvg(element);
             return;
           }
 
@@ -10533,8 +10716,9 @@ ${buildResponsiveStyle("faq", { includeDraft: true })}`;
         attachColor(doc.querySelector(".ll-carousel__eyebrow"), { scope: "carousel", field: "brandColor" }, "cor de destaque");
 
         doc.querySelectorAll(".ll-carousel__dot").forEach((dot, slideIndex) => {
+          attachText(dot.querySelector(".ll-carousel__dot-number"), { scope: "carousel", slideIndex, field: "navNumber" });
           attachText(dot.querySelector(".ll-carousel__dot-text"), { scope: "carousel", slideIndex, field: "navLabel" });
-          attachMedia(dot.querySelector(".ll-carousel__dot-icon"), { scope: "carousel", slideIndex, field: "navIconImage" }, "URL do ícone");
+          attachMedia(dot.querySelector(".ll-carousel__dot-icon"), { scope: "carousel", slideIndex, field: "navIconImage" }, "URL ou SVG do ícone");
         });
 
         doc.querySelectorAll(".ll-carousel__panel").forEach((panel, slideIndex) => {
@@ -10622,6 +10806,13 @@ ${buildResponsiveStyle("faq", { includeDraft: true })}`;
       state.responsive.previewDevice = config.key;
       updatePreviewDeviceUi();
       updateOutput({ preservePreviewScroll: false });
+    }
+
+    function scheduleTemplatePreviewUpdate(delay = 120) {
+      window.clearTimeout(templatePreviewUpdateTimer);
+      templatePreviewUpdateTimer = window.setTimeout(() => {
+        updateOutput();
+      }, delay);
     }
 
     function updateOutput(options = {}) {
@@ -11193,7 +11384,7 @@ ${impactFields}
               <p><strong>Referência rápida:</strong> produto à direita, aumente Left; produto à esquerda, diminua Left; produto no topo, diminua Top; produto embaixo, aumente Top.</p>
               <p><strong>Texto no layout Decisão:</strong> a cor do bloco de texto altera o overlay da legenda, e a cor do texto controla a leitura por cima dele. Use posição horizontal e vertical para mover esse bloco sem editar CSS.</p>
               <p><strong>Versão com cards:</strong> os ícones das abas, as bolinhas internas, o hover e o estado ativo podem ser editados na base do carrossel.</p>
-              <p><strong>Ícone custom:</strong> cole a URL do .webp no slide. Quando esse campo estiver preenchido, ele substitui o ícone pronto da aba.</p>
+              <p><strong>Ícone custom:</strong> cole a URL de .webp/.svg ou o código SVG inline no slide. Quando esse campo estiver preenchido, ele substitui o ícone pronto da aba.</p>
               <p><strong>Degradês:</strong> o fundo geral da seção e o fundo dos slides de impacto podem usar degradê. Se quiser algo mais seco, desative e trabalhe só com uma cor sólida.</p>
               <p><strong>Área segura:</strong> evite texto, logos e detalhes importantes perto das bordas. O produto principal deve ficar dentro da região central da imagem.</p>
               <p><strong>Texto do slide:</strong> use título curto e legenda objetiva para não cobrir demais o visual.</p>
@@ -11650,6 +11841,18 @@ ${slides}
       updateOutput();
     });
 
+    editor.addEventListener("paste", (event) => {
+      if (event.target?.dataset?.templateField !== "html") {
+        return;
+      }
+
+      window.setTimeout(() => {
+        state.template.html = event.target.value;
+        state.template.status = "";
+        scheduleTemplatePreviewUpdate(0);
+      }, 0);
+    });
+
     editor.addEventListener("input", (event) => {
       if (event.target.matches("[data-preset-name]")) {
         state.presets.name = event.target.value;
@@ -11673,7 +11876,7 @@ ${slides}
         if (templateField === "html") {
           state.template.html = event.target.value;
           state.template.status = "";
-          updateOutput();
+          scheduleTemplatePreviewUpdate();
           return;
         }
       }
