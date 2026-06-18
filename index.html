@@ -330,12 +330,14 @@
     }
 
     html[data-page="conteudo"][data-editor-tab="article"] .app,
-    html[data-page="conteudo"][data-editor-tab="carousel"] .app {
+    html[data-page="conteudo"][data-editor-tab="carousel"] .app,
+    html[data-page="conteudo"][data-editor-tab="template"] .app {
       width: min(1640px, calc(100% - 24px));
     }
 
     html[data-page="conteudo"][data-editor-tab="article"] .layout,
-    html[data-page="conteudo"][data-editor-tab="carousel"] .layout {
+    html[data-page="conteudo"][data-editor-tab="carousel"] .layout,
+    html[data-page="conteudo"][data-editor-tab="template"] .layout {
       grid-template-columns: minmax(420px, 0.56fr) minmax(700px, 1.44fr);
     }
 
@@ -349,12 +351,14 @@
       }
 
       html[data-page="conteudo"][data-editor-tab="article"] .app,
-      html[data-page="conteudo"][data-editor-tab="carousel"] .app {
+      html[data-page="conteudo"][data-editor-tab="carousel"] .app,
+      html[data-page="conteudo"][data-editor-tab="template"] .app {
         width: min(1880px, calc(100% - 20px));
       }
 
       html[data-page="conteudo"][data-editor-tab="article"] .layout,
-      html[data-page="conteudo"][data-editor-tab="carousel"] .layout {
+      html[data-page="conteudo"][data-editor-tab="carousel"] .layout,
+      html[data-page="conteudo"][data-editor-tab="template"] .layout {
         grid-template-columns: minmax(440px, 0.44fr) minmax(900px, 1.56fr);
       }
 
@@ -779,6 +783,33 @@
 
     .faq-bulk-panel .bulk-input {
       min-height: 150px;
+    }
+
+    .template-editor__actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .template-editor__textarea {
+      min-height: 300px !important;
+      font-family: "Consolas", "Courier New", monospace;
+      font-size: 12px;
+      line-height: 1.55;
+      white-space: pre;
+    }
+
+    .template-editor__file {
+      display: none;
+    }
+
+    .template-editor__status {
+      min-height: 18px;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 700;
+      line-height: 1.45;
     }
 
     .table-editor {
@@ -1321,6 +1352,54 @@
       background: #ffffff;
       border-radius: 8px;
       overflow: auto;
+    }
+
+    body.preview-fullscreen-active {
+      overflow: auto;
+    }
+
+    body.preview-fullscreen-active .app {
+      max-width: 1800px;
+    }
+
+    body.preview-fullscreen-active .layout {
+      grid-template-columns: minmax(0, 1fr) !important;
+    }
+
+    body.preview-fullscreen-active .editor-panel,
+    body.preview-fullscreen-active #generatedHtml,
+    body.preview-fullscreen-active #copyStatus {
+      display: none !important;
+    }
+
+    body.preview-fullscreen-active .output-panel {
+      grid-column: 1 / -1 !important;
+      width: 100%;
+      min-height: min(82vh, 980px);
+    }
+
+    body.preview-fullscreen-active #previewFullscreen {
+      display: inline-flex !important;
+      width: auto;
+    }
+
+    body.preview-fullscreen-active .output {
+      min-height: min(76vh, 900px);
+    }
+
+    body.preview-fullscreen-active .preview-shell {
+      width: 100%;
+      min-height: min(72vh, 860px);
+    }
+
+    body.preview-fullscreen-active .preview-canvas {
+      min-height: min(66vh, 790px);
+    }
+
+    body.preview-fullscreen-active .preview-frame {
+      width: 100% !important;
+      max-width: none !important;
+      min-height: min(66vh, 790px) !important;
     }
 
     html[data-page="conteudo"][data-editor-tab="stories"] .preview-canvas {
@@ -1976,74 +2055,76 @@
       height: 100%;
     }
 
-    html[data-viewport-mode="tall-workspace"][data-page="conteudo"]:is([data-editor-tab="article"], [data-editor-tab="carousel"]) body {
+    html[data-viewport-mode="tall-workspace"][data-page="conteudo"]:is([data-editor-tab="article"], [data-editor-tab="carousel"], [data-editor-tab="template"]) body {
       height: auto;
       overflow: auto;
     }
 
-    html[data-viewport-mode="tall-workspace"][data-page="conteudo"]:is([data-editor-tab="article"], [data-editor-tab="carousel"]) .app {
+    html[data-viewport-mode="tall-workspace"][data-page="conteudo"]:is([data-editor-tab="article"], [data-editor-tab="carousel"], [data-editor-tab="template"]) .app {
       width: min(1080px, calc(100% - 36px));
       height: auto;
       min-height: 100vh;
       padding: 24px 0;
     }
 
-    html[data-viewport-mode="tall-workspace"][data-page="conteudo"]:is([data-editor-tab="article"], [data-editor-tab="carousel"]) .topbar {
+    html[data-viewport-mode="tall-workspace"][data-page="conteudo"]:is([data-editor-tab="article"], [data-editor-tab="carousel"], [data-editor-tab="template"]) .topbar {
       align-items: flex-start;
       flex-direction: column;
       gap: 14px;
     }
 
-    html[data-viewport-mode="tall-workspace"][data-page="conteudo"]:is([data-editor-tab="article"], [data-editor-tab="carousel"]) .page-nav {
+    html[data-viewport-mode="tall-workspace"][data-page="conteudo"]:is([data-editor-tab="article"], [data-editor-tab="carousel"], [data-editor-tab="template"]) .page-nav {
       width: 100%;
     }
 
-    html[data-viewport-mode="tall-workspace"][data-page="conteudo"]:is([data-editor-tab="article"], [data-editor-tab="carousel"]) .page-nav__link {
+    html[data-viewport-mode="tall-workspace"][data-page="conteudo"]:is([data-editor-tab="article"], [data-editor-tab="carousel"], [data-editor-tab="template"]) .page-nav__link {
       flex: 1;
       justify-content: center;
     }
 
-    html[data-viewport-mode="tall-workspace"][data-page="conteudo"]:is([data-editor-tab="article"], [data-editor-tab="carousel"]) .actions {
+    html[data-viewport-mode="tall-workspace"][data-page="conteudo"]:is([data-editor-tab="article"], [data-editor-tab="carousel"], [data-editor-tab="template"]) .actions {
       justify-content: flex-start;
     }
 
-    html[data-viewport-mode="tall-workspace"][data-page="conteudo"]:is([data-editor-tab="article"], [data-editor-tab="carousel"]) .layout {
+    html[data-viewport-mode="tall-workspace"][data-page="conteudo"]:is([data-editor-tab="article"], [data-editor-tab="carousel"], [data-editor-tab="template"]) .layout {
       grid-template-columns: minmax(0, 1fr) !important;
       flex: initial;
     }
 
-    html[data-viewport-mode="tall-workspace"][data-page="conteudo"]:is([data-editor-tab="article"], [data-editor-tab="carousel"]) .panel,
-    html[data-viewport-mode="tall-workspace"][data-page="conteudo"]:is([data-editor-tab="article"], [data-editor-tab="carousel"]) .editor-panel .panel__body,
-    html[data-viewport-mode="tall-workspace"][data-page="conteudo"]:is([data-editor-tab="article"], [data-editor-tab="carousel"]) .output {
+    html[data-viewport-mode="tall-workspace"][data-page="conteudo"]:is([data-editor-tab="article"], [data-editor-tab="carousel"], [data-editor-tab="template"]) .panel,
+    html[data-viewport-mode="tall-workspace"][data-page="conteudo"]:is([data-editor-tab="article"], [data-editor-tab="carousel"], [data-editor-tab="template"]) .editor-panel .panel__body,
+    html[data-viewport-mode="tall-workspace"][data-page="conteudo"]:is([data-editor-tab="article"], [data-editor-tab="carousel"], [data-editor-tab="template"]) .output {
       display: block;
       overflow: visible;
     }
 
-    html[data-viewport-mode="tall-workspace"][data-page="conteudo"]:is([data-editor-tab="article"], [data-editor-tab="carousel"]) .faq-editor {
+    html[data-viewport-mode="tall-workspace"][data-page="conteudo"]:is([data-editor-tab="article"], [data-editor-tab="carousel"], [data-editor-tab="template"]) .faq-editor {
       height: auto;
       overflow: visible;
     }
 
-    html[data-viewport-mode="tall-workspace"][data-page="conteudo"]:is([data-editor-tab="article"], [data-editor-tab="carousel"]) .preview-shell {
+    html[data-viewport-mode="tall-workspace"][data-page="conteudo"]:is([data-editor-tab="article"], [data-editor-tab="carousel"], [data-editor-tab="template"]) .preview-shell {
       display: block;
       height: 720px;
       min-height: 520px;
     }
 
-    html[data-viewport-mode="tall-workspace"][data-page="conteudo"]:is([data-editor-tab="article"], [data-editor-tab="carousel"]) .preview-frame {
+    html[data-viewport-mode="tall-workspace"][data-page="conteudo"]:is([data-editor-tab="article"], [data-editor-tab="carousel"], [data-editor-tab="template"]) .preview-frame {
       height: 100%;
       min-height: 520px;
     }
 
     @media (min-width: 921px) and (max-width: 1800px) and (min-height: 1050px) {
       html[data-page="conteudo"][data-editor-tab="article"] body,
-      html[data-page="conteudo"][data-editor-tab="carousel"] body {
+      html[data-page="conteudo"][data-editor-tab="carousel"] body,
+      html[data-page="conteudo"][data-editor-tab="template"] body {
         height: auto;
         overflow: auto;
       }
 
       html[data-page="conteudo"][data-editor-tab="article"] .app,
-      html[data-page="conteudo"][data-editor-tab="carousel"] .app {
+      html[data-page="conteudo"][data-editor-tab="carousel"] .app,
+      html[data-page="conteudo"][data-editor-tab="template"] .app {
         width: min(1080px, calc(100% - 36px));
         height: auto;
         min-height: 100vh;
@@ -2051,30 +2132,35 @@
       }
 
       html[data-page="conteudo"][data-editor-tab="article"] .topbar,
-      html[data-page="conteudo"][data-editor-tab="carousel"] .topbar {
+      html[data-page="conteudo"][data-editor-tab="carousel"] .topbar,
+      html[data-page="conteudo"][data-editor-tab="template"] .topbar {
         align-items: flex-start;
         flex-direction: column;
         gap: 14px;
       }
 
       html[data-page="conteudo"][data-editor-tab="article"] .page-nav,
-      html[data-page="conteudo"][data-editor-tab="carousel"] .page-nav {
+      html[data-page="conteudo"][data-editor-tab="carousel"] .page-nav,
+      html[data-page="conteudo"][data-editor-tab="template"] .page-nav {
         width: 100%;
       }
 
       html[data-page="conteudo"][data-editor-tab="article"] .page-nav__link,
-      html[data-page="conteudo"][data-editor-tab="carousel"] .page-nav__link {
+      html[data-page="conteudo"][data-editor-tab="carousel"] .page-nav__link,
+      html[data-page="conteudo"][data-editor-tab="template"] .page-nav__link {
         flex: 1;
         justify-content: center;
       }
 
       html[data-page="conteudo"][data-editor-tab="article"] .actions,
-      html[data-page="conteudo"][data-editor-tab="carousel"] .actions {
+      html[data-page="conteudo"][data-editor-tab="carousel"] .actions,
+      html[data-page="conteudo"][data-editor-tab="template"] .actions {
         justify-content: flex-start;
       }
 
       html[data-page="conteudo"][data-editor-tab="article"] .layout,
-      html[data-page="conteudo"][data-editor-tab="carousel"] .layout {
+      html[data-page="conteudo"][data-editor-tab="carousel"] .layout,
+      html[data-page="conteudo"][data-editor-tab="template"] .layout {
         grid-template-columns: minmax(0, 1fr) !important;
         flex: initial;
       }
@@ -2082,7 +2168,9 @@
       html[data-page="conteudo"][data-editor-tab="article"] .editor-panel,
       html[data-page="conteudo"][data-editor-tab="article"] .output-panel,
       html[data-page="conteudo"][data-editor-tab="carousel"] .editor-panel,
-      html[data-page="conteudo"][data-editor-tab="carousel"] .output-panel {
+      html[data-page="conteudo"][data-editor-tab="carousel"] .output-panel,
+      html[data-page="conteudo"][data-editor-tab="template"] .editor-panel,
+      html[data-page="conteudo"][data-editor-tab="template"] .output-panel {
         grid-column: 1 / -1 !important;
         width: 100%;
       }
@@ -2092,26 +2180,32 @@
       html[data-page="conteudo"][data-editor-tab="article"] .output,
       html[data-page="conteudo"][data-editor-tab="carousel"] .panel,
       html[data-page="conteudo"][data-editor-tab="carousel"] .editor-panel .panel__body,
-      html[data-page="conteudo"][data-editor-tab="carousel"] .output {
+      html[data-page="conteudo"][data-editor-tab="carousel"] .output,
+      html[data-page="conteudo"][data-editor-tab="template"] .panel,
+      html[data-page="conteudo"][data-editor-tab="template"] .editor-panel .panel__body,
+      html[data-page="conteudo"][data-editor-tab="template"] .output {
         display: block;
         overflow: visible;
       }
 
       html[data-page="conteudo"][data-editor-tab="article"] .faq-editor,
-      html[data-page="conteudo"][data-editor-tab="carousel"] .faq-editor {
+      html[data-page="conteudo"][data-editor-tab="carousel"] .faq-editor,
+      html[data-page="conteudo"][data-editor-tab="template"] .faq-editor {
         height: auto;
         overflow: visible;
       }
 
       html[data-page="conteudo"][data-editor-tab="article"] .preview-shell,
-      html[data-page="conteudo"][data-editor-tab="carousel"] .preview-shell {
+      html[data-page="conteudo"][data-editor-tab="carousel"] .preview-shell,
+      html[data-page="conteudo"][data-editor-tab="template"] .preview-shell {
         display: block;
         height: 720px;
         min-height: 520px;
       }
 
       html[data-page="conteudo"][data-editor-tab="article"] .preview-frame,
-      html[data-page="conteudo"][data-editor-tab="carousel"] .preview-frame {
+      html[data-page="conteudo"][data-editor-tab="carousel"] .preview-frame,
+      html[data-page="conteudo"][data-editor-tab="template"] .preview-frame {
         height: 100%;
         min-height: 520px;
       }
@@ -2260,7 +2354,7 @@
       <div class="panel editor-panel">
         <div class="panel__head">
           <h2>Conteúdo</h2>
-          <button class="home-return is-hidden" type="button" data-dashboard-home-return aria-label="Voltar para o início">← Voltar pro início</button>
+          <button class="home-return is-hidden" type="button" data-dashboard-home-return aria-label="Voltar para o início">? Voltar pro início</button>
           <button class="button button--soft icon-button" id="addItem" type="button" aria-label="Adicionar pergunta" title="Adicionar pergunta">+</button>
         </div>
         <div class="panel__body">
@@ -2283,6 +2377,7 @@
           <div class="actions">
             <button class="button button--green" id="copyHtml" type="button" data-copy-mode="html">Copiar HTML</button>
             <button class="button button--green" id="copyHtmlCss" type="button" data-copy-mode="full">Copiar HTML/CSS</button>
+            <button class="button button--soft" id="previewFullscreen" type="button" data-preview-fullscreen>Ampliar prévia</button>
           </div>
         </div>
         <div class="panel__body output">
@@ -2299,6 +2394,7 @@
                 <button class="preview-devices__button" type="button" data-preview-device="tablet">Tablet</button>
                 <button class="preview-devices__button" type="button" data-preview-device="notebook">Notebook</button>
                 <button class="preview-devices__button" type="button" data-preview-device="desktop">Desktop</button>
+                <button class="preview-devices__button" type="button" data-preview-fullscreen>Ampliar prévia</button>
               </div>
             </div>
             <div class="preview-canvas" id="previewCanvas">
@@ -4179,7 +4275,8 @@ __CAROUSEL_DYNAMIC_COLORS__
           table: {},
           stories: {},
           article: {},
-          carousel: {}
+          carousel: {},
+          template: {}
         }
       },
       presets: {
@@ -4190,14 +4287,16 @@ __CAROUSEL_DYNAMIC_COLORS__
           table: "",
           stories: "",
           article: "",
-          carousel: ""
+          carousel: "",
+          template: ""
         },
         items: {
           faq: [],
           table: [],
           stories: [],
           article: [],
-          carousel: []
+          carousel: [],
+          template: []
         }
       },
       dashboard: {
@@ -4208,7 +4307,8 @@ __CAROUSEL_DYNAMIC_COLORS__
         table: {},
         stories: {},
         article: {},
-        carousel: {}
+        carousel: {},
+        template: {}
       },
       items: [
         { question: "", answer: "" },
@@ -4227,6 +4327,23 @@ __CAROUSEL_DYNAMIC_COLORS__
           ["", ""],
           ["", ""]
         ]
+      },
+      template: {
+        sourceLayout: "carousel",
+        header: {
+          type: "none",
+          imageUrl: "https://imgprd.martinsatacado.com.br/catalogoimg/catalogo/header.jpg",
+          imageAlt: "",
+          videoUrl: "https://imgprd.martinsatacado.com.br/catalogoimg/catalogo/header-precon.webm",
+          posterUrl: "https://imgprd.martinsatacado.com.br/catalogoimg/catalogo/header_precon.webp",
+          logoUrl: "https://static1.efacil.com.br/wcsstore//AuroraStorefrontAssetStore/PDP/precon/logo-precon.png",
+          logoLabel: "Logo da marca dentro de um circulo laranja",
+          brand: "marca",
+          title: "Titulo curto do produto",
+          subtitle: "Descricao breve do produto, destacando os principais atributos de forma clara."
+        },
+        html: "",
+        status: ""
       },
       stories: {
         ariaLabel: "Stories visuais e representativos do produto",
@@ -4510,9 +4627,11 @@ __CAROUSEL_DYNAMIC_COLORS__
     const addButtons = [document.querySelector("#addItem")].filter(Boolean);
     const htmlCopyButtons = [document.querySelector("#copyHtml")].filter(Boolean);
     const fullCopyButtons = [document.querySelector("#copyHtmlCss")].filter(Boolean);
+    const previewFullscreenButtons = Array.from(document.querySelectorAll("[data-preview-fullscreen]"));
     let previewEditPopover = null;
     let previewEditOutsideHandler = null;
     let previewEditKeyHandler = null;
+    let isPreviewFullscreen = false;
     let currentPage = "conteudo";
     let currentEditorTab = "dashboard";
     const previewDevices = [
@@ -4562,7 +4681,7 @@ __CAROUSEL_DYNAMIC_COLORS__
     const pageConfigs = {
       conteudo: {
         title: "Layout Lab",
-        subtitle: "Monte layouts de conteudo com FAQ, tabela, stories ou artigo e copie HTML ou HTML/CSS conforme a necessidade.",
+        subtitle: "Monte layouts de conteudo com FAQ, tabela, stories, artigo, carrossel ou LP e copie HTML ou HTML/CSS conforme a necessidade.",
         outputTitle: "Prévia do layout",
         copyLabel: "Copiar HTML",
         fullCopyLabel: "Copiar HTML/CSS",
@@ -4903,7 +5022,7 @@ __CAROUSEL_DYNAMIC_COLORS__
       }).join("") : `<option value="">Nenhum preset salvo</option>`;
       const hasSelection = Boolean(selectedId && presets.some((preset) => preset.id === selectedId));
 
-      const hasAnyPreset = ["faq", "table", "stories", "article", "carousel"].some((presetTab) => getUserPresets(presetTab).length > 0);
+      const hasAnyPreset = ["faq", "table", "stories", "article", "carousel", "template"].some((presetTab) => getUserPresets(presetTab).length > 0);
 
       return `
         <details class="preset-panel" aria-label="Presets salvos">
@@ -4957,7 +5076,7 @@ ${optionMarkup}
     function normalizePresetItems(items) {
       const normalizedItems = {};
 
-      ["faq", "table", "stories", "article", "carousel"].forEach((tab) => {
+      ["faq", "table", "stories", "article", "carousel", "template"].forEach((tab) => {
         normalizedItems[tab] = (Array.isArray(items && items[tab]) ? items[tab] : [])
           .map((preset) => ({
             id: preset && preset.id ? String(preset.id) : `preset-${Date.now()}-${Math.random().toString(16).slice(2)}`,
@@ -4984,7 +5103,7 @@ ${optionMarkup}
           state.presets.items = normalizePresetItems(items);
           state.presets.dirty = false;
 
-          ["faq", "table", "stories", "article", "carousel"].forEach((tab) => {
+          ["faq", "table", "stories", "article", "carousel", "template"].forEach((tab) => {
             state.presets.selected[tab] = state.presets.items[tab][0]?.id || "";
           });
 
@@ -4997,7 +5116,7 @@ ${optionMarkup}
     }
 
     function exportUserPresets() {
-      const hasAnyPreset = ["faq", "table", "stories", "article", "carousel"].some((tab) => getUserPresets(tab).length > 0);
+      const hasAnyPreset = ["faq", "table", "stories", "article", "carousel", "template"].some((tab) => getUserPresets(tab).length > 0);
 
       if (!hasAnyPreset) {
         window.alert("Nenhum preset salvo para exportar.");
@@ -5314,7 +5433,7 @@ ${controls}
       const isPortraitScreen = screen.width <= 1200
         && screen.height >= 1500;
       const isStackableTab = currentPage === "conteudo"
-        && (currentEditorTab === "article" || currentEditorTab === "carousel");
+        && (currentEditorTab === "article" || currentEditorTab === "carousel" || currentEditorTab === "template");
       const isTallWorkspace = isTallInner || isTallWindow || isPortraitScreen;
 
       document.documentElement.dataset.viewportMode = isTallWorkspace ? "tall-workspace" : "";
@@ -5784,6 +5903,16 @@ ${dots}
         ...section,
         meta: `${state.stories.groups.length} container${state.stories.groups.length === 1 ? "" : "s"} / ${storySlides} slide${storySlides === 1 ? "" : "s"}`
       } : section);
+    }
+
+    function getTemplateDashboardSection() {
+      return {
+        tab: "template",
+        icon: "LP",
+        title: "Modo LP container",
+        summary: "Edite o HTML que vai dentro de Detalhes do produto, separado dos layouts.",
+        meta: state.template.html.trim() ? "HTML carregado" : "Aguardando conteúdo"
+      };
     }
 
     function getContentDashboardGuides() {
@@ -6455,7 +6584,7 @@ ${cards}
 
       return `<section class="ll-research" aria-label="Pesquisa de design publicitário em 2026">
   <header class="ll-research__hero">
-    <button class="ll-research__home-chip" type="button" data-dashboard-preview-home aria-label="Início do Layout Lab">⌂ Layout Lab</button>
+    <button class="ll-research__home-chip" type="button" data-dashboard-preview-home aria-label="Início do Layout Lab">¦ Layout Lab</button>
     <span>Pesquisa de design publicitário</span>
     <h1>Tendências de design em 2026: IA, autoria humana e visuais com mais intenção.</h1>
     <p>Resumo prático da pesquisa enviada: o design publicitário de 2026 combina inteligência artificial, dados e personalização, mas precisa manter autenticidade para não virar estética genérica.</p>
@@ -6784,7 +6913,7 @@ ${trends}
 
       return `<section class="ll-copy-study" aria-label="Pesquisa de redação publicitária em 2026">
   <header class="ll-copy-study__hero">
-    <button class="ll-copy-study__home-chip" type="button" data-dashboard-preview-home aria-label="Início do Layout Lab">⌂ Layout Lab</button>
+    <button class="ll-copy-study__home-chip" type="button" data-dashboard-preview-home aria-label="Início do Layout Lab">¦ Layout Lab</button>
     <span>Pesquisa de redação publicitária</span>
     <h1>Copywriting em 2026: menos texto genérico, mais intenção humana.</h1>
     <p>Resumo prático do estudo enviado: a redação publicitária passa a equilibrar IA, velocidade e personalização com autenticidade, conexão real e mensagens menos superficiais.</p>
@@ -7136,15 +7265,29 @@ ${trends}
           <small>${escapeHtml(section.meta)}</small>
         </button>`;
       }).join("");
+      const lpSection = getTemplateDashboardSection();
+      const lpCard = `<button class="ll-dashboard__lp-card" type="button" data-dashboard-preview-tab="${lpSection.tab}" aria-label="Abrir ${escapeHtml(lpSection.title)}">
+    <span>${escapeHtml(lpSection.icon)}</span>
+    <div>
+      <strong>${escapeHtml(lpSection.title)}</strong>
+      <em>${escapeHtml(lpSection.summary)}</em>
+    </div>
+    <small>${escapeHtml(lpSection.meta)}</small>
+  </button>`;
 
       return `<section class="ll-dashboard" aria-label="Dashboard do Layout Lab">
   <div class="ll-dashboard__hero">
-    <button class="ll-dashboard__home-chip" type="button" data-dashboard-preview-home aria-label="Início do Layout Lab">⌂ Layout Lab</button>
+    <button class="ll-dashboard__home-chip" type="button" data-dashboard-preview-home aria-label="Início do Layout Lab">¦ Layout Lab</button>
     <h1>Qualidade Conteúdo</h1>
     <small>Escolha um layout para começar. Os guias ficam na coluna da esquerda.</small>
   </div>
+  <p class="ll-dashboard__section-label">Layouts de conteúdo</p>
   <div class="ll-dashboard__grid">
 ${cards}
+  </div>
+  <p class="ll-dashboard__section-label ll-dashboard__section-label--lp">Modo de integração</p>
+  <div class="ll-dashboard__lp">
+${lpCard}
   </div>
 </section>
 
@@ -7222,6 +7365,19 @@ ${cards}
     gap: 12px;
   }
 
+  .ll-dashboard__section-label {
+    margin: 0 0 10px;
+    color: ${colors.muted};
+    font-size: 12px;
+    font-weight: 900;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .ll-dashboard__section-label--lp {
+    margin-top: 24px;
+  }
+
   .ll-dashboard__card {
     display: grid;
     gap: 10px;
@@ -7275,11 +7431,85 @@ ${cards}
     font-size: 12px;
     font-weight: 800;
   }
+
+  .ll-dashboard__lp {
+    display: grid;
+  }
+
+  .ll-dashboard__lp-card {
+    display: grid;
+    grid-template-columns: 46px minmax(0, 1fr) auto;
+    gap: 16px;
+    align-items: center;
+    min-height: 112px;
+    padding: 18px;
+    border: 1px solid ${colors.line};
+    border-radius: 8px;
+    color: ${colors.ink};
+    background: linear-gradient(135deg, ${colors.card}, ${colors.cardHover});
+    text-align: left;
+    cursor: pointer;
+    box-shadow: ${colors.shadow};
+    transition: transform 0.14s ease, border-color 0.14s ease, background 0.14s ease;
+  }
+
+  .ll-dashboard__lp-card:hover,
+  .ll-dashboard__lp-card:focus-visible {
+    border-color: ${colors.warm};
+    outline: none;
+    transform: translateY(-2px);
+  }
+
+  .ll-dashboard__lp-card span {
+    display: inline-grid;
+    width: 46px;
+    height: 46px;
+    place-items: center;
+    border-radius: 8px;
+    color: #ffffff;
+    background: linear-gradient(135deg, ${colors.accent}, ${colors.warm});
+    font-size: 13px;
+    font-weight: 900;
+  }
+
+  .ll-dashboard__lp-card strong,
+  .ll-dashboard__lp-card em {
+    display: block;
+  }
+
+  .ll-dashboard__lp-card strong {
+    font-size: 20px;
+  }
+
+  .ll-dashboard__lp-card em {
+    margin-top: 5px;
+    color: ${colors.muted};
+    font-size: 13px;
+    font-style: normal;
+    line-height: 1.35;
+  }
+
+  .ll-dashboard__lp-card small {
+    color: ${colors.muted};
+    font-size: 12px;
+    font-weight: 900;
+    white-space: nowrap;
+  }
+
+  @media (max-width: 720px) {
+    .ll-dashboard__lp-card {
+      grid-template-columns: 46px minmax(0, 1fr);
+    }
+
+    .ll-dashboard__lp-card small {
+      grid-column: 2;
+    }
+  }
 </style>`;
     }
 
     function updateEditorTabs() {
-      const showTools = currentPage === "conteudo" && currentEditorTab !== "dashboard";
+      const showTools = currentPage === "conteudo" && currentEditorTab !== "dashboard" && currentEditorTab !== "template";
       document.documentElement.dataset.editorTab = currentPage === "conteudo" ? currentEditorTab : "";
       editorTools.classList.toggle("is-hidden", !showTools);
 
@@ -7296,13 +7526,14 @@ ${cards}
       const isStoriesTab = currentPage === "conteudo" && currentEditorTab === "stories";
       const isArticleTab = currentPage === "conteudo" && currentEditorTab === "article";
       const isCarouselTab = currentPage === "conteudo" && currentEditorTab === "carousel";
+      const isTemplateTab = currentPage === "conteudo" && currentEditorTab === "template";
       const showHomeReturn = currentPage === "conteudo" && (!isDashboardTab || state.dashboard.view !== "layouts");
       const label = isTableTab ? "Adicionar linha" : "Adicionar pergunta";
       homeReturnButtons.forEach((button) => {
         button.classList.toggle("is-hidden", !showHomeReturn);
       });
       addButtons.forEach((button) => {
-        button.classList.toggle("is-hidden", isDashboardTab || isStoriesTab || isArticleTab || isCarouselTab);
+        button.classList.toggle("is-hidden", isDashboardTab || isStoriesTab || isArticleTab || isCarouselTab || isTemplateTab);
         button.textContent = "+";
         button.setAttribute("aria-label", label);
         button.setAttribute("title", label);
@@ -7311,6 +7542,7 @@ ${cards}
 
     function updateCopyButtons(config) {
       const isDashboardTab = currentPage === "conteudo" && currentEditorTab === "dashboard";
+      const isTemplateTab = currentPage === "conteudo" && currentEditorTab === "template";
       outputTitle.textContent = isDashboardTab
         ? state.dashboard.view === "ecommerce-insights"
           ? "Guia de conteúdo"
@@ -7319,7 +7551,9 @@ ${cards}
             : state.dashboard.view === "copywriting-trends-2026"
               ? "Pesquisa de redação"
               : "Visão geral"
-        : config.outputTitle;
+        : isTemplateTab
+          ? "Prévia da LP"
+          : config.outputTitle;
 
       htmlCopyButtons.forEach((button) => {
         button.textContent = config.copyLabel;
@@ -7942,6 +8176,357 @@ ${styles}
 ${buildResponsiveStyle("faq")}`;
     }
 
+    function getTemplateLayoutOptions() {
+      return [
+        ["faq", "FAQ"],
+        ["table", "Tabela"],
+        ["stories", "Stories"],
+        ["article", "Artigo"],
+        ["carousel", "Carrossel"]
+      ];
+    }
+
+    function buildTemplateLayoutPackage(tab = state.template.sourceLayout) {
+      if (tab === "table") {
+        return buildResponsivePackage("table", () => buildTableSectionHtml(true), buildTableStyle);
+      }
+
+      if (tab === "stories") {
+        return buildResponsivePackage("stories", () => buildStoriesSectionHtml(), buildStoriesStyle);
+      }
+
+      if (tab === "article") {
+        return buildResponsivePackage("article", () => buildArticleSectionHtml(), buildArticleStyle);
+      }
+
+      if (tab === "carousel") {
+        return buildResponsivePackage("carousel", () => buildCarouselSectionHtml(), buildCarouselStyle);
+      }
+
+      return buildResponsivePackage("faq", () => buildFaqSectionHtml(), () => faqStyle);
+    }
+
+    function extractLpContainerHtml(value) {
+      const rawValue = String(value || "").trim();
+      if (!rawValue) {
+        return "";
+      }
+
+      if (!/<\/?[a-z][\s\S]*>/i.test(rawValue)) {
+        return rawValue;
+      }
+
+      const parsedDocument = new DOMParser().parseFromString(rawValue, "text/html");
+      const container = parsedDocument.querySelector(".lp-container, .lp_container");
+      return container ? container.innerHTML.trim() : rawValue;
+    }
+
+    function getTemplateHeaderDefaults() {
+      return {
+        type: "none",
+        imageUrl: "https://imgprd.martinsatacado.com.br/catalogoimg/catalogo/header.jpg",
+        imageAlt: "",
+        videoUrl: "https://imgprd.martinsatacado.com.br/catalogoimg/catalogo/header-precon.webm",
+        posterUrl: "https://imgprd.martinsatacado.com.br/catalogoimg/catalogo/header_precon.webp",
+        logoUrl: "https://static1.efacil.com.br/wcsstore//AuroraStorefrontAssetStore/PDP/precon/logo-precon.png",
+        logoLabel: "Logo da marca dentro de um circulo laranja",
+        brand: "marca",
+        title: "Titulo curto do produto",
+        subtitle: "Descricao breve do produto, destacando os principais atributos de forma clara."
+      };
+    }
+
+    function getTemplateHeader() {
+      state.template.header = {
+        ...getTemplateHeaderDefaults(),
+        ...(state.template.header || {})
+      };
+      if (!["none", "image", "video"].includes(state.template.header.type)) {
+        state.template.header.type = "none";
+      }
+      return state.template.header;
+    }
+
+    function stripHeaderImageVariant(url) {
+      const rawUrl = String(url || "").trim();
+      const [withoutHash, hash = ""] = rawUrl.split("#");
+      const queryIndex = withoutHash.indexOf("?");
+      if (queryIndex === -1) {
+        return rawUrl;
+      }
+
+      const path = withoutHash.slice(0, queryIndex);
+      const query = withoutHash.slice(queryIndex + 1)
+        .split("&")
+        .filter((param) => param && !/^ims=/i.test(param))
+        .join("&");
+      return `${path}${query ? `?${query}` : ""}${hash ? `#${hash}` : ""}`;
+    }
+
+    function withHeaderImageSize(url, width) {
+      const baseUrl = stripHeaderImageVariant(url);
+      if (!baseUrl) {
+        return "";
+      }
+      return `${baseUrl}${baseUrl.includes("?") ? "&" : "?"}ims=${width}x`;
+    }
+
+    function buildTemplateHeaderMarkup(headerData = {}, options = {}) {
+      const header = {
+        ...getTemplateHeaderDefaults(),
+        ...headerData
+      };
+      const type = header.type;
+      if (type === "none") {
+        return "";
+      }
+      const managedAttribute = options.includeLabAttrs ? ' data-ll-template-managed-header="true"' : "";
+
+      const logoHtml = header.logoUrl ? `
+    <div class="${type === "video" ? "video-header" : "product-header"}__badge" role="img" aria-label="${escapeHtml(header.logoLabel)}">
+      <img src="${escapeHtml(header.logoUrl)}" alt="" class="${type === "video" ? "video-header" : "product-header"}__badge-img">
+    </div>` : "";
+
+      if (type === "video") {
+        return `<section class="video-header"${managedAttribute} aria-label="Cabeçalho do produto">
+  <header class="video-header__banner">
+    <video class="video-header__banner-video" poster="${escapeHtml(header.posterUrl)}" preload="none" autoplay muted loop playsinline width="1200" height="250" aria-hidden="true">
+      <source src="${escapeHtml(header.videoUrl)}">
+    </video>${logoHtml}
+  </header>
+  <section class="video-header__body" aria-label="Título e descrição do produto">
+    <small class="video-header__brand">${escapeHtml(header.brand)}</small>
+    <h2 class="video-header__title" id="video-main-title">${escapeHtml(header.title)}</h2>
+    <p class="video-header__subtitle">${escapeHtml(header.subtitle)}</p>
+  </section>
+</section>`;
+      }
+
+      const cleanImageUrl = stripHeaderImageVariant(header.imageUrl);
+      return `<section class="product-header"${managedAttribute} aria-label="Cabeçalho do produto">
+  <header class="product-header__banner">
+    <picture style="width:100%; height:100%; margin:0;">
+      <source media="(max-width: 430px)" srcset="${escapeHtml(withHeaderImageSize(cleanImageUrl, 430))}">
+      <source media="(max-width: 768px)" srcset="${escapeHtml(withHeaderImageSize(cleanImageUrl, 768))}">
+      <source media="(max-width: 1024px)" srcset="${escapeHtml(withHeaderImageSize(cleanImageUrl, 1024))}">
+      <source media="(max-width: 1200px)" srcset="${escapeHtml(withHeaderImageSize(cleanImageUrl, 1200))}">
+      <img src="${escapeHtml(cleanImageUrl)}" alt="${escapeHtml(header.imageAlt)}" class="product-header__banner-img" loading="eager">
+    </picture>${logoHtml}
+  </header>
+  <section class="product-header__body" aria-label="Título e descrição do produto">
+    <small class="product-header__brand">${escapeHtml(header.brand)}</small>
+    <h2 class="product-header__title" id="product-main-title">${escapeHtml(header.title)}</h2>
+    <p class="product-header__subtitle">${escapeHtml(header.subtitle)}</p>
+  </section>
+</section>`;
+    }
+
+    function buildTemplateHeaderHtml(options = {}) {
+      return buildTemplateHeaderMarkup(getTemplateHeader(), options);
+    }
+
+    function buildTemplateHeaderStyle() {
+      return `<style>
+.product-header,
+.product-header *,
+.video-header,
+.video-header * {
+  box-sizing: border-box;
+  margin: 0;
+}
+
+.product-header,
+.video-header {
+  --badge-size: 8rem;
+  --banner-height: 250px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  background: #ffffff;
+  font-family: Arial, sans-serif;
+  overflow: hidden;
+}
+
+.product-header__banner,
+.video-header__banner {
+  position: relative;
+  width: 100%;
+  height: var(--banner-height);
+}
+
+.product-header__banner figure,
+.product-header__banner picture {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.product-header__banner-img,
+.video-header__banner-video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+}
+
+.product-header__badge,
+.video-header__badge {
+  position: absolute;
+  bottom: calc(var(--badge-size) / -2);
+  left: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--badge-size);
+  height: var(--badge-size);
+  border-radius: 50%;
+  background-color: #ff9900;
+  transform: translateX(-50%);
+  z-index: 2;
+}
+
+.product-header__badge-img,
+.video-header__badge-img {
+  max-width: 90px;
+  max-height: 90px;
+}
+
+.product-header__body,
+.video-header__body {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: calc(var(--badge-size) / 2 + 1.1rem) 0.3rem 2.5rem;
+  text-align: center;
+}
+
+.product-header__brand,
+.video-header__brand {
+  color: #ff9900;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.product-header__title,
+.video-header__title {
+  color: #000000;
+  font-size: clamp(1.4rem, 4vw, 2.4rem);
+  line-height: clamp(1.6rem, 4vw, 3.1rem);
+  font-weight: 800;
+  max-width: 920px;
+}
+
+.product-header__subtitle,
+.video-header__subtitle {
+  color: #8a8a8a;
+  font-size: clamp(1rem, 2vw, 1.2rem);
+  line-height: 1.5;
+  max-width: 840px;
+}
+
+@media (max-width: 768px) {
+  .product-header,
+  .video-header {
+    --banner-height: 180px;
+  }
+}
+
+@media (max-width: 470px) {
+  .product-header__subtitle,
+  .video-header__subtitle {
+    text-align: justify;
+    font-size: clamp(0.9rem, 2vw, 1.2rem);
+  }
+}
+</style>`;
+    }
+
+    function buildLpContainerCss(includeFrame = false) {
+      const frameCss = includeFrame ? `
+html,
+body {
+  margin: 0;
+  min-height: 100%;
+  background: #ffffff;
+}
+
+body {
+  font-family: Arial, sans-serif;
+  color: #111827;
+}
+` : "";
+
+      return `<style>
+${frameCss}
+.lp-container,
+.lp_container {
+  box-sizing: border-box;
+  width: 100%;
+  margin: 0 auto;
+  background: #ffffff;
+  overflow: hidden;
+  font-family: Arial, sans-serif;
+}
+
+.lp-container *,
+.lp-container *::before,
+.lp-container *::after,
+.lp_container *,
+.lp_container *::before,
+.lp_container *::after {
+  box-sizing: border-box;
+}
+
+.lp-container img,
+.lp-container video,
+.lp-container iframe,
+.lp_container img,
+.lp_container video,
+.lp_container iframe {
+  max-width: 100%;
+}
+</style>`;
+    }
+
+    function buildLpContainerHtml(value = state.template.html, options = {}) {
+      const content = extractLpContainerHtml(value);
+      const innerHtml = content || "";
+      return `<div class="lp-container">
+${innerHtml}
+</div>`;
+    }
+
+    function buildTemplatePreviewHtml() {
+      return `<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  ${buildLpContainerCss(true)}
+  ${buildTemplateHeaderStyle()}
+</head>
+<body>
+${buildLpContainerHtml(state.template.html, { includeLabAttrs: true })}
+</body>
+</html>`;
+    }
+
+    function buildTemplateOutputHtml(copyMode = "html") {
+      const containerHtml = buildLpContainerHtml();
+
+      if (copyMode === "full") {
+        return `${containerHtml}
+
+${buildTemplateHeaderStyle()}`;
+      }
+
+      return containerHtml;
+    }
+
     function buildPreviewHtml() {
       if (currentPage === "conteudo" && currentEditorTab === "dashboard") {
         return buildDashboardPreviewHtml();
@@ -7977,6 +8562,10 @@ ${buildResponsiveStyle("article", { includeDraft: true })}`;
 ${buildCarouselStyle()}
 
 ${buildResponsiveStyle("carousel", { includeDraft: true })}`;
+      }
+
+      if (currentPage === "conteudo" && currentEditorTab === "template") {
+        return buildTemplatePreviewHtml();
       }
 
       if (currentPage === "conteudo") {
@@ -8037,6 +8626,10 @@ ${buildResponsiveStyle("faq", { includeDraft: true })}`;
         }
 
         return carouselHtml;
+      }
+
+      if (currentEditorTab === "template") {
+        return buildTemplateOutputHtml(copyMode);
       }
 
       const faqHtml = buildFaqSectionHtml();
@@ -8458,7 +9051,7 @@ ${buildResponsiveStyle("faq", { includeDraft: true })}`;
     }
 
     function getTextStyleTab(meta) {
-      return ["table", "stories", "article", "carousel"].includes(meta.scope) ? meta.scope : "faq";
+      return ["table", "stories", "article", "carousel", "template"].includes(meta.scope) ? meta.scope : "faq";
     }
 
     function getPreviewTextStyleKey(meta) {
@@ -8563,6 +9156,718 @@ ${buildResponsiveStyle("faq", { includeDraft: true })}`;
       return style ? ` style="${escapeHtml(style)}"` : "";
     }
 
+    function getTemplatePreviewNode(meta) {
+      const doc = previewFrame.contentDocument;
+      if (!doc || !meta.templateNodeId) {
+        return null;
+      }
+
+      return doc.querySelector(`[data-ll-template-node="${meta.templateNodeId}"]`);
+    }
+
+    function isTransparentColor(value) {
+      const color = String(value || "").replace(/\s+/g, "").toLowerCase();
+      return !color || color === "transparent" || color === "rgba(0,0,0,0)";
+    }
+
+    function cleanTemplatePreviewClone(container) {
+      const clone = container.cloneNode(true);
+      [clone, ...clone.querySelectorAll("*")].forEach((element) => {
+        [
+          "data-ll-template-node",
+          "data-ll-preview-text",
+          "data-ll-preview-media",
+          "data-ll-preview-color",
+          "data-ll-preview-inline",
+          "data-ll-template-iframe-parent",
+          "data-ll-preview-header-editor",
+          "data-ll-preview-header-banner"
+        ].forEach((attribute) => element.removeAttribute(attribute));
+
+        const title = element.getAttribute("title") || "";
+        if (/^Clique para editar|^Clique para trocar|^Duplo clique para editar/i.test(title)) {
+          element.removeAttribute("title");
+        }
+      });
+
+      clone.querySelectorAll("[data-ll-template-helper]").forEach((element) => {
+        element.remove();
+      });
+
+      return clone;
+    }
+
+    function syncTemplateHtmlFromPreview() {
+      const doc = previewFrame.contentDocument;
+      const container = doc ? doc.querySelector(".lp-container, .lp_container") : null;
+      if (!container) {
+        return;
+      }
+
+      const clone = cleanTemplatePreviewClone(container);
+      state.template.html = clone.innerHTML.trim();
+      const textarea = editor.querySelector('[data-template-field="html"]');
+      if (textarea && document.activeElement !== textarea) {
+        textarea.value = state.template.html;
+      }
+      generatedHtml.value = buildOutputHtml("html");
+      copyStatus.textContent = "";
+    }
+
+    function getTemplateMediaValue(element) {
+      if (!element) {
+        return "";
+      }
+
+      const tagName = element.tagName;
+      if (tagName === "IMG" || tagName === "VIDEO" || tagName === "SOURCE" || tagName === "IFRAME") {
+        return element.getAttribute("src") || "";
+      }
+
+      const backgroundImage = element.style.backgroundImage || element.ownerDocument.defaultView.getComputedStyle(element).backgroundImage || "";
+      const urlMatch = backgroundImage.match(/url\(["']?(.+?)["']?\)/i);
+      return urlMatch ? urlMatch[1] : "";
+    }
+
+    function normalizeYouTubeEmbedUrl(value) {
+      const rawValue = String(value || "").trim();
+      if (!rawValue) {
+        return "";
+      }
+
+      try {
+        const url = new URL(rawValue, window.location.href);
+        const hostname = url.hostname.replace(/^www\./, "");
+        let videoId = "";
+
+        if (hostname === "youtu.be") {
+          videoId = url.pathname.split("/").filter(Boolean)[0] || "";
+        } else if (hostname.endsWith("youtube.com")) {
+          if (url.pathname.startsWith("/embed/")) {
+            return rawValue;
+          }
+
+          if (url.pathname.startsWith("/shorts/")) {
+            videoId = url.pathname.split("/").filter(Boolean)[1] || "";
+          } else {
+            videoId = url.searchParams.get("v") || "";
+          }
+        }
+
+        if (!videoId) {
+          return rawValue;
+        }
+
+        const embedUrl = new URL(`https://www.youtube.com/embed/${videoId}`);
+        const start = url.searchParams.get("start") || url.searchParams.get("t");
+        if (start) {
+          const seconds = /^\d+$/.test(start) ? start : String(start).replace(/[^\d]/g, "");
+          if (seconds) {
+            embedUrl.searchParams.set("start", seconds);
+          }
+        }
+        return embedUrl.toString();
+      } catch (error) {
+        return rawValue;
+      }
+    }
+
+    function setTemplateMediaValue(element, value) {
+      if (!element) {
+        return;
+      }
+
+      const tagName = element.tagName;
+      if (tagName === "IFRAME") {
+        element.setAttribute("src", normalizeYouTubeEmbedUrl(value));
+        element.setAttribute("allowfullscreen", "");
+        if (!element.getAttribute("allow")) {
+          element.setAttribute("allow", "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share");
+        }
+        return;
+      }
+
+      if (tagName === "IMG") {
+        element.setAttribute("src", value);
+        const picture = element.closest("picture");
+        if (picture) {
+          picture.querySelectorAll("source").forEach((source) => {
+            source.setAttribute("srcset", value);
+          });
+        } else {
+          element.removeAttribute("srcset");
+        }
+        return;
+      }
+
+      if (tagName === "VIDEO" || tagName === "SOURCE") {
+        element.setAttribute("src", value);
+        if (tagName === "VIDEO") {
+          element.load();
+        }
+        return;
+      }
+
+      element.style.backgroundImage = `url("${value.replaceAll('"', "%22")}")`;
+    }
+
+    function findTemplateHeaderRoot(element, root) {
+      if (!element || !root) {
+        return null;
+      }
+
+      const directHeader = element.closest(".product-header, .video-header");
+      if (directHeader && root.contains(directHeader)) {
+        return directHeader;
+      }
+
+      const headerNamePattern = /(product[-_\s]*header|video[-_\s]*header|header[-_\s]*(image|imagem|video)|cabecalho|cabe[cç]alho)/i;
+      const getNodeSignature = (node) => {
+        if (!node || node.nodeType !== 1) {
+          return "";
+        }
+        return [
+          node.tagName || "",
+          node.id || "",
+          typeof node.className === "string" ? node.className : "",
+          node.getAttribute?.("aria-label") || "",
+          node.getAttribute?.("aria-labelledby") || ""
+        ].join(" ");
+      };
+      const hasHeaderMedia = (node) => {
+        if (!node || node.nodeType !== 1) {
+          return false;
+        }
+        const computed = node.ownerDocument?.defaultView?.getComputedStyle(node);
+        const hasBackground = computed && computed.backgroundImage && computed.backgroundImage !== "none";
+        return Boolean(hasBackground || node.querySelector?.("img, picture, video, source, iframe"));
+      };
+      const hasHeaderText = (node) => {
+        if (!node || node.nodeType !== 1) {
+          return false;
+        }
+        return Boolean(node.querySelector?.("h1, h2, h3, p, small, .product-header__title, .video-header__title, .product-header__subtitle, .video-header__subtitle"));
+      };
+
+      const headerPart = element.closest(".product-header__banner, .video-header__banner, .product-header__body, .video-header__body, .product-header__banner-img, .video-header__banner-video, .product-header__badge, .video-header__badge");
+      let candidate = headerPart || element;
+      while (candidate && candidate !== root.parentElement) {
+        if (candidate.nodeType === 1 && root.contains(candidate)) {
+          if (headerNamePattern.test(getNodeSignature(candidate)) && hasHeaderMedia(candidate)) {
+            return candidate;
+          }
+
+          const hasBanner = candidate.querySelector?.(".product-header__banner, .video-header__banner, .product-header__banner-img, .video-header__banner-video");
+          const hasBody = candidate.querySelector?.(".product-header__body, .video-header__body, .product-header__title, .video-header__title");
+          if (hasBanner && hasBody) {
+            return candidate;
+          }
+
+          const isLikelyHeaderTag = ["HEADER", "SECTION", "ARTICLE"].includes(candidate.tagName);
+          if (isLikelyHeaderTag && hasHeaderMedia(candidate) && hasHeaderText(candidate) && headerNamePattern.test(getNodeSignature(candidate))) {
+            return candidate;
+          }
+        }
+        candidate = candidate.parentElement;
+      }
+
+      const firstContentBlock = Array.from(root.children).find((child) => {
+        return child.nodeType === 1 && child.tagName !== "STYLE" && child.tagName !== "SCRIPT";
+      });
+      if (firstContentBlock && firstContentBlock.contains(element) && hasHeaderMedia(firstContentBlock)) {
+        const signature = getNodeSignature(firstContentBlock);
+        if (headerNamePattern.test(signature) || hasHeaderText(firstContentBlock)) {
+          return firstContentBlock;
+        }
+      }
+
+      return null;
+    }
+
+    function getTemplateHeaderDataFromElement(element) {
+      const defaults = getTemplateHeaderDefaults();
+      const isVideoHeader = element.classList.contains("video-header")
+        || Boolean(element.querySelector(".video-header__banner, .video-header__banner-video, video"));
+      const image = element.querySelector(".product-header__banner-img, .video-header__banner-img, img");
+      const bannerImage = element.querySelector(".product-header__banner-img");
+      const video = element.querySelector(".video-header__banner-video, video");
+      const videoSource = video ? video.querySelector("source") : null;
+      const logo = element.querySelector(".product-header__badge-img, .video-header__badge-img");
+      const badge = element.querySelector(".product-header__badge, .video-header__badge");
+      const brand = element.querySelector(".product-header__brand, .video-header__brand");
+      const title = element.querySelector(".product-header__title, .video-header__title");
+      const subtitle = element.querySelector(".product-header__subtitle, .video-header__subtitle");
+
+      return {
+        ...defaults,
+        type: isVideoHeader ? "video" : "image",
+        imageUrl: stripHeaderImageVariant((bannerImage || image)?.getAttribute("src") || defaults.imageUrl),
+        imageAlt: (bannerImage || image)?.getAttribute("alt") || "",
+        videoUrl: videoSource?.getAttribute("src") || video?.getAttribute("src") || defaults.videoUrl,
+        posterUrl: video?.getAttribute("poster") || defaults.posterUrl,
+        logoUrl: logo?.getAttribute("src") || defaults.logoUrl,
+        logoLabel: badge?.getAttribute("aria-label") || defaults.logoLabel,
+        brand: (brand?.textContent || defaults.brand).trim(),
+        title: (title?.textContent || defaults.title).trim(),
+        subtitle: (subtitle?.textContent || defaults.subtitle).trim()
+      };
+    }
+
+    function createTemplateHeaderElement(doc, data) {
+      const wrapper = doc.createElement("div");
+      wrapper.innerHTML = buildTemplateHeaderMarkup(data).trim();
+      return wrapper.firstElementChild;
+    }
+
+    function getTemplateHeaderType(headerElement) {
+      return getTemplateHeaderDataFromElement(headerElement).type === "video" ? "video" : "image";
+    }
+
+    function getTemplateHeaderBannerElement(headerElement) {
+      if (!headerElement) {
+        return null;
+      }
+
+      const namedBanner = headerElement.querySelector(".product-header__banner, .video-header__banner");
+      if (namedBanner) {
+        return namedBanner;
+      }
+
+      const bannerMedia = headerElement.querySelector(".product-header__banner-img, .video-header__banner-video, picture, video");
+      if (!bannerMedia) {
+        return null;
+      }
+
+      return bannerMedia.closest("header, figure, picture, div, section") || bannerMedia;
+    }
+
+    function isTemplateHeaderBannerTarget(target, headerElement) {
+      const banner = getTemplateHeaderBannerElement(headerElement);
+      return Boolean(banner && target && (target === banner || banner.contains(target)));
+    }
+
+    function getTemplateHeaderBannerImage(headerElement) {
+      const banner = getTemplateHeaderBannerElement(headerElement);
+      if (!banner) {
+        return null;
+      }
+
+      return banner.querySelector(".product-header__banner-img")
+        || banner.querySelector("picture img")
+        || Array.from(banner.querySelectorAll("img")).find((image) => {
+          return !image.classList.contains("product-header__badge-img") && !image.classList.contains("video-header__badge-img");
+        })
+        || null;
+    }
+
+    function updateTemplateHeaderImageSources(headerElement, imageUrl) {
+      const banner = getTemplateHeaderBannerElement(headerElement);
+      if (!banner) {
+        return;
+      }
+
+      const cleanUrl = stripHeaderImageVariant(imageUrl);
+      const image = getTemplateHeaderBannerImage(headerElement);
+      if (image) {
+        image.setAttribute("src", cleanUrl);
+      }
+
+      const sources = banner.querySelectorAll("picture source");
+      const sizes = [430, 768, 1024, 1200];
+      sources.forEach((source, index) => {
+        source.setAttribute("srcset", withHeaderImageSize(cleanUrl, sizes[index] || 1200));
+      });
+    }
+
+    function updateTemplateHeaderVideoSources(headerElement, videoUrl, posterUrl) {
+      const banner = getTemplateHeaderBannerElement(headerElement);
+      const video = banner ? banner.querySelector(".video-header__banner-video, video") : null;
+      if (!video) {
+        return;
+      }
+
+      if (posterUrl !== undefined) {
+        video.setAttribute("poster", posterUrl);
+      }
+
+      const source = video.querySelector("source");
+      if (source) {
+        source.setAttribute("src", videoUrl);
+      } else {
+        video.setAttribute("src", videoUrl);
+      }
+
+      video.load?.();
+    }
+
+    function updateTemplateHeaderBannerInPlace(headerElement, data) {
+      if (data.type === "video") {
+        updateTemplateHeaderVideoSources(headerElement, data.videoUrl, data.posterUrl);
+        return;
+      }
+
+      updateTemplateHeaderImageSources(headerElement, data.imageUrl);
+      const image = getTemplateHeaderBannerImage(headerElement);
+      if (image) {
+        image.setAttribute("alt", data.imageAlt || "");
+      }
+    }
+
+    function renameTemplateHeaderClasses(root, targetType) {
+      const fromPrefix = targetType === "video" ? "product-header" : "video-header";
+      const toPrefix = targetType === "video" ? "video-header" : "product-header";
+
+      [root, ...root.querySelectorAll("*")].forEach((element) => {
+        Array.from(element.classList || []).forEach((className) => {
+          if (className === fromPrefix || className.startsWith(`${fromPrefix}__`)) {
+            element.classList.remove(className);
+            element.classList.add(className.replace(fromPrefix, toPrefix));
+          }
+        });
+      });
+
+      root.classList.remove(fromPrefix);
+      root.classList.add(toPrefix);
+    }
+
+    function convertTemplateBadgeForType(badge, targetType) {
+      if (!badge) {
+        return null;
+      }
+
+      const clone = badge.cloneNode(true);
+      renameTemplateHeaderClasses(clone, targetType);
+      return clone;
+    }
+
+    function createTemplateHeaderBannerForType(doc, data, badge) {
+      const wrapper = doc.createElement("div");
+      if (data.type === "video") {
+        wrapper.innerHTML = `<header class="video-header__banner">
+    <video class="video-header__banner-video" poster="${escapeHtml(data.posterUrl)}" preload="none" autoplay muted loop playsinline width="1200" height="250" aria-hidden="true">
+      <source src="${escapeHtml(data.videoUrl)}">
+    </video>
+  </header>`;
+      } else {
+        const cleanImageUrl = stripHeaderImageVariant(data.imageUrl);
+        wrapper.innerHTML = `<header class="product-header__banner">
+    <picture style="width:100%; height:100%; margin:0;">
+      <source media="(max-width: 430px)" srcset="${escapeHtml(withHeaderImageSize(cleanImageUrl, 430))}">
+      <source media="(max-width: 768px)" srcset="${escapeHtml(withHeaderImageSize(cleanImageUrl, 768))}">
+      <source media="(max-width: 1024px)" srcset="${escapeHtml(withHeaderImageSize(cleanImageUrl, 1024))}">
+      <source media="(max-width: 1200px)" srcset="${escapeHtml(withHeaderImageSize(cleanImageUrl, 1200))}">
+      <img src="${escapeHtml(cleanImageUrl)}" alt="${escapeHtml(data.imageAlt || "")}" class="product-header__banner-img" loading="eager">
+    </picture>
+  </header>`;
+      }
+
+      const banner = wrapper.firstElementChild;
+      const nextBadge = convertTemplateBadgeForType(badge, data.type);
+      if (banner && nextBadge) {
+        banner.appendChild(nextBadge);
+      }
+      return banner;
+    }
+
+    function convertTemplateHeaderTypeInPlace(headerElement, data) {
+      const banner = getTemplateHeaderBannerElement(headerElement);
+      const badge = banner ? banner.querySelector(".product-header__badge, .video-header__badge") : null;
+      const nextBanner = createTemplateHeaderBannerForType(headerElement.ownerDocument, data, badge);
+      if (!banner || !nextBanner) {
+        return false;
+      }
+
+      banner.replaceWith(nextBanner);
+      renameTemplateHeaderClasses(headerElement, data.type);
+
+      const title = headerElement.querySelector(".product-header__title, .video-header__title");
+      if (title && title.id) {
+        title.id = data.type === "video" ? "video-main-title" : "product-main-title";
+      }
+
+      return true;
+    }
+
+    function attachTemplateHeaderEditor(element) {
+      if (!element || element.dataset.llPreviewHeaderEditor === "true") {
+        return;
+      }
+
+      element.dataset.llPreviewHeaderEditor = "true";
+      const banner = getTemplateHeaderBannerElement(element);
+      if (banner) {
+        banner.dataset.llPreviewHeaderBanner = "true";
+        banner.style.cursor = "pointer";
+        banner.setAttribute("title", "Clique para editar o banner.");
+        banner.addEventListener("click", (event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          openTemplateHeaderPopover(event, element);
+        });
+      }
+    }
+
+    function openTemplateHeaderPopover(sourceEvent, headerElement) {
+      closePreviewEditPopover();
+
+      let activeHeader = headerElement;
+      let headerData = getTemplateHeaderDataFromElement(activeHeader);
+
+      const form = document.createElement("form");
+      form.className = "preview-edit-popover preview-edit-popover--header";
+      form.setAttribute("role", "dialog");
+      form.setAttribute("aria-label", "Editar banner da header");
+      form.innerHTML = `<p class="preview-edit-popover__title">Editar banner 1200x250</p>`;
+
+      const createField = (label, input) => {
+        const field = document.createElement("label");
+        field.className = "field";
+        const text = document.createElement("span");
+        text.textContent = label;
+        field.appendChild(text);
+        field.appendChild(input);
+        form.appendChild(field);
+        return field;
+      };
+
+      const typeSelect = document.createElement("select");
+      [
+        ["image", "Imagem (product-header)"],
+        ["video", "Vídeo (video-header)"]
+      ].forEach(([value, label]) => {
+        const option = document.createElement("option");
+        option.value = value;
+        option.textContent = label;
+        option.selected = headerData.type === value;
+        typeSelect.appendChild(option);
+      });
+      createField("1. Tipo de header", typeSelect);
+
+      const imageUrlInput = document.createElement("input");
+      imageUrlInput.type = "url";
+      imageUrlInput.value = headerData.imageUrl;
+      const imageUrlField = createField("URL da imagem", imageUrlInput);
+
+      const imageAltInput = document.createElement("input");
+      imageAltInput.type = "text";
+      imageAltInput.value = headerData.imageAlt;
+      const imageAltField = createField("Alt text da imagem", imageAltInput);
+
+      const videoUrlInput = document.createElement("input");
+      videoUrlInput.type = "url";
+      videoUrlInput.value = headerData.videoUrl;
+      const videoUrlField = createField("URL do vídeo", videoUrlInput);
+
+      const posterUrlInput = document.createElement("input");
+      posterUrlInput.type = "url";
+      posterUrlInput.value = headerData.posterUrl;
+      const posterUrlField = createField("Poster do vídeo", posterUrlInput);
+
+      const actions = document.createElement("div");
+      actions.className = "preview-edit-popover__actions";
+      const closeButton = document.createElement("button");
+      closeButton.className = "button";
+      closeButton.type = "button";
+      closeButton.textContent = "Fechar";
+      actions.appendChild(closeButton);
+      form.appendChild(actions);
+
+      const toggleFields = () => {
+        const isImage = typeSelect.value === "image";
+        imageUrlField.style.display = isImage ? "" : "none";
+        imageAltField.style.display = isImage ? "" : "none";
+        videoUrlField.style.display = isImage ? "none" : "";
+        posterUrlField.style.display = isImage ? "none" : "";
+      };
+
+      const readFields = () => ({
+        type: typeSelect.value === "video" ? "video" : "image",
+        imageUrl: imageUrlInput.value.trim(),
+        imageAlt: imageAltInput.value,
+        videoUrl: videoUrlInput.value.trim(),
+        posterUrl: posterUrlInput.value.trim(),
+        logoUrl: headerData.logoUrl,
+        logoLabel: headerData.logoLabel,
+        brand: headerData.brand,
+        title: headerData.title,
+        subtitle: headerData.subtitle
+      });
+
+      const applyHeader = () => {
+        const previousType = getTemplateHeaderType(activeHeader);
+        headerData = readFields();
+        if (headerData.type === previousType) {
+          updateTemplateHeaderBannerInPlace(activeHeader, headerData);
+          syncTemplateHtmlFromPreview();
+          return;
+        }
+
+        const converted = convertTemplateHeaderTypeInPlace(activeHeader, headerData);
+        if (!converted) {
+          const nextHeader = createTemplateHeaderElement(activeHeader.ownerDocument, headerData);
+          if (!nextHeader) {
+            return;
+          }
+          activeHeader.replaceWith(nextHeader);
+          activeHeader = nextHeader;
+        }
+        attachTemplateHeaderEditor(activeHeader);
+        toggleFields();
+        syncTemplateHtmlFromPreview();
+      };
+
+      [
+        typeSelect,
+        imageUrlInput,
+        imageAltInput,
+        videoUrlInput,
+        posterUrlInput
+      ].forEach((input) => {
+        input.addEventListener("input", applyHeader);
+        input.addEventListener("change", applyHeader);
+      });
+
+      form.addEventListener("submit", (event) => {
+        event.preventDefault();
+        closePreviewEditPopover();
+      });
+      closeButton.addEventListener("click", closePreviewEditPopover);
+      toggleFields();
+
+      previewEditKeyHandler = (event) => {
+        if (event.key === "Escape") {
+          closePreviewEditPopover();
+        }
+      };
+      previewEditOutsideHandler = (event) => {
+        if (previewEditPopover && !previewEditPopover.contains(event.target)) {
+          closePreviewEditPopover();
+        }
+      };
+
+      document.body.appendChild(form);
+      previewEditPopover = form;
+      positionPreviewEditPopover(sourceEvent);
+      window.setTimeout(() => {
+        document.addEventListener("mousedown", previewEditOutsideHandler, true);
+        document.addEventListener("keydown", previewEditKeyHandler, true);
+      }, 0);
+      const initialFocus = typeSelect;
+      initialFocus.focus();
+      initialFocus.select?.();
+    }
+
+    function openTemplateImagePopover(sourceEvent, element, meta, label) {
+      const root = element?.ownerDocument?.querySelector(".lp-container, .lp_container");
+      const header = root ? findTemplateHeaderRoot(element, root) : null;
+      if (header && isTemplateHeaderBannerTarget(sourceEvent?.target || element, header)) {
+        openTemplateHeaderPopover(sourceEvent, header);
+        return;
+      }
+
+      closePreviewEditPopover();
+
+      const form = document.createElement("form");
+      form.className = "preview-edit-popover";
+      form.innerHTML = `<h3>${escapeHtml(label)}</h3>`;
+
+      const createField = (fieldLabel, input) => {
+        const field = document.createElement("label");
+        field.className = "field";
+        const text = document.createElement("span");
+        text.textContent = fieldLabel;
+        field.appendChild(text);
+        field.appendChild(input);
+        form.appendChild(field);
+      };
+
+      const urlInput = document.createElement("input");
+      urlInput.type = "url";
+      urlInput.value = getTemplateMediaValue(element);
+      createField("URL da imagem", urlInput);
+
+      const altInput = document.createElement("input");
+      altInput.type = "text";
+      altInput.value = element.getAttribute("alt") || "";
+      createField("Alt text", altInput);
+
+      const actions = document.createElement("div");
+      actions.className = "preview-edit-popover__actions";
+      const closeButton = document.createElement("button");
+      closeButton.className = "button";
+      closeButton.type = "button";
+      closeButton.textContent = "Fechar";
+      actions.appendChild(closeButton);
+      form.appendChild(actions);
+
+      const applyImage = () => {
+        setTemplateMediaValue(element, urlInput.value.trim());
+        element.setAttribute("alt", altInput.value);
+        syncTemplateHtmlFromPreview();
+      };
+
+      urlInput.addEventListener("input", applyImage);
+      urlInput.addEventListener("change", applyImage);
+      altInput.addEventListener("input", applyImage);
+      altInput.addEventListener("change", applyImage);
+
+      form.addEventListener("submit", (event) => {
+        event.preventDefault();
+        closePreviewEditPopover();
+      });
+      closeButton.addEventListener("click", closePreviewEditPopover);
+
+      previewEditKeyHandler = (event) => {
+        if (event.key === "Escape") {
+          closePreviewEditPopover();
+        }
+      };
+      previewEditOutsideHandler = (event) => {
+        if (previewEditPopover && !previewEditPopover.contains(event.target)) {
+          closePreviewEditPopover();
+        }
+      };
+
+      document.body.appendChild(form);
+      previewEditPopover = form;
+      positionPreviewEditPopover(sourceEvent);
+      window.setTimeout(() => {
+        document.addEventListener("mousedown", previewEditOutsideHandler, true);
+        document.addEventListener("keydown", previewEditKeyHandler, true);
+      }, 0);
+      urlInput.focus();
+      urlInput.select();
+    }
+
+    function updateTemplatePreviewEditValue(meta, rawValue, normalizedValue) {
+      const element = getTemplatePreviewNode(meta);
+      if (!element) {
+        return;
+      }
+
+      if (meta.type === "textStyle") {
+        const textValue = normalizePreviewText(rawValue && rawValue.text, Boolean(meta.multiline));
+        element.textContent = textValue;
+
+        const style = normalizePreviewTextStyle(rawValue && rawValue.style ? rawValue.style : {});
+        ["color", "fontSize", "fontWeight", "fontStyle", "textAlign", "lineHeight"].forEach((property) => {
+          element.style[property] = "";
+        });
+        if (style.color) element.style.color = style.color;
+        if (style.fontSize) element.style.fontSize = `${style.fontSize}px`;
+        if (style.fontWeight) element.style.fontWeight = style.fontWeight;
+        if (style.fontStyle) element.style.fontStyle = style.fontStyle;
+        if (style.textAlign) element.style.textAlign = style.textAlign;
+        if (style.lineHeight) element.style.lineHeight = String(style.lineHeight);
+      } else if (meta.type === "media") {
+        setTemplateMediaValue(element, normalizedValue);
+      } else if (meta.type === "color") {
+        element.style.backgroundColor = normalizedValue;
+      }
+
+      syncTemplateHtmlFromPreview();
+    }
+
     function getComputedPreviewTextStyle(element) {
       const view = element.ownerDocument?.defaultView;
       const computed = view ? view.getComputedStyle(element) : null;
@@ -8582,6 +9887,10 @@ ${buildResponsiveStyle("faq", { includeDraft: true })}`;
     }
 
     function readPreviewEditValue(meta) {
+      if (meta.scope === "template") {
+        return meta.value || "";
+      }
+
       if (meta.scope === "faq") {
         const item = state.items[meta.index];
         return item ? item[meta.field] || "" : "";
@@ -8660,6 +9969,11 @@ ${buildResponsiveStyle("faq", { includeDraft: true })}`;
         : isColor
           ? normalizeHexColor(rawValue)
           : String(rawValue || "");
+
+      if (meta.scope === "template") {
+        updateTemplatePreviewEditValue(meta, rawValue, value);
+        return;
+      }
 
       if (currentPage === "conteudo") {
         markResponsiveDirty();
@@ -8785,6 +10099,23 @@ ${buildResponsiveStyle("faq", { includeDraft: true })}`;
         .lp-stories__arrow {
           pointer-events: none !important;
         }
+        [data-ll-template-iframe-parent] {
+          position: relative !important;
+        }
+        .ll-template-iframe-edit {
+          position: absolute;
+          z-index: 2147483647;
+          border: 0;
+          padding: 0;
+          background: rgba(14, 165, 233, 0.02);
+          cursor: pointer;
+        }
+        .ll-template-iframe-edit:hover,
+        .ll-template-iframe-edit:focus {
+          outline: 2px dashed rgba(14, 165, 233, 0.9);
+          outline-offset: 3px;
+          box-shadow: 0 0 0 4px rgba(14, 165, 233, 0.12);
+        }
       `;
       doc.head.appendChild(style);
       doc.addEventListener("mousedown", (event) => {
@@ -8796,6 +10127,17 @@ ${buildResponsiveStyle("faq", { includeDraft: true })}`;
       const openMediaEditor = (event, element, meta, label) => {
         if (!meta.scope || !meta.field) {
           return;
+        }
+
+        if (meta.scope === "template") {
+          const root = element?.ownerDocument?.querySelector(".lp-container, .lp_container");
+          const header = root ? (findTemplateHeaderRoot(event.target, root) || findTemplateHeaderRoot(element, root)) : null;
+          if (header && isTemplateHeaderBannerTarget(event.target || element, header)) {
+            event.preventDefault();
+            event.stopPropagation();
+            openTemplateHeaderPopover(event, header);
+            return;
+          }
         }
 
         event.preventDefault();
@@ -8904,6 +10246,34 @@ ${buildResponsiveStyle("faq", { includeDraft: true })}`;
         });
       };
 
+      const attachIframeMedia = (element, meta, label = "URL do vídeo do YouTube") => {
+        if (!element || !element.parentElement) {
+          return;
+        }
+
+        element.dataset.llPreviewMedia = "true";
+        element.setAttribute("title", `Clique para trocar ${label}.`);
+
+        const parent = element.parentElement;
+        parent.dataset.llTemplateIframeParent = "true";
+
+        const overlay = doc.createElement("button");
+        overlay.type = "button";
+        overlay.className = "ll-template-iframe-edit";
+        overlay.dataset.llTemplateHelper = "true";
+        overlay.dataset.llPreviewMedia = "true";
+        overlay.setAttribute("aria-label", `Editar ${label}`);
+        overlay.setAttribute("title", `Clique para trocar ${label}.`);
+        overlay.style.left = `${element.offsetLeft}px`;
+        overlay.style.top = `${element.offsetTop}px`;
+        overlay.style.width = `${element.offsetWidth || element.getBoundingClientRect().width}px`;
+        overlay.style.height = `${element.offsetHeight || element.getBoundingClientRect().height}px`;
+        overlay.addEventListener("click", (event) => {
+          openMediaEditor(event, element, meta, label);
+        });
+        element.insertAdjacentElement("afterend", overlay);
+      };
+
       const attachColor = (element, meta, label = "cor") => {
         if (!element) {
           return;
@@ -8929,6 +10299,143 @@ ${buildResponsiveStyle("faq", { includeDraft: true })}`;
         });
       };
 
+      const markTemplateNode = (element) => {
+        if (!element.dataset.llTemplateNode) {
+          element.dataset.llTemplateNode = `template-${Math.random().toString(16).slice(2)}`;
+        }
+        return element.dataset.llTemplateNode;
+      };
+
+      const hasDirectText = (element) => {
+        return Array.from(element.childNodes).some((node) => {
+          return node.nodeType === 3 && node.textContent.trim();
+        });
+      };
+
+      const isTemplateTextCandidate = (element) => {
+        const tagName = element.tagName;
+        if (["SCRIPT", "STYLE", "NOSCRIPT", "SVG", "IMG", "VIDEO", "SOURCE", "PICTURE", "IFRAME", "INPUT", "TEXTAREA", "SELECT", "OPTION"].includes(tagName)) {
+          return false;
+        }
+
+        const text = (element.innerText || element.textContent || "").trim();
+        if (!text) {
+          return false;
+        }
+
+        const textChildren = Array.from(element.children).filter((child) => {
+          return !["BR", "WBR"].includes(child.tagName) && (child.innerText || child.textContent || "").trim();
+        });
+
+        return hasDirectText(element) || textChildren.length === 0;
+      };
+
+      const isTemplateMultilineText = (element) => {
+        return ["P", "DIV", "LI", "TD", "TH", "FIGCAPTION", "BLOCKQUOTE"].includes(element.tagName)
+          || (element.innerText || "").includes("\n");
+      };
+
+      const hasTemplateBackgroundImage = (element) => {
+        const computed = element.ownerDocument.defaultView.getComputedStyle(element);
+        return computed.backgroundImage && computed.backgroundImage !== "none";
+      };
+
+      const isTemplateColorCandidate = (element, root) => {
+        if (element === root) {
+          return true;
+        }
+
+        const computed = element.ownerDocument.defaultView.getComputedStyle(element);
+        return !isTransparentColor(computed.backgroundColor)
+          && ["SECTION", "ARTICLE", "DIV", "HEADER", "FOOTER", "ASIDE", "NAV", "BUTTON", "A", "TH", "TD", "FIGCAPTION", "LI"].includes(element.tagName);
+      };
+
+      const setupTemplatePreviewEditing = () => {
+        const root = doc.querySelector(".lp-container, .lp_container");
+        if (!root) {
+          return;
+        }
+
+        const headerRoots = new Set();
+        root.querySelectorAll(".product-header, .video-header, .product-header__banner, .video-header__banner, .product-header__body, .video-header__body").forEach((element) => {
+          const header = findTemplateHeaderRoot(element, root);
+          if (header) {
+            headerRoots.add(header);
+          }
+        });
+        headerRoots.forEach((header) => {
+          attachTemplateHeaderEditor(header);
+        });
+
+        root.addEventListener("click", (event) => {
+          const header = findTemplateHeaderRoot(event.target, root);
+          if (!header || !root.contains(header)) {
+            return;
+          }
+
+          if (!isTemplateHeaderBannerTarget(event.target, header)) {
+            return;
+          }
+
+          event.preventDefault();
+          event.stopPropagation();
+          openTemplateHeaderPopover(event, header);
+        }, true);
+
+        [root, ...root.querySelectorAll("*")].forEach((element) => {
+          const header = findTemplateHeaderRoot(element, root);
+          if (header && isTemplateHeaderBannerTarget(element, header)) {
+            return;
+          }
+
+          if (isTemplateTextCandidate(element)) {
+            const id = markTemplateNode(element);
+            attachText(element, {
+              scope: "template",
+              field: "text",
+              templateNodeId: id,
+              value: element.innerText || element.textContent || ""
+            }, { multiline: isTemplateMultilineText(element) });
+          }
+
+          if (["IMG", "VIDEO", "SOURCE", "IFRAME"].includes(element.tagName) || hasTemplateBackgroundImage(element)) {
+            const id = markTemplateNode(element);
+            const mediaLabel = element.tagName === "IFRAME" ? "URL do vídeo do YouTube" : "URL da imagem ou mídia";
+            const mediaMeta = {
+              scope: "template",
+              field: "media",
+              templateNodeId: id,
+              value: getTemplateMediaValue(element)
+            };
+
+            if (element.tagName === "IMG") {
+              element.setAttribute("title", "Clique para trocar URL e alt text.");
+              element.addEventListener("click", (event) => {
+                event.preventDefault();
+                event.stopPropagation();
+                openTemplateImagePopover(event, element, mediaMeta, mediaLabel);
+              });
+            } else if (element.tagName === "IFRAME") {
+              attachIframeMedia(element, mediaMeta, mediaLabel);
+            } else {
+              attachMedia(element, mediaMeta, mediaLabel);
+            }
+          }
+
+          if (isTemplateColorCandidate(element, root)) {
+            const id = markTemplateNode(element);
+            const computed = element.ownerDocument.defaultView.getComputedStyle(element);
+            const backgroundColor = isTransparentColor(computed.backgroundColor) ? "#ffffff" : colorToHex(computed.backgroundColor || "#ffffff", "#ffffff");
+            attachColor(element, {
+              scope: "template",
+              field: "backgroundColor",
+              templateNodeId: id,
+              value: backgroundColor
+            }, "cor de fundo");
+          }
+        });
+      };
+
       const tab = getPreviewEditTab();
 
       if (tab === "dashboard") {
@@ -8943,13 +10450,18 @@ ${buildResponsiveStyle("faq", { includeDraft: true })}`;
           button.addEventListener("click", (event) => {
             event.preventDefault();
             const nextDashboardTab = button.dataset.dashboardPreviewTab;
-            if (["faq", "table", "stories", "article", "carousel"].includes(nextDashboardTab)) {
+            if (["faq", "table", "stories", "article", "carousel", "template"].includes(nextDashboardTab)) {
               currentEditorTab = nextDashboardTab;
               state.dashboard.view = "layouts";
               renderEditor();
             }
           });
         });
+        return;
+      }
+
+      if (tab === "template") {
+        setupTemplatePreviewEditing();
         return;
       }
 
@@ -9059,10 +10571,21 @@ ${buildResponsiveStyle("faq", { includeDraft: true })}`;
         table: 900,
         stories: 520,
         article: 1280,
-        carousel: 1280
+        carousel: 1280,
+        template: 1280
       };
 
       return widths[currentEditorTab] || config.width;
+    }
+
+    function setPreviewFullscreen(active) {
+      isPreviewFullscreen = Boolean(active);
+      document.body.classList.toggle("preview-fullscreen-active", isPreviewFullscreen);
+      previewFullscreenButtons.forEach((button) => {
+        button.textContent = isPreviewFullscreen ? "Voltar editor" : "Ampliar prévia";
+        button.setAttribute("aria-pressed", String(isPreviewFullscreen));
+      });
+      updatePreviewDeviceUi();
     }
 
     function updatePreviewDeviceUi() {
@@ -9073,6 +10596,14 @@ ${buildResponsiveStyle("faq", { includeDraft: true })}`;
         ? `${config.label} - ${idealWidth}px (${fidelityLabel})`
         : `${config.label} - ${config.width}px`;
       document.documentElement.dataset.previewDevice = config.key;
+      if (isPreviewFullscreen) {
+        previewFrame.style.width = "100%";
+        previewFrame.style.maxWidth = "none";
+        previewDeviceButtons.forEach((button) => {
+          button.setAttribute("aria-pressed", String(button.dataset.previewDevice === config.key));
+        });
+        return;
+      }
       if (currentPage === "conteudo" && currentEditorTab === "dashboard") {
         previewFrame.style.width = "100%";
         previewFrame.style.maxWidth = "none";
@@ -9756,6 +11287,39 @@ ${slides}
       `;
     }
 
+    function renderTemplateEditor() {
+      if (currentPage !== "conteudo") {
+        return "";
+      }
+
+      return `
+        <div class="editor-section-title">
+          <div>
+            <h3>LP container</h3>
+            <p>Monte o conteúdo que vai dentro de Detalhes do produto. A prévia mostra só o comportamento da <code>.lp-container</code>.</p>
+          </div>
+        </div>
+
+        <article class="faq-bulk-panel">
+          <div class="faq-editor__bar">
+            <strong>Conteúdo da LP</strong>
+          </div>
+          <div class="faq-bulk-panel__body">
+            <div class="template-editor__actions">
+              <button class="button button--soft" type="button" data-action="import-template-html">Importar HTML</button>
+              <button class="button button--danger" type="button" data-action="clear-template-html">Limpar</button>
+              <input class="template-editor__file" type="file" accept="text/html,.html" data-template-import>
+            </div>
+            <label class="field">
+              <span>HTML dentro da lp-container</span>
+              <textarea class="bulk-input template-editor__textarea" data-template-field="html" spellcheck="false">${escapeHtml(state.template.html)}</textarea>
+            </label>
+            <p class="template-editor__status" aria-live="polite">${escapeHtml(state.template.status)}</p>
+          </div>
+        </article>
+      `;
+    }
+
     function renderEditor(preserveScroll = false) {
       const previousScrollTop = editor.scrollTop;
       updateEditorTabs();
@@ -9772,10 +11336,12 @@ ${slides}
         editor.innerHTML = renderArticleEditor();
       } else if (currentPage === "conteudo" && currentEditorTab === "carousel") {
         editor.innerHTML = renderCarouselEditor();
+      } else if (currentPage === "conteudo" && currentEditorTab === "template") {
+        editor.innerHTML = renderTemplateEditor();
       } else {
         editor.innerHTML = renderFaqEditor();
       }
-      if (currentPage === "conteudo" && currentEditorTab !== "dashboard") {
+      if (currentPage === "conteudo" && currentEditorTab !== "dashboard" && currentEditorTab !== "template") {
         editor.insertAdjacentHTML("afterbegin", `${renderPresetPanel()}${renderResponsiveEditor()}`);
       }
       editor.scrollTop = preserveScroll ? previousScrollTop : 0;
@@ -10032,6 +11598,38 @@ ${slides}
       }, 2400);
     }
 
+    function insertSelectedTemplateLayout() {
+      const selectedLayout = state.template.sourceLayout || "carousel";
+      state.template.html = buildTemplateLayoutPackage(selectedLayout);
+      const option = getTemplateLayoutOptions().find(([value]) => value === selectedLayout);
+      state.template.status = `${option ? option[1] : "Layout"} inserido dentro da lp-container.`;
+      renderEditor(true);
+    }
+
+    function clearTemplateHtml() {
+      state.template.html = "";
+      state.template.status = "Conteúdo da LP limpo.";
+      renderEditor(true);
+    }
+
+    function importTemplateHtmlFile(file) {
+      if (!file) {
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.addEventListener("load", () => {
+        const rawValue = String(reader.result || "");
+        const extractedValue = extractLpContainerHtml(rawValue);
+        state.template.html = extractedValue;
+        state.template.status = rawValue.trim() && extractedValue !== rawValue.trim()
+          ? "HTML importado. Encontrei a lp-container e trouxe só o conteúdo interno."
+          : "HTML importado para a lp-container.";
+        renderEditor(true);
+      });
+      reader.readAsText(file);
+    }
+
     editor.addEventListener("focusin", (event) => {
       const carouselField = event.target.dataset.carouselField;
       const carouselSlideIndex = event.target.dataset.carouselSlide;
@@ -10060,6 +11658,23 @@ ${slides}
       if (event.target.matches("[data-user-preset-select]")) {
         updateSelectedPreset(event.target.value);
         return;
+      }
+
+      const templateField = event.target.dataset.templateField;
+      if (templateField) {
+        if (templateField === "sourceLayout") {
+          state.template.sourceLayout = event.target.value;
+          state.template.status = "";
+          updateOutput();
+          return;
+        }
+
+        if (templateField === "html") {
+          state.template.html = event.target.value;
+          state.template.status = "";
+          updateOutput();
+          return;
+        }
       }
 
       markResponsiveDirty();
@@ -10348,6 +11963,12 @@ ${slides}
         return;
       }
 
+      if (event.target.matches("[data-template-import]")) {
+        importTemplateHtmlFile(event.target.files && event.target.files[0]);
+        event.target.value = "";
+        return;
+      }
+
       if (event.target.matches("select") || event.target.matches('[data-article-field="shellBackgroundEnabled"], [data-article-field="overlayEnabled"], [data-article-field="tabsProtectionEnabled"], [data-carousel-field="showIntro"], [data-carousel-field="sectionGradientEnabled"], [data-carousel-field="showIndicators"], [data-carousel-field="reverse"], [data-carousel-field="gradientEnabled"]')) {
         event.target.dispatchEvent(new Event("input", { bubbles: true }));
       }
@@ -10465,7 +12086,7 @@ ${slides}
       if (dashboardButton) {
         event.preventDefault();
         const nextDashboardTab = dashboardButton.dataset.dashboardTab;
-        if (["faq", "table", "stories", "article", "carousel"].includes(nextDashboardTab)) {
+        if (["faq", "table", "stories", "article", "carousel", "template"].includes(nextDashboardTab)) {
           currentEditorTab = nextDashboardTab;
           renderEditor();
         }
@@ -10485,7 +12106,7 @@ ${slides}
       }
 
       const action = button.dataset.action;
-      if (action.includes("story") || action.includes("article") || action.includes("carousel") || action.includes("responsive") || action.includes("preset")) {
+      if (action.includes("story") || action.includes("article") || action.includes("carousel") || action.includes("template") || action.includes("responsive") || action.includes("preset")) {
         event.preventDefault();
         event.stopPropagation();
       }
@@ -10515,6 +12136,24 @@ ${slides}
 
       if (action === "export-user-presets") {
         exportUserPresets();
+        return;
+      }
+
+      if (action === "import-template-html") {
+        const input = editor.querySelector("[data-template-import]");
+        if (input) {
+          input.click();
+        }
+        return;
+      }
+
+      if (action === "insert-template-layout") {
+        insertSelectedTemplateLayout();
+        return;
+      }
+
+      if (action === "clear-template-html") {
+        clearTemplateHtml();
         return;
       }
 
@@ -10548,7 +12187,9 @@ ${slides}
         "add-article-tab",
         "remove-article-tab",
         "add-carousel-slide",
-        "remove-carousel-slide"
+        "remove-carousel-slide",
+        "insert-template-layout",
+        "clear-template-html"
       ];
       if (mutatingActions.includes(action)) {
         markResponsiveDirty();
@@ -10628,7 +12269,7 @@ ${slides}
     editorTabButtons.forEach((button) => {
       button.addEventListener("click", () => {
         const requestedTab = button.dataset.editorTab;
-        const nextEditorTab = ["faq", "table", "stories", "article", "carousel"].includes(requestedTab) ? requestedTab : "faq";
+        const nextEditorTab = ["faq", "table", "stories", "article", "carousel", "template"].includes(requestedTab) ? requestedTab : "faq";
         if (nextEditorTab !== currentEditorTab && !returnToBaseVersion()) {
           return;
         }
@@ -10652,10 +12293,20 @@ ${slides}
         copyGeneratedHtml(button.dataset.copyMode);
       });
     });
+    previewFullscreenButtons.forEach((button) => {
+      button.addEventListener("click", () => {
+        setPreviewFullscreen(!isPreviewFullscreen);
+      });
+    });
     previewDeviceButtons.forEach((button) => {
       button.addEventListener("click", () => {
         setPreviewDevice(button.dataset.previewDevice);
       });
+    });
+    window.addEventListener("keydown", (event) => {
+      if (event.key === "Escape" && isPreviewFullscreen) {
+        setPreviewFullscreen(false);
+      }
     });
     window.addEventListener("hashchange", () => {
       applyPage(getPageFromHash());
@@ -10682,3 +12333,5 @@ ${slides}
   </script>
 </body>
 </html>
+
+
