@@ -10229,8 +10229,9 @@ ${buildResponsiveStyle("faq", { includeDraft: true })}`;
         }
 
         element.dataset.llPreviewMedia = "true";
-        element.setAttribute("title", `Clique para trocar ${label}.`);
-        element.addEventListener("click", (event) => {
+        const triggerEvent = meta.scope === "template" ? "dblclick" : "click";
+        element.setAttribute("title", meta.scope === "template" ? `Dê dois cliques para trocar ${label}.` : `Clique para trocar ${label}.`);
+        element.addEventListener(triggerEvent, (event) => {
           if (element.dataset.llPreviewColor) {
             window.clearTimeout(element.__llPreviewMediaTimer);
             element.__llPreviewMediaTimer = window.setTimeout(() => {
@@ -10409,8 +10410,8 @@ ${buildResponsiveStyle("faq", { includeDraft: true })}`;
             };
 
             if (element.tagName === "IMG") {
-              element.setAttribute("title", "Clique para trocar URL e alt text.");
-              element.addEventListener("click", (event) => {
+              element.setAttribute("title", "Dê dois cliques para trocar URL e alt text.");
+              element.addEventListener("dblclick", (event) => {
                 event.preventDefault();
                 event.stopPropagation();
                 openTemplateImagePopover(event, element, mediaMeta, mediaLabel);
