@@ -207,11 +207,9 @@
       width: max-content;
       max-width: 100%;
       padding: 10px 14px;
-      border-color: var(--line);
-      background:
-        linear-gradient(135deg, rgba(124, 58, 237, 0.13), rgba(234, 91, 12, 0.08)),
-        var(--editor-item-bg);
-      box-shadow: 0 5px 12px rgba(124, 58, 237, 0.06);
+      border-color: rgba(255, 117, 34, 0.62);
+      background: linear-gradient(135deg, #8b3ffc 0%, #ff6a2a 100%);
+      box-shadow: 0 6px 14px rgba(249, 115, 22, 0.16);
       cursor: pointer;
     }
 
@@ -221,8 +219,8 @@
     html[data-page="conteudo"]:not([data-editor-tab="dashboard"]) .brand:focus-visible,
     html[data-page="conteudo"][data-editor-tab="dashboard"]:not([data-dashboard-view="layouts"]) .brand:hover,
     html[data-page="conteudo"][data-editor-tab="dashboard"]:not([data-dashboard-view="layouts"]) .brand:focus-visible {
-      border-color: rgba(234, 91, 12, 0.54);
-      box-shadow: 0 6px 14px rgba(234, 91, 12, 0.1);
+      border-color: rgba(255, 117, 34, 0.86);
+      box-shadow: 0 8px 16px rgba(249, 115, 22, 0.22);
       outline: none;
       transform: translateY(-1px);
     }
@@ -231,6 +229,7 @@
     html[data-page="conteudo"]:not([data-editor-tab="dashboard"]) .brand h1,
     html[data-page="conteudo"][data-editor-tab="dashboard"]:not([data-dashboard-view="layouts"]) .brand h1 {
       font-size: 22px;
+      color: #ffffff;
     }
 
     html:not([data-page="conteudo"]) .brand p,
@@ -350,6 +349,7 @@
       border-radius: 8px;
       color: var(--muted);
       background: rgba(255, 255, 255, 0.55);
+      font: inherit;
       cursor: pointer;
       user-select: none;
     }
@@ -383,7 +383,15 @@
       background: var(--blue);
     }
 
+    .theme-toggle[aria-pressed="true"] .theme-toggle__track {
+      background: var(--blue);
+    }
+
     .theme-toggle input:checked + .theme-toggle__track .theme-toggle__thumb {
+      transform: translateX(18px);
+    }
+
+    .theme-toggle[aria-pressed="true"] .theme-toggle__track .theme-toggle__thumb {
       transform: translateX(18px);
     }
 
@@ -505,6 +513,39 @@
     .editor-tools.is-hidden,
     .button.is-hidden,
     .home-return.is-hidden {
+      display: none;
+    }
+
+    .editor-copy-actions {
+      display: none;
+      flex: 0 0 auto;
+      gap: 10px;
+      padding: 12px 18px 18px;
+      border-top: 1px solid var(--line);
+      background: var(--panel);
+    }
+
+    .editor-copy-actions .button {
+      flex: 1;
+    }
+
+    html[data-page="conteudo"][data-editor-tab="template"] .editor-copy-actions {
+      display: flex;
+    }
+
+    html[data-page="conteudo"][data-editor-tab="template"] .output-panel > .panel__head .actions {
+      display: none;
+    }
+
+    html[data-page="conteudo"][data-editor-tab="dashboard"][data-dashboard-view="layouts"] .topbar [data-focus-mode],
+    html[data-page="conteudo"][data-editor-tab="dashboard"][data-dashboard-view="layouts"] .topbar [data-preview-fullscreen] {
+      display: none;
+    }
+
+    html[data-page="tecnica"] .brand,
+    html[data-page="tecnica"] .topbar [data-focus-mode],
+    html[data-page="tecnica"] .topbar [data-preview-fullscreen],
+    html[data-page="tecnica"] .preview-devices {
       display: none;
     }
 
@@ -1443,6 +1484,10 @@
       gap: 4px;
     }
 
+    .preview-devices--side {
+      display: none;
+    }
+
     .preview-devices__button {
       min-height: 30px;
       padding: 6px 9px;
@@ -1475,6 +1520,89 @@
 
     html[data-preview-device="desktop"] .preview-canvas {
       overflow-x: hidden;
+    }
+
+    html[data-preview-device="mobile"] .preview-shell {
+      min-height: clamp(640px, 76vh, 900px);
+    }
+
+    html[data-preview-device="mobile"] .preview-canvas,
+    html[data-preview-device="mobile"] .preview-frame {
+      min-height: clamp(580px, 70vh, 820px);
+    }
+
+    html:is([data-preview-device="mobile"], [data-preview-device="tablet"]) .output-panel {
+      display: grid !important;
+      grid-template-columns: minmax(0, 1fr) 148px;
+      grid-template-rows: minmax(0, 1fr);
+    }
+
+    html:is([data-preview-device="mobile"], [data-preview-device="tablet"]) .output-panel > .panel__head {
+      grid-column: 2;
+      grid-row: 1;
+      align-items: stretch;
+      justify-content: flex-start;
+      flex-direction: column;
+      padding: 12px;
+      border-bottom: 0;
+      border-left: 1px solid var(--line);
+    }
+
+    html:is([data-preview-device="mobile"], [data-preview-device="tablet"]) .output-panel > .panel__head h2 {
+      display: none;
+    }
+
+    html:is([data-preview-device="mobile"], [data-preview-device="tablet"]) .output-panel > .panel__body {
+      grid-column: 1;
+      grid-row: 1;
+      min-height: 0;
+      padding: 16px;
+      overflow: hidden;
+    }
+
+    html:is([data-preview-device="mobile"], [data-preview-device="tablet"]) .output-panel .actions {
+      align-items: stretch;
+      flex-direction: column;
+      width: 100%;
+      gap: 8px;
+    }
+
+    html:is([data-preview-device="mobile"], [data-preview-device="tablet"]) .output-panel .actions .button,
+    html:is([data-preview-device="mobile"], [data-preview-device="tablet"]) .preview-devices--side .preview-devices__button {
+      width: 100%;
+      min-height: 34px;
+      padding: 8px 9px;
+      font-size: 12px;
+      white-space: normal;
+    }
+
+    html:is([data-preview-device="mobile"], [data-preview-device="tablet"]) .preview-devices--side {
+      display: flex;
+      align-items: stretch;
+      justify-content: flex-start;
+      flex-direction: column;
+      width: 100%;
+      gap: 6px;
+      padding-top: 4px;
+      border-top: 1px solid var(--line);
+    }
+
+    html:is([data-preview-device="mobile"], [data-preview-device="tablet"]) .preview-toolbar {
+      display: none;
+    }
+
+    html:is([data-preview-device="mobile"], [data-preview-device="tablet"]) .preview-shell {
+      height: auto !important;
+      min-height: clamp(700px, 82vh, 980px) !important;
+      padding: 0;
+    }
+
+    html:is([data-preview-device="mobile"], [data-preview-device="tablet"]) .preview-canvas {
+      min-height: clamp(700px, 82vh, 980px) !important;
+    }
+
+    html:is([data-preview-device="mobile"], [data-preview-device="tablet"]) .preview-frame {
+      min-height: clamp(660px, 78vh, 940px) !important;
     }
 
     .preview-frame {
@@ -1547,11 +1675,6 @@
       grid-column: 1 / -1 !important;
       width: 100%;
       min-height: min(82vh, 980px);
-    }
-
-    body.preview-fullscreen-active #previewFullscreen {
-      display: inline-flex !important;
-      width: auto;
     }
 
     body.preview-fullscreen-active .output {
@@ -2749,6 +2872,18 @@
           </span>
           <span class="theme-toggle__text">Modo escuro</span>
         </label>
+        <button class="theme-toggle" type="button" data-focus-mode aria-pressed="false">
+          <span class="theme-toggle__track" aria-hidden="true">
+            <span class="theme-toggle__thumb"></span>
+          </span>
+          <span class="theme-toggle__text" data-toggle-label>Modo foco</span>
+        </button>
+        <button class="theme-toggle" type="button" data-preview-fullscreen aria-pressed="false">
+          <span class="theme-toggle__track" aria-hidden="true">
+            <span class="theme-toggle__thumb"></span>
+          </span>
+          <span class="theme-toggle__text" data-toggle-label>Modo ampliado</span>
+        </button>
       </div>
     </header>
 
@@ -2756,13 +2891,6 @@
       <div class="panel editor-panel">
         <div class="panel__head">
           <h2>Conteúdo</h2>
-          <button class="home-return is-hidden" type="button" data-dashboard-home-return aria-label="Voltar para o início" title="Voltar para o início">
-            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
-              <path d="M3 10.5 12 3l9 7.5" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>
-              <path d="M5.5 10.5V21h13V10.5" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>
-              <path d="M9.5 21v-6h5v6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>
-            </svg>
-          </button>
           <button class="button button--soft icon-button" id="addItem" type="button" aria-label="Adicionar pergunta" title="Adicionar pergunta">+</button>
         </div>
         <div class="panel__body">
@@ -2776,6 +2904,10 @@
             </div>
           </div>
           <div class="faq-editor" id="faqEditor"></div>
+          <div class="editor-copy-actions" data-editor-copy-actions>
+            <button class="button button--green" type="button" data-copy-mode="html">Copiar HTML</button>
+            <button class="button button--green" type="button" data-copy-mode="full">Copiar HTML/CSS</button>
+          </div>
         </div>
       </div>
 
@@ -2785,6 +2917,12 @@
           <div class="actions">
             <button class="button button--green" id="copyHtml" type="button" data-copy-mode="html">Copiar HTML</button>
             <button class="button button--green" id="copyHtmlCss" type="button" data-copy-mode="full">Copiar HTML/CSS</button>
+          </div>
+          <div class="preview-devices preview-devices--side" role="group" aria-label="Tamanho da prévia">
+            <button class="preview-devices__button" type="button" data-preview-device="mobile">Celular</button>
+            <button class="preview-devices__button" type="button" data-preview-device="tablet">Tablet</button>
+            <button class="preview-devices__button" type="button" data-preview-device="notebook">Notebook</button>
+            <button class="preview-devices__button" type="button" data-preview-device="desktop">Desktop</button>
           </div>
         </div>
         <div class="panel__body output">
@@ -5037,8 +5175,8 @@ __CAROUSEL_DYNAMIC_COLORS__
     const editorTabButtons = Array.from(document.querySelectorAll("[data-editor-tab]"));
     const homeReturnButtons = Array.from(document.querySelectorAll("[data-dashboard-home-return]"));
     const addButtons = [document.querySelector("#addItem")].filter(Boolean);
-    const htmlCopyButtons = [document.querySelector("#copyHtml")].filter(Boolean);
-    const fullCopyButtons = [document.querySelector("#copyHtmlCss")].filter(Boolean);
+    const htmlCopyButtons = Array.from(document.querySelectorAll('[data-copy-mode="html"]'));
+    const fullCopyButtons = Array.from(document.querySelectorAll('[data-copy-mode="full"]'));
     const previewFullscreenButtons = Array.from(document.querySelectorAll("[data-preview-fullscreen]"));
     const focusModeButtons = Array.from(document.querySelectorAll("[data-focus-mode]"));
     let previewEditPopover = null;
@@ -8409,6 +8547,14 @@ ${lpCard}
         currentEditorTab = "dashboard";
       }
 
+      if (currentPage === "tecnica") {
+        isFocusMode = false;
+        isPreviewFullscreen = false;
+        document.body.classList.remove("focus-mode-active", "preview-fullscreen-active");
+        updateFocusModeButtons();
+        updatePreviewFullscreenButtons();
+      }
+
       const config = pageConfigs[currentPage];
       document.documentElement.dataset.page = currentPage;
       appTitle.textContent = config.title;
@@ -11164,8 +11310,13 @@ ${buildResponsiveStyle("faq", { includeDraft: true })}`;
         [data-ll-preview-color]:hover {
           outline: 2px dashed rgba(234, 91, 12, 0.9);
         }
-        .ll-carousel__side-hint,
-        .lp-stories__arrow {
+        .lp-stories [data-ll-preview-text],
+        .lp-stories [data-ll-preview-media] {
+          position: relative;
+          z-index: 24;
+          pointer-events: auto;
+        }
+        .ll-carousel__side-hint {
           pointer-events: none !important;
         }
         [data-ll-template-iframe-parent] {
@@ -11296,14 +11447,19 @@ ${buildResponsiveStyle("faq", { includeDraft: true })}`;
         });
       };
 
+      const isTemplateInteractiveControl = (element) => {
+        return Boolean(element?.closest?.('a[href], button, label[for], input, textarea, select, summary, [role="button"], [role="tab"], [role="link"], .lp-stories__options, .lp-stories__nav, .ll-carousel__nav'));
+      };
+
       const attachMedia = (element, meta, label = "URL da mídia") => {
         if (!element) {
           return;
         }
 
         element.dataset.llPreviewMedia = "true";
-        const triggerEvent = meta.scope === "template" ? "dblclick" : "click";
-        element.setAttribute("title", meta.scope === "template" ? `Dê dois cliques para trocar ${label}.` : `Clique para trocar ${label}.`);
+        const shouldPreserveClick = meta.scope === "template" && isTemplateInteractiveControl(element);
+        const triggerEvent = shouldPreserveClick ? "dblclick" : "click";
+        element.setAttribute("title", triggerEvent === "dblclick" ? `Dê dois cliques para trocar ${label}.` : `Clique para trocar ${label}.`);
         element.addEventListener(triggerEvent, (event) => {
           if (element.dataset.llPreviewColor) {
             window.clearTimeout(element.__llPreviewMediaTimer);
@@ -11370,6 +11526,10 @@ ${buildResponsiveStyle("faq", { includeDraft: true })}`;
         element.dataset.llPreviewColor = "true";
         element.setAttribute("title", `Duplo clique para editar ${label}.`);
         element.addEventListener("dblclick", (event) => {
+          if (element.dataset.llPreviewMedia) {
+            return;
+          }
+
           const nestedEditable = event.target.closest("[data-ll-preview-text], [data-ll-preview-media]");
           if (nestedEditable && nestedEditable !== element) {
             return;
@@ -11406,6 +11566,10 @@ ${buildResponsiveStyle("faq", { includeDraft: true })}`;
           return false;
         }
 
+        if (isTemplateInteractiveControl(element)) {
+          return false;
+        }
+
         const text = (element.innerText || element.textContent || "").trim();
         if (!text) {
           return false;
@@ -11428,9 +11592,29 @@ ${buildResponsiveStyle("faq", { includeDraft: true })}`;
         return computed.backgroundImage && computed.backgroundImage !== "none";
       };
 
+      const hasTemplateMediaContent = (element) => {
+        if (!element) {
+          return false;
+        }
+
+        if (element.dataset.llPreviewMedia || ["IMG", "PICTURE", "VIDEO", "SOURCE", "IFRAME", "SVG"].includes(element.tagName)) {
+          return true;
+        }
+
+        if (hasTemplateBackgroundImage(element)) {
+          return true;
+        }
+
+        return Boolean(element.querySelector?.("img, picture, video, source, iframe, svg"));
+      };
+
       const isTemplateColorCandidate = (element, root) => {
         if (element === root) {
           return true;
+        }
+
+        if (hasTemplateMediaContent(element)) {
+          return false;
         }
 
         const computed = element.ownerDocument.defaultView.getComputedStyle(element);
@@ -11443,6 +11627,44 @@ ${buildResponsiveStyle("faq", { includeDraft: true })}`;
         if (!root) {
           return;
         }
+
+        root.addEventListener("click", (event) => {
+          const anchor = event.target.closest("a[href]");
+          if (!anchor || !root.contains(anchor)) {
+            return;
+          }
+
+          const rawHref = (anchor.getAttribute("href") || "").trim();
+          event.preventDefault();
+          event.stopPropagation();
+
+          if (!rawHref || rawHref === "#") {
+            return;
+          }
+
+          if (rawHref.startsWith("#")) {
+            let targetId = rawHref.slice(1);
+            try {
+              targetId = decodeURIComponent(targetId);
+            } catch (_) {
+              targetId = rawHref.slice(1);
+            }
+
+            const target = targetId ? doc.getElementById(targetId) : null;
+            try {
+              doc.defaultView.history.replaceState(null, "", rawHref);
+            } catch (_) {}
+
+            if (target) {
+              if (target.matches?.('input[type="radio"], input[type="checkbox"]')) {
+                target.checked = true;
+                target.dispatchEvent(new doc.defaultView.Event("change", { bubbles: true }));
+              } else {
+                target.scrollIntoView({ block: "nearest", inline: "nearest" });
+              }
+            }
+          }
+        }, true);
 
         const headerRoots = new Set();
         root.querySelectorAll(".product-header, .video-header, .product-header__banner, .video-header__banner, .product-header__body, .video-header__body").forEach((element) => {
@@ -11675,14 +11897,26 @@ ${buildResponsiveStyle("faq", { includeDraft: true })}`;
 
     function updatePreviewFullscreenButtons() {
       previewFullscreenButtons.forEach((button) => {
-        button.textContent = isPreviewFullscreen ? "Voltar editor" : "Ampliar prévia";
+        const label = button.querySelector("[data-toggle-label]");
+        if (label) {
+          label.textContent = isPreviewFullscreen ? "Sair do ampliado" : "Modo ampliado";
+          button.classList.toggle("is-active", isPreviewFullscreen);
+        } else {
+          button.textContent = isPreviewFullscreen ? "Voltar editor" : "Ampliar prévia";
+        }
         button.setAttribute("aria-pressed", String(isPreviewFullscreen));
       });
     }
 
     function updateFocusModeButtons() {
       focusModeButtons.forEach((button) => {
-        button.textContent = isFocusMode ? "Sair do foco" : "Modo foco";
+        const label = button.querySelector("[data-toggle-label]");
+        if (label) {
+          label.textContent = isFocusMode ? "Sair do foco" : "Modo foco";
+          button.classList.toggle("is-active", isFocusMode);
+        } else {
+          button.textContent = isFocusMode ? "Sair do foco" : "Modo foco";
+        }
         button.setAttribute("aria-pressed", String(isFocusMode));
       });
     }
@@ -11712,7 +11946,7 @@ ${buildResponsiveStyle("faq", { includeDraft: true })}`;
     }
 
     function updatePreviewDeviceUi() {
-      const config = getPreviewDeviceConfig();
+      const config = currentPage === "tecnica" ? getPreviewDeviceConfig("desktop") : getPreviewDeviceConfig();
       const idealWidth = getPreviewIdealWidth(config);
       const fidelityLabel = config.key === "desktop" && currentPage === "conteudo" ? "largura fiel" : `${config.width}px`;
       previewDeviceLabel.textContent = config.key === "desktop" && currentPage === "conteudo"
