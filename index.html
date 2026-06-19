@@ -34,6 +34,9 @@
       --preview-border: #b7c8d9;
       --preview-bg: #f8fafc;
       --shadow: 0 16px 40px rgba(15, 23, 42, 0.08);
+      --scrollbar-outline: rgba(15, 23, 42, 0.34);
+      --scrollbar-thumb: rgba(15, 23, 42, 0.08);
+      --scrollbar-thumb-hover: rgba(15, 23, 42, 0.24);
     }
 
     html[data-page="conteudo"] {
@@ -76,6 +79,9 @@
       --preview-border: #36556f;
       --preview-bg: #0b1422;
       --shadow: 0 20px 46px rgba(0, 0, 0, 0.35);
+      --scrollbar-outline: rgba(255, 255, 255, 0.72);
+      --scrollbar-thumb: rgba(255, 255, 255, 0.06);
+      --scrollbar-thumb-hover: rgba(255, 255, 255, 0.34);
       color-scheme: dark;
     }
 
@@ -97,6 +103,35 @@
 
     * {
       box-sizing: border-box;
+      scrollbar-color: var(--scrollbar-thumb) transparent;
+      scrollbar-width: thin;
+    }
+
+    *::-webkit-scrollbar {
+      width: 12px;
+      height: 12px;
+    }
+
+    *::-webkit-scrollbar-track {
+      background: transparent;
+      border: 1px solid var(--scrollbar-outline);
+      border-radius: 999px;
+    }
+
+    *::-webkit-scrollbar-thumb {
+      background: transparent;
+      border: 2px solid var(--scrollbar-outline);
+      border-radius: 999px;
+      transition: background 0.14s ease, border-color 0.14s ease;
+    }
+
+    *::-webkit-scrollbar-thumb:hover {
+      background: var(--scrollbar-thumb-hover);
+      border-color: rgba(255, 255, 255, 0.95);
+    }
+
+    *::-webkit-scrollbar-corner {
+      background: transparent;
     }
 
     @keyframes ll-status-pop {
@@ -409,6 +444,43 @@
       font-size: 13px;
       font-weight: 750;
       white-space: nowrap;
+    }
+
+    .theme-toggle--icon {
+      justify-content: center;
+      min-width: 82px;
+    }
+
+    .theme-toggle__icon {
+      display: inline-grid;
+      place-items: center;
+      width: 22px;
+      height: 22px;
+      color: currentColor;
+    }
+
+    .theme-toggle__icon svg {
+      width: 20px;
+      height: 20px;
+      fill: none;
+      stroke: currentColor;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      stroke-width: 2;
+    }
+
+    .theme-toggle__icon--on {
+      display: none;
+    }
+
+    .theme-toggle input:checked ~ .theme-toggle__icon--off,
+    .theme-toggle[aria-pressed="true"] .theme-toggle__icon--off {
+      display: none;
+    }
+
+    .theme-toggle input:checked ~ .theme-toggle__icon--on,
+    .theme-toggle[aria-pressed="true"] .theme-toggle__icon--on {
+      display: inline-grid;
     }
 
     .layout {
@@ -1630,6 +1702,16 @@
     }
 
     body.focus-mode-active .topbar {
+      display: flex;
+      position: sticky;
+      top: 0;
+      z-index: 80;
+      padding-block: 8px;
+      backdrop-filter: blur(14px);
+    }
+
+    body.focus-mode-active .brand p,
+    body.focus-mode-active .page-nav {
       display: none;
     }
 
@@ -1691,9 +1773,22 @@
     }
 
     body.preview-fullscreen-active .preview-frame {
-      width: 100% !important;
-      max-width: none !important;
       min-height: min(66vh, 790px) !important;
+    }
+
+    html[data-preview-device="mobile"] body.preview-fullscreen-active .preview-frame {
+      width: min(100%, 390px) !important;
+      max-width: 390px !important;
+    }
+
+    html[data-preview-device="tablet"] body.preview-fullscreen-active .preview-frame {
+      width: min(100%, 768px) !important;
+      max-width: 768px !important;
+    }
+
+    html[data-preview-device="notebook"] body.preview-fullscreen-active .preview-frame {
+      width: min(100%, 1024px) !important;
+      max-width: 1024px !important;
     }
 
     html[data-page="conteudo"][data-editor-tab="stories"] .preview-canvas {
@@ -1913,6 +2008,27 @@
       background: var(--preview-edit-color, #ea5b0c);
       box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.56);
       cursor: pointer;
+    }
+
+    input.preview-edit-popover__color {
+      padding: 0;
+      overflow: hidden;
+      background: transparent;
+      appearance: none;
+    }
+
+    input.preview-edit-popover__color::-webkit-color-swatch-wrapper {
+      padding: 4px;
+    }
+
+    input.preview-edit-popover__color::-webkit-color-swatch {
+      border: 0;
+      border-radius: 6px;
+    }
+
+    input.preview-edit-popover__color::-moz-color-swatch {
+      border: 0;
+      border-radius: 6px;
     }
 
     .preview-edit-popover__color:focus-visible {
@@ -2865,24 +2981,39 @@
         <a class="page-nav__link" href="#qualidade-conteudo" data-page-link="conteudo">Qualidade Conteúdo</a>
       </nav>
       <div class="actions">
-        <label class="theme-toggle" for="themeToggle">
-          <input id="themeToggle" type="checkbox">
+        <label class="theme-toggle theme-toggle--icon" for="themeToggle" aria-label="Alternar modo claro/escuro" title="Alternar modo claro/escuro">
+          <input id="themeToggle" type="checkbox" aria-label="Alternar modo claro/escuro">
           <span class="theme-toggle__track" aria-hidden="true">
             <span class="theme-toggle__thumb"></span>
           </span>
-          <span class="theme-toggle__text">Modo escuro</span>
+          <span class="theme-toggle__icon theme-toggle__icon--off" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"></circle><path d="M12 2v2"></path><path d="M12 20v2"></path><path d="m4.93 4.93 1.41 1.41"></path><path d="m17.66 17.66 1.41 1.41"></path><path d="M2 12h2"></path><path d="M20 12h2"></path><path d="m6.34 17.66-1.41 1.41"></path><path d="m19.07 4.93-1.41 1.41"></path></svg>
+          </span>
+          <span class="theme-toggle__icon theme-toggle__icon--on" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><path d="M20.99 14.6A8.5 8.5 0 0 1 9.4 3.01 7 7 0 1 0 20.99 14.6Z"></path></svg>
+          </span>
         </label>
-        <button class="theme-toggle" type="button" data-focus-mode aria-pressed="false">
+        <button class="theme-toggle theme-toggle--icon" type="button" data-focus-mode aria-pressed="false" aria-label="Ativar modo foco" title="Ativar modo foco">
           <span class="theme-toggle__track" aria-hidden="true">
             <span class="theme-toggle__thumb"></span>
           </span>
-          <span class="theme-toggle__text" data-toggle-label>Modo foco</span>
+          <span class="theme-toggle__icon theme-toggle__icon--off" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><path d="m2 2 20 20"></path><path d="M10.58 10.58a2 2 0 0 0 2.83 2.83"></path><path d="M9.88 4.24A10.7 10.7 0 0 1 12 4c5 0 9 4.5 10 8a11.8 11.8 0 0 1-2.1 3.5"></path><path d="M6.1 6.1A12.5 12.5 0 0 0 2 12c1 3.5 5 8 10 8 1.32 0 2.57-.31 3.7-.84"></path></svg>
+          </span>
+          <span class="theme-toggle__icon theme-toggle__icon--on" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12Z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+          </span>
         </button>
-        <button class="theme-toggle" type="button" data-preview-fullscreen aria-pressed="false">
+        <button class="theme-toggle theme-toggle--icon" type="button" data-preview-fullscreen aria-pressed="false" aria-label="Ativar modo ampliado" title="Ativar modo ampliado">
           <span class="theme-toggle__track" aria-hidden="true">
             <span class="theme-toggle__thumb"></span>
           </span>
-          <span class="theme-toggle__text" data-toggle-label>Modo ampliado</span>
+          <span class="theme-toggle__icon theme-toggle__icon--off" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="2"></rect></svg>
+          </span>
+          <span class="theme-toggle__icon theme-toggle__icon--on" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><rect x="3" y="7" width="18" height="10" rx="2"></rect></svg>
+          </span>
         </button>
       </div>
     </header>
@@ -5041,6 +5172,7 @@ __CAROUSEL_DYNAMIC_COLORS__
             captionVertical: "center",
             textColor: "#ffffff",
             backgroundColor: "#000000",
+            captionOpacity: 0.64,
             mediaBackgroundColor: "#c82a57"
           },
           {
@@ -5077,6 +5209,7 @@ __CAROUSEL_DYNAMIC_COLORS__
             captionVertical: "center",
             textColor: "#ffffff",
             backgroundColor: "#000000",
+            captionOpacity: 0.64,
             mediaBackgroundColor: "#c82a57"
           }
         ]
@@ -5870,11 +6003,11 @@ ${optionMarkup}
       const baseSnapshot = getBaseSnapshot(tab);
 
       if (!versionDevices.length) {
-        return `${buildWithSnapshot(tab, baseSnapshot, htmlBuilder)}
+        return `${buildWithSnapshot(tab, baseSnapshot, styleBuilder)}
 
-<!-- ESSES CODIGOS ABAIXO VOCE NAO PRECISA MEXER!!! APENAS O HTML ACIMA-->
+<!-- HTML DO LAYOUT -->
 
-${buildWithSnapshot(tab, baseSnapshot, styleBuilder)}`;
+${buildWithSnapshot(tab, baseSnapshot, htmlBuilder)}`;
       }
 
       const baseHtml = buildWithSnapshot(tab, baseSnapshot, htmlBuilder);
@@ -5897,22 +6030,22 @@ ${buildWithSnapshot(tab, baseSnapshot, styleBuilder)}`;
         ...versionDevices.map((device) => `ll-responsive-output--has-${device}`)
       ].join(" ");
 
-      return `<div class="${wrapperClasses}">
+      return `${baseCss}
+
+${versionBlocks.map((block) => block.css).join("\n\n")}
+
+${buildResponsiveSwitchStyle(versionDevices)}
+
+<!-- HTML DO LAYOUT -->
+
+<div class="${wrapperClasses}">
   <div class="ll-responsive-version ll-responsive-version--base">
 ${baseHtml}
   </div>
 ${versionBlocks.map((block) => `  <div class="ll-responsive-version ll-responsive-version--${block.device}">
 ${block.html}
   </div>`).join("\n")}
-</div>
-
-<!-- ESSES CODIGOS ABAIXO VOCE NAO PRECISA MEXER!!! APENAS O HTML ACIMA-->
-
-${baseCss}
-
-${versionBlocks.map((block) => block.css).join("\n\n")}
-
-${buildResponsiveSwitchStyle(versionDevices)}`;
+</div>`;
     }
 
     function renderResponsiveEditor() {
@@ -6215,6 +6348,13 @@ ${itemMarkup}
     function setTheme(theme) {
       document.documentElement.dataset.theme = theme;
       themeToggle.checked = theme === "dark";
+      const themeControl = themeToggle.closest(".theme-toggle");
+      if (themeControl) {
+        const nextLabel = theme === "dark" ? "Ativar modo claro" : "Ativar modo escuro";
+        themeControl.setAttribute("aria-label", nextLabel);
+        themeControl.setAttribute("title", nextLabel);
+        themeToggle.setAttribute("aria-label", nextLabel);
+      }
 
       try {
         localStorage.setItem("faqCompilerTheme", theme);
@@ -6355,6 +6495,15 @@ ${itemMarkup}
       return Math.min(0.95, Math.max(0, numericValue));
     }
 
+    function normalizeCarouselCaptionOpacity(value) {
+      const numericValue = Number(String(value ?? "").replace(",", "."));
+      if (!Number.isFinite(numericValue)) {
+        return 0.64;
+      }
+
+      return Math.min(0.95, Math.max(0, numericValue));
+    }
+
     function buildArticleStyle() {
       const shellBackgroundOpacity = normalizeArticleOverlayOpacity(state.article.shellBackgroundOpacity);
       const shellBackground = state.article.shellBackgroundEnabled !== false
@@ -6433,9 +6582,10 @@ ${itemMarkup}
 
     function getCarouselCaptionStyle(slide) {
       const captionGradient = parseCssGradient(slide.backgroundColor);
+      const captionOpacity = normalizeCarouselCaptionOpacity(slide.captionOpacity).toFixed(2);
       const backgroundColor = captionGradient
         ? buildCssGradient(captionGradient.start, captionGradient.end, captionGradient.angle)
-        : hexToRgba(normalizeHexColor(slide.backgroundColor || "#0d2333"), "0.64");
+        : hexToRgba(normalizeHexColor(slide.backgroundColor || "#0d2333"), captionOpacity);
       const textColor = normalizeHexColor(slide.textColor || "#ffffff");
       const horizontal = normalizeCarouselCaptionHorizontal(slide.captionHorizontal);
       const vertical = normalizeCarouselCaptionVertical(slide.captionVertical);
@@ -6579,6 +6729,7 @@ ${itemMarkup}
           captionVertical: "center",
           textColor: "#ffffff",
           backgroundColor: "#000000",
+          captionOpacity: 0.64,
           mediaBackgroundColor: "#0d2333"
         };
       }
@@ -6636,7 +6787,11 @@ ${itemMarkup}
       const alt = escapeHtml(String(slide.alt || "").trim());
       const focusX = normalizeCarouselFocus(slide.focusX);
       const focusY = normalizeCarouselFocus(slide.focusY);
-      return `<img class="${className}" src="${src}" alt="${alt}" width="1800" height="1600" loading="lazy" decoding="async" style="object-position: ${focusX}% ${focusY}%;">`;
+      const type = normalizeCarouselType(slide.type);
+      const dimensions = type === "impact"
+        ? { width: 780, height: 740 }
+        : { width: 1800, height: 1600 };
+      return `<img class="${className}" src="${src}" alt="${alt}" width="${dimensions.width}" height="${dimensions.height}" loading="lazy" decoding="async" style="object-position: ${focusX}% ${focusY}%;">`;
     }
 
     function renderCarouselPicture(slide) {
@@ -9130,13 +9285,13 @@ ${panels}
     function buildFullHtml(includeTable) {
       const styles = includeTable && hasTableData() ? `${faqStyle}\n\n${buildTableStyle()}` : faqStyle;
 
-      return `${buildBlocksHtml(includeTable)}
+      return `${styles}
 
-<!-- ESSES CODIGOS ABAIXO VOCE NAO PRECISA MEXER!!! APENAS O HTML ACIMA-->
+${buildResponsiveStyle("faq")}
 
-${styles}
+<!-- HTML DO LAYOUT -->
 
-${buildResponsiveStyle("faq")}`;
+${buildBlocksHtml(includeTable)}`;
     }
 
     function getTemplateLayoutOptions() {
@@ -9482,9 +9637,11 @@ ${buildLpContainerHtml(state.template.html, { includeLabAttrs: true })}
       const containerHtml = buildLpContainerHtml();
 
       if (copyMode === "full") {
-        return `${containerHtml}
+        return `${buildTemplateHeaderStyle()}
 
-${buildTemplateHeaderStyle()}`;
+<!-- HTML DO LAYOUT -->
+
+${containerHtml}`;
       }
 
       return containerHtml;
@@ -9728,6 +9885,7 @@ ${buildResponsiveStyle("faq", { includeDraft: true })}`;
       let valueInput;
       let colorInput;
       let colorGradientInputs = null;
+      let colorOpacityInput = null;
       let styleInputs = null;
 
       if (isColor) {
@@ -9759,6 +9917,34 @@ ${buildResponsiveStyle("faq", { includeDraft: true })}`;
 
         row.append(colorInput, valueInput);
         form.appendChild(row);
+
+        if (options.opacityField) {
+          const opacityGrid = document.createElement("div");
+          opacityGrid.className = "preview-edit-popover__grid";
+          const opacityLabel = document.createElement("label");
+          opacityLabel.className = "preview-edit-popover__mini-field";
+          const opacityText = document.createElement("span");
+          opacityText.textContent = "Opacidade";
+          colorOpacityInput = document.createElement("input");
+          colorOpacityInput.type = "number";
+          colorOpacityInput.min = "0";
+          colorOpacityInput.max = "0.95";
+          colorOpacityInput.step = "0.05";
+          if (meta.scope === "carousel" && meta.slideIndex !== undefined) {
+            const slide = state.carousel.slides[meta.slideIndex];
+            colorOpacityInput.value = normalizeCarouselCaptionOpacity(slide?.[options.opacityField]).toFixed(2);
+          } else {
+            colorOpacityInput.value = "0.64";
+          }
+          opacityLabel.append(opacityText, colorOpacityInput);
+          opacityGrid.appendChild(opacityLabel);
+          form.appendChild(opacityGrid);
+          colorOpacityInput.addEventListener("input", () => applyLiveValue());
+          colorOpacityInput.addEventListener("change", () => {
+            colorOpacityInput.value = normalizeCarouselCaptionOpacity(colorOpacityInput.value).toFixed(2);
+            applyLiveValue();
+          });
+        }
 
         if (colorAllowsGradient) {
           const toggle = document.createElement("label");
@@ -9993,6 +10179,13 @@ ${buildResponsiveStyle("faq", { includeDraft: true })}`;
       const applyLiveValue = (options = {}) => {
         let nextValue = String(valueInput.value || "").trim();
         if (isColor) {
+          if (options.opacityField && colorOpacityInput && meta.scope === "carousel" && meta.slideIndex !== undefined) {
+            const slide = state.carousel.slides[meta.slideIndex];
+            if (slide) {
+              slide[options.opacityField] = normalizeCarouselCaptionOpacity(colorOpacityInput.value);
+            }
+          }
+
           if (colorGradientInputs?.toggle?.checked) {
             const start = isHexColor(colorGradientInputs.start.value) ? normalizeHexColor(colorGradientInputs.start.value) : normalizeHexColor(valueInput.value);
             const end = isHexColor(colorGradientInputs.end.value) ? normalizeHexColor(colorGradientInputs.end.value) : start;
@@ -10282,6 +10475,10 @@ ${buildResponsiveStyle("faq", { includeDraft: true })}`;
           "data-ll-preview-media",
           "data-ll-preview-color",
           "data-ll-preview-inline",
+          "data-ll-preview-manual-story",
+          "data-ll-preview-story-active",
+          "data-ll-preview-story-hidden",
+          "data-ll-preview-story-current",
           "data-ll-template-iframe-parent",
           "data-ll-preview-header-editor",
           "data-ll-preview-header-banner"
@@ -11281,11 +11478,46 @@ ${buildResponsiveStyle("faq", { includeDraft: true })}`;
         return;
       }
 
+      const previewScrollbarOutline = document.documentElement.dataset.theme === "dark"
+        ? "rgba(255, 255, 255, 0.72)"
+        : "rgba(15, 23, 42, 0.34)";
+      const previewScrollbarThumbHover = document.documentElement.dataset.theme === "dark"
+        ? "rgba(255, 255, 255, 0.34)"
+        : "rgba(15, 23, 42, 0.24)";
+      const previewScrollbarThumb = document.documentElement.dataset.theme === "dark"
+        ? "rgba(255, 255, 255, 0.06)"
+        : "rgba(15, 23, 42, 0.08)";
       const style = doc.createElement("style");
       style.textContent = `
+        * {
+          scrollbar-color: ${previewScrollbarThumb} transparent;
+          scrollbar-width: thin;
+        }
+        *::-webkit-scrollbar {
+          width: 12px;
+          height: 12px;
+        }
+        *::-webkit-scrollbar-track {
+          background: transparent;
+          border: 1px solid ${previewScrollbarOutline};
+          border-radius: 999px;
+        }
+        *::-webkit-scrollbar-thumb {
+          background: transparent;
+          border: 2px solid ${previewScrollbarOutline};
+          border-radius: 999px;
+        }
+        *::-webkit-scrollbar-thumb:hover {
+          background: ${previewScrollbarThumbHover};
+          border-color: rgba(255, 255, 255, 0.95);
+        }
+        *::-webkit-scrollbar-corner {
+          background: transparent;
+        }
         [data-ll-preview-text],
         [data-ll-preview-media],
-        [data-ll-preview-color] {
+        [data-ll-preview-color],
+        [data-ll-preview-position] {
           outline-offset: 3px;
           transition: outline-color 0.12s ease, box-shadow 0.12s ease;
         }
@@ -11310,11 +11542,67 @@ ${buildResponsiveStyle("faq", { includeDraft: true })}`;
         [data-ll-preview-color]:hover {
           outline: 2px dashed rgba(234, 91, 12, 0.9);
         }
+        [data-ll-preview-position] {
+          cursor: move;
+        }
+        [data-ll-preview-position]:hover {
+          outline: 2px dashed rgba(234, 91, 12, 0.9);
+          box-shadow: 0 0 0 4px rgba(234, 91, 12, 0.12);
+        }
         .lp-stories [data-ll-preview-text],
         .lp-stories [data-ll-preview-media] {
           position: relative;
           z-index: 24;
           pointer-events: auto;
+        }
+        [class*="story" i] [data-ll-preview-text],
+        [class*="stories" i] [data-ll-preview-text],
+        [class*="story" i] [data-ll-preview-media],
+        [class*="stories" i] [data-ll-preview-media] {
+          position: relative;
+          z-index: 24;
+          pointer-events: auto;
+        }
+        [class*="story" i] label[for],
+        [class*="stories" i] label[for] {
+          pointer-events: auto;
+        }
+        .lp-stories__topbar,
+        .lp-stories__caption {
+          z-index: 48 !important;
+        }
+        .lp-stories__nav {
+          z-index: 38 !important;
+          pointer-events: none !important;
+        }
+        .lp-stories__arrow {
+          pointer-events: auto !important;
+        }
+        .lp-stories__media,
+        .lp-stories__picture,
+        .lp-stories__image,
+        .lp-stories__video {
+          z-index: 12 !important;
+        }
+        .lp-stories[data-ll-preview-manual-story] .lp-stories__panel {
+          display: none !important;
+        }
+        .lp-stories[data-ll-preview-manual-story] .lp-stories__panel[data-ll-preview-story-active] {
+          display: block !important;
+        }
+        [data-ll-preview-manual-story] [class*="story" i][class*="panel" i],
+        [data-ll-preview-manual-story] [class*="stories" i][class*="panel" i] {
+          display: none !important;
+        }
+        [data-ll-preview-manual-story] [class*="story" i][class*="panel" i][data-ll-preview-story-active],
+        [data-ll-preview-manual-story] [class*="stories" i][class*="panel" i][data-ll-preview-story-active] {
+          display: block !important;
+        }
+        .lp-stories [data-ll-preview-story-current] .lp-stories__ring,
+        [class*="story" i] [data-ll-preview-story-current] [class*="ring" i],
+        [class*="stories" i] [data-ll-preview-story-current] [class*="ring" i] {
+          outline: 3px solid rgba(255, 153, 0, 0.35);
+          outline-offset: 4px;
         }
         .ll-carousel__side-hint {
           pointer-events: none !important;
@@ -11339,7 +11627,7 @@ ${buildResponsiveStyle("faq", { includeDraft: true })}`;
       `;
       doc.head.appendChild(style);
       doc.addEventListener("mousedown", (event) => {
-        if (!event.target.closest("[data-ll-preview-text], [data-ll-preview-media], [data-ll-preview-color]")) {
+        if (!event.target.closest("[data-ll-preview-text], [data-ll-preview-media], [data-ll-preview-color], [data-ll-preview-position]")) {
           closePreviewEditPopover();
         }
       }, true);
@@ -11378,9 +11666,10 @@ ${buildResponsiveStyle("faq", { includeDraft: true })}`;
         }
 
         const multiline = Boolean(options.multiline);
+        const triggerEvent = options.triggerEvent || "click";
         element.dataset.llPreviewText = "true";
-        element.setAttribute("title", "Clique para editar texto e estilo.");
-        element.addEventListener("click", (event) => {
+        element.setAttribute("title", triggerEvent === "dblclick" ? "Dê dois cliques para editar texto e estilo." : "Clique para editar texto e estilo.");
+        element.addEventListener(triggerEvent, (event) => {
           event.preventDefault();
           event.stopPropagation();
           openPreviewEditPopover(event, { ...meta, type: "textStyle" }, {
@@ -11447,8 +11736,79 @@ ${buildResponsiveStyle("faq", { includeDraft: true })}`;
         });
       };
 
+      const getControlledInput = (label) => {
+        if (!label) {
+          return null;
+        }
+
+        const targetId = label.getAttribute("for");
+        return label.control || (targetId ? doc.getElementById(targetId) : null);
+      };
+
+      const getTemplateSignature = (element) => {
+        if (!element || element.nodeType !== 1) {
+          return "";
+        }
+
+        return [
+          element.tagName || "",
+          element.id || "",
+          typeof element.className === "string" ? element.className : "",
+          element.getAttribute?.("aria-label") || "",
+          element.getAttribute?.("aria-controls") || "",
+          element.getAttribute?.("role") || ""
+        ].join(" ").toLowerCase();
+      };
+
+      const isTemplateStoryLike = (element) => {
+        let node = element;
+        while (node && node.nodeType === 1) {
+          if (/stor(y|ies|ie)/i.test(getTemplateSignature(node))) {
+            return true;
+          }
+          node = node.parentElement;
+        }
+
+        return false;
+      };
+
+      const isRadioToggleLabel = (element) => {
+        const label = element?.closest?.("label[for]");
+        const control = getControlledInput(label);
+        return Boolean(control?.matches?.('input[type="radio"], input[type="checkbox"]'));
+      };
+
+      const findTemplateLabelAtPoint = (event, root) => {
+        const directLabel = event.target?.closest?.("label[for]");
+        if (directLabel && root.contains(directLabel)) {
+          return directLabel;
+        }
+
+        if (typeof doc.elementsFromPoint !== "function") {
+          return null;
+        }
+
+        const stack = doc.elementsFromPoint(event.clientX, event.clientY);
+        for (const element of stack) {
+          const label = element?.closest?.("label[for]");
+          if (label && root.contains(label)) {
+            return label;
+          }
+        }
+
+        return null;
+      };
+
+      const isStoryLabelText = (element) => {
+        return Boolean(element?.closest?.("label[for]") && isTemplateStoryLike(element));
+      };
+
       const isTemplateInteractiveControl = (element) => {
         return Boolean(element?.closest?.('a[href], button, label[for], input, textarea, select, summary, [role="button"], [role="tab"], [role="link"], .lp-stories__options, .lp-stories__nav, .ll-carousel__nav'));
+      };
+
+      const isEditableStoryText = (element) => {
+        return Boolean(isTemplateStoryLike(element) && element.matches?.(".lp-stories__name, .lp-stories__title, .lp-stories__caption, [class*='story' i] [class*='name' i], [class*='story' i] [class*='title' i], [class*='story' i] [class*='caption' i], [class*='stories' i] [class*='name' i], [class*='stories' i] [class*='title' i], [class*='stories' i] [class*='caption' i]"));
       };
 
       const attachMedia = (element, meta, label = "URL da mídia") => {
@@ -11518,7 +11878,7 @@ ${buildResponsiveStyle("faq", { includeDraft: true })}`;
         });
       };
 
-      const attachColor = (element, meta, label = "cor") => {
+      const attachColor = (element, meta, label = "cor", options = {}) => {
         if (!element) {
           return;
         }
@@ -11527,6 +11887,25 @@ ${buildResponsiveStyle("faq", { includeDraft: true })}`;
         element.setAttribute("title", `Duplo clique para editar ${label}.`);
         element.addEventListener("dblclick", (event) => {
           if (element.dataset.llPreviewMedia) {
+            return;
+          }
+
+          const pointStack = typeof doc.elementsFromPoint === "function"
+            ? doc.elementsFromPoint(event.clientX, event.clientY)
+            : [];
+          const hasMediaUnderPointer = Array.from(pointStack).some((node) => {
+            if (!node || node === element || !element.contains(node)) {
+              return false;
+            }
+
+            const nodeTag = node.tagName;
+            const computed = node.ownerDocument?.defaultView?.getComputedStyle(node);
+            const hasBackground = computed && computed.backgroundImage && computed.backgroundImage !== "none";
+            return node.dataset?.llPreviewMedia
+              || ["IMG", "PICTURE", "VIDEO", "SOURCE", "IFRAME", "SVG"].includes(nodeTag)
+              || hasBackground;
+          });
+          if (hasMediaUnderPointer) {
             return;
           }
 
@@ -11541,9 +11920,202 @@ ${buildResponsiveStyle("faq", { includeDraft: true })}`;
           window.clearTimeout(element.__llPreviewMediaTimer);
 
           openPreviewEditPopover(event, { ...meta, type: "color" }, {
+            ...options,
             kind: "color",
             label
           });
+        });
+      };
+
+      const openCarouselCaptionPositionPopover = (sourceEvent, captionElement, slideIndex) => {
+        const slide = state.carousel.slides[slideIndex];
+        if (!slide) {
+          return;
+        }
+
+        closePreviewEditPopover();
+
+        const getCaptionSolidColor = () => {
+          const gradient = parseCssGradient(slide.backgroundColor);
+          return gradient ? gradient.start : normalizeHexColor(slide.backgroundColor || "#000000");
+        };
+
+        const form = document.createElement("form");
+        form.className = "preview-edit-popover preview-edit-popover--position";
+        form.setAttribute("role", "dialog");
+        form.setAttribute("aria-label", "Editar legenda");
+
+        const title = document.createElement("p");
+        title.className = "preview-edit-popover__title";
+        title.textContent = "Legenda";
+        form.appendChild(title);
+
+        const grid = document.createElement("div");
+        grid.className = "preview-edit-popover__grid";
+
+        const createSelect = (labelText, options, value) => {
+          const label = document.createElement("label");
+          label.className = "preview-edit-popover__mini-field";
+          const text = document.createElement("span");
+          text.textContent = labelText;
+          const select = document.createElement("select");
+          options.forEach((option) => {
+            const item = document.createElement("option");
+            item.value = option.value;
+            item.textContent = option.label;
+            item.selected = option.value === value;
+            select.appendChild(item);
+          });
+          label.append(text, select);
+          grid.appendChild(label);
+          return select;
+        };
+
+        const horizontalSelect = createSelect("Horizontal", [
+          { value: "left", label: "Esquerda" },
+          { value: "center", label: "Centro" },
+          { value: "right", label: "Direita" }
+        ], normalizeCarouselCaptionHorizontal(slide.captionHorizontal));
+        const verticalSelect = createSelect("Vertical", [
+          { value: "top", label: "Topo" },
+          { value: "center", label: "Centro" },
+          { value: "bottom", label: "Rodapé" }
+        ], normalizeCarouselCaptionVertical(slide.captionVertical));
+        form.appendChild(grid);
+
+        const colorLabel = document.createElement("label");
+        colorLabel.className = "preview-edit-popover__mini-field";
+        const colorText = document.createElement("span");
+        colorText.textContent = "Cor do fundo";
+        const colorRow = document.createElement("div");
+        colorRow.className = "preview-edit-popover__color-row";
+
+        const colorInput = document.createElement("input");
+        colorInput.className = "preview-edit-popover__color";
+        colorInput.type = "color";
+        colorInput.value = getCaptionSolidColor();
+
+        const colorHexInput = document.createElement("input");
+        colorHexInput.className = "preview-edit-popover__field";
+        colorHexInput.type = "text";
+        colorHexInput.value = colorInput.value;
+        colorHexInput.placeholder = "#000000";
+        colorRow.append(colorInput, colorHexInput);
+        colorLabel.append(colorText, colorRow);
+        form.appendChild(colorLabel);
+
+        const opacityGrid = document.createElement("div");
+        opacityGrid.className = "preview-edit-popover__grid";
+        const opacityLabel = document.createElement("label");
+        opacityLabel.className = "preview-edit-popover__mini-field";
+        const opacityText = document.createElement("span");
+        opacityText.textContent = "Opacidade";
+        const opacityInput = document.createElement("input");
+        opacityInput.type = "number";
+        opacityInput.min = "0";
+        opacityInput.max = "0.95";
+        opacityInput.step = "0.05";
+        opacityInput.value = normalizeCarouselCaptionOpacity(slide.captionOpacity).toFixed(2);
+        opacityLabel.append(opacityText, opacityInput);
+        opacityGrid.appendChild(opacityLabel);
+        form.appendChild(opacityGrid);
+
+        const actions = document.createElement("div");
+        actions.className = "preview-edit-popover__actions";
+        const closeButton = document.createElement("button");
+        closeButton.className = "button";
+        closeButton.type = "button";
+        closeButton.textContent = "Fechar";
+        actions.appendChild(closeButton);
+        form.appendChild(actions);
+
+        const applyPosition = () => {
+          slide.captionHorizontal = normalizeCarouselCaptionHorizontal(horizontalSelect.value);
+          slide.captionVertical = normalizeCarouselCaptionVertical(verticalSelect.value);
+          if (isHexColor(colorHexInput.value)) {
+            const nextColor = normalizeHexColor(colorHexInput.value);
+            slide.backgroundColor = nextColor;
+            colorInput.value = nextColor;
+          }
+          slide.captionOpacity = normalizeCarouselCaptionOpacity(opacityInput.value);
+          state.carousel.openSlideIndex = slideIndex;
+          setCarouselPreviewSlide(slideIndex);
+          if (currentPage === "conteudo") {
+            markResponsiveDirty();
+          }
+          captionElement.setAttribute("style", getCarouselCaptionStyle(slide));
+          generatedHtml.value = buildOutputHtml("html");
+          copyStatus.textContent = "";
+          copyStatus.classList.remove("is-warning", "is-visible");
+        };
+
+        horizontalSelect.addEventListener("input", applyPosition);
+        horizontalSelect.addEventListener("change", applyPosition);
+        verticalSelect.addEventListener("input", applyPosition);
+        verticalSelect.addEventListener("change", applyPosition);
+        colorInput.addEventListener("input", () => {
+          colorHexInput.value = normalizeHexColor(colorInput.value);
+          applyPosition();
+        });
+        colorHexInput.addEventListener("input", () => {
+          if (isHexColor(colorHexInput.value)) {
+            colorHexInput.value = normalizeHexColor(colorHexInput.value);
+            applyPosition();
+          }
+        });
+        colorHexInput.addEventListener("change", () => {
+          colorHexInput.value = isHexColor(colorHexInput.value)
+            ? normalizeHexColor(colorHexInput.value)
+            : getCaptionSolidColor();
+          applyPosition();
+        });
+        opacityInput.addEventListener("input", applyPosition);
+        opacityInput.addEventListener("change", () => {
+          opacityInput.value = normalizeCarouselCaptionOpacity(opacityInput.value).toFixed(2);
+          applyPosition();
+        });
+        closeButton.addEventListener("click", closePreviewEditPopover);
+        form.addEventListener("submit", (event) => {
+          event.preventDefault();
+          closePreviewEditPopover();
+        });
+
+        previewEditKeyHandler = (event) => {
+          if (event.key === "Escape") {
+            closePreviewEditPopover();
+          }
+        };
+        previewEditOutsideHandler = (event) => {
+          if (previewEditPopover && !previewEditPopover.contains(event.target)) {
+            closePreviewEditPopover();
+          }
+        };
+
+        document.body.appendChild(form);
+        previewEditPopover = form;
+        positionPreviewEditPopover(sourceEvent);
+        window.setTimeout(() => {
+          document.addEventListener("mousedown", previewEditOutsideHandler, true);
+          document.addEventListener("keydown", previewEditKeyHandler, true);
+        }, 0);
+        horizontalSelect.focus();
+      };
+
+      const attachCarouselCaptionPosition = (element, slideIndex) => {
+        if (!element) {
+          return;
+        }
+
+        element.dataset.llPreviewPosition = "true";
+        element.setAttribute("title", "Clique na área da legenda para ajustar posição, cor e opacidade.");
+        element.addEventListener("click", (event) => {
+          if (event.target.closest("[data-ll-preview-text]")) {
+            return;
+          }
+
+          event.preventDefault();
+          event.stopPropagation();
+          openCarouselCaptionPositionPopover(event, element, slideIndex);
         });
       };
 
@@ -11566,7 +12138,7 @@ ${buildResponsiveStyle("faq", { includeDraft: true })}`;
           return false;
         }
 
-        if (isTemplateInteractiveControl(element)) {
+        if (isTemplateInteractiveControl(element) && !isEditableStoryText(element) && !isRadioToggleLabel(element) && !isStoryLabelText(element)) {
           return false;
         }
 
@@ -11622,11 +12194,208 @@ ${buildResponsiveStyle("faq", { includeDraft: true })}`;
           && ["SECTION", "ARTICLE", "DIV", "HEADER", "FOOTER", "ASIDE", "NAV", "BUTTON", "A", "TH", "TD", "FIGCAPTION", "LI"].includes(element.tagName);
       };
 
+      const isTemplateMediaNode = (element) => {
+        if (!element || element.nodeType !== 1) {
+          return false;
+        }
+
+        if (["IMG", "PICTURE", "VIDEO", "SOURCE", "IFRAME", "SVG"].includes(element.tagName)) {
+          return true;
+        }
+
+        return hasTemplateBackgroundImage(element);
+      };
+
+      const resolveTemplateMediaNode = (element) => {
+        if (!element || element.nodeType !== 1) {
+          return null;
+        }
+
+        if (element.tagName === "PICTURE") {
+          return element.querySelector("img") || element;
+        }
+
+        if (isTemplateMediaNode(element)) {
+          return element;
+        }
+
+        const childMedia = element.querySelector?.("img, picture, video, source, iframe, svg");
+        if (!childMedia) {
+          return null;
+        }
+
+        return childMedia.tagName === "PICTURE" ? (childMedia.querySelector("img") || childMedia) : childMedia;
+      };
+
+      const findTemplateMediaAtPoint = (event, root) => {
+        const targetText = event.target?.closest?.("[data-ll-preview-text]");
+        if (targetText && !targetText.dataset.llPreviewMedia) {
+          return null;
+        }
+
+        const directMedia = event.target?.closest?.("img, picture, video, source, iframe, svg");
+        const candidates = [];
+        if (directMedia) {
+          candidates.push(directMedia);
+        }
+
+        if (typeof doc.elementsFromPoint === "function") {
+          candidates.push(...doc.elementsFromPoint(event.clientX, event.clientY));
+        }
+
+        for (const candidate of candidates) {
+          if (!candidate || !root.contains(candidate)) {
+            continue;
+          }
+
+          const media = resolveTemplateMediaNode(candidate);
+          if (media && root.contains(media)) {
+            return media;
+          }
+        }
+
+        return null;
+      };
+
+      const findTemplateStoryRoot = (element, root) => {
+        let node = element;
+        while (node && node !== root.parentElement) {
+          if (node.nodeType === 1 && root.contains(node) && isTemplateStoryLike(node)) {
+            const hasStoryControls = Boolean(node.querySelector?.('input[type="radio"], input[type="checkbox"], label[for]'));
+            const hasStoryPanels = Boolean(node.querySelector?.(".lp-stories__panel, [class*='panel' i]"));
+            if (hasStoryControls && hasStoryPanels) {
+              return node;
+            }
+          }
+          node = node.parentElement;
+        }
+
+        return element?.closest?.(".lp-stories") || null;
+      };
+
+      const findTemplateStoryPanel = (storyRoot, target, label) => {
+        if (!storyRoot || !target) {
+          return null;
+        }
+
+        const escapeSelector = doc.defaultView.CSS?.escape || ((value) => String(value).replace(/["\\#.;,[\]()>+~*^$|=:\s]/g, "\\$&"));
+        const targetId = target.id || "";
+        const ariaControls = label?.getAttribute?.("aria-controls") || target.getAttribute?.("aria-controls") || "";
+        if (ariaControls) {
+          const controlledPanel = doc.getElementById(ariaControls);
+          if (controlledPanel && storyRoot.contains(controlledPanel)) {
+            return controlledPanel;
+          }
+        }
+
+        if (targetId) {
+          const panelClass = targetId.replace(/^lp-story-/, "panel-");
+          const candidates = [
+            `.${escapeSelector(panelClass)}`,
+            `#${escapeSelector(targetId)}-panel`,
+            `[aria-labelledby="${escapeSelector(targetId)}-title"]`,
+            `[data-story-panel="${escapeSelector(targetId)}"]`
+          ];
+
+          for (const selector of candidates) {
+            const panel = storyRoot.querySelector(selector);
+            if (panel) {
+              return panel;
+            }
+          }
+        }
+
+        const groupSelector = target.name
+          ? `input[type="${target.type}"][name="${escapeSelector(target.name)}"]`
+          : `input[type="${target.type}"]`;
+        const inputs = Array.from(storyRoot.querySelectorAll(groupSelector));
+        const panels = Array.from(storyRoot.querySelectorAll(".lp-stories__panel, [class*='story' i][class*='panel' i], [class*='stories' i][class*='panel' i]"));
+        const index = inputs.indexOf(target);
+        return index >= 0 ? panels[index] || null : null;
+      };
+
+      const applyTemplateStorySelection = (label, target, root) => {
+        const storyRoot = findTemplateStoryRoot(label, root) || findTemplateStoryRoot(target, root);
+        if (!storyRoot) {
+          return;
+        }
+
+        const panel = findTemplateStoryPanel(storyRoot, target, label);
+        if (!panel) {
+          return;
+        }
+
+        storyRoot.dataset.llPreviewManualStory = "true";
+        storyRoot.querySelectorAll(".lp-stories__panel, [class*='story' i][class*='panel' i], [class*='stories' i][class*='panel' i]").forEach((item) => {
+          const isActive = item === panel;
+          item.toggleAttribute("data-ll-preview-story-active", isActive);
+          item.toggleAttribute("data-ll-preview-story-hidden", !isActive);
+        });
+
+        storyRoot.querySelectorAll("label[for]").forEach((item) => {
+          const current = getControlledInput(item);
+          item.toggleAttribute("data-ll-preview-story-current", current === target);
+        });
+      };
+
       const setupTemplatePreviewEditing = () => {
         const root = doc.querySelector(".lp-container, .lp_container");
         if (!root) {
           return;
         }
+
+        root.addEventListener("click", (event) => {
+          const label = findTemplateLabelAtPoint(event, root);
+          if (!label || !root.contains(label)) {
+            return;
+          }
+
+          const target = getControlledInput(label);
+          if (!target || !target.matches?.('input[type="radio"], input[type="checkbox"]')) {
+            return;
+          }
+
+          const syncStorySelection = () => {
+            if (target.type === "radio") {
+              target.checked = true;
+            }
+            target.dispatchEvent(new doc.defaultView.Event("input", { bubbles: true }));
+            target.dispatchEvent(new doc.defaultView.Event("change", { bubbles: true }));
+            applyTemplateStorySelection(label, target, root);
+          };
+
+          if (typeof doc.defaultView.requestAnimationFrame === "function") {
+            doc.defaultView.requestAnimationFrame(syncStorySelection);
+          } else {
+            window.setTimeout(syncStorySelection, 0);
+          }
+        }, true);
+
+        root.addEventListener("dblclick", (event) => {
+          const editableElement = findTemplateMediaAtPoint(event, root);
+          if (!editableElement) {
+            return;
+          }
+
+          event.preventDefault();
+          event.stopPropagation();
+
+          const id = markTemplateNode(editableElement);
+          const mediaMeta = {
+            scope: "template",
+            field: "media",
+            templateNodeId: id,
+            value: getTemplateMediaValue(editableElement)
+          };
+
+          if (editableElement.tagName === "SVG") {
+            openTemplateSvgPopover(event, editableElement);
+          } else if (editableElement.tagName === "IMG") {
+            openTemplateImagePopover(event, editableElement, mediaMeta, "URL da imagem ou mídia");
+          } else {
+            openMediaEditor(event, editableElement, mediaMeta, editableElement.tagName === "IFRAME" ? "URL do vídeo do YouTube" : "URL da imagem ou mídia");
+          }
+        }, true);
 
         root.addEventListener("click", (event) => {
           const anchor = event.target.closest("a[href]");
@@ -11706,12 +12475,13 @@ ${buildResponsiveStyle("faq", { includeDraft: true })}`;
 
           if (isTemplateTextCandidate(element)) {
             const id = markTemplateNode(element);
+            const shouldUseDblClick = isRadioToggleLabel(element) || isStoryLabelText(element);
             attachText(element, {
               scope: "template",
               field: "text",
               templateNodeId: id,
               value: element.innerText || element.textContent || ""
-            }, { multiline: isTemplateMultilineText(element) });
+            }, { multiline: isTemplateMultilineText(element), triggerEvent: shouldUseDblClick ? "dblclick" : "click" });
           }
 
           if (["IMG", "VIDEO", "SOURCE", "IFRAME"].includes(element.tagName) || hasTemplateBackgroundImage(element)) {
@@ -11863,8 +12633,8 @@ ${buildResponsiveStyle("faq", { includeDraft: true })}`;
           attachColor(panel.querySelector(".ll-carousel__layout--impact"), { scope: "carousel", slideIndex, field: "backgroundColor" }, "cor do fundo");
           attachColor(panel.querySelector(".ll-carousel__layout-copy"), { scope: "carousel", slideIndex, field: "textColor" }, "cor do texto");
           attachColor(panel.querySelector(".ll-carousel__layout--media"), { scope: "carousel", slideIndex, field: "mediaBackgroundColor" }, "cor do fundo da mídia");
-          attachColor(panel.querySelector(".ll-carousel__caption"), { scope: "carousel", slideIndex, field: "backgroundColor" }, "cor do fundo da legenda");
           attachColor(panel.querySelector(".ll-carousel__caption h3"), { scope: "carousel", slideIndex, field: "textColor" }, "cor do texto");
+          attachCarouselCaptionPosition(panel.querySelector(".ll-carousel__caption"), slideIndex);
           attachText(panel.querySelector(".ll-carousel__layout-eyebrow"), { scope: "carousel", slideIndex, field: "eyebrow" });
           attachText(panel.querySelector(".ll-carousel__layout-title"), { scope: "carousel", slideIndex, field: "title" });
           attachText(panel.querySelector(".ll-carousel__layout-text"), { scope: "carousel", slideIndex, field: "text" }, { multiline: true });
@@ -11897,37 +12667,26 @@ ${buildResponsiveStyle("faq", { includeDraft: true })}`;
 
     function updatePreviewFullscreenButtons() {
       previewFullscreenButtons.forEach((button) => {
-        const label = button.querySelector("[data-toggle-label]");
-        if (label) {
-          label.textContent = isPreviewFullscreen ? "Sair do ampliado" : "Modo ampliado";
-          button.classList.toggle("is-active", isPreviewFullscreen);
-        } else {
-          button.textContent = isPreviewFullscreen ? "Voltar editor" : "Ampliar prévia";
-        }
+        const nextLabel = isPreviewFullscreen ? "Sair do modo ampliado" : "Ativar modo ampliado";
+        button.classList.toggle("is-active", isPreviewFullscreen);
         button.setAttribute("aria-pressed", String(isPreviewFullscreen));
+        button.setAttribute("aria-label", nextLabel);
+        button.setAttribute("title", nextLabel);
       });
     }
 
     function updateFocusModeButtons() {
       focusModeButtons.forEach((button) => {
-        const label = button.querySelector("[data-toggle-label]");
-        if (label) {
-          label.textContent = isFocusMode ? "Sair do foco" : "Modo foco";
-          button.classList.toggle("is-active", isFocusMode);
-        } else {
-          button.textContent = isFocusMode ? "Sair do foco" : "Modo foco";
-        }
+        const nextLabel = isFocusMode ? "Sair do modo foco" : "Ativar modo foco";
+        button.classList.toggle("is-active", isFocusMode);
         button.setAttribute("aria-pressed", String(isFocusMode));
+        button.setAttribute("aria-label", nextLabel);
+        button.setAttribute("title", nextLabel);
       });
     }
 
     function setPreviewFullscreen(active) {
       isPreviewFullscreen = Boolean(active);
-      if (isPreviewFullscreen) {
-        isFocusMode = false;
-        document.body.classList.remove("focus-mode-active");
-        updateFocusModeButtons();
-      }
       document.body.classList.toggle("preview-fullscreen-active", isPreviewFullscreen);
       updatePreviewFullscreenButtons();
       updatePreviewDeviceUi();
@@ -11935,11 +12694,6 @@ ${buildResponsiveStyle("faq", { includeDraft: true })}`;
 
     function setFocusMode(active) {
       isFocusMode = Boolean(active);
-      if (isFocusMode) {
-        isPreviewFullscreen = false;
-        document.body.classList.remove("preview-fullscreen-active");
-        updatePreviewFullscreenButtons();
-      }
       document.body.classList.toggle("focus-mode-active", isFocusMode);
       updateFocusModeButtons();
       updatePreviewDeviceUi();
@@ -11954,8 +12708,13 @@ ${buildResponsiveStyle("faq", { includeDraft: true })}`;
         : `${config.label} - ${config.width}px`;
       document.documentElement.dataset.previewDevice = config.key;
       if (isPreviewFullscreen) {
-        previewFrame.style.width = "100%";
-        previewFrame.style.maxWidth = "none";
+        if (config.key === "desktop") {
+          previewFrame.style.width = `min(100%, ${idealWidth}px)`;
+          previewFrame.style.maxWidth = "100%";
+        } else {
+          previewFrame.style.width = `${config.width}px`;
+          previewFrame.style.maxWidth = "100%";
+        }
         previewDeviceButtons.forEach((button) => {
           button.setAttribute("aria-pressed", String(button.dataset.previewDevice === config.key));
         });
@@ -12559,7 +13318,7 @@ ${impactFields}
             </summary>
             <div class="stories-guide__body">
               <p><strong>Quantidade:</strong> use de 1 a 4 slides. Os botões de navegação se dividem automaticamente conforme a quantidade ativa.</p>
-              <p><strong>Dimensão única recomendada:</strong> crie as imagens em 1800x1600 px. Essa proporção 9:8 é o compromisso para não precisar gerar uma imagem desktop e outra mobile.</p>
+              <p><strong>Dimensões por sessão:</strong> nos slides de Impacto, use 780x740 px. Nos slides de Decisão, use 1800x1600 px.</p>
               <p><strong>Como o corte funciona:</strong> o carrossel usa cover. No desktop ele abre mais na horizontal; nas telas menores ele fica mais vertical e pode cortar laterais.</p>
               <p><strong>Foco da imagem:</strong> em cada slide, ajuste Left (%) e Top (%) para escolher onde o produto fica preso durante o corte. 50/50 é centro.</p>
               <p><strong>Referência rápida:</strong> produto à direita, aumente Left; produto à esquerda, diminua Left; produto no topo, diminua Top; produto embaixo, aumente Top.</p>
