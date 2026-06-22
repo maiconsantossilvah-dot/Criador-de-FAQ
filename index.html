@@ -6206,6 +6206,89 @@ ${controls}
       return warnings;
     }
 
+    function shortenLocalAssetReference(value) {
+      const rawValue = String(value || "").trim();
+      const reference = getLocalAssetReference(rawValue) || rawValue;
+      return reference.length > 78 ? `${reference.slice(0, 34)}...${reference.slice(-34)}` : reference;
+    }
+
+    function getLocalAssetReference(value) {
+      const rawValue = String(value || "").trim();
+      const fileMatch = rawValue.match(/file:\/\/\/?[^\s"')<>]+/i);
+      if (fileMatch) {
+        return fileMatch[0];
+      }
+
+      const windowsMatch = rawValue.match(/(?:^|[\s"'(=,])([a-zA-Z]:[\\/][^\s"')<>]+)/);
+      if (windowsMatch) {
+        return windowsMatch[1];
+      }
+
+      const uncMatch = rawValue.match(/(?:^|[\s"'(=,])(\\\\[^\s"')<>]+)/);
+      return uncMatch ? uncMatch[1] : "";
+    }
+
+    function isLocalAssetReference(value) {
+      const rawValue = String(value || "").trim();
+      if (!rawValue) {
+        return false;
+      }
+
+      return /^file:\/\//i.test(rawValue)
+        || isWindowsLocalPath(rawValue)
+        || /url\(\s*["']?\s*file:\/\//i.test(rawValue)
+        || /url\(\s*["']?\s*[a-zA-Z]:[\\/]/i.test(rawValue)
+        || /(?:^|[\s,])file:\/\/\/?[^\s,]+/i.test(rawValue)
+        || /(?:^|[\s,])[a-zA-Z]:[\\/][^\s,]+/.test(rawValue);
+    }
+
+    function describeLocalAssetElement(element, index) {
+      const label = element.getAttribute("alt")
+        || element.getAttribute("aria-label")
+        || element.getAttribute("title")
+        || element.getAttribute("class")
+        || element.tagName.toLowerCase();
+      const cleanLabel = String(label || "").replace(/\s+/g, " ").trim();
+      return cleanLabel ? `${cleanLabel}` : `item ${index + 1}`;
+    }
+
+    function collectHtmlLocalAssetBlockers(html, prefix = "HTML") {
+      const blockers = [];
+      const rawHtml = String(html || "");
+      const parsedDocument = new DOMParser().parseFromString(rawHtml, "text/html");
+      const assetAttributes = ["src", "srcset", "poster", "href", "data-src", "data-srcset"];
+
+      Array.from(parsedDocument.querySelectorAll("*")).forEach((element, index) => {
+        assetAttributes.forEach((attribute) => {
+          const value = element.getAttribute(attribute);
+          if (value && isLocalAssetReference(value)) {
+            addUniqueWarning(blockers, `${prefix}: ${describeLocalAssetElement(element, index)} usa arquivo local em ${attribute} (${shortenLocalAssetReference(value)})`);
+          }
+        });
+
+        const inlineStyle = element.getAttribute("style") || "";
+        if (inlineStyle && isLocalAssetReference(inlineStyle)) {
+          addUniqueWarning(blockers, `${prefix}: ${describeLocalAssetElement(element, index)} usa arquivo local no estilo (${shortenLocalAssetReference(inlineStyle)})`);
+        }
+      });
+
+      Array.from(parsedDocument.querySelectorAll("style")).forEach((style, index) => {
+        const css = style.textContent || "";
+        if (isLocalAssetReference(css)) {
+          addUniqueWarning(blockers, `${prefix}: CSS ${index + 1} contém arquivo local (${shortenLocalAssetReference(css)})`);
+        }
+      });
+
+      const rawPattern = /file:\/\/\/?[^\s"')<>]+|(?:^|[\s"'(=,])([a-zA-Z]:[\\/][^\s"')<>]+)|(?:^|[\s"'(=,])(\\\\[^\s"')<>]+)/g;
+      let rawMatch;
+      while ((rawMatch = rawPattern.exec(rawHtml)) !== null) {
+        const reference = rawMatch[1] || rawMatch[2] || rawMatch[0].trim();
+        addUniqueWarning(blockers, `${prefix}: contém arquivo local (${shortenLocalAssetReference(reference)})`);
+      }
+
+      return blockers;
+    }
+
     function collectLayoutWarnings(tab = getResponsiveTab()) {
       const warnings = [];
 
@@ -6519,6 +6602,44 @@ ${itemMarkup}
       return normalizeHexColor(isHexColor(value) ? value : fallback);
     }
 
+    function isWindowsLocalPath(value) {
+      const rawValue = String(value || "").trim();
+      return /^[a-zA-Z]:[\\/]/.test(rawValue) || /^\\\\/.test(rawValue);
+    }
+
+    function normalizeLocalPathToFileUrl(value) {
+      const rawValue = String(value || "").trim();
+      if (!rawValue) {
+        return "";
+      }
+
+      if (/^file:\/\//i.test(rawValue)) {
+        return rawValue.replace(/\\/g, "/");
+      }
+
+      if (/^[a-zA-Z]:[\\/]/.test(rawValue)) {
+        return `file:///${rawValue.replace(/\\/g, "/")}`;
+      }
+
+      if (/^\\\\/.test(rawValue)) {
+        return `file:${rawValue.replace(/\\/g, "/")}`;
+      }
+
+      return rawValue;
+    }
+
+    function normalizeAssetUrl(value) {
+      const rawValue = String(value || "").trim();
+      return isWindowsLocalPath(rawValue) || /^file:\/\//i.test(rawValue)
+        ? normalizeLocalPathToFileUrl(rawValue)
+        : rawValue;
+    }
+
+    function isLocalAssetUrl(value) {
+      const normalizedValue = normalizeAssetUrl(value);
+      return /^file:\/\//i.test(normalizedValue);
+    }
+
     function getColorPreviewStyle(value) {
       return normalizeCssColorValue(value || "#ea5b0c");
     }
@@ -6724,7 +6845,7 @@ ${itemMarkup}
           return `<span class="ll-carousel__dot-icon ll-carousel__dot-icon--svg">${sanitizeInlineSvgMarkup(iconImage)}</span>`;
         }
 
-        return `<span class="ll-carousel__dot-icon"><img class="ll-carousel__dot-icon-img" src="${escapeHtml(iconImage)}" alt="" loading="lazy"></span>`;
+        return `<span class="ll-carousel__dot-icon"><img class="ll-carousel__dot-icon-img" src="${escapeHtml(normalizeAssetUrl(iconImage))}" alt="" loading="lazy"></span>`;
       }
 
       const icon = getCarouselIconName(slide.navIcon);
@@ -6744,9 +6865,13 @@ ${itemMarkup}
     }
 
     function buildCarouselImageVariant(src, size) {
-      const value = String(src || "").trim();
+      const value = normalizeAssetUrl(src);
       if (!value) {
         return "";
+      }
+
+      if (isLocalAssetUrl(value)) {
+        return value;
       }
 
       const hashIndex = value.indexOf("#");
@@ -6847,7 +6972,7 @@ ${itemMarkup}
     }
 
     function renderCarouselImage(slide, className = "ll-carousel__image") {
-      const src = escapeHtml(String(slide.image || "").trim());
+      const src = escapeHtml(normalizeAssetUrl(slide.image));
       const alt = escapeHtml(String(slide.alt || "").trim());
       const focusX = normalizeCarouselFocus(slide.focusX);
       const focusY = normalizeCarouselFocus(slide.focusY);
@@ -6859,7 +6984,7 @@ ${itemMarkup}
     }
 
     function renderCarouselPicture(slide) {
-      const src = String(slide.image || "").trim();
+      const src = normalizeAssetUrl(slide.image);
       const sources = [
         ["(max-width: 320px)", "242x"],
         ["(max-width: 375px)", "297x"],
@@ -8968,9 +9093,13 @@ ${rows}
     }
 
     function buildStoryImageVariant(src, size) {
-      const value = String(src || "").trim();
+      const value = normalizeAssetUrl(src);
       if (!value) {
         return "";
+      }
+
+      if (isLocalAssetUrl(value)) {
+        return value;
       }
 
       const hashIndex = value.indexOf("#");
@@ -9088,7 +9217,7 @@ ${rows}
 
     function renderStoryOption(group, groupIndex) {
       const name = escapeHtml(group.name.trim() || "Story");
-      const thumb = escapeHtml(group.thumb.trim());
+      const thumb = escapeHtml(normalizeAssetUrl(group.thumb));
       const firstStoryId = getStoryId(group, 0);
 
       return `        <label class="lp-stories__option lp-stories__option--${group.key}" for="${firstStoryId}" aria-label="Abrir container ${name}, slide 1 de ${group.slides.length}">
@@ -9100,13 +9229,14 @@ ${rows}
     }
 
     function renderStoryMedia(slide) {
-      const src = escapeHtml(slide.src.trim());
+      const normalizedSrc = normalizeAssetUrl(slide.src);
+      const src = escapeHtml(normalizedSrc);
       const alt = escapeHtml(slide.alt.trim());
 
       if (normalizeStoryType(slide.type) === "video") {
-        const poster = slide.poster.trim() ? ` poster="${escapeHtml(slide.poster.trim())}"` : "";
+        const poster = slide.poster.trim() ? ` poster="${escapeHtml(normalizeAssetUrl(slide.poster))}"` : "";
         return `<video class="lp-stories__video" width="1080" height="1920" autoplay muted loop playsinline preload="metadata"${poster} aria-label="${alt}">
-                  <source src="${src}" type="${getStoryVideoType(slide.src)}">
+                  <source src="${src}" type="${getStoryVideoType(normalizedSrc)}">
                 </video>`;
       }
 
@@ -9131,7 +9261,7 @@ ${rows}
       const isDefault = groupIndex === defaultTarget.groupIndex && slideIndex === defaultTarget.slideIndex ? " is-default" : "";
       const previousId = getStoryPreviousId(groupIndex, slideIndex);
       const nextId = getStoryNextId(groupIndex, slideIndex);
-      const avatar = escapeHtml(state.stories.avatar.trim());
+      const avatar = escapeHtml(normalizeAssetUrl(state.stories.avatar));
 
       return `        <article class="lp-stories__panel ${getStoryPanelClass(group, slideIndex)}${isDefault}" aria-labelledby="${storyId}-title" aria-describedby="${storyId}-caption">
           <div class="lp-stories__viewer">
@@ -9183,7 +9313,7 @@ ${panels}
     }
 
     function escapeCssUrl(value) {
-      return String(value || "").trim().replace(/\\/g, "/").replace(/"/g, "%22");
+      return normalizeAssetUrl(value).replace(/"/g, "%22");
     }
 
     function getArticleTags(value) {
@@ -9430,7 +9560,7 @@ ${buildBlocksHtml(includeTable)}`;
     }
 
     function stripHeaderImageVariant(url) {
-      const rawUrl = String(url || "").trim();
+      const rawUrl = normalizeAssetUrl(url);
       const [withoutHash, hash = ""] = rawUrl.split("#");
       const queryIndex = withoutHash.indexOf("?");
       if (queryIndex === -1) {
@@ -9450,6 +9580,11 @@ ${buildBlocksHtml(includeTable)}`;
       if (!baseUrl) {
         return "";
       }
+
+      if (isLocalAssetUrl(baseUrl)) {
+        return baseUrl;
+      }
+
       return `${baseUrl}${baseUrl.includes("?") ? "&" : "?"}ims=${width}x`;
     }
 
@@ -9458,6 +9593,10 @@ ${buildBlocksHtml(includeTable)}`;
         ...getTemplateHeaderDefaults(),
         ...headerData
       };
+      header.imageUrl = normalizeAssetUrl(header.imageUrl);
+      header.videoUrl = normalizeAssetUrl(header.videoUrl);
+      header.posterUrl = normalizeAssetUrl(header.posterUrl);
+      header.logoUrl = normalizeAssetUrl(header.logoUrl);
       const type = header.type;
       if (type === "none") {
         return "";
@@ -10646,9 +10785,10 @@ ${buildResponsiveStyle("faq", { includeDraft: true })}`;
         return;
       }
 
+      const normalizedValue = normalizeAssetUrl(value);
       const tagName = element.tagName;
       if (tagName === "IFRAME") {
-        element.setAttribute("src", normalizeYouTubeEmbedUrl(value));
+        element.setAttribute("src", normalizeYouTubeEmbedUrl(normalizedValue));
         element.setAttribute("allowfullscreen", "");
         if (!element.getAttribute("allow")) {
           element.setAttribute("allow", "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share");
@@ -10657,11 +10797,11 @@ ${buildResponsiveStyle("faq", { includeDraft: true })}`;
       }
 
       if (tagName === "IMG") {
-        element.setAttribute("src", value);
+        element.setAttribute("src", normalizedValue);
         const picture = element.closest("picture");
         if (picture) {
           picture.querySelectorAll("source").forEach((source) => {
-            source.setAttribute("srcset", value);
+            source.setAttribute("srcset", normalizedValue);
           });
         } else {
           element.removeAttribute("srcset");
@@ -10670,14 +10810,14 @@ ${buildResponsiveStyle("faq", { includeDraft: true })}`;
       }
 
       if (tagName === "VIDEO" || tagName === "SOURCE") {
-        element.setAttribute("src", value);
+        element.setAttribute("src", normalizedValue);
         if (tagName === "VIDEO") {
           element.load();
         }
         return;
       }
 
-      element.style.backgroundImage = `url("${value.replaceAll('"', "%22")}")`;
+      element.style.backgroundImage = `url("${normalizedValue.replaceAll('"', "%22")}")`;
     }
 
     function findTemplateHeaderRoot(element, root) {
@@ -10856,14 +10996,15 @@ ${buildResponsiveStyle("faq", { includeDraft: true })}`;
       }
 
       if (posterUrl !== undefined) {
-        video.setAttribute("poster", posterUrl);
+        video.setAttribute("poster", normalizeAssetUrl(posterUrl));
       }
 
       const source = video.querySelector("source");
+      const normalizedVideoUrl = normalizeAssetUrl(videoUrl);
       if (source) {
-        source.setAttribute("src", videoUrl);
+        source.setAttribute("src", normalizedVideoUrl);
       } else {
-        video.setAttribute("src", videoUrl);
+        video.setAttribute("src", normalizedVideoUrl);
       }
 
       video.load?.();
@@ -10912,6 +11053,8 @@ ${buildResponsiveStyle("faq", { includeDraft: true })}`;
     function createTemplateHeaderBannerForType(doc, data, badge) {
       const wrapper = doc.createElement("div");
       if (data.type === "video") {
+        data.videoUrl = normalizeAssetUrl(data.videoUrl);
+        data.posterUrl = normalizeAssetUrl(data.posterUrl);
         wrapper.innerHTML = `<header class="video-header__banner">
     <video class="video-header__banner-video" poster="${escapeHtml(data.posterUrl)}" preload="none" autoplay muted loop playsinline width="1200" height="250" aria-hidden="true">
       <source src="${escapeHtml(data.videoUrl)}">
@@ -11013,7 +11156,7 @@ ${buildResponsiveStyle("faq", { includeDraft: true })}`;
       createField("1. Tipo de header", typeSelect);
 
       const imageUrlInput = document.createElement("input");
-      imageUrlInput.type = "url";
+      imageUrlInput.type = "text";
       imageUrlInput.value = headerData.imageUrl;
       const imageUrlField = createField("URL da imagem", imageUrlInput);
 
@@ -11023,12 +11166,12 @@ ${buildResponsiveStyle("faq", { includeDraft: true })}`;
       const imageAltField = createField("Alt text da imagem", imageAltInput);
 
       const videoUrlInput = document.createElement("input");
-      videoUrlInput.type = "url";
+      videoUrlInput.type = "text";
       videoUrlInput.value = headerData.videoUrl;
       const videoUrlField = createField("URL do vídeo", videoUrlInput);
 
       const posterUrlInput = document.createElement("input");
-      posterUrlInput.type = "url";
+      posterUrlInput.type = "text";
       posterUrlInput.value = headerData.posterUrl;
       const posterUrlField = createField("Poster do vídeo", posterUrlInput);
 
@@ -11051,10 +11194,10 @@ ${buildResponsiveStyle("faq", { includeDraft: true })}`;
 
       const readFields = () => ({
         type: typeSelect.value === "video" ? "video" : "image",
-        imageUrl: imageUrlInput.value.trim(),
+        imageUrl: normalizeAssetUrl(imageUrlInput.value),
         imageAlt: imageAltInput.value,
-        videoUrl: videoUrlInput.value.trim(),
-        posterUrl: posterUrlInput.value.trim(),
+        videoUrl: normalizeAssetUrl(videoUrlInput.value),
+        posterUrl: normalizeAssetUrl(posterUrlInput.value),
         logoUrl: headerData.logoUrl,
         logoLabel: headerData.logoLabel,
         brand: headerData.brand,
@@ -11065,6 +11208,9 @@ ${buildResponsiveStyle("faq", { includeDraft: true })}`;
       const applyHeader = () => {
         const previousType = getTemplateHeaderType(activeHeader);
         headerData = readFields();
+        imageUrlInput.value = headerData.imageUrl;
+        videoUrlInput.value = headerData.videoUrl;
+        posterUrlInput.value = headerData.posterUrl;
         if (headerData.type === previousType) {
           updateTemplateHeaderBannerInPlace(activeHeader, headerData);
           syncTemplateHtmlFromPreview();
@@ -11151,7 +11297,7 @@ ${buildResponsiveStyle("faq", { includeDraft: true })}`;
       };
 
       const urlInput = document.createElement("input");
-      urlInput.type = "url";
+      urlInput.type = "text";
       urlInput.value = getTemplateMediaValue(element);
       createField("URL da imagem", urlInput);
 
@@ -11170,7 +11316,9 @@ ${buildResponsiveStyle("faq", { includeDraft: true })}`;
       form.appendChild(actions);
 
       const applyImage = () => {
-        setTemplateMediaValue(element, urlInput.value.trim());
+        const normalizedUrl = normalizeAssetUrl(urlInput.value);
+        urlInput.value = normalizedUrl;
+        setTemplateMediaValue(element, normalizedUrl);
         element.setAttribute("alt", altInput.value);
         syncTemplateHtmlFromPreview();
       };
@@ -11520,11 +11668,14 @@ ${buildResponsiveStyle("faq", { includeDraft: true })}`;
     function updatePreviewEditValue(meta, rawValue) {
       const isColor = meta.type === "color";
       const isTextStyle = meta.type === "textStyle";
+      const isMedia = meta.type === "media";
       const value = isTextStyle
         ? normalizePreviewText(rawValue && rawValue.text, Boolean(meta.multiline))
         : isColor
           ? normalizeCssColorValue(rawValue)
-          : String(rawValue || "");
+          : isMedia
+            ? normalizeAssetUrl(rawValue)
+            : String(rawValue || "");
 
       if (meta.scope === "template") {
         updateTemplatePreviewEditValue(meta, rawValue, value);
@@ -11803,11 +11954,11 @@ ${buildResponsiveStyle("faq", { includeDraft: true })}`;
         event.stopPropagation();
         const acceptsSvg = /svg/i.test(label);
         openPreviewEditPopover(event, { ...meta, type: "media" }, {
-          inputType: acceptsSvg ? "text" : "url",
+          inputType: "text",
           label,
           multiline: acceptsSvg,
           rows: 5,
-          placeholder: acceptsSvg ? "Cole uma URL .svg/.webp ou o código <svg>...</svg>" : ""
+          placeholder: acceptsSvg ? "Cole uma URL .svg/.webp, caminho local ou o código <svg>...</svg>" : "Cole URL hospedada ou caminho local, ex.: C:\\Users\\nome\\Downloads\\imagem.webp"
         });
       };
 
@@ -14354,6 +14505,12 @@ ${slides}
       return `${baseStatus} Atenção: ${visibleWarnings}${remaining}.`;
     }
 
+    function getCopyBlockedStatusMessage(blockers) {
+      const visibleBlockers = blockers.slice(0, 3).join("; ");
+      const remaining = blockers.length > 3 ? `; +${blockers.length - 3} ocorrência${blockers.length - 3 === 1 ? "" : "s"}` : "";
+      return `Não copiei. Existem imagens ou mídias com URL local: ${visibleBlockers}${remaining}. Troque por URL hospedada antes de copiar.`;
+    }
+
     async function copyGeneratedHtml(mode = "html") {
       const copyMode = mode === "full" ? "full" : "html";
       if (state.responsive.dirty && copyMode === "full") {
@@ -14365,7 +14522,22 @@ ${slides}
 
       const value = buildOutputHtml(copyMode);
       const warnings = collectLayoutWarnings();
+      const blockers = collectHtmlLocalAssetBlockers(value, copyMode === "full" ? "HTML/CSS" : "HTML");
       generatedHtml.value = value;
+
+      if (blockers.length) {
+        copyStatus.textContent = getCopyBlockedStatusMessage(blockers);
+        copyStatus.classList.add("is-warning");
+        copyStatus.classList.remove("is-visible");
+        void copyStatus.offsetWidth;
+        copyStatus.classList.add("is-visible");
+        window.setTimeout(() => {
+          copyStatus.textContent = "";
+          copyStatus.classList.remove("is-warning", "is-visible");
+        }, 9000);
+        return;
+      }
+
       generatedHtml.focus();
       generatedHtml.select();
 
