@@ -6234,12 +6234,20 @@ ${controls}
         return false;
       }
 
-      return /^file:\/\//i.test(rawValue)
+      return containsLocalAssetReference(rawValue)
+        || /^file:\/\//i.test(rawValue)
         || isWindowsLocalPath(rawValue)
         || /url\(\s*["']?\s*file:\/\//i.test(rawValue)
         || /url\(\s*["']?\s*[a-zA-Z]:[\\/]/i.test(rawValue)
         || /(?:^|[\s,])file:\/\/\/?[^\s,]+/i.test(rawValue)
         || /(?:^|[\s,])[a-zA-Z]:[\\/][^\s,]+/.test(rawValue);
+    }
+
+    function containsLocalAssetReference(value) {
+      const rawValue = String(value || "");
+      return /file\s*:\s*\/\//i.test(rawValue)
+        || /(?:^|[^a-zA-Z])([a-zA-Z]\s*:\s*[\\/])/.test(rawValue)
+        || /(?:^|[\s"'(=,])\\\\[^\s"')<>]+/.test(rawValue);
     }
 
     function describeLocalAssetElement(element, index) {
@@ -6255,6 +6263,11 @@ ${controls}
     function collectHtmlLocalAssetBlockers(html, prefix = "HTML") {
       const blockers = [];
       const rawHtml = String(html || "");
+
+      if (containsLocalAssetReference(rawHtml)) {
+        addUniqueWarning(blockers, `${prefix}: contém arquivo local. Troque caminhos do computador por URLs hospedadas.`);
+      }
+
       const parsedDocument = new DOMParser().parseFromString(rawHtml, "text/html");
       const assetAttributes = ["src", "srcset", "poster", "href", "data-src", "data-srcset"];
 
@@ -6607,6 +6620,17 @@ ${itemMarkup}
       return /^[a-zA-Z]:[\\/]/.test(rawValue) || /^\\\\/.test(rawValue);
     }
 
+    function encodeLocalFileUrl(value) {
+      let normalizedValue = String(value || "").trim().replace(/\\/g, "/");
+      try {
+        normalizedValue = decodeURI(normalizedValue);
+      } catch (error) {
+        normalizedValue = String(value || "").trim().replace(/\\/g, "/");
+      }
+
+      return encodeURI(normalizedValue).replace(/#/g, "%23");
+    }
+
     function normalizeLocalPathToFileUrl(value) {
       const rawValue = String(value || "").trim();
       if (!rawValue) {
@@ -6614,15 +6638,15 @@ ${itemMarkup}
       }
 
       if (/^file:\/\//i.test(rawValue)) {
-        return rawValue.replace(/\\/g, "/");
+        return encodeLocalFileUrl(rawValue);
       }
 
       if (/^[a-zA-Z]:[\\/]/.test(rawValue)) {
-        return `file:///${rawValue.replace(/\\/g, "/")}`;
+        return `file:///${encodeLocalFileUrl(rawValue)}`;
       }
 
       if (/^\\\\/.test(rawValue)) {
-        return `file:${rawValue.replace(/\\/g, "/")}`;
+        return `file:${encodeLocalFileUrl(rawValue)}`;
       }
 
       return rawValue;
