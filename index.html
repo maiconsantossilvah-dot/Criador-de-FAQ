@@ -362,6 +362,18 @@
       box-shadow: 0 10px 22px rgba(15, 118, 110, 0.18);
     }
 
+    .button--orange {
+      color: #ffffff;
+      background: #f97316;
+      box-shadow: none;
+    }
+
+    .button--orange:hover {
+      color: #ffffff;
+      background: #ea5b0c;
+      box-shadow: 0 10px 22px rgba(249, 115, 22, 0.18);
+    }
+
     .button--danger {
       color: #ffffff;
       background: #dc2626;
@@ -989,6 +1001,8 @@
       flex-wrap: wrap;
       gap: 10px;
       align-items: center;
+      justify-content: flex-end;
+      margin-left: auto;
     }
 
     .template-editor__textarea {
@@ -1577,6 +1591,13 @@
       color: #ffffff;
       background: var(--blue);
       border-color: var(--blue);
+    }
+
+    .preview-devices__action {
+      min-width: 34px;
+      min-height: 30px;
+      padding: 6px;
+      border-radius: 6px;
     }
 
     .preview-canvas {
@@ -3054,6 +3075,22 @@
             <button class="preview-devices__button" type="button" data-preview-device="tablet">Tablet</button>
             <button class="preview-devices__button" type="button" data-preview-device="notebook">Notebook</button>
             <button class="preview-devices__button" type="button" data-preview-device="desktop">Desktop</button>
+            <button class="button button--orange icon-button preview-devices__action" type="button" data-responsive-preview-save aria-label="Salvar versão responsiva" title="Salvar versão responsiva">
+              <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M5 4h12l2 2v14H5z" stroke-width="2" stroke-linejoin="round"></path>
+                <path d="M8 4v6h8V4" stroke-width="2" stroke-linejoin="round"></path>
+                <path d="M8 20v-6h8v6" stroke-width="2" stroke-linejoin="round"></path>
+              </svg>
+            </button>
+            <button class="button button--danger icon-button preview-devices__action" type="button" data-responsive-preview-remove aria-label="Remover versão responsiva" title="Remover versão responsiva">
+              <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M4 7h16" stroke-width="2" stroke-linecap="round"></path>
+                <path d="M10 11v6" stroke-width="2" stroke-linecap="round"></path>
+                <path d="M14 11v6" stroke-width="2" stroke-linecap="round"></path>
+                <path d="M6 7l1 14h10l1-14" stroke-width="2" stroke-linejoin="round"></path>
+                <path d="M9 7V4h6v3" stroke-width="2" stroke-linejoin="round"></path>
+              </svg>
+            </button>
           </div>
         </div>
         <div class="panel__body output">
@@ -3070,6 +3107,22 @@
                 <button class="preview-devices__button" type="button" data-preview-device="tablet">Tablet</button>
                 <button class="preview-devices__button" type="button" data-preview-device="notebook">Notebook</button>
                 <button class="preview-devices__button" type="button" data-preview-device="desktop">Desktop</button>
+                <button class="button button--orange icon-button preview-devices__action" type="button" data-responsive-preview-save aria-label="Salvar versão responsiva" title="Salvar versão responsiva">
+                  <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                    <path d="M5 4h12l2 2v14H5z" stroke-width="2" stroke-linejoin="round"></path>
+                    <path d="M8 4v6h8V4" stroke-width="2" stroke-linejoin="round"></path>
+                    <path d="M8 20v-6h8v6" stroke-width="2" stroke-linejoin="round"></path>
+                  </svg>
+                </button>
+                <button class="button button--danger icon-button preview-devices__action" type="button" data-responsive-preview-remove aria-label="Remover versão responsiva" title="Remover versão responsiva">
+                  <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                    <path d="M4 7h16" stroke-width="2" stroke-linecap="round"></path>
+                    <path d="M10 11v6" stroke-width="2" stroke-linecap="round"></path>
+                    <path d="M14 11v6" stroke-width="2" stroke-linecap="round"></path>
+                    <path d="M6 7l1 14h10l1-14" stroke-width="2" stroke-linejoin="round"></path>
+                    <path d="M9 7V4h6v3" stroke-width="2" stroke-linejoin="round"></path>
+                  </svg>
+                </button>
               </div>
             </div>
             <div class="preview-canvas" id="previewCanvas">
@@ -5298,6 +5351,8 @@ __CAROUSEL_DYNAMIC_COLORS__
     const previewFrame = document.querySelector("#previewFrame");
     const previewDeviceLabel = document.querySelector("#previewDeviceLabel");
     const previewDeviceButtons = Array.from(document.querySelectorAll("[data-preview-device]"));
+    const responsivePreviewSaveButtons = Array.from(document.querySelectorAll("[data-responsive-preview-save]"));
+    const responsivePreviewRemoveButtons = Array.from(document.querySelectorAll("[data-responsive-preview-remove]"));
     const copyStatus = document.querySelector("#copyStatus");
     const themeToggle = document.querySelector("#themeToggle");
     const brandHomeButton = document.querySelector("[data-brand-home]");
@@ -5358,6 +5413,7 @@ __CAROUSEL_DYNAMIC_COLORS__
       minSlides: 1,
       maxSlides: 4
     };
+    const templateCacheKey = "layoutLabTemplateHtml";
     const storyGroupPresets = [
       { key: "produto", name: "Produto" },
       { key: "uso", name: "Uso" },
@@ -5528,11 +5584,16 @@ __CAROUSEL_DYNAMIC_COLORS__
       return true;
     }
 
-    function setResponsiveEditDevice(device) {
+    function setResponsiveEditDevice(device, options = {}) {
       const validDevice = responsiveEditDevices.some((item) => item.key === device) ? device : "base";
       const tab = getResponsiveTab();
 
       if (validDevice === state.responsive.editDevice) {
+        if (options.previewDevice) {
+          state.responsive.previewDevice = options.previewDevice;
+          updatePreviewDeviceUi();
+          updateOutput({ preservePreviewScroll: false });
+        }
         return;
       }
 
@@ -5546,12 +5607,15 @@ __CAROUSEL_DYNAMIC_COLORS__
 
       if (validDevice === "base") {
         applyTabSnapshot(tab, getBaseSnapshot(tab));
+        if (options.previewDevice) {
+          state.responsive.previewDevice = options.previewDevice;
+        }
       } else {
         const versionSnapshot = state.responsive.saved[tab] && state.responsive.saved[tab][validDevice]
           ? state.responsive.saved[tab][validDevice]
           : getBaseSnapshot(tab);
         applyTabSnapshot(tab, versionSnapshot);
-        state.responsive.previewDevice = validDevice === "desktop" ? "desktop" : validDevice;
+        state.responsive.previewDevice = options.previewDevice || (validDevice === "desktop" ? "desktop" : validDevice);
       }
 
       state.responsive.editDevice = validDevice;
@@ -10475,6 +10539,9 @@ ${buildResponsiveStyle("faq", { includeDraft: true })}`;
           "data-ll-preview-media",
           "data-ll-preview-color",
           "data-ll-preview-inline",
+          "data-ll-preview-position",
+          "data-ll-preview-overlay-horizontal",
+          "data-ll-preview-overlay-vertical",
           "data-ll-preview-manual-story",
           "data-ll-preview-story-active",
           "data-ll-preview-story-hidden",
@@ -10483,6 +10550,8 @@ ${buildResponsiveStyle("faq", { includeDraft: true })}`;
           "data-ll-preview-header-editor",
           "data-ll-preview-header-banner"
         ].forEach((attribute) => element.removeAttribute(attribute));
+        element.removeAttribute("contenteditable");
+        element.removeAttribute("spellcheck");
 
         const title = element.getAttribute("title") || "";
         if (/^Clique para editar|^Clique para trocar|^Duplo clique para editar/i.test(title)) {
@@ -11270,6 +11339,83 @@ ${buildResponsiveStyle("faq", { includeDraft: true })}`;
       syncTemplateHtmlFromPreview();
     }
 
+    function updateInlinePreviewTextValue(meta, element, rawValue, options = {}) {
+      const multiline = Boolean(options.multiline || meta.multiline);
+      const value = normalizePreviewText(rawValue, multiline);
+
+      if (meta.scope === "template") {
+        syncTemplateHtmlFromPreview();
+        return value;
+      }
+
+      if (currentPage === "conteudo") {
+        markResponsiveDirty();
+      }
+
+      if (meta.scope === "faq") {
+        const item = state.items[meta.index];
+        if (item) {
+          item[meta.field] = value;
+        }
+      }
+
+      if (meta.scope === "stories") {
+        if (["avatar", "ringColor", "ringGradientStart", "ringGradientEnd", "captionBackgroundColor"].includes(meta.field)) {
+          state.stories[meta.field] = value;
+        } else {
+          const group = state.stories.groups[meta.groupIndex];
+          if (group) {
+            if (meta.field === "groupName") {
+              group.name = value;
+            } else if (meta.field === "groupThumb") {
+              group.thumb = value;
+            } else {
+              const slide = group.slides[meta.slideIndex];
+              if (slide) {
+                slide[meta.field] = value;
+              }
+            }
+          }
+        }
+      }
+
+      if (meta.scope === "article") {
+        if (meta.tabIndex === undefined) {
+          state.article[meta.field] = value;
+        } else {
+          const tab = state.article.tabs[meta.tabIndex];
+          if (tab) {
+            if (meta.field === "tag") {
+              const tags = getArticleTags(tab.tags);
+              tags[meta.tagIndex] = value;
+              tab.tags = tags.filter(Boolean).join(", ");
+            } else {
+              tab[meta.field] = value;
+            }
+            state.article.openTabIndex = meta.tabIndex;
+          }
+        }
+      }
+
+      if (meta.scope === "carousel") {
+        if (meta.slideIndex === undefined) {
+          state.carousel[meta.field] = value;
+        } else {
+          const slide = state.carousel.slides[meta.slideIndex];
+          if (slide) {
+            slide[meta.field] = value;
+            state.carousel.openSlideIndex = meta.slideIndex;
+            setCarouselPreviewSlide(meta.slideIndex);
+          }
+        }
+      }
+
+      generatedHtml.value = buildOutputHtml("html");
+      copyStatus.textContent = "";
+      copyStatus.classList.remove("is-warning", "is-visible");
+      return value;
+    }
+
     function getComputedPreviewTextStyle(element) {
       const view = element.ownerDocument?.defaultView;
       const computed = view ? view.getComputedStyle(element) : null;
@@ -11527,6 +11673,11 @@ ${buildResponsiveStyle("faq", { includeDraft: true })}`;
         [data-ll-preview-inline] {
           cursor: text;
         }
+        [data-ll-preview-text][contenteditable="plaintext-only"] {
+          cursor: text;
+          outline: 2px dashed rgba(124, 58, 237, 0.95);
+          box-shadow: 0 0 0 4px rgba(124, 58, 237, 0.16);
+        }
         [data-ll-preview-text]:hover,
         [data-ll-preview-text]:focus {
           outline: 2px dashed rgba(124, 58, 237, 0.8);
@@ -11666,18 +11817,100 @@ ${buildResponsiveStyle("faq", { includeDraft: true })}`;
         }
 
         const multiline = Boolean(options.multiline);
-        const triggerEvent = options.triggerEvent || "click";
         element.dataset.llPreviewText = "true";
-        element.setAttribute("title", triggerEvent === "dblclick" ? "Dê dois cliques para editar texto e estilo." : "Clique para editar texto e estilo.");
-        element.addEventListener(triggerEvent, (event) => {
+        element.setAttribute("title", "Clique para editar texto e estilo. Dê dois cliques para editar só o texto.");
+
+        let singleClickTimer = 0;
+        let originalInlineText = "";
+        const focusEditableText = () => {
+          const selection = doc.defaultView.getSelection();
+          const range = doc.createRange();
+          range.selectNodeContents(element);
+          selection.removeAllRanges();
+          selection.addRange(range);
+        };
+
+        const finishInlineTextEdit = () => {
+          if (!element.isContentEditable) {
+            return;
+          }
+
+          const normalizedValue = updateInlinePreviewTextValue(meta, element, element.innerText, { multiline });
+          element.textContent = normalizedValue;
+          element.removeAttribute("contenteditable");
+          element.removeAttribute("spellcheck");
+          delete element.dataset.llPreviewInline;
+        };
+
+        const startInlineTextEdit = (event) => {
           event.preventDefault();
           event.stopPropagation();
-          openPreviewEditPopover(event, { ...meta, type: "textStyle" }, {
-            kind: "text-style",
-            label: "Editar texto",
-            multiline,
-            sourceElement: element
-          });
+          window.clearTimeout(singleClickTimer);
+          closePreviewEditPopover();
+          originalInlineText = element.innerText || element.textContent || "";
+          element.dataset.llPreviewInline = "true";
+          element.setAttribute("contenteditable", "plaintext-only");
+          element.setAttribute("spellcheck", "false");
+          element.focus({ preventScroll: true });
+          focusEditableText();
+        };
+
+        element.addEventListener("click", (event) => {
+          if (element.isContentEditable) {
+            event.stopPropagation();
+            return;
+          }
+
+          event.preventDefault();
+          event.stopPropagation();
+          window.clearTimeout(singleClickTimer);
+          singleClickTimer = window.setTimeout(() => {
+            openPreviewEditPopover(event, { ...meta, type: "textStyle" }, {
+              kind: "text-style",
+              label: "Editar texto",
+              multiline,
+              sourceElement: element
+            });
+          }, 210);
+        });
+
+        element.addEventListener("dblclick", startInlineTextEdit);
+
+        element.addEventListener("keydown", (event) => {
+          if (!element.isContentEditable) {
+            return;
+          }
+
+          if (event.key === "Escape") {
+            event.preventDefault();
+            element.textContent = originalInlineText;
+            element.blur();
+            return;
+          }
+
+          if (event.key === "Enter" && !multiline) {
+            event.preventDefault();
+            element.blur();
+          }
+        });
+
+        element.addEventListener("input", () => {
+          if (!element.isContentEditable) {
+            return;
+          }
+
+          updateInlinePreviewTextValue(meta, element, element.innerText, { multiline });
+        });
+
+        element.addEventListener("blur", finishInlineTextEdit);
+        element.addEventListener("paste", (event) => {
+          if (!element.isContentEditable) {
+            return;
+          }
+
+          event.preventDefault();
+          const text = event.clipboardData?.getData("text/plain") || "";
+          doc.execCommand("insertText", false, text);
         });
       };
 
@@ -11924,6 +12157,307 @@ ${buildResponsiveStyle("faq", { includeDraft: true })}`;
             kind: "color",
             label
           });
+        });
+      };
+
+      const normalizeTemplateOverlayHorizontal = (value) => {
+        return ["left", "center", "right"].includes(value) ? value : "center";
+      };
+
+      const normalizeTemplateOverlayVertical = (value) => {
+        return ["top", "center", "bottom"].includes(value) ? value : "center";
+      };
+
+      const getAlphaFromCssColor = (value, fallback = 0.64) => {
+        const rawValue = String(value || "").trim();
+        const slashMatch = rawValue.match(/\/\s*([\d.]+%?)\s*\)/);
+        if (slashMatch) {
+          const rawAlpha = slashMatch[1];
+          const numericAlpha = rawAlpha.endsWith("%")
+            ? Number(rawAlpha.replace("%", "")) / 100
+            : Number(rawAlpha);
+          return Number.isFinite(numericAlpha) ? Math.min(0.95, Math.max(0, numericAlpha)) : fallback;
+        }
+
+        const rgbaMatch = rawValue.match(/rgba\([^,]+,[^,]+,[^,]+,\s*([\d.]+)\s*\)/i);
+        if (rgbaMatch) {
+          const numericAlpha = Number(rgbaMatch[1]);
+          return Number.isFinite(numericAlpha) ? Math.min(0.95, Math.max(0, numericAlpha)) : fallback;
+        }
+
+        return fallback;
+      };
+
+      const readTemplateOverlayHorizontal = (element) => {
+        const stored = element.dataset.llPreviewOverlayHorizontal;
+        if (stored) {
+          return normalizeTemplateOverlayHorizontal(stored);
+        }
+
+        const style = element.style;
+        const transform = style.transform || "";
+        if (style.right && style.right !== "auto") {
+          return "right";
+        }
+
+        if ((style.left || "").trim() === "50%" || transform.includes("-50%")) {
+          return "center";
+        }
+
+        return "left";
+      };
+
+      const readTemplateOverlayVertical = (element) => {
+        const stored = element.dataset.llPreviewOverlayVertical;
+        if (stored) {
+          return normalizeTemplateOverlayVertical(stored);
+        }
+
+        const style = element.style;
+        const transform = style.transform || "";
+        if (style.bottom && style.bottom !== "auto") {
+          return "bottom";
+        }
+
+        if ((style.top || "").trim() === "50%" || transform.includes(",-50%") || transform.includes(", -50%")) {
+          return "center";
+        }
+
+        return "top";
+      };
+
+      const applyTemplateOverlayPosition = (element, horizontal, vertical) => {
+        const computed = element.ownerDocument.defaultView.getComputedStyle(element);
+        if (computed.position === "static") {
+          element.style.position = "absolute";
+        }
+
+        const normalizedHorizontal = normalizeTemplateOverlayHorizontal(horizontal);
+        const normalizedVertical = normalizeTemplateOverlayVertical(vertical);
+        let translateX = "0";
+        let translateY = "0";
+
+        element.style.left = "";
+        element.style.right = "";
+        element.style.top = "";
+        element.style.bottom = "";
+
+        if (normalizedHorizontal === "left") {
+          element.style.left = "6%";
+        } else if (normalizedHorizontal === "right") {
+          element.style.right = "6%";
+        } else {
+          element.style.left = "50%";
+          translateX = "-50%";
+        }
+
+        if (normalizedVertical === "top") {
+          element.style.top = "8%";
+        } else if (normalizedVertical === "bottom") {
+          element.style.bottom = "8%";
+        } else {
+          element.style.top = "50%";
+          translateY = "-50%";
+        }
+
+        element.style.transform = translateX === "0" && translateY === "0"
+          ? ""
+          : `translate(${translateX}, ${translateY})`;
+        element.dataset.llPreviewOverlayHorizontal = normalizedHorizontal;
+        element.dataset.llPreviewOverlayVertical = normalizedVertical;
+      };
+
+      const openTemplateOverlayPopover = (sourceEvent, overlayElement) => {
+        closePreviewEditPopover();
+
+        const computed = overlayElement.ownerDocument.defaultView.getComputedStyle(overlayElement);
+        const initialColor = colorToHex(computed.backgroundColor || "#000000", "#000000");
+        const initialOpacity = getAlphaFromCssColor(computed.backgroundColor, 0.64).toFixed(2);
+
+        const form = document.createElement("form");
+        form.className = "preview-edit-popover preview-edit-popover--position";
+        form.setAttribute("role", "dialog");
+        form.setAttribute("aria-label", "Editar overlay");
+
+        const title = document.createElement("p");
+        title.className = "preview-edit-popover__title";
+        title.textContent = "Overlay de texto";
+        form.appendChild(title);
+
+        const grid = document.createElement("div");
+        grid.className = "preview-edit-popover__grid";
+
+        const createSelect = (labelText, options, value) => {
+          const label = document.createElement("label");
+          label.className = "preview-edit-popover__mini-field";
+          const text = document.createElement("span");
+          text.textContent = labelText;
+          const select = document.createElement("select");
+          options.forEach((option) => {
+            const item = document.createElement("option");
+            item.value = option.value;
+            item.textContent = option.label;
+            item.selected = option.value === value;
+            select.appendChild(item);
+          });
+          label.append(text, select);
+          grid.appendChild(label);
+          return select;
+        };
+
+        const horizontalSelect = createSelect("Horizontal", [
+          { value: "left", label: "Esquerda" },
+          { value: "center", label: "Centro" },
+          { value: "right", label: "Direita" }
+        ], readTemplateOverlayHorizontal(overlayElement));
+        const verticalSelect = createSelect("Vertical", [
+          { value: "top", label: "Topo" },
+          { value: "center", label: "Centro" },
+          { value: "bottom", label: "Rodapé" }
+        ], readTemplateOverlayVertical(overlayElement));
+        form.appendChild(grid);
+
+        const colorLabel = document.createElement("label");
+        colorLabel.className = "preview-edit-popover__mini-field";
+        const colorText = document.createElement("span");
+        colorText.textContent = "Cor do fundo";
+        const colorRow = document.createElement("div");
+        colorRow.className = "preview-edit-popover__color-row";
+        const colorInput = document.createElement("input");
+        colorInput.className = "preview-edit-popover__color";
+        colorInput.type = "color";
+        colorInput.value = initialColor;
+        const colorHexInput = document.createElement("input");
+        colorHexInput.className = "preview-edit-popover__field";
+        colorHexInput.type = "text";
+        colorHexInput.value = initialColor;
+        colorHexInput.placeholder = "#000000";
+        colorRow.append(colorInput, colorHexInput);
+        colorLabel.append(colorText, colorRow);
+        form.appendChild(colorLabel);
+
+        const opacityGrid = document.createElement("div");
+        opacityGrid.className = "preview-edit-popover__grid";
+        const opacityLabel = document.createElement("label");
+        opacityLabel.className = "preview-edit-popover__mini-field";
+        const opacityText = document.createElement("span");
+        opacityText.textContent = "Opacidade";
+        const opacityInput = document.createElement("input");
+        opacityInput.type = "number";
+        opacityInput.min = "0";
+        opacityInput.max = "0.95";
+        opacityInput.step = "0.05";
+        opacityInput.value = initialOpacity;
+        opacityLabel.append(opacityText, opacityInput);
+        opacityGrid.appendChild(opacityLabel);
+        form.appendChild(opacityGrid);
+
+        const actions = document.createElement("div");
+        actions.className = "preview-edit-popover__actions";
+        const closeButton = document.createElement("button");
+        closeButton.className = "button";
+        closeButton.type = "button";
+        closeButton.textContent = "Fechar";
+        actions.appendChild(closeButton);
+        form.appendChild(actions);
+
+        const applyOverlay = () => {
+          const nextColor = isHexColor(colorHexInput.value) ? normalizeHexColor(colorHexInput.value) : colorInput.value;
+          const nextOpacity = normalizeCarouselCaptionOpacity(opacityInput.value);
+          colorInput.value = nextColor;
+          colorHexInput.value = nextColor;
+          overlayElement.style.backgroundColor = hexToRgba(nextColor, nextOpacity);
+          applyTemplateOverlayPosition(overlayElement, horizontalSelect.value, verticalSelect.value);
+          syncTemplateHtmlFromPreview();
+        };
+
+        horizontalSelect.addEventListener("input", applyOverlay);
+        horizontalSelect.addEventListener("change", applyOverlay);
+        verticalSelect.addEventListener("input", applyOverlay);
+        verticalSelect.addEventListener("change", applyOverlay);
+        colorInput.addEventListener("input", () => {
+          colorHexInput.value = normalizeHexColor(colorInput.value);
+          applyOverlay();
+        });
+        colorHexInput.addEventListener("input", () => {
+          if (isHexColor(colorHexInput.value)) {
+            applyOverlay();
+          }
+        });
+        colorHexInput.addEventListener("change", () => {
+          colorHexInput.value = isHexColor(colorHexInput.value)
+            ? normalizeHexColor(colorHexInput.value)
+            : colorInput.value;
+          applyOverlay();
+        });
+        opacityInput.addEventListener("input", applyOverlay);
+        opacityInput.addEventListener("change", () => {
+          opacityInput.value = normalizeCarouselCaptionOpacity(opacityInput.value).toFixed(2);
+          applyOverlay();
+        });
+        closeButton.addEventListener("click", closePreviewEditPopover);
+        form.addEventListener("submit", (event) => {
+          event.preventDefault();
+          closePreviewEditPopover();
+        });
+
+        previewEditKeyHandler = (event) => {
+          if (event.key === "Escape") {
+            closePreviewEditPopover();
+          }
+        };
+        previewEditOutsideHandler = (event) => {
+          if (previewEditPopover && !previewEditPopover.contains(event.target)) {
+            closePreviewEditPopover();
+          }
+        };
+
+        document.body.appendChild(form);
+        previewEditPopover = form;
+        positionPreviewEditPopover(sourceEvent);
+        window.setTimeout(() => {
+          document.addEventListener("mousedown", previewEditOutsideHandler, true);
+          document.addEventListener("keydown", previewEditKeyHandler, true);
+        }, 0);
+      };
+
+      const isTemplateOverlayCandidate = (element, root) => {
+        if (!element || element === root || element.nodeType !== 1) {
+          return false;
+        }
+
+        if (element.closest?.(".lp-stories, [class*='story' i], [class*='stories' i]")) {
+          return false;
+        }
+
+        if (hasTemplateMediaContent(element)) {
+          return false;
+        }
+
+        const signature = `${element.id || ""} ${typeof element.className === "string" ? element.className : ""}`;
+        const looksLikeOverlay = /group[-_\s]?text|grouptext|ll-carousel__caption|text[-_\s]?overlay|overlay[-_\s]?text|caption[-_\s]?overlay|legenda/i.test(signature);
+        if (!looksLikeOverlay) {
+          return false;
+        }
+
+        return Boolean((element.innerText || element.textContent || "").trim());
+      };
+
+      const attachTemplateOverlay = (element) => {
+        if (!element || element.dataset.llPreviewPosition === "true") {
+          return;
+        }
+
+        element.dataset.llPreviewPosition = "true";
+        element.setAttribute("title", "Clique no fundo do overlay para ajustar posição, cor e opacidade.");
+        element.addEventListener("click", (event) => {
+          if (event.target.closest("[data-ll-preview-text], [data-ll-preview-media]")) {
+            return;
+          }
+
+          event.preventDefault();
+          event.stopImmediatePropagation();
+          openTemplateOverlayPopover(event, element);
         });
       };
 
@@ -12372,6 +12906,10 @@ ${buildResponsiveStyle("faq", { includeDraft: true })}`;
         }, true);
 
         root.addEventListener("dblclick", (event) => {
+          if (event.target.closest("[data-ll-preview-text]")) {
+            return;
+          }
+
           const editableElement = findTemplateMediaAtPoint(event, root);
           if (!editableElement) {
             return;
@@ -12462,10 +13000,18 @@ ${buildResponsiveStyle("faq", { includeDraft: true })}`;
         }, true);
 
         [root, ...root.querySelectorAll("*")].forEach((element) => {
+          if (isTemplateOverlayCandidate(element, root)) {
+            attachTemplateOverlay(element);
+          }
+        });
+
+        [root, ...root.querySelectorAll("*")].forEach((element) => {
           const header = findTemplateHeaderRoot(element, root);
           if (header && isTemplateHeaderBannerTarget(element, header)) {
             return;
           }
+
+          const isOverlayElement = element.dataset.llPreviewPosition === "true";
 
           if (element.tagName === "SVG") {
             markTemplateNode(element);
@@ -12473,7 +13019,7 @@ ${buildResponsiveStyle("faq", { includeDraft: true })}`;
             return;
           }
 
-          if (isTemplateTextCandidate(element)) {
+          if (!isOverlayElement && isTemplateTextCandidate(element)) {
             const id = markTemplateNode(element);
             const shouldUseDblClick = isRadioToggleLabel(element) || isStoryLabelText(element);
             attachText(element, {
@@ -12508,7 +13054,7 @@ ${buildResponsiveStyle("faq", { includeDraft: true })}`;
             }
           }
 
-          if (isTemplateColorCandidate(element, root)) {
+          if (!isOverlayElement && isTemplateColorCandidate(element, root)) {
             const id = markTemplateNode(element);
             const computed = element.ownerDocument.defaultView.getComputedStyle(element);
             const backgroundColor = isTransparentColor(computed.backgroundColor) ? "#ffffff" : colorToHex(computed.backgroundColor || "#ffffff", "#ffffff");
@@ -12665,6 +13211,48 @@ ${buildResponsiveStyle("faq", { includeDraft: true })}`;
       return widths[currentEditorTab] || config.width;
     }
 
+    function getResponsiveEditDeviceFromPreview(device = state.responsive.previewDevice) {
+      if (device === "mobile") {
+        return "mobile";
+      }
+
+      if (device === "tablet") {
+        return "tablet";
+      }
+
+      return "desktop";
+    }
+
+    function shouldShowResponsivePreviewActions() {
+      return currentPage === "conteudo" && currentEditorTab !== "dashboard";
+    }
+
+    function ensureResponsiveEditDeviceForPreview() {
+      const targetDevice = getResponsiveEditDeviceFromPreview();
+      if (state.responsive.editDevice === targetDevice) {
+        return true;
+      }
+
+      setResponsiveEditDevice(targetDevice, { previewDevice: state.responsive.previewDevice });
+      return state.responsive.editDevice === targetDevice;
+    }
+
+    function saveResponsivePreviewVersion() {
+      if (!ensureResponsiveEditDeviceForPreview()) {
+        return;
+      }
+
+      saveResponsiveDraft();
+    }
+
+    function removeResponsivePreviewVersion() {
+      if (!ensureResponsiveEditDeviceForPreview()) {
+        return;
+      }
+
+      removeResponsiveVersion();
+    }
+
     function updatePreviewFullscreenButtons() {
       previewFullscreenButtons.forEach((button) => {
         const nextLabel = isPreviewFullscreen ? "Sair do modo ampliado" : "Ativar modo ampliado";
@@ -12718,6 +13306,17 @@ ${buildResponsiveStyle("faq", { includeDraft: true })}`;
         previewDeviceButtons.forEach((button) => {
           button.setAttribute("aria-pressed", String(button.dataset.previewDevice === config.key));
         });
+        const showResponsiveActions = shouldShowResponsivePreviewActions();
+        const responsiveDevice = getResponsiveEditDeviceFromPreview(config.key);
+        const hasSavedVersion = showResponsiveActions && hasResponsiveVersion(getResponsiveTab(), responsiveDevice);
+        responsivePreviewSaveButtons.forEach((button) => {
+          button.hidden = !showResponsiveActions;
+          button.disabled = !showResponsiveActions;
+        });
+        responsivePreviewRemoveButtons.forEach((button) => {
+          button.hidden = !showResponsiveActions;
+          button.disabled = !showResponsiveActions || !hasSavedVersion;
+        });
         return;
       }
       if (currentPage === "conteudo" && currentEditorTab === "dashboard") {
@@ -12730,10 +13329,29 @@ ${buildResponsiveStyle("faq", { includeDraft: true })}`;
       previewDeviceButtons.forEach((button) => {
         button.setAttribute("aria-pressed", String(button.dataset.previewDevice === config.key));
       });
+      const showResponsiveActions = shouldShowResponsivePreviewActions();
+      const responsiveDevice = getResponsiveEditDeviceFromPreview(config.key);
+      const hasSavedVersion = showResponsiveActions && hasResponsiveVersion(getResponsiveTab(), responsiveDevice);
+      responsivePreviewSaveButtons.forEach((button) => {
+        button.hidden = !showResponsiveActions;
+        button.disabled = !showResponsiveActions;
+      });
+      responsivePreviewRemoveButtons.forEach((button) => {
+        button.hidden = !showResponsiveActions;
+        button.disabled = !showResponsiveActions || !hasSavedVersion;
+      });
     }
 
     function setPreviewDevice(device) {
       const config = getPreviewDeviceConfig(device);
+      if (shouldShowResponsivePreviewActions()) {
+        const editDevice = getResponsiveEditDeviceFromPreview(config.key);
+        if (editDevice !== state.responsive.editDevice) {
+          setResponsiveEditDevice(editDevice, { previewDevice: config.key });
+          return;
+        }
+      }
+
       state.responsive.previewDevice = config.key;
       updatePreviewDeviceUi();
       updateOutput({ preservePreviewScroll: false });
@@ -12820,6 +13438,14 @@ ${buildResponsiveStyle("faq", { includeDraft: true })}`;
         <path d="M14 11v6" stroke-width="2" stroke-linecap="round"></path>
         <path d="M6 7l1 14h10l1-14" stroke-width="2" stroke-linejoin="round"></path>
         <path d="M9 7V4h6v3" stroke-width="2" stroke-linejoin="round"></path>
+      </svg>`;
+    }
+
+    function saveIcon() {
+      return `<svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <path d="M5 4h12l2 2v14H5z" stroke-width="2" stroke-linejoin="round"></path>
+        <path d="M8 4v6h8V4" stroke-width="2" stroke-linejoin="round"></path>
+        <path d="M8 20v-6h8v6" stroke-width="2" stroke-linejoin="round"></path>
       </svg>`;
     }
 
@@ -13435,13 +14061,12 @@ ${slides}
         <article class="faq-bulk-panel">
           <div class="faq-editor__bar">
             <strong>Conteúdo da LP</strong>
+            <div class="template-editor__actions">
+              <button class="button button--soft icon-button" type="button" data-action="save-template-html-cache" aria-label="Salvar conteúdo da LP no navegador" title="Salvar conteúdo da LP">${saveIcon()}</button>
+              <button class="button button--danger icon-button" type="button" data-action="clear-template-html" aria-label="Limpar conteúdo da LP e apagar cache" title="Limpar conteúdo da LP">${trashIcon()}</button>
+            </div>
           </div>
           <div class="faq-bulk-panel__body">
-            <div class="template-editor__actions">
-              <button class="button button--soft" type="button" data-action="import-template-html">Importar HTML</button>
-              <button class="button button--danger" type="button" data-action="clear-template-html">Limpar</button>
-              <input class="template-editor__file" type="file" accept="text/html,.html" data-template-import>
-            </div>
             <label class="field">
               <span>HTML dentro da lp-container</span>
               <textarea class="bulk-input template-editor__textarea" data-template-field="html" spellcheck="false">${escapeHtml(state.template.html)}</textarea>
@@ -13475,7 +14100,9 @@ ${slides}
       }
       if (currentPage === "conteudo" && currentEditorTab !== "dashboard") {
         const presetMarkup = currentEditorTab === "template" ? "" : renderPresetPanel();
-        editor.insertAdjacentHTML("afterbegin", `${presetMarkup}${renderResponsiveEditor()}${renderQualityChecklist()}`);
+        if (presetMarkup) {
+          editor.insertAdjacentHTML("afterbegin", presetMarkup);
+        }
       }
       editor.scrollTop = preserveScroll ? previousScrollTop : 0;
 
@@ -13771,7 +14398,30 @@ ${slides}
     function clearTemplateHtml() {
       state.template.html = "";
       state.template.status = "Conteúdo da LP limpo.";
+      try {
+        localStorage.removeItem(templateCacheKey);
+      } catch (error) {}
       renderEditor(true);
+    }
+
+    function saveTemplateHtmlCache() {
+      try {
+        localStorage.setItem(templateCacheKey, state.template.html || "");
+        state.template.status = "Conteúdo da LP salvo neste navegador.";
+      } catch (error) {
+        state.template.status = "Não consegui salvar no navegador.";
+      }
+      renderEditor(true);
+    }
+
+    function loadTemplateHtmlCache() {
+      try {
+        const savedHtml = localStorage.getItem(templateCacheKey);
+        if (savedHtml !== null) {
+          state.template.html = savedHtml;
+          state.template.status = "Conteúdo da LP recuperado deste navegador.";
+        }
+      } catch (error) {}
     }
 
     function importTemplateHtmlFile(file) {
@@ -14373,6 +15023,11 @@ ${slides}
         return;
       }
 
+      if (action === "save-template-html-cache") {
+        saveTemplateHtmlCache();
+        return;
+      }
+
       if (action === "save-responsive") {
         saveResponsiveDraft();
         return;
@@ -14405,7 +15060,8 @@ ${slides}
         "add-carousel-slide",
         "remove-carousel-slide",
         "insert-template-layout",
-        "clear-template-html"
+        "clear-template-html",
+        "save-template-html-cache"
       ];
       if (mutatingActions.includes(action)) {
         markResponsiveDirty();
@@ -14533,6 +15189,16 @@ ${slides}
         setPreviewDevice(button.dataset.previewDevice);
       });
     });
+    responsivePreviewSaveButtons.forEach((button) => {
+      button.addEventListener("click", () => {
+        saveResponsivePreviewVersion();
+      });
+    });
+    responsivePreviewRemoveButtons.forEach((button) => {
+      button.addEventListener("click", () => {
+        removeResponsivePreviewVersion();
+      });
+    });
 
     window.addEventListener("keydown", (event) => {
       if (event.key === "Escape" && isPreviewFullscreen) {
@@ -14564,6 +15230,7 @@ ${slides}
     updateViewportMode();
     updatePreviewDeviceUi();
     loadUserPresets();
+    loadTemplateHtmlCache();
     setTheme(getInitialTheme());
     applyPage(getPageFromHash());
   </script>
