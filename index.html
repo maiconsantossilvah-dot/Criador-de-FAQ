@@ -866,6 +866,11 @@
       transition: border 0.12s ease, box-shadow 0.12s ease;
     }
 
+    .preview-edit-popover .field .button {
+      justify-self: start;
+      margin-top: 2px;
+    }
+
     .field select {
       min-height: 42px;
       cursor: pointer;
@@ -6246,6 +6251,7 @@ ${controls}
     function containsLocalAssetReference(value) {
       const rawValue = String(value || "");
       return /file\s*:\s*\/\//i.test(rawValue)
+        || /(?:^|[\s"'(=,])(?:blob|data)\s*:/i.test(rawValue)
         || /(?:^|[^a-zA-Z])([a-zA-Z]\s*:\s*[\\/])/.test(rawValue)
         || /(?:^|[\s"'(=,])\\\\[^\s"')<>]+/.test(rawValue);
     }
@@ -6659,9 +6665,45 @@ ${itemMarkup}
         : rawValue;
     }
 
+    function isTemporaryPreviewAssetUrl(value) {
+      return /^(blob|data):/i.test(String(value || "").trim());
+    }
+
     function isLocalAssetUrl(value) {
       const normalizedValue = normalizeAssetUrl(value);
       return /^file:\/\//i.test(normalizedValue);
+    }
+
+    function chooseLocalPreviewAsset(accept, onSelect) {
+      const input = document.createElement("input");
+      input.type = "file";
+      input.accept = accept || "image/*,video/*";
+      input.hidden = true;
+      input.addEventListener("change", () => {
+        const file = input.files && input.files[0];
+        input.remove();
+        if (!file) {
+          return;
+        }
+
+        onSelect(URL.createObjectURL(file), file);
+      }, { once: true });
+      document.body.appendChild(input);
+      input.click();
+    }
+
+    function createLocalAssetButton(targetInput, applyValue, accept = "image/*,video/*") {
+      const button = document.createElement("button");
+      button.className = "button button--soft";
+      button.type = "button";
+      button.textContent = "Escolher arquivo local";
+      button.addEventListener("click", () => {
+        chooseLocalPreviewAsset(accept, (objectUrl) => {
+          targetInput.value = objectUrl;
+          applyValue();
+        });
+      });
+      return button;
     }
 
     function getColorPreviewStyle(value) {
@@ -6894,7 +6936,7 @@ ${itemMarkup}
         return "";
       }
 
-      if (isLocalAssetUrl(value)) {
+      if (isLocalAssetUrl(value) || isTemporaryPreviewAssetUrl(value)) {
         return value;
       }
 
@@ -9122,7 +9164,7 @@ ${rows}
         return "";
       }
 
-      if (isLocalAssetUrl(value)) {
+      if (isLocalAssetUrl(value) || isTemporaryPreviewAssetUrl(value)) {
         return value;
       }
 
@@ -9606,6 +9648,10 @@ ${buildBlocksHtml(includeTable)}`;
       }
 
       if (isLocalAssetUrl(baseUrl)) {
+        return baseUrl;
+      }
+
+      if (isTemporaryPreviewAssetUrl(baseUrl)) {
         return baseUrl;
       }
 
@@ -10114,6 +10160,7 @@ ${buildResponsiveStyle("faq", { includeDraft: true })}`;
       let colorGradientInputs = null;
       let colorOpacityInput = null;
       let styleInputs = null;
+      let localAssetButton = null;
 
       if (isColor) {
         const parsedGradient = parseCssGradient(currentValue);
@@ -10382,6 +10429,13 @@ ${buildResponsiveStyle("faq", { includeDraft: true })}`;
         valueInput.placeholder = options.placeholder || "";
         form.appendChild(valueInput);
         valueInput.addEventListener("input", () => applyLiveValue());
+        if (kind === "media" && !options.multiline) {
+          localAssetButton = document.createElement("button");
+          localAssetButton.className = "button button--soft";
+          localAssetButton.type = "button";
+          localAssetButton.textContent = "Escolher arquivo local";
+          form.appendChild(localAssetButton);
+        }
       }
 
       const actions = document.createElement("div");
@@ -10444,6 +10498,15 @@ ${buildResponsiveStyle("faq", { includeDraft: true })}`;
 
         updatePreviewEditValue({ ...meta, type: kind }, nextValue);
       };
+
+      if (localAssetButton) {
+        localAssetButton.addEventListener("click", () => {
+          chooseLocalPreviewAsset(options.accept || "image/*,video/*", (objectUrl) => {
+            valueInput.value = objectUrl;
+            applyLiveValue();
+          });
+        });
+      }
 
       form.addEventListener("submit", (event) => {
         event.preventDefault();
@@ -11255,6 +11318,10 @@ ${buildResponsiveStyle("faq", { includeDraft: true })}`;
         syncTemplateHtmlFromPreview();
       };
 
+      imageUrlField.appendChild(createLocalAssetButton(imageUrlInput, applyHeader, "image/*"));
+      videoUrlField.appendChild(createLocalAssetButton(videoUrlInput, applyHeader, "video/*"));
+      posterUrlField.appendChild(createLocalAssetButton(posterUrlInput, applyHeader, "image/*"));
+
       [
         typeSelect,
         imageUrlInput,
@@ -11318,12 +11385,13 @@ ${buildResponsiveStyle("faq", { includeDraft: true })}`;
         field.appendChild(text);
         field.appendChild(input);
         form.appendChild(field);
+        return field;
       };
 
       const urlInput = document.createElement("input");
       urlInput.type = "text";
       urlInput.value = getTemplateMediaValue(element);
-      createField("URL da imagem", urlInput);
+      const urlField = createField("URL da imagem", urlInput);
 
       const altInput = document.createElement("input");
       altInput.type = "text";
@@ -11346,6 +11414,8 @@ ${buildResponsiveStyle("faq", { includeDraft: true })}`;
         element.setAttribute("alt", altInput.value);
         syncTemplateHtmlFromPreview();
       };
+
+      urlField.appendChild(createLocalAssetButton(urlInput, applyImage, "image/*,video/*"));
 
       urlInput.addEventListener("input", applyImage);
       urlInput.addEventListener("change", applyImage);
@@ -11977,11 +12047,14 @@ ${buildResponsiveStyle("faq", { includeDraft: true })}`;
         event.preventDefault();
         event.stopPropagation();
         const acceptsSvg = /svg/i.test(label);
+        const isVideoEditor = /vídeo|video|youtube/i.test(label);
+        const isPosterEditor = /poster/i.test(label);
         openPreviewEditPopover(event, { ...meta, type: "media" }, {
           inputType: "text",
           label,
           multiline: acceptsSvg,
           rows: 5,
+          accept: isPosterEditor ? "image/*" : isVideoEditor ? "video/*,image/*" : "image/*,video/*",
           placeholder: acceptsSvg ? "Cole uma URL .svg/.webp, caminho local ou o código <svg>...</svg>" : "Cole URL hospedada ou caminho local, ex.: C:\\Users\\nome\\Downloads\\imagem.webp"
         });
       };
@@ -14532,7 +14605,7 @@ ${slides}
     function getCopyBlockedStatusMessage(blockers) {
       const visibleBlockers = blockers.slice(0, 3).join("; ");
       const remaining = blockers.length > 3 ? `; +${blockers.length - 3} ocorrência${blockers.length - 3 === 1 ? "" : "s"}` : "";
-      return `Não copiei. Existem imagens ou mídias com URL local: ${visibleBlockers}${remaining}. Troque por URL hospedada antes de copiar.`;
+      return `Não copiei. Existem imagens ou mídias locais/temporárias: ${visibleBlockers}${remaining}. Troque por URL hospedada antes de copiar.`;
     }
 
     async function copyGeneratedHtml(mode = "html") {
