@@ -622,13 +622,15 @@
     }
 
     html[data-page="conteudo"][data-editor-tab="dashboard"][data-dashboard-view="layouts"] .topbar [data-focus-mode],
-    html[data-page="conteudo"][data-editor-tab="dashboard"][data-dashboard-view="layouts"] .topbar [data-preview-fullscreen] {
+    html[data-page="conteudo"][data-editor-tab="dashboard"][data-dashboard-view="layouts"] .topbar [data-preview-fullscreen],
+    html[data-page="conteudo"][data-editor-tab="dashboard"][data-dashboard-view="layouts"] .topbar [data-code-focus-mode] {
       display: none;
     }
 
     html[data-page="tecnica"] .brand,
     html[data-page="tecnica"] .topbar [data-focus-mode],
     html[data-page="tecnica"] .topbar [data-preview-fullscreen],
+    html[data-page="tecnica"] .topbar [data-code-focus-mode],
     html[data-page="tecnica"] .preview-devices {
       display: none;
     }
@@ -989,6 +991,33 @@
       overflow: hidden;
     }
 
+    .faq-bulk-panel__summary {
+      cursor: pointer;
+      list-style: none;
+    }
+
+    .faq-bulk-panel__summary::-webkit-details-marker {
+      display: none;
+    }
+
+    .faq-bulk-panel__summary::after {
+      content: "›";
+      margin-left: auto;
+      color: var(--editor-bar-text);
+      font-size: 18px;
+      line-height: 1;
+      transform: rotate(90deg);
+      transition: transform 0.16s ease;
+    }
+
+    .faq-bulk-panel:not([open]) .faq-bulk-panel__summary {
+      border-bottom: 0;
+    }
+
+    .faq-bulk-panel:not([open]) .faq-bulk-panel__summary::after {
+      transform: rotate(0deg);
+    }
+
     .faq-bulk-panel__body {
       padding: 12px;
     }
@@ -1016,6 +1045,103 @@
       font-size: 12px;
       line-height: 1.55;
       white-space: pre;
+    }
+
+    .template-code-editor {
+      position: relative;
+      display: grid;
+      min-height: 300px;
+      border: 1px solid var(--field-border);
+      border-radius: 8px;
+      background: var(--field-bg);
+      overflow: hidden;
+    }
+
+    .template-code-editor:focus-within {
+      border-color: var(--blue);
+      box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.18);
+    }
+
+    .template-code-editor__highlight,
+    .template-code-editor .template-editor__textarea {
+      grid-area: 1 / 1;
+      width: 100%;
+      min-height: 300px !important;
+      margin: 0;
+      padding: 11px;
+      border: 0;
+      border-radius: 0;
+      font-family: "Consolas", "Courier New", monospace;
+      font-size: 12px;
+      line-height: 1.55;
+      tab-size: 2;
+      white-space: pre;
+      box-sizing: border-box;
+      overflow: auto;
+    }
+
+    .template-code-editor__highlight {
+      pointer-events: none;
+      color: #94a3b8;
+      background: transparent;
+    }
+
+    .template-code-editor__highlight code {
+      font: inherit;
+      white-space: pre;
+    }
+
+    .template-code-editor .template-editor__textarea {
+      position: relative;
+      z-index: 1;
+      color: var(--field-text) !important;
+      caret-color: var(--field-text);
+      background: transparent !important;
+      outline: none;
+      resize: vertical;
+    }
+
+    .template-code-editor .template-editor__textarea:focus {
+      border-color: transparent;
+      box-shadow: none;
+    }
+
+    .template-code-editor .template-editor__textarea::selection {
+      color: #ffffff;
+      background: rgba(124, 58, 237, 0.28);
+    }
+
+    .template-code-editor__text {
+      color: #334155;
+    }
+
+    .template-code-editor__comment {
+      color: #64748b;
+      font-style: italic;
+    }
+
+    .template-code-editor__bracket {
+      color: #d35400;
+    }
+
+    .template-code-editor__tag {
+      color: #0070b8;
+    }
+
+    .template-code-editor__attr {
+      color: #8a5a00;
+    }
+
+    .template-code-editor__equals {
+      color: #64748b;
+    }
+
+    .template-code-editor__string {
+      color: #008060;
+    }
+
+    .template-code-editor__doctype {
+      color: #7c3aed;
     }
 
     .template-editor__file {
@@ -1761,6 +1887,114 @@
       min-height: calc(100vh - 218px);
     }
 
+    body.code-focus-mode-active {
+      overflow: hidden;
+    }
+
+    body.code-focus-mode-active .app {
+      width: min(1920px, calc(100% - 16px));
+      padding-top: 10px;
+    }
+
+    body.code-focus-mode-active .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 85;
+      padding-block: 8px;
+      backdrop-filter: blur(14px);
+    }
+
+    body.code-focus-mode-active .brand p,
+    body.code-focus-mode-active .page-nav {
+      display: none;
+    }
+
+    body.code-focus-mode-active .layout {
+      grid-template-columns: minmax(720px, 0.82fr) minmax(820px, 1.18fr) !important;
+      gap: 18px;
+      min-height: calc(100vh - 82px);
+    }
+
+    body.code-focus-mode-active .editor-panel,
+    body.code-focus-mode-active .output-panel {
+      min-height: calc(100vh - 92px);
+    }
+
+    html[data-page="conteudo"][data-editor-tab="template"] body.code-focus-mode-active .editor-tools,
+    html[data-page="conteudo"][data-editor-tab="template"] body.code-focus-mode-active .editor-section-title {
+      display: none;
+    }
+
+    html[data-page="conteudo"][data-editor-tab="template"] body.code-focus-mode-active .faq-editor {
+      display: flex;
+      flex: 1;
+      min-height: 0;
+      padding: 0;
+      overflow: hidden;
+    }
+
+    html[data-page="conteudo"][data-editor-tab="template"] body.code-focus-mode-active .faq-bulk-panel {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+      margin: 0;
+      border-radius: 0;
+    }
+
+    html[data-page="conteudo"][data-editor-tab="template"] body.code-focus-mode-active .faq-bulk-panel__body {
+      flex: 1;
+      display: flex;
+      min-height: 0;
+      padding: 0;
+    }
+
+    html[data-page="conteudo"][data-editor-tab="template"] body.code-focus-mode-active .faq-bulk-panel .field {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+      margin: 0;
+      padding: 16px;
+    }
+
+    html[data-page="conteudo"][data-editor-tab="template"] body.code-focus-mode-active .faq-bulk-panel .field span,
+    html[data-page="conteudo"][data-editor-tab="template"] body.code-focus-mode-active .template-editor__status {
+      display: none;
+    }
+
+    body.code-focus-mode-active .template-editor__textarea {
+      flex: 1;
+      min-height: max(720px, calc(100vh - 168px)) !important;
+      font-size: 13px;
+      line-height: 1.58;
+    }
+
+    body.code-focus-mode-active .template-code-editor,
+    body.code-focus-mode-active .template-code-editor__highlight,
+    body.code-focus-mode-active .template-code-editor .template-editor__textarea {
+      flex: 1;
+      min-height: max(720px, calc(100vh - 168px)) !important;
+      font-size: 13px;
+      line-height: 1.58;
+    }
+
+    body.code-focus-mode-active .output {
+      min-height: calc(100vh - 156px);
+    }
+
+    body.code-focus-mode-active .preview-shell {
+      min-height: calc(100vh - 164px);
+    }
+
+    body.code-focus-mode-active .preview-canvas {
+      min-height: calc(100vh - 218px);
+    }
+
+    body.code-focus-mode-active .preview-frame {
+      min-height: calc(100vh - 248px) !important;
+    }
+
     body.preview-fullscreen-active {
       overflow: auto;
     }
@@ -2026,6 +2260,10 @@
       align-items: center;
     }
 
+    .preview-edit-popover__color-row--picker {
+      grid-template-columns: 48px 40px minmax(0, 1fr);
+    }
+
     .preview-edit-popover__color {
       width: 48px;
       height: 40px;
@@ -2060,6 +2298,37 @@
     .preview-edit-popover__color:focus-visible {
       outline: 2px solid var(--blue);
       outline-offset: 2px;
+    }
+
+    .preview-edit-popover__picker {
+      display: inline-grid;
+      place-items: center;
+      width: 40px;
+      height: 40px;
+      border: 1px solid var(--field-border);
+      border-radius: 8px;
+      color: var(--field-label);
+      background: var(--field-bg);
+      cursor: pointer;
+    }
+
+    .preview-edit-popover__picker:hover:not(:disabled),
+    .preview-edit-popover__picker:focus-visible {
+      color: #ffffff;
+      border-color: var(--blue);
+      background: var(--blue);
+      outline: none;
+    }
+
+    .preview-edit-popover__picker:disabled {
+      cursor: not-allowed;
+      opacity: 0.45;
+    }
+
+    .preview-edit-popover__picker svg {
+      width: 18px;
+      height: 18px;
+      stroke: currentColor;
     }
 
     .preview-edit-popover__toggle {
@@ -2433,6 +2702,38 @@
     html[data-theme="dark"] .field input::placeholder,
     html[data-theme="dark"] .field textarea::placeholder {
       color: #6f8196;
+    }
+
+    html[data-theme="dark"] .template-code-editor__text {
+      color: #cbd5e1;
+    }
+
+    html[data-theme="dark"] .template-code-editor__comment {
+      color: #64748b;
+    }
+
+    html[data-theme="dark"] .template-code-editor__bracket {
+      color: #fb923c;
+    }
+
+    html[data-theme="dark"] .template-code-editor__tag {
+      color: #38bdf8;
+    }
+
+    html[data-theme="dark"] .template-code-editor__attr {
+      color: #fde047;
+    }
+
+    html[data-theme="dark"] .template-code-editor__equals {
+      color: #94a3b8;
+    }
+
+    html[data-theme="dark"] .template-code-editor__string {
+      color: #34d399;
+    }
+
+    html[data-theme="dark"] .template-code-editor__doctype {
+      color: #a78bfa;
     }
 
     html[data-theme="dark"] .faq-editor__item {
@@ -3039,6 +3340,17 @@
           </span>
           <span class="theme-toggle__icon theme-toggle__icon--on" aria-hidden="true">
             <svg viewBox="0 0 24 24"><rect x="3" y="7" width="18" height="10" rx="2"></rect></svg>
+          </span>
+        </button>
+        <button class="theme-toggle theme-toggle--icon" type="button" data-code-focus-mode aria-pressed="false" aria-label="Ativar modo HTML" title="Ativar modo HTML">
+          <span class="theme-toggle__track" aria-hidden="true">
+            <span class="theme-toggle__thumb"></span>
+          </span>
+          <span class="theme-toggle__icon theme-toggle__icon--off" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><path d="m8 8-4 4 4 4"></path><path d="m16 8 4 4-4 4"></path><path d="m14 4-4 16"></path></svg>
+          </span>
+          <span class="theme-toggle__icon theme-toggle__icon--on" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><path d="m8 8-4 4 4 4"></path><path d="m16 8 4 4-4 4"></path><path d="m14 4-4 16"></path></svg>
           </span>
         </button>
       </div>
@@ -5372,11 +5684,13 @@ __CAROUSEL_DYNAMIC_COLORS__
     const fullCopyButtons = Array.from(document.querySelectorAll('[data-copy-mode="full"]'));
     const previewFullscreenButtons = Array.from(document.querySelectorAll("[data-preview-fullscreen]"));
     const focusModeButtons = Array.from(document.querySelectorAll("[data-focus-mode]"));
+    const codeFocusModeButtons = Array.from(document.querySelectorAll("[data-code-focus-mode]"));
     let previewEditPopover = null;
     let previewEditOutsideHandler = null;
     let previewEditKeyHandler = null;
     let isPreviewFullscreen = false;
     let isFocusMode = false;
+    let isCodeFocusMode = false;
     let templatePreviewUpdateTimer = 0;
     let currentPage = "conteudo";
     let currentEditorTab = "dashboard";
@@ -6567,6 +6881,95 @@ ${itemMarkup}
         .replaceAll(">", "&gt;")
         .replaceAll('"', "&quot;")
         .replaceAll("'", "&#039;");
+    }
+
+    function highlightHtmlTag(token) {
+      let highlighted = escapeHtml(token);
+      highlighted = highlighted.replace(/^(&lt;\/?)([A-Za-z][\w:-]*)/, '<span class="template-code-editor__bracket">$1</span><span class="template-code-editor__tag">$2</span>');
+      highlighted = highlighted.replace(/(\s)([A-Za-z_:][\w:.-]*)(=)(&quot;.*?&quot;|&#039;.*?&#039;|[^\s&]+)/g, '$1<span class="template-code-editor__attr">$2</span><span class="template-code-editor__equals">$3</span><span class="template-code-editor__string">$4</span>');
+      highlighted = highlighted.replace(/(\/?&gt;)$/, '<span class="template-code-editor__bracket">$1</span>');
+      return highlighted;
+    }
+
+    function highlightHtmlCode(value) {
+      const rawValue = String(value || "");
+      const tokenPattern = /<!--[\s\S]*?-->|<!\[CDATA\[[\s\S]*?\]\]>|<\/?[A-Za-z][^>]*?>|<![^>]*?>/g;
+      let lastIndex = 0;
+      let output = "";
+      let match;
+
+      while ((match = tokenPattern.exec(rawValue))) {
+        const plainText = rawValue.slice(lastIndex, match.index);
+        if (plainText) {
+          output += `<span class="template-code-editor__text">${escapeHtml(plainText)}</span>`;
+        }
+
+        const token = match[0];
+        if (token.startsWith("<!--")) {
+          output += `<span class="template-code-editor__comment">${escapeHtml(token)}</span>`;
+        } else if (token.startsWith("<!")) {
+          output += `<span class="template-code-editor__doctype">${escapeHtml(token)}</span>`;
+        } else {
+          output += `<span class="template-code-editor__token">${highlightHtmlTag(token)}</span>`;
+        }
+
+        lastIndex = match.index + token.length;
+      }
+
+      const tail = rawValue.slice(lastIndex);
+      if (tail) {
+        output += `<span class="template-code-editor__text">${escapeHtml(tail)}</span>`;
+      }
+
+      return output || '<span class="template-code-editor__text"></span>';
+    }
+
+    function syncTemplateCodeEditorScroll(textarea) {
+      const wrapper = textarea?.closest?.("[data-template-code-editor]");
+      const highlight = wrapper?.querySelector?.("[data-template-highlight]");
+      if (!highlight) {
+        return;
+      }
+
+      highlight.scrollTop = textarea.scrollTop;
+      highlight.scrollLeft = textarea.scrollLeft;
+    }
+
+    function updateTemplateCodeHighlight(textarea) {
+      const wrapper = textarea?.closest?.("[data-template-code-editor]");
+      const code = wrapper?.querySelector?.("[data-template-highlight-code]");
+      if (!code) {
+        return;
+      }
+
+      const value = textarea.value || "";
+      code.innerHTML = `${highlightHtmlCode(value)}${value.endsWith("\n") ? "\n" : ""}`;
+      syncTemplateCodeEditorScroll(textarea);
+    }
+
+    function setupTemplateCodeEditors(scope = document) {
+      scope.querySelectorAll?.("[data-template-code-editor] textarea").forEach((textarea) => {
+        updateTemplateCodeHighlight(textarea);
+
+        if (textarea.dataset.templateCodeEditorReady) {
+          return;
+        }
+
+        textarea.dataset.templateCodeEditorReady = "true";
+        textarea.addEventListener("input", () => updateTemplateCodeHighlight(textarea));
+        textarea.addEventListener("scroll", () => syncTemplateCodeEditorScroll(textarea));
+        textarea.addEventListener("keydown", (event) => {
+          if (event.key !== "Tab") {
+            return;
+          }
+
+          event.preventDefault();
+          const start = textarea.selectionStart;
+          const end = textarea.selectionEnd;
+          textarea.setRangeText("  ", start, end, "end");
+          textarea.dispatchEvent(new Event("input", { bubbles: true }));
+        });
+      });
     }
 
     function formatAnswer(value) {
@@ -8960,9 +9363,11 @@ ${lpCard}
       if (currentPage === "tecnica") {
         isFocusMode = false;
         isPreviewFullscreen = false;
-        document.body.classList.remove("focus-mode-active", "preview-fullscreen-active");
+        isCodeFocusMode = false;
+        document.body.classList.remove("focus-mode-active", "preview-fullscreen-active", "code-focus-mode-active");
         updateFocusModeButtons();
         updatePreviewFullscreenButtons();
+        updateCodeFocusModeButtons();
       }
 
       const config = pageConfigs[currentPage];
@@ -10157,6 +10562,7 @@ ${buildResponsiveStyle("faq", { includeDraft: true })}`;
 
       let valueInput;
       let colorInput;
+      let colorPickerButton;
       let colorGradientInputs = null;
       let colorOpacityInput = null;
       let styleInputs = null;
@@ -10167,13 +10573,26 @@ ${buildResponsiveStyle("faq", { includeDraft: true })}`;
         const initialSolid = parsedGradient ? parsedGradient.start : normalizeHexColor(currentValue);
         const row = document.createElement("div");
         row.className = "preview-edit-popover__color-row";
+        row.classList.add("preview-edit-popover__color-row--picker");
 
-        colorInput = document.createElement("button");
+        colorInput = document.createElement("input");
         colorInput.className = "preview-edit-popover__color";
-        colorInput.type = "button";
-        colorInput.tabIndex = -1;
-        colorInput.setAttribute("aria-hidden", "true");
-        colorInput.style.setProperty("--preview-edit-color", currentValue);
+        colorInput.type = "color";
+        colorInput.value = initialSolid;
+        colorInput.setAttribute("aria-label", "Abrir seletor de cor");
+        colorInput.setAttribute("title", "Abrir seletor de cor");
+        colorInput.style.setProperty("--preview-edit-color", initialSolid);
+
+        colorPickerButton = document.createElement("button");
+        colorPickerButton.className = "preview-edit-popover__picker";
+        colorPickerButton.type = "button";
+        colorPickerButton.setAttribute("aria-label", "Pegar cor da tela");
+        colorPickerButton.setAttribute("title", "Pegar cor da tela");
+        colorPickerButton.innerHTML = '<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="m14.5 5.5 4 4"></path><path d="M9 16.5 4.5 21H3v-1.5L7.5 15"></path><path d="m7.5 15 8.8-8.8a2.1 2.1 0 0 1 3 3L10.5 18H7.5z"></path></svg>';
+        if (!("EyeDropper" in window)) {
+          colorPickerButton.disabled = true;
+          colorPickerButton.setAttribute("title", "Conta-gotas indisponível neste navegador");
+        }
 
         valueInput = document.createElement("input");
         valueInput.className = "preview-edit-popover__field";
@@ -10184,12 +10603,36 @@ ${buildResponsiveStyle("faq", { includeDraft: true })}`;
         valueInput.addEventListener("input", () => {
           if (isHexColor(valueInput.value)) {
             valueInput.value = normalizeHexColor(valueInput.value);
+            colorInput.value = valueInput.value;
             colorInput.style.setProperty("--preview-edit-color", valueInput.value);
             applyLiveValue();
           }
         });
 
-        row.append(colorInput, valueInput);
+        colorInput.addEventListener("input", () => {
+          valueInput.value = normalizeHexColor(colorInput.value);
+          colorInput.style.setProperty("--preview-edit-color", valueInput.value);
+          applyLiveValue();
+        });
+
+        colorPickerButton.addEventListener("click", async () => {
+          if (!("EyeDropper" in window)) {
+            return;
+          }
+
+          try {
+            const picker = new window.EyeDropper();
+            const result = await picker.open();
+            if (result?.sRGBHex && isHexColor(result.sRGBHex)) {
+              valueInput.value = normalizeHexColor(result.sRGBHex);
+              colorInput.value = valueInput.value;
+              colorInput.style.setProperty("--preview-edit-color", valueInput.value);
+              applyLiveValue();
+            }
+          } catch (error) {}
+        });
+
+        row.append(colorInput, colorPickerButton, valueInput);
         form.appendChild(row);
 
         if (options.opacityField) {
@@ -10475,7 +10918,10 @@ ${buildResponsiveStyle("faq", { includeDraft: true })}`;
             nextValue = isHexColor(valueInput.value) ? normalizeHexColor(valueInput.value) : normalizeHexColor(readPreviewEditValue(meta));
           }
 
-          colorInput?.style?.setProperty("--preview-edit-color", nextValue);
+          if (isHexColor(nextValue) && colorInput) {
+            colorInput.value = normalizeHexColor(nextValue);
+          }
+          colorInput?.style?.setProperty("--preview-edit-color", isHexColor(nextValue) ? normalizeHexColor(nextValue) : nextValue);
         }
 
         if (isTextStyle) {
@@ -10804,6 +11250,7 @@ ${buildResponsiveStyle("faq", { includeDraft: true })}`;
       const textarea = editor.querySelector('[data-template-field="html"]');
       if (textarea && document.activeElement !== textarea) {
         textarea.value = state.template.html;
+        updateTemplateCodeHighlight(textarea);
       }
       generatedHtml.value = buildOutputHtml("html");
       copyStatus.textContent = "";
@@ -11575,7 +12022,12 @@ ${buildResponsiveStyle("faq", { includeDraft: true })}`;
       } else if (meta.type === "media") {
         setTemplateMediaValue(element, normalizedValue);
       } else if (meta.type === "color") {
-        element.style.background = normalizedValue;
+        const computed = element.ownerDocument.defaultView.getComputedStyle(element);
+        const backgroundImage = computed.backgroundImage || "";
+        if (backgroundImage && backgroundImage !== "none" && !/url\(/i.test(backgroundImage)) {
+          element.style.backgroundImage = "none";
+        }
+        element.style.backgroundColor = normalizedValue;
       }
 
       syncTemplateHtmlFromPreview();
@@ -12364,10 +12816,12 @@ ${buildResponsiveStyle("faq", { includeDraft: true })}`;
           return;
         }
 
+        const triggerEvent = options.triggerEvent || (/fundo|prote[cç][aã]o|borda|se[cç][aã]o|m[ií]dia/i.test(label) ? "click" : "dblclick");
         element.dataset.llPreviewColor = "true";
-        element.setAttribute("title", `Duplo clique para editar ${label}.`);
-        element.addEventListener("dblclick", (event) => {
-          if (element.dataset.llPreviewMedia) {
+        element.setAttribute("title", triggerEvent === "click" ? `Clique para editar ${label}.` : `Duplo clique para editar ${label}.`);
+        element.addEventListener(triggerEvent, (event) => {
+          const allowColorOnMedia = Boolean(options.allowOnMedia);
+          if (element.dataset.llPreviewMedia && !allowColorOnMedia) {
             return;
           }
 
@@ -12381,10 +12835,10 @@ ${buildResponsiveStyle("faq", { includeDraft: true })}`;
 
             const nodeTag = node.tagName;
             const computed = node.ownerDocument?.defaultView?.getComputedStyle(node);
-            const hasBackground = computed && computed.backgroundImage && computed.backgroundImage !== "none";
+            const hasBackgroundAsset = computed && /url\(/i.test(computed.backgroundImage || "");
             return node.dataset?.llPreviewMedia
               || ["IMG", "PICTURE", "VIDEO", "SOURCE", "IFRAME", "SVG"].includes(nodeTag)
-              || hasBackground;
+              || hasBackgroundAsset;
           });
           if (hasMediaUnderPointer) {
             return;
@@ -12678,10 +13132,6 @@ ${buildResponsiveStyle("faq", { includeDraft: true })}`;
           return false;
         }
 
-        if (hasTemplateMediaContent(element)) {
-          return false;
-        }
-
         const signature = `${element.id || ""} ${typeof element.className === "string" ? element.className : ""}`;
         const looksLikeOverlay = /group[-_\s]?text|grouptext|ll-carousel__caption|text[-_\s]?overlay|overlay[-_\s]?text|caption[-_\s]?overlay|legenda/i.test(signature);
         if (!looksLikeOverlay) {
@@ -12943,7 +13393,14 @@ ${buildResponsiveStyle("faq", { includeDraft: true })}`;
 
       const hasTemplateBackgroundImage = (element) => {
         const computed = element.ownerDocument.defaultView.getComputedStyle(element);
-        return computed.backgroundImage && computed.backgroundImage !== "none";
+        return /url\(/i.test(computed.backgroundImage || "");
+      };
+
+      const hasTemplatePaintedBackground = (element) => {
+        const computed = element.ownerDocument.defaultView.getComputedStyle(element);
+        const backgroundImage = computed.backgroundImage || "";
+        return !isTransparentColor(computed.backgroundColor)
+          || (backgroundImage && backgroundImage !== "none" && !/url\(/i.test(backgroundImage));
       };
 
       const hasTemplateMediaContent = (element) => {
@@ -12967,13 +13424,19 @@ ${buildResponsiveStyle("faq", { includeDraft: true })}`;
           return true;
         }
 
-        if (hasTemplateMediaContent(element)) {
+        if (!element || ["IMG", "PICTURE", "VIDEO", "SOURCE", "IFRAME", "SVG", "CANVAS"].includes(element.tagName)) {
           return false;
         }
 
-        const computed = element.ownerDocument.defaultView.getComputedStyle(element);
-        return !isTransparentColor(computed.backgroundColor)
-          && ["SECTION", "ARTICLE", "DIV", "HEADER", "FOOTER", "ASIDE", "NAV", "BUTTON", "A", "TH", "TD", "FIGCAPTION", "LI"].includes(element.tagName);
+        if (hasTemplateBackgroundImage(element)) {
+          return false;
+        }
+
+        if (!hasTemplatePaintedBackground(element)) {
+          return false;
+        }
+
+        return ["SECTION", "ARTICLE", "DIV", "HEADER", "FOOTER", "ASIDE", "NAV", "BUTTON", "A", "TH", "TD", "FIGCAPTION", "LI"].includes(element.tagName);
       };
 
       const isTemplateMediaNode = (element) => {
@@ -13311,7 +13774,7 @@ ${buildResponsiveStyle("faq", { includeDraft: true })}`;
               field: "backgroundColor",
               templateNodeId: id,
               value: backgroundColor
-            }, "cor de fundo");
+            }, "cor de fundo", { allowOnMedia: true, triggerEvent: "click" });
           }
         });
       };
@@ -13394,7 +13857,7 @@ ${buildResponsiveStyle("faq", { includeDraft: true })}`;
 
         doc.querySelectorAll(".ll-article__panel").forEach((panel, tabIndex) => {
           attachMedia(panel, { scope: "article", tabIndex, field: "image" }, "URL da imagem de fundo");
-          attachColor(panel, { scope: "article", field: "overlayColor" }, "cor da proteção da imagem");
+          attachColor(panel, { scope: "article", field: "overlayColor" }, "cor da proteção da imagem", { allowOnMedia: true });
           attachText(panel.querySelector(".ll-article__eyebrow"), { scope: "article", tabIndex, field: "eyebrow" });
           attachText(panel.querySelector(".ll-article__heading"), { scope: "article", tabIndex, field: "heading" });
           attachText(panel.querySelector(".ll-article__body"), { scope: "article", tabIndex, field: "body" }, { multiline: true });
@@ -13521,8 +13984,23 @@ ${buildResponsiveStyle("faq", { includeDraft: true })}`;
       });
     }
 
+    function updateCodeFocusModeButtons() {
+      codeFocusModeButtons.forEach((button) => {
+        const nextLabel = isCodeFocusMode ? "Sair do modo HTML" : "Ativar modo HTML";
+        button.classList.toggle("is-active", isCodeFocusMode);
+        button.setAttribute("aria-pressed", String(isCodeFocusMode));
+        button.setAttribute("aria-label", nextLabel);
+        button.setAttribute("title", nextLabel);
+      });
+    }
+
     function setPreviewFullscreen(active) {
       isPreviewFullscreen = Boolean(active);
+      if (isPreviewFullscreen && isCodeFocusMode) {
+        isCodeFocusMode = false;
+        document.body.classList.remove("code-focus-mode-active");
+        updateCodeFocusModeButtons();
+      }
       document.body.classList.toggle("preview-fullscreen-active", isPreviewFullscreen);
       updatePreviewFullscreenButtons();
       updatePreviewDeviceUi();
@@ -13532,6 +14010,18 @@ ${buildResponsiveStyle("faq", { includeDraft: true })}`;
       isFocusMode = Boolean(active);
       document.body.classList.toggle("focus-mode-active", isFocusMode);
       updateFocusModeButtons();
+      updatePreviewDeviceUi();
+    }
+
+    function setCodeFocusMode(active) {
+      isCodeFocusMode = Boolean(active);
+      if (isCodeFocusMode && isPreviewFullscreen) {
+        isPreviewFullscreen = false;
+        document.body.classList.remove("preview-fullscreen-active");
+        updatePreviewFullscreenButtons();
+      }
+      document.body.classList.toggle("code-focus-mode-active", isCodeFocusMode);
+      updateCodeFocusModeButtons();
       updatePreviewDeviceUi();
     }
 
@@ -13651,13 +14141,13 @@ ${buildResponsiveStyle("faq", { includeDraft: true })}`;
           </div>
         </div>
 
-        <article class="faq-bulk-panel">
-          <div class="faq-editor__bar">
+        <details class="faq-bulk-panel" open>
+          <summary class="faq-editor__bar faq-bulk-panel__summary">
             <strong>Colar texto completo do FAQ</strong>
-          </div>
+          </summary>
           <div class="faq-bulk-panel__body">
             <label class="field">
-              <span>Perguntas e respostas em massa</span>
+              <span>Perguntas e respostas em massa no formato</span>
               <textarea class="bulk-input" data-faq-bulk="input" spellcheck="false">${escapeHtml(state.faqBulkInput)}</textarea>
             </label>
             <div class="bulk-actions">
@@ -13665,7 +14155,7 @@ ${buildResponsiveStyle("faq", { includeDraft: true })}`;
               <span class="bulk-status" aria-live="polite">${escapeHtml(state.faqBulkStatus)}</span>
             </div>
           </div>
-        </article>
+        </details>
 
         ${renderFaqEditorItems()}
       `;
@@ -14346,6 +14836,7 @@ ${slides}
       } else {
         editor.innerHTML = renderFaqEditor();
       }
+      setupTemplateCodeEditors(editor);
       if (currentPage === "conteudo" && currentEditorTab !== "dashboard") {
         const presetMarkup = currentEditorTab === "template" ? "" : renderPresetPanel();
         if (presetMarkup) {
@@ -14358,22 +14849,22 @@ ${slides}
     }
 
     function parseBulkFaq(value) {
-  const normalized = value.replace(/\r\n?/g, "\n");
-  const items = [];
-  const pattern = /<Q>([\s\S]*?)<\/Q>[\s\S]*?<A>([\s\S]*?)<\/A>/gi;
-  let match;
+      const normalized = value.replace(/\r\n?/g, "\n");
+      const items = [];
+      const pattern = /<Q>([\s\S]*?)<\/Q>[\s\S]*?<A>([\s\S]*?)<\/A>/gi;
+      let match;
 
-  while ((match = pattern.exec(normalized)) !== null) {
-    const question = match[1].replace(/\s+/g, " ").trim();
-    const answer = match[2].trim();
+      while ((match = pattern.exec(normalized)) !== null) {
+        const question = match[1].replace(/\s+/g, " ").trim();
+        const answer = match[2].trim();
 
-    if (question || answer) {
-      items.push({ question, answer });
+        if (question || answer) {
+          items.push({ question, answer });
+        }
+      }
+
+      return items;
     }
-  }
-
-  return items;
-}
 
     function fillFromBulk() {
       const parsedItems = parseBulkFaq(state.faqBulkInput);
@@ -14728,6 +15219,7 @@ ${slides}
       window.setTimeout(() => {
         state.template.html = event.target.value;
         state.template.status = "";
+        updateTemplateCodeHighlight(event.target);
         scheduleTemplatePreviewUpdate(0);
       }, 0);
     });
@@ -14755,6 +15247,7 @@ ${slides}
         if (templateField === "html") {
           state.template.html = event.target.value;
           state.template.status = "";
+          updateTemplateCodeHighlight(event.target);
           scheduleTemplatePreviewUpdate();
           return;
         }
@@ -15443,6 +15936,11 @@ ${slides}
         setFocusMode(!isFocusMode);
       });
     });
+    codeFocusModeButtons.forEach((button) => {
+      button.addEventListener("click", () => {
+        setCodeFocusMode(!isCodeFocusMode);
+      });
+    });
     previewDeviceButtons.forEach((button) => {
       button.addEventListener("click", () => {
         setPreviewDevice(button.dataset.previewDevice);
@@ -15467,6 +15965,11 @@ ${slides}
 
       if (event.key === "Escape" && isFocusMode) {
         setFocusMode(false);
+        return;
+      }
+
+      if (event.key === "Escape" && isCodeFocusMode) {
+        setCodeFocusMode(false);
       }
     });
     window.addEventListener("hashchange", () => {
@@ -15488,6 +15991,7 @@ ${slides}
 
     updateViewportMode();
     updatePreviewDeviceUi();
+    updateCodeFocusModeButtons();
     loadUserPresets();
     loadTemplateHtmlCache();
     setTheme(getInitialTheme());
@@ -15495,6 +15999,5 @@ ${slides}
   </script>
 </body>
 </html>
-
-
+
 
