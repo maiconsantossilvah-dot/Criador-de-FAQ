@@ -285,7 +285,6 @@
       align-items: center;
       gap: 4px;
       padding: 4px;
-      border: 1px solid var(--line);
       border-radius: 8px;
       background: rgba(255, 255, 255, 0.52);
     }
@@ -301,6 +300,25 @@
       font-weight: 800;
       text-decoration: none;
       white-space: nowrap;
+    }
+
+    .page-nav__link__senko {
+      display: inline-flex;
+      align-items: center;
+      text-align: center;
+      min-height: 34px;
+      border-radius: 6px;
+      padding: 0 2rem;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 800;
+      text-decoration: none;
+      white-space: nowrap;
+    }
+
+    .page-nav__link__senko:hover {
+       color: #ffffff;
+      background: #ff7a1a;
     }
 
     .page-nav__link:hover,
@@ -3306,6 +3324,7 @@
       <nav class="page-nav" aria-label="Equipe">
         <a class="page-nav__link" href="#qualidade-tecnica" data-page-link="tecnica">Qualidade Técnica</a>
         <a class="page-nav__link" href="#qualidade-conteudo" data-page-link="conteudo">Qualidade Conteúdo</a>
+        <a class="page-nav__link__senko" href="https://ygormartins-webm.github.io/SenkoLib/" target="_blank" data-page-link="SenkoLib">SenkoLib</a>
       </nav>
       <div class="actions">
         <label class="theme-toggle theme-toggle--icon" for="themeToggle" aria-label="Alternar modo claro/escuro" title="Alternar modo claro/escuro">
@@ -6329,16 +6348,106 @@ ${optionMarkup}
     }
 
     function scopeResponsiveCss(value, scope) {
-      return String(value || "").replace(/(^|[{}])\s*([^@{}][^{]+)\{/g, (match, prefix, selectors) => {
-        const scopedSelectors = selectors
-          .split(",")
-          .map((selector) => selector.trim())
-          .filter(Boolean)
-          .map((selector) => selector.startsWith(scope) ? selector : `${scope} ${selector}`)
-          .join(", ");
+      const css = String(value || "");
 
-        return `${prefix}\n${scopedSelectors} {`;
-      });
+      const findMatchingBrace = (source, openIndex) => {
+        let depth = 0;
+        let quote = "";
+        let inComment = false;
+
+        for (let index = openIndex; index < source.length; index += 1) {
+          const char = source[index];
+          const nextChar = source[index + 1];
+
+          if (inComment) {
+            if (char === "*" && nextChar === "/") {
+              inComment = false;
+              index += 1;
+            }
+            continue;
+          }
+
+          if (quote) {
+            if (char === "\\") {
+              index += 1;
+              continue;
+            }
+
+            if (char === quote) {
+              quote = "";
+            }
+            continue;
+          }
+
+          if (char === "/" && nextChar === "*") {
+            inComment = true;
+            index += 1;
+            continue;
+          }
+
+          if (char === "\"" || char === "'") {
+            quote = char;
+            continue;
+          }
+
+          if (char === "{") {
+            depth += 1;
+          } else if (char === "}") {
+            depth -= 1;
+            if (depth === 0) {
+              return index;
+            }
+          }
+        }
+
+        return -1;
+      };
+
+      const scopeSelectorList = (selectorText) => selectorText
+        .split(",")
+        .map((selector) => selector.trim())
+        .filter(Boolean)
+        .map((selector) => selector.startsWith(scope) ? selector : `${scope} ${selector}`)
+        .join(", ");
+
+      const scopeBlock = (source) => {
+        let output = "";
+        let cursor = 0;
+
+        while (cursor < source.length) {
+          const openIndex = source.indexOf("{", cursor);
+
+          if (openIndex === -1) {
+            output += source.slice(cursor);
+            break;
+          }
+
+          const rawPrelude = source.slice(cursor, openIndex);
+          const prelude = rawPrelude.trim();
+          const closeIndex = findMatchingBrace(source, openIndex);
+
+          if (!prelude || closeIndex === -1) {
+            output += source.slice(cursor);
+            break;
+          }
+
+          const leadingWhitespace = rawPrelude.match(/^\s*/)?.[0] || "";
+          const body = source.slice(openIndex + 1, closeIndex);
+
+          if (prelude.startsWith("@")) {
+            const shouldScopeNestedRules = /^@(media|supports|container|layer)\b/i.test(prelude);
+            output += `${leadingWhitespace}${prelude} {${shouldScopeNestedRules ? scopeBlock(body) : body}}`;
+          } else {
+            output += `${leadingWhitespace}${scopeSelectorList(prelude)} {${body}}`;
+          }
+
+          cursor = closeIndex + 1;
+        }
+
+        return output;
+      };
+
+      return scopeBlock(css);
     }
 
     function scopeResponsiveStyle(value, scope) {
@@ -15999,5 +16108,6 @@ ${slides}
   </script>
 </body>
 </html>
-
+
+
 
