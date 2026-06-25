@@ -1936,6 +1936,7 @@
       min-height: 32px;
       padding: 0;
       border-radius: 8px;
+      line-height: 1;
     }
 
     .icon-button svg {
@@ -2984,18 +2985,27 @@
       color: #f8fafc;
     }
 
-    html[data-theme="dark"] .theme-toggle,
-    html[data-theme="dark"] .button--soft {
+    html[data-theme="dark"] .theme-toggle {
       color: #d8edff;
+    }
+
+     html[data-theme="dark"] .button--soft {
+      color: #d8edff;
+      border: 1px solid var(--blue-dark);
+      background: rgba(255, 255, 255, 0);
     }
 
     html[data-theme="dark"] .page-nav {
       background: transparent;
     }
 
-    html[data-theme="dark"] .theme-toggle:hover,
+    html[data-theme="dark"] .theme-toggle:hover {
+      color: #ffffff;
+    }
+
     html[data-theme="dark"] .button--soft:hover {
       color: #ffffff;
+      background: var(--blue-dark);
     }
 
     html[data-theme="dark"] .button--danger {
