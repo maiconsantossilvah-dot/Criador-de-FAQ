@@ -241,6 +241,17 @@
       display: none;
     }
 
+    html[data-page="conteudo"][data-editor-tab="template"] .page-nav .page-nav__link, 
+    html[data-page="conteudo"][data-editor-tab="stories"] .page-nav .page-nav__link,
+    html[data-page="conteudo"][data-editor-tab="carousel"] .page-nav .page-nav__link,
+    html[data-page="conteudo"][data-editor-tab="article"] .page-nav .page-nav__link,
+    html[data-page="conteudo"][data-editor-tab="faq"] .page-nav .page-nav__link {
+      display: inline-flex;
+      background: rgba(red, green, blue, 0);
+      border: 1px solid #f97316;
+      color: #fff;
+    }
+
     html[data-page="conteudo"] .topbar {
       justify-content: space-between;
     }
@@ -251,13 +262,15 @@
 
     html[data-page="conteudo"] .page-nav__link__senko {
       color: #ffffff;
-      background: #ff7a1a;
+      border: 1px solid #f97316;
+      background: rgba(234, 91, 12, 0);
       box-shadow: 0 10px 22px rgba(249, 115, 22, 0.18);
     }
 
     html[data-page="conteudo"] .page-nav__link__senko:hover,
-    html[data-page="conteudo"] .page-nav__link__senko:focus-visible {
-      background: #ea5b0c;
+    html[data-page="conteudo"] .page-nav__link__senko:focus-visible, 
+    html[data-page="conteudo"] .page-nav .page-nav__link:hover {
+      background: #f97316;
       outline: none;
       transform: translateY(-1px);
     }
@@ -3682,10 +3695,9 @@
         <h1 id="appTitle">Layout Lab</h1>
         <p id="appSubtitle">Crie layouts de conteudo e copie o bloco pronto no formato certo.</p>
       </a>
-      <nav class="page-nav" aria-label="Equipe">
-        <a class="page-nav__link" href="#qualidade-tecnica" data-page-link="tecnica">Qualidade Técnica</a>
-        <a class="page-nav__link" href="#qualidade-conteudo" data-page-link="conteudo">Qualidade Conteúdo</a>
-        <a class="page-nav__link__senko" href="https://ygormartins-webm.github.io/SenkoLib/" target="_blank" data-page-link="SenkoLib">SenkoLib</a>
+      <nav class="page-nav" aria-label="Navegação importante">
+        <a class="page-nav__link" href="https://maiconsantossilvah-dot.github.io/Criador-de-FAQ/#qualidade-conteudo" data-page-link="hub">Hub</a>
+        <a class="page-nav__link__senko" href="https://ygormartins-webm.github.io/SenkoLib/" target="_blank" data-page-link="SenkoLib">SenkoLib</a>  
       </nav>
       <div class="actions">
         <label class="theme-toggle theme-toggle--icon" for="themeToggle" aria-label="Alternar modo claro/escuro" title="Alternar modo claro/escuro">
