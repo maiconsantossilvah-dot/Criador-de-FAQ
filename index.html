@@ -653,6 +653,14 @@
       display: none;
     }
 
+    html[data-page="tecnica"] .app {
+      width: min(1480px, calc(100% - 28px));
+    }
+
+    html[data-page="tecnica"] .layout {
+      grid-template-columns: minmax(350px, 0.64fr) minmax(680px, 1.36fr);
+    }
+
     .editor-tabs {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(96px, 1fr));
@@ -1662,6 +1670,14 @@
       gap: 12px;
       min-height: 0;
       overflow: hidden;
+    }
+
+    html[data-page="tecnica"] .output {
+      grid-template-rows: auto minmax(0, 1fr);
+    }
+
+    html[data-page="tecnica"] #generatedHtml {
+      display: none;
     }
 
     .output textarea {
@@ -3522,7 +3538,7 @@
         overflow: hidden;
     }
 
-    .faq-section__summary {
+    #faq-section__summary {
         display: flex;
         align-items: center;
         justify-content: space-between;
@@ -3533,15 +3549,15 @@
         transition: background 0.15s ease;
     }
 
-    .faq-section__summary::-webkit-details-marker {
+    #faq-section__summary::-webkit-details-marker {
         display: none;
     }
 
-    .faq-section__summary:hover {
+    #faq-section__summary:hover {
         background: #f9f9f9;
     }
 
-    .faq-section__summary:focus-visible {
+    #faq-section__summary:focus-visible {
         outline: 2px solid #ea5b0c;
         outline-offset: -2px;
         border-radius: 12px;
@@ -3587,7 +3603,7 @@
         left: 9px;
     }
 
-    .faq-section__details[open] #faq-section__icon::after {
+    #faq-section__details[open] #faq-section__icon::after {
         transform: rotate(90deg);
         opacity: 0;
     }
@@ -6059,7 +6075,7 @@ __CAROUSEL_DYNAMIC_COLORS__
         rules.push(`#faq-section { padding-inline: ${scaledPx(16, spacingScale)}; }`);
         rules.push(`#faq-section__title { font-size: ${scaledPx(20, titleScale)}; border-radius: ${scaledPx(4, radiusScale)}; }`);
         rules.push(`#faq-section__q-text, #faq-section__a-text { font-size: ${scaledPx(14, textScale)}; }`);
-        rules.push(`.faq-section__summary, #faq-section__a-inner { padding: ${scaledPx(14, spacingScale)}; }`);
+        rules.push(`#faq-section__summary, #faq-section__a-inner { padding: ${scaledPx(14, spacingScale)}; }`);
       }
 
       if (tab === "table") {
@@ -9503,8 +9519,8 @@ ${lpCard}
 
       return `        <!-- Cole aqui as perguntas e respostas -->
         <li id="faq-section__item">
-<details class="faq-section__details">
-<summary class="faq-section__summary">
+<details id="faq-section__details">
+<summary id="faq-section__summary">
 <h3 id="faq-section__q-text"${previewTextStyleAttr({ scope: "faq", index, field: "question" })}> ${question} </h3>
 <span id="faq-section__icon" aria-hidden="true"></span>
 </summary>
@@ -16108,6 +16124,4 @@ ${slides}
   </script>
 </body>
 </html>
-
-
 
