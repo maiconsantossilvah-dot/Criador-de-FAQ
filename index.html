@@ -1,5 +1,5 @@
 ﻿<!doctype html>
-<html lang="pt-BR">
+<html lang="pt-BR" data-page="home">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -204,6 +204,305 @@
       flex: 0 0 auto;
       gap: 16px;
       margin-bottom: 20px;
+    }
+
+    html[data-page="home"] body {
+      height: auto;
+      overflow: auto;
+      background:
+        radial-gradient(circle at 16% 16%, rgba(124, 58, 237, 0.18), transparent 34%),
+        radial-gradient(circle at 86% 20%, rgba(249, 115, 22, 0.18), transparent 30%),
+        linear-gradient(180deg, #f7f2fb 0, #eef4fb 100%);
+    }
+
+    html[data-theme="dark"][data-page="home"] body {
+      background:
+        radial-gradient(circle at 15% 14%, rgba(139, 92, 246, 0.28), transparent 34%),
+        radial-gradient(circle at 86% 20%, rgba(249, 115, 22, 0.2), transparent 30%),
+        linear-gradient(180deg, #211d2b 0, #111827 100%);
+    }
+
+    html[data-page="home"] .app {
+      display: block;
+      width: min(1160px, calc(100% - 32px));
+      height: auto;
+      min-height: 100vh;
+      padding: 32px 0;
+    }
+
+    html[data-page="home"] .topbar,
+    html[data-page="home"] .layout {
+      display: none;
+    }
+
+    html[data-page="conteudo"] .brand,
+    html[data-page="conteudo"] .page-nav .page-nav__link,
+    html[data-page="tecnica"] .topbar {
+      display: none;
+    }
+
+    html[data-page="conteudo"] .topbar {
+      justify-content: space-between;
+    }
+
+    html[data-page="conteudo"] .page-nav {
+      margin-right: auto;
+    }
+
+    html[data-page="conteudo"] .page-nav__link__senko {
+      color: #ffffff;
+      background: #ff7a1a;
+      box-shadow: 0 10px 22px rgba(249, 115, 22, 0.18);
+    }
+
+    html[data-page="conteudo"] .page-nav__link__senko:hover,
+    html[data-page="conteudo"] .page-nav__link__senko:focus-visible {
+      background: #ea5b0c;
+      outline: none;
+      transform: translateY(-1px);
+    }
+
+    .lab-home {
+      display: none;
+    }
+
+    html[data-page="home"] .lab-home {
+      position: relative;
+      isolation: isolate;
+      display: grid;
+      min-height: calc(100vh - 64px);
+      align-content: center;
+      gap: 28px;
+      overflow: hidden;
+      padding: clamp(28px, 6vw, 72px);
+      border: 1px solid rgba(124, 58, 237, 0.2);
+      border-radius: 28px;
+      background:
+        linear-gradient(135deg, rgba(255, 255, 255, 0.82), rgba(255, 255, 255, 0.58)),
+        rgba(255, 255, 255, 0.44);
+      box-shadow: 0 28px 80px rgba(58, 49, 72, 0.14);
+    }
+
+    html[data-theme="dark"][data-page="home"] .lab-home {
+      border-color: rgba(139, 92, 246, 0.26);
+      background:
+        linear-gradient(135deg, rgba(23, 21, 32, 0.9), rgba(32, 27, 43, 0.72)),
+        rgba(17, 16, 26, 0.92);
+      box-shadow: 0 28px 90px rgba(0, 0, 0, 0.34);
+    }
+
+    .lab-home::before {
+      content: "";
+      position: absolute;
+      inset: auto -8% -15% auto;
+      z-index: -1;
+      width: min(780px, 70vw);
+      aspect-ratio: 16 / 10;
+      background: url("lab-home-draw-black.webp") center / contain no-repeat;
+      opacity: 0.13;
+      pointer-events: none;
+    }
+
+    html[data-theme="dark"] .lab-home::before {
+      background-image: url("lab-home-draw-white.webp");
+      opacity: 0.16;
+    }
+
+    .lab-home__intro {
+      display: grid;
+      gap: 18px;
+      max-width: 760px;
+    }
+
+    .lab-home__badge {
+      display: inline-flex;
+      width: max-content;
+      min-height: 42px;
+      align-items: center;
+      padding: 9px 14px;
+      border: 1px solid rgba(255, 117, 34, 0.42);
+      border-radius: 12px;
+      color: #ffffff;
+      background: linear-gradient(135deg, #9b5cff 0%, #ff6b2a 100%);
+      box-shadow: 0 14px 32px rgba(249, 115, 22, 0.18);
+      font-size: 18px;
+      font-weight: 900;
+      line-height: 1;
+    }
+
+    .lab-home h2 {
+      max-width: 11ch;
+      margin: 0;
+      color: var(--brand-ink);
+      font-size: clamp(46px, 8vw, 92px);
+      line-height: 0.93;
+      letter-spacing: -0.03em;
+    }
+
+    .lab-home p {
+      max-width: 58ch;
+      margin: 0;
+      color: var(--muted);
+      font-size: clamp(16px, 1.7vw, 20px);
+      line-height: 1.55;
+    }
+
+    .lab-home__theme {
+      position: absolute;
+      top: clamp(14px, 2.4vw, 24px);
+      right: clamp(14px, 2.4vw, 24px);
+      z-index: 2;
+      display: flex;
+      align-items: center;
+      width: max-content;
+      max-width: 100%;
+      padding: 4px;
+      border: 1px solid rgba(124, 58, 237, 0.18);
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.46);
+      box-shadow: 0 10px 24px rgba(58, 49, 72, 0.1);
+      backdrop-filter: blur(12px);
+    }
+
+    html[data-theme="dark"] .lab-home__theme {
+      border-color: rgba(255, 255, 255, 0.08);
+      background: rgba(17, 16, 26, 0.34);
+      box-shadow: none;
+    }
+
+    .lab-home__theme .theme-toggle {
+      min-width: 72px;
+      min-height: 34px;
+      gap: 6px;
+      padding: 5px 8px;
+      background: transparent;
+      border-color: transparent;
+    }
+
+    .lab-home__theme .theme-toggle__track {
+      width: 38px;
+      height: 22px;
+      padding: 3px;
+    }
+
+    .lab-home__theme .theme-toggle__track,
+    .lab-home__theme .theme-toggle input:checked + .theme-toggle__track {
+      border: 1px solid rgba(58, 49, 72, 0.14);
+      background: rgba(255, 255, 255, 0.28) !important;
+    }
+
+    html[data-theme="dark"] .lab-home__theme .theme-toggle__track,
+    html[data-theme="dark"] .lab-home__theme .theme-toggle input:checked + .theme-toggle__track {
+      border-color: rgba(255, 255, 255, 0.08);
+      background: rgba(255, 255, 255, 0.08) !important;
+    }
+
+    .lab-home__theme .theme-toggle__thumb {
+      width: 16px;
+      height: 16px;
+    }
+
+    .lab-home__theme .theme-toggle input:checked + .theme-toggle__track .theme-toggle__thumb {
+      transform: translateX(16px);
+    }
+
+    .lab-home__theme .theme-toggle__icon {
+      width: 18px;
+      height: 18px;
+    }
+
+    .lab-home__theme .theme-toggle__icon svg {
+      width: 17px;
+      height: 17px;
+    }
+
+    .lab-home__choices {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 16px;
+      max-width: 900px;
+    }
+
+    .lab-home__card {
+      position: relative;
+      display: grid;
+      gap: 16px;
+      min-height: 230px;
+      align-content: end;
+      padding: clamp(20px, 3vw, 30px);
+      overflow: hidden;
+      border: 1px solid rgba(124, 58, 237, 0.18);
+      border-radius: 18px;
+      color: var(--ink);
+      background: rgba(255, 255, 255, 0.72);
+      text-decoration: none;
+      box-shadow: 0 14px 36px rgba(58, 49, 72, 0.1);
+      transition: transform 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
+    }
+
+    .lab-home__card::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      z-index: -1;
+      opacity: 0.72;
+      background: linear-gradient(135deg, rgba(124, 58, 237, 0.14), rgba(249, 115, 22, 0.12));
+    }
+
+    .lab-home__card--tecnica::before {
+      background: linear-gradient(135deg, rgba(0, 157, 255, 0.16), rgba(15, 118, 110, 0.1));
+    }
+
+    .lab-home__card:hover,
+    .lab-home__card:focus-visible {
+      border-color: rgba(249, 115, 22, 0.68);
+      box-shadow: 0 20px 44px rgba(249, 115, 22, 0.16);
+      outline: none;
+      transform: translateY(-4px);
+    }
+
+    html[data-theme="dark"] .lab-home__card {
+      border-color: rgba(139, 92, 246, 0.28);
+      background: rgba(21, 19, 30, 0.82);
+      box-shadow: 0 16px 42px rgba(0, 0, 0, 0.24);
+    }
+
+    .lab-home__card small {
+      display: inline-flex;
+      width: max-content;
+      min-height: 30px;
+      align-items: center;
+      padding: 6px 10px;
+      border-radius: 999px;
+      color: #ffffff;
+      background: linear-gradient(135deg, #9b5cff, #ff6b2a);
+      font-size: 12px;
+      font-weight: 900;
+      text-transform: uppercase;
+    }
+
+    .lab-home__card--tecnica small {
+      background: linear-gradient(135deg, #009dff, #0f766e);
+    }
+
+    .lab-home__card strong {
+      color: var(--brand-ink);
+      font-size: clamp(26px, 3vw, 36px);
+      line-height: 1.02;
+    }
+
+    .lab-home__card span {
+      max-width: 32ch;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.45;
+    }
+
+    .lab-home__card em {
+      color: var(--green);
+      font-size: 13px;
+      font-style: normal;
+      font-weight: 900;
     }
 
     .brand {
@@ -3328,6 +3627,44 @@
       }
     }
 
+    html[data-page="home"] .app {
+      display: block !important;
+      width: min(1160px, calc(100% - 32px)) !important;
+      height: auto !important;
+      min-height: 100vh !important;
+    }
+
+    html[data-page="home"] .topbar,
+    html[data-page="home"] .layout {
+      display: none !important;
+    }
+
+    @media (max-width: 820px) {
+      html[data-page="home"] .app {
+        width: min(100% - 18px, 1160px) !important;
+        padding: 10px 0 18px !important;
+      }
+
+      html[data-page="home"] .lab-home {
+        min-height: calc(100vh - 28px);
+        padding: 22px;
+        border-radius: 20px;
+      }
+
+      .lab-home::before {
+        inset: auto -22% -8% auto;
+        width: 120vw;
+      }
+
+      .lab-home__choices {
+        grid-template-columns: 1fr;
+      }
+
+      .lab-home__card {
+        min-height: 190px;
+      }
+    }
+
   </style>
 </head>
 <body>
@@ -3390,6 +3727,44 @@
         </button>
       </div>
     </header>
+
+    <section class="lab-home" data-lab-home aria-labelledby="labHomeTitle">
+      <div class="lab-home__intro">
+        <span class="lab-home__badge" aria-hidden="true">Layout Lab</span>
+        <h2 id="labHomeTitle">Escolha sua área.</h2>
+        <p>Entre pelo caminho certo para manter Qualidade Conteúdo e Qualidade Técnica separadas. Cada equipe abre com suas próprias ferramentas e sem atalhos cruzados no topo.</p>
+        <div class="lab-home__theme">
+          <label class="theme-toggle theme-toggle--icon" for="homeThemeToggle" aria-label="Alternar modo claro/escuro na home" title="Alternar modo claro/escuro">
+            <input id="homeThemeToggle" type="checkbox" aria-label="Alternar modo claro/escuro na home">
+            <span class="theme-toggle__track" aria-hidden="true">
+              <span class="theme-toggle__thumb"></span>
+            </span>
+            <span class="theme-toggle__icon theme-toggle__icon--off" aria-hidden="true">
+              <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"></circle><path d="M12 2v2"></path><path d="M12 20v2"></path><path d="m4.93 4.93 1.41 1.41"></path><path d="m17.66 17.66 1.41 1.41"></path><path d="M2 12h2"></path><path d="M20 12h2"></path><path d="m6.34 17.66-1.41 1.41"></path><path d="m19.07 4.93-1.41 1.41"></path></svg>
+            </span>
+            <span class="theme-toggle__icon theme-toggle__icon--on" aria-hidden="true">
+              <svg viewBox="0 0 24 24"><path d="M20.99 14.6A8.5 8.5 0 0 1 9.4 3.01 7 7 0 1 0 20.99 14.6Z"></path></svg>
+            </span>
+          </label>
+        </div>
+      </div>
+
+      <div class="lab-home__choices" aria-label="Escolher equipe">
+        <a class="lab-home__card lab-home__card--conteudo" href="#qualidade-conteudo">
+          <small>Qualidade Conteúdo</small>
+          <strong>Layouts, guias e LPs para conteúdo.</strong>
+          <span>FAQ, tabela, stories, artigo, carrossel e LP container em uma área própria.</span>
+          <em>Abrir área de conteúdo</em>
+        </a>
+
+        <a class="lab-home__card lab-home__card--tecnica" href="#qualidade-tecnica">
+          <small>Qualidade Técnica</small>
+          <strong>FAQ técnico direto ao ponto.</strong>
+          <span>Ambiente mais enxuto para gerar o bloco técnico completo em HTML/CSS.</span>
+          <em>Abrir área técnica</em>
+        </a>
+      </div>
+    </section>
 
     <section class="layout" aria-label="Gerador">
       <div class="panel editor-panel">
@@ -5707,6 +6082,7 @@ __CAROUSEL_DYNAMIC_COLORS__
     const responsivePreviewRemoveButtons = Array.from(document.querySelectorAll("[data-responsive-preview-remove]"));
     const copyStatus = document.querySelector("#copyStatus");
     const themeToggle = document.querySelector("#themeToggle");
+    const homeThemeToggle = document.querySelector("#homeThemeToggle");
     const brandHomeButton = document.querySelector("[data-brand-home]");
     const appTitle = document.querySelector("#appTitle");
     const appSubtitle = document.querySelector("#appSubtitle");
@@ -5727,7 +6103,7 @@ __CAROUSEL_DYNAMIC_COLORS__
     let isFocusMode = false;
     let isCodeFocusMode = false;
     let templatePreviewUpdateTimer = 0;
-    let currentPage = "conteudo";
+    let currentPage = "home";
     let currentEditorTab = "dashboard";
     const previewDevices = [
       { key: "mobile", label: "Celular", width: 390 },
@@ -5775,6 +6151,15 @@ __CAROUSEL_DYNAMIC_COLORS__
     ];
 
     const pageConfigs = {
+      home: {
+        title: "Layout Lab",
+        subtitle: "Escolha a equipe para começar.",
+        outputTitle: "",
+        copyLabel: "",
+        fullCopyLabel: "",
+        copiedStatus: "",
+        fullCopiedStatus: ""
+      },
       conteudo: {
         title: "Layout Lab",
         subtitle: "Monte layouts de conteudo com FAQ, tabela, stories, artigo, carrossel ou LP e copie HTML ou HTML/CSS conforme a necessidade.",
@@ -6952,14 +7337,20 @@ ${itemMarkup}
 
     function setTheme(theme) {
       document.documentElement.dataset.theme = theme;
-      themeToggle.checked = theme === "dark";
-      const themeControl = themeToggle.closest(".theme-toggle");
-      if (themeControl) {
+      const isDark = theme === "dark";
+      const themeInputs = [themeToggle, homeThemeToggle].filter(Boolean);
+      themeInputs.forEach((input) => {
+        input.checked = isDark;
+        input.setAttribute("aria-label", isDark ? "Ativar modo claro" : "Ativar modo escuro");
+      });
+      const themeControls = themeInputs
+        .map((input) => input.closest(".theme-toggle"))
+        .filter(Boolean);
+      themeControls.forEach((themeControl) => {
         const nextLabel = theme === "dark" ? "Ativar modo claro" : "Ativar modo escuro";
         themeControl.setAttribute("aria-label", nextLabel);
         themeControl.setAttribute("title", nextLabel);
-        themeToggle.setAttribute("aria-label", nextLabel);
-      }
+      });
 
       try {
         localStorage.setItem("faqCompilerTheme", theme);
@@ -7712,7 +8103,15 @@ ${dots}
     }
 
     function getPageFromHash() {
-      return window.location.hash === "#qualidade-tecnica" ? "tecnica" : "conteudo";
+      if (window.location.hash === "#qualidade-tecnica") {
+        return "tecnica";
+      }
+
+      if (window.location.hash === "#qualidade-conteudo") {
+        return "conteudo";
+      }
+
+      return "home";
     }
 
     function getContentDashboardSections() {
@@ -9403,6 +9802,12 @@ ${lpCard}
     }
 
     function updateAddButtons() {
+      if (currentPage === "home") {
+        homeReturnButtons.forEach((button) => button.classList.add("is-hidden"));
+        addButtons.forEach((button) => button.classList.add("is-hidden"));
+        return;
+      }
+
       const isDashboardTab = currentPage === "conteudo" && currentEditorTab === "dashboard";
       const isTableTab = currentPage === "conteudo" && currentEditorTab === "table";
       const isStoriesTab = currentPage === "conteudo" && currentEditorTab === "stories";
@@ -9423,6 +9828,13 @@ ${lpCard}
     }
 
     function updateCopyButtons(config) {
+      if (currentPage === "home") {
+        outputTitle.textContent = "";
+        htmlCopyButtons.forEach((button) => button.classList.add("is-hidden"));
+        fullCopyButtons.forEach((button) => button.classList.add("is-hidden"));
+        return;
+      }
+
       const isDashboardTab = currentPage === "conteudo" && currentEditorTab === "dashboard";
       const isTemplateTab = currentPage === "conteudo" && currentEditorTab === "template";
       outputTitle.textContent = isDashboardTab
@@ -9471,21 +9883,23 @@ ${lpCard}
     }
 
     function applyPage(page) {
-      const nextPage = pageConfigs[page] ? page : "conteudo";
+      const nextPage = pageConfigs[page] ? page : "home";
       const previousPage = currentPage;
       if (nextPage !== currentPage && !returnToBaseVersion()) {
-        window.location.hash = currentPage === "tecnica" ? "#qualidade-tecnica" : "#qualidade-conteudo";
+        window.location.hash = currentPage === "tecnica" ? "#qualidade-tecnica" : currentPage === "conteudo" ? "#qualidade-conteudo" : "#home";
         return;
       }
 
       currentPage = nextPage;
-      if (currentPage !== "conteudo") {
+      if (currentPage === "home") {
+        currentEditorTab = "dashboard";
+      } else if (currentPage !== "conteudo") {
         currentEditorTab = "faq";
       } else if (previousPage !== "conteudo") {
         currentEditorTab = "dashboard";
       }
 
-      if (currentPage === "tecnica") {
+      if (currentPage === "tecnica" || currentPage === "home") {
         isFocusMode = false;
         isPreviewFullscreen = false;
         isCodeFocusMode = false;
@@ -10451,6 +10865,10 @@ ${containerHtml}`;
     }
 
     function buildPreviewHtml() {
+      if (currentPage === "home") {
+        return "";
+      }
+
       if (currentPage === "conteudo" && currentEditorTab === "dashboard") {
         return buildDashboardPreviewHtml();
       }
@@ -10503,6 +10921,10 @@ ${buildResponsiveStyle("faq", { includeDraft: true })}`;
     }
 
     function buildOutputHtml(copyMode = "html") {
+      if (currentPage === "home") {
+        return "";
+      }
+
       if (currentPage === "tecnica") {
         return buildFullHtml(false);
       }
@@ -14946,7 +15368,9 @@ ${slides}
       updateAddButtons();
       updateCopyButtons(pageConfigs[currentPage]);
       updateViewportMode();
-      if (currentPage === "conteudo" && currentEditorTab === "dashboard") {
+      if (currentPage === "home") {
+        editor.innerHTML = "";
+      } else if (currentPage === "conteudo" && currentEditorTab === "dashboard") {
         editor.innerHTML = renderDashboardEditor();
       } else if (currentPage === "conteudo" && currentEditorTab === "table") {
         editor.innerHTML = renderTableEditor();
@@ -16036,9 +16460,10 @@ ${slides}
     if (brandHomeButton) {
       brandHomeButton.addEventListener("click", (event) => {
         event.preventDefault();
-        returnDashboardHome();
-        if (window.location.hash !== "#qualidade-conteudo") {
-          window.location.hash = "#qualidade-conteudo";
+        if (window.location.hash !== "#home") {
+          window.location.hash = "#home";
+        } else {
+          applyPage("home");
         }
       });
     }
@@ -16104,6 +16529,12 @@ ${slides}
       setTheme(themeToggle.checked ? "dark" : "light");
       updateOutput();
     });
+    if (homeThemeToggle) {
+      homeThemeToggle.addEventListener("change", () => {
+        setTheme(homeThemeToggle.checked ? "dark" : "light");
+        updateOutput();
+      });
+    }
     window.addEventListener("resize", updateViewportMode);
     window.addEventListener("beforeunload", (event) => {
       if (!state.responsive.dirty && !state.presets.dirty) {
@@ -16124,4 +16555,3 @@ ${slides}
   </script>
 </body>
 </html>
-
