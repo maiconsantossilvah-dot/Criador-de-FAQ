@@ -1,0 +1,80 @@
+/* Recorte CSS da aba Tabela.
+   Fonte atual: assets/js/layout-lab.js (tableStyle). */
+
+.sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+
+  .table-container-custom {
+    background-color: #fff;
+    padding: 16px;
+    border-radius: 10px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    max-width: 800px;
+    width: 100%;
+    margin: 0 auto 24px;
+    display: block;
+    overflow-x: auto;
+  }
+
+  .table-design-custom {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 0 auto;
+  }
+
+  .table-head-custom {
+    color: rgb(255, 255, 255);
+    border-radius: 10px;
+  }
+
+  .table-text-custom {
+    padding: 8px 16px;
+    text-align: left;
+    border-bottom: 1px solid #979797;
+    font-family: sans-serif;
+    font-size: clamp(0.75rem, 1vw, 0.875rem);
+    line-height: 1.45;
+    overflow-wrap: anywhere;
+  }
+
+  .table-tr-custom:hover {
+    background-color: #f1f1f1;
+    filter: brightness(0.9);
+  }
+
+  .table-th-custom {
+    background: var(--table-header-color, #ea5b0c);
+    color: #fff;
+    font-weight: bold;
+    text-align: left;
+  }
+
+  .table-th-custom--first {
+    border-radius: 10px 0 0 0;
+  }
+
+  .table-th-custom--last {
+    border-radius: 0 10px 0 0;
+  }
+
+  .table-th-custom--single {
+    border-radius: 10px 10px 0 0;
+  }
+
+  .table-td-custom {
+    color: #555;
+  }
+
+  .table-tr-custom:nth-child(even) {
+    background-color: #f1f1f1;
+  }
+__TABLE_HEADER_COLORS__

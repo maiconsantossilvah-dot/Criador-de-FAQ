@@ -1,0 +1,206 @@
+<!doctype html>
+<html lang="pt-BR" data-page="tecnica" data-start-page="tecnica">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Layout Lab</title>
+    <link rel="icon" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA2NCA2NCIgcm9sZT0iaW1nIiBhcmlhLWxhYmVsPSJDcmlhZG9yIGRlIEZBUSI+CiAgPHBhdGggZD0iTTI5IDE0IDkgMzIgMjkgNTAiIGZpbGw9Im5vbmUiIHN0cm9rZT0iIzAwYThlOCIgc3Ryb2tlLXdpZHRoPSI3IiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiLz4KICA8cGF0aCBkPSJNMzUgMTQgNTUgMzIgMzUgNTAiIGZpbGw9Im5vbmUiIHN0cm9rZT0iIzAwYThlOCIgc3Ryb2tlLXdpZHRoPSI3IiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiLz4KICA8Y2lyY2xlIGN4PSIzMiIgY3k9IjMyIiByPSI1IiBmaWxsPSIjMGY3NjZlIi8+Cjwvc3ZnPg==" type="image/svg+xml">
+  <link rel="stylesheet" href="assets/css/layout-lab.css"></head>
+<body>
+  <main class="app">
+    <header class="topbar">
+      <a class="brand" href="index.html" data-brand-home aria-label="Voltar para o início">
+        <h1 id="appTitle">Layout Lab</h1>
+        <p id="appSubtitle">Crie layouts de conteudo e copie o bloco pronto no formato certo.</p>
+      </a>
+      <div class="actions">
+        <label class="theme-toggle theme-toggle--icon" for="themeToggle" aria-label="Alternar modo claro/escuro" title="Alternar modo claro/escuro">
+          <input id="themeToggle" type="checkbox" aria-label="Alternar modo claro/escuro">
+          <span class="theme-toggle__track" aria-hidden="true">
+            <span class="theme-toggle__thumb"></span>
+          </span>
+          <span class="theme-toggle__icon theme-toggle__icon--off" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"></circle><path d="M12 2v2"></path><path d="M12 20v2"></path><path d="m4.93 4.93 1.41 1.41"></path><path d="m17.66 17.66 1.41 1.41"></path><path d="M2 12h2"></path><path d="M20 12h2"></path><path d="m6.34 17.66-1.41 1.41"></path><path d="m19.07 4.93-1.41 1.41"></path></svg>
+          </span>
+          <span class="theme-toggle__icon theme-toggle__icon--on" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><path d="M20.99 14.6A8.5 8.5 0 0 1 9.4 3.01 7 7 0 1 0 20.99 14.6Z"></path></svg>
+          </span>
+        </label>
+        <button class="theme-toggle theme-toggle--icon" type="button" data-focus-mode aria-pressed="false" aria-label="Ativar modo foco" title="Ativar modo foco">
+          <span class="theme-toggle__track" aria-hidden="true">
+            <span class="theme-toggle__thumb"></span>
+          </span>
+          <span class="theme-toggle__icon theme-toggle__icon--off" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><path d="m2 2 20 20"></path><path d="M10.58 10.58a2 2 0 0 0 2.83 2.83"></path><path d="M9.88 4.24A10.7 10.7 0 0 1 12 4c5 0 9 4.5 10 8a11.8 11.8 0 0 1-2.1 3.5"></path><path d="M6.1 6.1A12.5 12.5 0 0 0 2 12c1 3.5 5 8 10 8 1.32 0 2.57-.31 3.7-.84"></path></svg>
+          </span>
+          <span class="theme-toggle__icon theme-toggle__icon--on" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12Z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+          </span>
+        </button>
+        <button class="theme-toggle theme-toggle--icon" type="button" data-preview-fullscreen aria-pressed="false" aria-label="Ativar modo ampliado" title="Ativar modo ampliado">
+          <span class="theme-toggle__track" aria-hidden="true">
+            <span class="theme-toggle__thumb"></span>
+          </span>
+          <span class="theme-toggle__icon theme-toggle__icon--off" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="2"></rect></svg>
+          </span>
+          <span class="theme-toggle__icon theme-toggle__icon--on" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><rect x="3" y="7" width="18" height="10" rx="2"></rect></svg>
+          </span>
+        </button>
+        <button class="theme-toggle theme-toggle--icon" type="button" data-code-focus-mode aria-pressed="false" aria-label="Ativar modo HTML" title="Ativar modo HTML">
+          <span class="theme-toggle__track" aria-hidden="true">
+            <span class="theme-toggle__thumb"></span>
+          </span>
+          <span class="theme-toggle__icon theme-toggle__icon--off" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><path d="m8 8-4 4 4 4"></path><path d="m16 8 4 4-4 4"></path><path d="m14 4-4 16"></path></svg>
+          </span>
+          <span class="theme-toggle__icon theme-toggle__icon--on" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><path d="m8 8-4 4 4 4"></path><path d="m16 8 4 4-4 4"></path><path d="m14 4-4 16"></path></svg>
+          </span>
+        </button>
+      </div>
+    </header>
+
+    <section class="lab-home" data-lab-home aria-labelledby="labHomeTitle">
+      <div class="lab-home__intro">
+        <span class="lab-home__badge" aria-hidden="true">Layout Lab</span>
+        <h2 id="labHomeTitle">Escolha sua área.</h2>
+        <p>Entre pelo caminho certo para manter Qualidade Conteúdo e Qualidade Técnica separadas. Cada equipe abre com suas próprias ferramentas e sem atalhos cruzados no topo.</p>
+        <div class="lab-home__theme">
+          <label class="theme-toggle theme-toggle--icon" for="homeThemeToggle" aria-label="Alternar modo claro/escuro na home" title="Alternar modo claro/escuro">
+            <input id="homeThemeToggle" type="checkbox" aria-label="Alternar modo claro/escuro na home">
+            <span class="theme-toggle__track" aria-hidden="true">
+              <span class="theme-toggle__thumb"></span>
+            </span>
+            <span class="theme-toggle__icon theme-toggle__icon--off" aria-hidden="true">
+              <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"></circle><path d="M12 2v2"></path><path d="M12 20v2"></path><path d="m4.93 4.93 1.41 1.41"></path><path d="m17.66 17.66 1.41 1.41"></path><path d="M2 12h2"></path><path d="M20 12h2"></path><path d="m6.34 17.66-1.41 1.41"></path><path d="m19.07 4.93-1.41 1.41"></path></svg>
+            </span>
+            <span class="theme-toggle__icon theme-toggle__icon--on" aria-hidden="true">
+              <svg viewBox="0 0 24 24"><path d="M20.99 14.6A8.5 8.5 0 0 1 9.4 3.01 7 7 0 1 0 20.99 14.6Z"></path></svg>
+            </span>
+          </label>
+        </div>
+      </div>
+
+      <div class="lab-home__choices" aria-label="Escolher equipe">
+        <a class="lab-home__card lab-home__card--conteudo" href="qualidade-conteudo.html">
+          <small>Qualidade Conteúdo</small>
+          <strong>Layouts, guias e LPs para conteúdo.</strong>
+          <span>FAQ, tabela, stories, artigo, carrossel e LP container em uma área própria.</span>
+          <em>Abrir área de conteúdo</em>
+        </a>
+
+        <a class="lab-home__card lab-home__card--tecnica" href="qualidade-tecnica.html">
+          <small>Qualidade Técnica</small>
+          <strong>FAQ técnico direto ao ponto.</strong>
+          <span>Ambiente mais enxuto para gerar o bloco técnico completo em HTML/CSS.</span>
+          <em>Abrir área técnica</em>
+        </a>
+      </div>
+    </section>
+
+    <section class="layout" aria-label="Gerador">
+      <div class="panel editor-panel">
+        <div class="panel__head">
+          <h2>Conteúdo</h2>
+          <button class="button button--soft icon-button" id="addItem" type="button" aria-label="Adicionar pergunta" title="Adicionar pergunta">+</button>
+        </div>
+        <div class="panel__body">
+          <div class="editor-tools" id="editorTools">
+            <div class="editor-tabs" role="tablist" aria-label="Tipo de conteúdo">
+              <button class="editor-tabs__button" type="button" role="tab" data-editor-tab="faq">FAQ</button>
+              <button class="editor-tabs__button" type="button" role="tab" data-editor-tab="table">Tabela</button>
+              <button class="editor-tabs__button" type="button" role="tab" data-editor-tab="stories">Stories</button>
+              <button class="editor-tabs__button" type="button" role="tab" data-editor-tab="article">Artigo</button>
+              <button class="editor-tabs__button" type="button" role="tab" data-editor-tab="carousel">Carrossel</button>
+            </div>
+          </div>
+          <div class="faq-editor" id="faqEditor"></div>
+          <div class="editor-copy-actions" data-editor-copy-actions>
+            <button class="button button--green" type="button" data-copy-mode="html">Copiar HTML</button>
+            <button class="button button--green" type="button" data-copy-mode="full">Copiar HTML/CSS</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel output-panel">
+        <div class="panel__head">
+          <h2 id="outputTitle">HTML pronto</h2>
+          <div class="actions">
+            <button class="button button--green" id="copyHtml" type="button" data-copy-mode="html">Copiar HTML</button>
+            <button class="button button--green" id="copyHtmlCss" type="button" data-copy-mode="full">Copiar HTML/CSS</button>
+          </div>
+          <div class="preview-devices preview-devices--side" role="group" aria-label="Tamanho da prévia">
+            <button class="preview-devices__button" type="button" data-preview-device="mobile">Celular</button>
+            <button class="preview-devices__button" type="button" data-preview-device="tablet">Tablet</button>
+            <button class="preview-devices__button" type="button" data-preview-device="notebook">Notebook</button>
+            <button class="preview-devices__button" type="button" data-preview-device="desktop">Desktop</button>
+            <button class="button button--orange icon-button preview-devices__action" type="button" data-responsive-preview-save aria-label="Salvar versão responsiva" title="Salvar versão responsiva">
+              <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M5 4h12l2 2v14H5z" stroke-width="2" stroke-linejoin="round"></path>
+                <path d="M8 4v6h8V4" stroke-width="2" stroke-linejoin="round"></path>
+                <path d="M8 20v-6h8v6" stroke-width="2" stroke-linejoin="round"></path>
+              </svg>
+            </button>
+            <button class="button button--danger icon-button preview-devices__action" type="button" data-responsive-preview-remove aria-label="Remover versão responsiva" title="Remover versão responsiva">
+              <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M4 7h16" stroke-width="2" stroke-linecap="round"></path>
+                <path d="M10 11v6" stroke-width="2" stroke-linecap="round"></path>
+                <path d="M14 11v6" stroke-width="2" stroke-linecap="round"></path>
+                <path d="M6 7l1 14h10l1-14" stroke-width="2" stroke-linejoin="round"></path>
+                <path d="M9 7V4h6v3" stroke-width="2" stroke-linejoin="round"></path>
+              </svg>
+            </button>
+          </div>
+        </div>
+        <div class="panel__body output">
+          <div class="status" id="copyStatus" aria-live="polite"></div>
+          <textarea id="generatedHtml" readonly spellcheck="false" aria-label="HTML gerado"></textarea>
+          <div class="preview-shell">
+            <div class="preview-toolbar" aria-label="Controles da previa">
+              <div>
+                <span class="preview-shell__label">Prévia</span>
+                <strong class="preview-toolbar__device" id="previewDeviceLabel">Desktop</strong>
+              </div>
+              <div class="preview-devices" role="group" aria-label="Tamanho da prévia">
+                <button class="preview-devices__button" type="button" data-preview-device="mobile">Celular</button>
+                <button class="preview-devices__button" type="button" data-preview-device="tablet">Tablet</button>
+                <button class="preview-devices__button" type="button" data-preview-device="notebook">Notebook</button>
+                <button class="preview-devices__button" type="button" data-preview-device="desktop">Desktop</button>
+                <button class="button button--orange icon-button preview-devices__action" type="button" data-responsive-preview-save aria-label="Salvar versão responsiva" title="Salvar versão responsiva">
+                  <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                    <path d="M5 4h12l2 2v14H5z" stroke-width="2" stroke-linejoin="round"></path>
+                    <path d="M8 4v6h8V4" stroke-width="2" stroke-linejoin="round"></path>
+                    <path d="M8 20v-6h8v6" stroke-width="2" stroke-linejoin="round"></path>
+                  </svg>
+                </button>
+                <button class="button button--danger icon-button preview-devices__action" type="button" data-responsive-preview-remove aria-label="Remover versão responsiva" title="Remover versão responsiva">
+                  <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                    <path d="M4 7h16" stroke-width="2" stroke-linecap="round"></path>
+                    <path d="M10 11v6" stroke-width="2" stroke-linecap="round"></path>
+                    <path d="M14 11v6" stroke-width="2" stroke-linecap="round"></path>
+                    <path d="M6 7l1 14h10l1-14" stroke-width="2" stroke-linejoin="round"></path>
+                    <path d="M9 7V4h6v3" stroke-width="2" stroke-linejoin="round"></path>
+                  </svg>
+                </button>
+              </div>
+            </div>
+            <div class="preview-canvas" id="previewCanvas">
+              <iframe class="preview-frame" id="previewFrame" title="Previa do conteudo"></iframe>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+  <script src="assets/tabs/faq/faq.js"></script>
+  <script src="assets/tabs/tabela/tabela.js"></script>
+  <script src="assets/tabs/stories/stories.js"></script>
+  <script src="assets/tabs/artigo/artigo.js"></script>
+  <script src="assets/tabs/carrossel/carrossel.js"></script>
+  <script src="assets/tabs/dashboard/dashboard.js"></script>
+  <script src="assets/tabs/lp-container/lp-container.js"></script>
+  <script src="assets/js/layout-lab.js"></script>
+</body>
+</html>
