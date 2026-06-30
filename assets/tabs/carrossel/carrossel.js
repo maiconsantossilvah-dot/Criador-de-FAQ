@@ -776,7 +776,7 @@ __CAROUSEL_DYNAMIC_COLORS__
         ? `linear-gradient(180deg, ${normalizeHexColor(state.carousel.sectionGradientStart || "#ffffff")}, ${normalizeHexColor(state.carousel.sectionGradientEnd || state.carousel.softColor)})`
         : normalizeCssColorValue(state.carousel.softColor);
 
-      return carouselStyle.replace("__CAROUSEL_DYNAMIC_COLORS__", `
+      return injectTabDynamicStyle(getTabStyleAsset("carousel", carouselStyle), "__CAROUSEL_DYNAMIC_COLORS__", `
   .ll-carousel {
     --ll-carousel-brand: ${normalizeHexColor(state.carousel.brandColor)};
     --ll-carousel-soft: ${normalizeCssColorValue(state.carousel.softColor)};

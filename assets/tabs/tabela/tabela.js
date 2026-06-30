@@ -92,7 +92,11 @@ __TABLE_HEADER_COLORS__
   }`;
       }).join("");
 
-      return tableStyle.replace("__TABLE_HEADER_COLORS__", columnRules);
+      return injectTabDynamicStyle(
+        getTabStyleAsset("table", tableStyle),
+        "__TABLE_HEADER_COLORS__",
+        columnRules
+      );
     }
 
     function getTableHeaderColor(index = 0) {
@@ -160,6 +164,33 @@ ${cells}
                </tr>`;
     }
 
+    function buildTableFromTemplate(caption, headers, rows) {
+      const template = getTabHtmlAsset("table", "");
+      if (!template || typeof DOMParser === "undefined") {
+        return "";
+      }
+
+      const doc = new DOMParser().parseFromString(template, "text/html");
+      const section = doc.querySelector(".table-container-custom");
+      const table = section ? section.querySelector(".table-design-custom") : null;
+      const captionNode = table ? table.querySelector("#table-desc, caption") : null;
+      const headerRow = table ? table.querySelector("thead tr") : null;
+      const tbody = table ? table.querySelector("tbody") : null;
+
+      if (!section || !table || !captionNode || !headerRow || !tbody) {
+        return "";
+      }
+
+      section.setAttribute("aria-label", "tabela contendo produtos relacionados e citados dentro deste conteúdo");
+      table.setAttribute("aria-describedby", "table-desc");
+      captionNode.id = "table-desc";
+      captionNode.innerHTML = caption;
+      headerRow.innerHTML = headers;
+      tbody.innerHTML = rows;
+
+      return section.outerHTML;
+    }
+
     function buildTableSectionHtml(forcePreview = false) {
       if (!forcePreview && !hasTableData()) {
         return "";
@@ -171,6 +202,11 @@ ${cells}
       const visibleRows = getVisibleTableRows();
       const previewRows = visibleRows.length ? visibleRows : [createEmptyTableRow()];
       const rows = (forcePreview ? previewRows : visibleRows).map(renderTableRow).join("\n");
+      const templateHtml = buildTableFromTemplate(caption, headers, rows);
+
+      if (templateHtml) {
+        return templateHtml;
+      }
 
       return `<section class="table-container-custom" aria-label="tabela contendo produtos relacionados e citados dentro deste conteúdo">
           <table class="table-design-custom" aria-describedby="table-desc">

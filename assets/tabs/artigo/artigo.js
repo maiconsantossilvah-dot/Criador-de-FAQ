@@ -412,7 +412,7 @@ __ARTICLE_DYNAMIC_COLORS__
         ? hexToRgba(state.article.tabsProtectionColor, tabsProtectionOpacity.toFixed(2))
         : "rgba(0, 0, 0, 0)";
 
-      return articleStyle.replace("__ARTICLE_DYNAMIC_COLORS__", `
+      return injectTabDynamicStyle(getTabStyleAsset("article", articleStyle), "__ARTICLE_DYNAMIC_COLORS__", `
   .ll-article {
     --ll-article-shell-bg: ${shellBackground};
     --ll-article-tabs-panel: ${tabsPanel};

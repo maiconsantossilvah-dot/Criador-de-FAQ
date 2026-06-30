@@ -833,12 +833,14 @@
 
     html[data-page="conteudo"][data-editor-tab="article"] .app,
     html[data-page="conteudo"][data-editor-tab="carousel"] .app,
+    html[data-page="conteudo"][data-editor-tab="bento"] .app,
     html[data-page="conteudo"][data-editor-tab="template"] .app {
       width: min(1640px, calc(100% - 24px));
     }
 
     html[data-page="conteudo"][data-editor-tab="article"] .layout,
     html[data-page="conteudo"][data-editor-tab="carousel"] .layout,
+    html[data-page="conteudo"][data-editor-tab="bento"] .layout,
     html[data-page="conteudo"][data-editor-tab="template"] .layout {
       grid-template-columns: minmax(420px, 0.56fr) minmax(700px, 1.44fr);
     }
@@ -854,12 +856,14 @@
 
       html[data-page="conteudo"][data-editor-tab="article"] .app,
       html[data-page="conteudo"][data-editor-tab="carousel"] .app,
+      html[data-page="conteudo"][data-editor-tab="bento"] .app,
       html[data-page="conteudo"][data-editor-tab="template"] .app {
         width: min(1880px, calc(100% - 20px));
       }
 
       html[data-page="conteudo"][data-editor-tab="article"] .layout,
       html[data-page="conteudo"][data-editor-tab="carousel"] .layout,
+      html[data-page="conteudo"][data-editor-tab="bento"] .layout,
       html[data-page="conteudo"][data-editor-tab="template"] .layout {
         grid-template-columns: minmax(440px, 0.44fr) minmax(900px, 1.56fr);
       }
@@ -1778,6 +1782,77 @@
       display: grid;
       gap: 12px;
       padding: 12px;
+    }
+
+    .bento-editor__textarea {
+      min-height: 460px;
+      font-family: "Cascadia Code", Consolas, "Courier New", monospace;
+      line-height: 1.5;
+      tab-size: 2;
+    }
+
+    .bento-editor__actions {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .bento-add-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 8px;
+    }
+
+    .bento-add-grid .button {
+      min-width: 0;
+      padding-inline: 10px;
+      white-space: nowrap;
+    }
+
+    .bento-block-list {
+      display: grid;
+      gap: 10px;
+    }
+
+    .bento-table-editor {
+      display: grid;
+      gap: 10px;
+      padding: 10px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--surface);
+    }
+
+    .bento-table-editor__head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .bento-table-columns {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 8px;
+      align-items: end;
+    }
+
+    .bento-table-row {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .bento-table-row__cells {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(96px, 1fr));
+      gap: 8px;
+    }
+
+    .bento-table-row__cells input {
+      min-width: 0;
     }
 
     .stories-guide {
@@ -3381,61 +3456,61 @@
       height: 100%;
     }
 
-    html[data-viewport-mode="tall-workspace"][data-page="conteudo"]:is([data-editor-tab="article"], [data-editor-tab="carousel"], [data-editor-tab="template"]) body {
+    html[data-viewport-mode="tall-workspace"][data-page="conteudo"]:is([data-editor-tab="article"], [data-editor-tab="carousel"], [data-editor-tab="bento"], [data-editor-tab="template"]) body {
       height: auto;
       overflow: auto;
     }
 
-    html[data-viewport-mode="tall-workspace"][data-page="conteudo"]:is([data-editor-tab="article"], [data-editor-tab="carousel"], [data-editor-tab="template"]) .app {
+    html[data-viewport-mode="tall-workspace"][data-page="conteudo"]:is([data-editor-tab="article"], [data-editor-tab="carousel"], [data-editor-tab="bento"], [data-editor-tab="template"]) .app {
       width: min(1080px, calc(100% - 36px));
       height: auto;
       min-height: 100vh;
       padding: 24px 0;
     }
 
-    html[data-viewport-mode="tall-workspace"][data-page="conteudo"]:is([data-editor-tab="article"], [data-editor-tab="carousel"], [data-editor-tab="template"]) .topbar {
+    html[data-viewport-mode="tall-workspace"][data-page="conteudo"]:is([data-editor-tab="article"], [data-editor-tab="carousel"], [data-editor-tab="bento"], [data-editor-tab="template"]) .topbar {
       align-items: flex-start;
       flex-direction: column;
       gap: 14px;
     }
 
-    html[data-viewport-mode="tall-workspace"][data-page="conteudo"]:is([data-editor-tab="article"], [data-editor-tab="carousel"], [data-editor-tab="template"]) .page-nav {
+    html[data-viewport-mode="tall-workspace"][data-page="conteudo"]:is([data-editor-tab="article"], [data-editor-tab="carousel"], [data-editor-tab="bento"], [data-editor-tab="template"]) .page-nav {
       width: 100%;
     }
 
-    html[data-viewport-mode="tall-workspace"][data-page="conteudo"]:is([data-editor-tab="article"], [data-editor-tab="carousel"], [data-editor-tab="template"]) .page-nav__link {
+    html[data-viewport-mode="tall-workspace"][data-page="conteudo"]:is([data-editor-tab="article"], [data-editor-tab="carousel"], [data-editor-tab="bento"], [data-editor-tab="template"]) .page-nav__link {
       flex: 1;
       justify-content: center;
     }
 
-    html[data-viewport-mode="tall-workspace"][data-page="conteudo"]:is([data-editor-tab="article"], [data-editor-tab="carousel"], [data-editor-tab="template"]) .actions {
+    html[data-viewport-mode="tall-workspace"][data-page="conteudo"]:is([data-editor-tab="article"], [data-editor-tab="carousel"], [data-editor-tab="bento"], [data-editor-tab="template"]) .actions {
       justify-content: flex-start;
     }
 
-    html[data-viewport-mode="tall-workspace"][data-page="conteudo"]:is([data-editor-tab="article"], [data-editor-tab="carousel"], [data-editor-tab="template"]) .layout {
+    html[data-viewport-mode="tall-workspace"][data-page="conteudo"]:is([data-editor-tab="article"], [data-editor-tab="carousel"], [data-editor-tab="bento"], [data-editor-tab="template"]) .layout {
       grid-template-columns: minmax(0, 1fr) !important;
       flex: initial;
     }
 
-    html[data-viewport-mode="tall-workspace"][data-page="conteudo"]:is([data-editor-tab="article"], [data-editor-tab="carousel"], [data-editor-tab="template"]) .panel,
-    html[data-viewport-mode="tall-workspace"][data-page="conteudo"]:is([data-editor-tab="article"], [data-editor-tab="carousel"], [data-editor-tab="template"]) .editor-panel .panel__body,
-    html[data-viewport-mode="tall-workspace"][data-page="conteudo"]:is([data-editor-tab="article"], [data-editor-tab="carousel"], [data-editor-tab="template"]) .output {
+    html[data-viewport-mode="tall-workspace"][data-page="conteudo"]:is([data-editor-tab="article"], [data-editor-tab="carousel"], [data-editor-tab="bento"], [data-editor-tab="template"]) .panel,
+    html[data-viewport-mode="tall-workspace"][data-page="conteudo"]:is([data-editor-tab="article"], [data-editor-tab="carousel"], [data-editor-tab="bento"], [data-editor-tab="template"]) .editor-panel .panel__body,
+    html[data-viewport-mode="tall-workspace"][data-page="conteudo"]:is([data-editor-tab="article"], [data-editor-tab="carousel"], [data-editor-tab="bento"], [data-editor-tab="template"]) .output {
       display: block;
       overflow: visible;
     }
 
-    html[data-viewport-mode="tall-workspace"][data-page="conteudo"]:is([data-editor-tab="article"], [data-editor-tab="carousel"], [data-editor-tab="template"]) .faq-editor {
+    html[data-viewport-mode="tall-workspace"][data-page="conteudo"]:is([data-editor-tab="article"], [data-editor-tab="carousel"], [data-editor-tab="bento"], [data-editor-tab="template"]) .faq-editor {
       height: auto;
       overflow: visible;
     }
 
-    html[data-viewport-mode="tall-workspace"][data-page="conteudo"]:is([data-editor-tab="article"], [data-editor-tab="carousel"], [data-editor-tab="template"]) .preview-shell {
+    html[data-viewport-mode="tall-workspace"][data-page="conteudo"]:is([data-editor-tab="article"], [data-editor-tab="carousel"], [data-editor-tab="bento"], [data-editor-tab="template"]) .preview-shell {
       display: block;
       height: 720px;
       min-height: 520px;
     }
 
-    html[data-viewport-mode="tall-workspace"][data-page="conteudo"]:is([data-editor-tab="article"], [data-editor-tab="carousel"], [data-editor-tab="template"]) .preview-frame {
+    html[data-viewport-mode="tall-workspace"][data-page="conteudo"]:is([data-editor-tab="article"], [data-editor-tab="carousel"], [data-editor-tab="bento"], [data-editor-tab="template"]) .preview-frame {
       height: 100%;
       min-height: 520px;
     }
@@ -3443,6 +3518,7 @@
     @media (min-width: 921px) and (max-width: 1800px) and (min-height: 1050px) {
       html[data-page="conteudo"][data-editor-tab="article"] body,
       html[data-page="conteudo"][data-editor-tab="carousel"] body,
+      html[data-page="conteudo"][data-editor-tab="bento"] body,
       html[data-page="conteudo"][data-editor-tab="template"] body {
         height: auto;
         overflow: auto;
@@ -3450,6 +3526,7 @@
 
       html[data-page="conteudo"][data-editor-tab="article"] .app,
       html[data-page="conteudo"][data-editor-tab="carousel"] .app,
+      html[data-page="conteudo"][data-editor-tab="bento"] .app,
       html[data-page="conteudo"][data-editor-tab="template"] .app {
         width: min(1080px, calc(100% - 36px));
         height: auto;
@@ -3459,6 +3536,7 @@
 
       html[data-page="conteudo"][data-editor-tab="article"] .topbar,
       html[data-page="conteudo"][data-editor-tab="carousel"] .topbar,
+      html[data-page="conteudo"][data-editor-tab="bento"] .topbar,
       html[data-page="conteudo"][data-editor-tab="template"] .topbar {
         align-items: flex-start;
         flex-direction: column;
@@ -3467,12 +3545,14 @@
 
       html[data-page="conteudo"][data-editor-tab="article"] .page-nav,
       html[data-page="conteudo"][data-editor-tab="carousel"] .page-nav,
+      html[data-page="conteudo"][data-editor-tab="bento"] .page-nav,
       html[data-page="conteudo"][data-editor-tab="template"] .page-nav {
         width: 100%;
       }
 
       html[data-page="conteudo"][data-editor-tab="article"] .page-nav__link,
       html[data-page="conteudo"][data-editor-tab="carousel"] .page-nav__link,
+      html[data-page="conteudo"][data-editor-tab="bento"] .page-nav__link,
       html[data-page="conteudo"][data-editor-tab="template"] .page-nav__link {
         flex: 1;
         justify-content: center;
@@ -3480,12 +3560,14 @@
 
       html[data-page="conteudo"][data-editor-tab="article"] .actions,
       html[data-page="conteudo"][data-editor-tab="carousel"] .actions,
+      html[data-page="conteudo"][data-editor-tab="bento"] .actions,
       html[data-page="conteudo"][data-editor-tab="template"] .actions {
         justify-content: flex-start;
       }
 
       html[data-page="conteudo"][data-editor-tab="article"] .layout,
       html[data-page="conteudo"][data-editor-tab="carousel"] .layout,
+      html[data-page="conteudo"][data-editor-tab="bento"] .layout,
       html[data-page="conteudo"][data-editor-tab="template"] .layout {
         grid-template-columns: minmax(0, 1fr) !important;
         flex: initial;
@@ -3495,6 +3577,8 @@
       html[data-page="conteudo"][data-editor-tab="article"] .output-panel,
       html[data-page="conteudo"][data-editor-tab="carousel"] .editor-panel,
       html[data-page="conteudo"][data-editor-tab="carousel"] .output-panel,
+      html[data-page="conteudo"][data-editor-tab="bento"] .editor-panel,
+      html[data-page="conteudo"][data-editor-tab="bento"] .output-panel,
       html[data-page="conteudo"][data-editor-tab="template"] .editor-panel,
       html[data-page="conteudo"][data-editor-tab="template"] .output-panel {
         grid-column: 1 / -1 !important;
@@ -3507,6 +3591,9 @@
       html[data-page="conteudo"][data-editor-tab="carousel"] .panel,
       html[data-page="conteudo"][data-editor-tab="carousel"] .editor-panel .panel__body,
       html[data-page="conteudo"][data-editor-tab="carousel"] .output,
+      html[data-page="conteudo"][data-editor-tab="bento"] .panel,
+      html[data-page="conteudo"][data-editor-tab="bento"] .editor-panel .panel__body,
+      html[data-page="conteudo"][data-editor-tab="bento"] .output,
       html[data-page="conteudo"][data-editor-tab="template"] .panel,
       html[data-page="conteudo"][data-editor-tab="template"] .editor-panel .panel__body,
       html[data-page="conteudo"][data-editor-tab="template"] .output {
@@ -3516,6 +3603,7 @@
 
       html[data-page="conteudo"][data-editor-tab="article"] .faq-editor,
       html[data-page="conteudo"][data-editor-tab="carousel"] .faq-editor,
+      html[data-page="conteudo"][data-editor-tab="bento"] .faq-editor,
       html[data-page="conteudo"][data-editor-tab="template"] .faq-editor {
         height: auto;
         overflow: visible;
@@ -3523,6 +3611,7 @@
 
       html[data-page="conteudo"][data-editor-tab="article"] .preview-shell,
       html[data-page="conteudo"][data-editor-tab="carousel"] .preview-shell,
+      html[data-page="conteudo"][data-editor-tab="bento"] .preview-shell,
       html[data-page="conteudo"][data-editor-tab="template"] .preview-shell {
         display: block;
         height: 720px;
@@ -3531,6 +3620,7 @@
 
       html[data-page="conteudo"][data-editor-tab="article"] .preview-frame,
       html[data-page="conteudo"][data-editor-tab="carousel"] .preview-frame,
+      html[data-page="conteudo"][data-editor-tab="bento"] .preview-frame,
       html[data-page="conteudo"][data-editor-tab="template"] .preview-frame {
         height: 100%;
         min-height: 520px;

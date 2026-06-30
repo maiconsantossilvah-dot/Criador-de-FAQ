@@ -471,7 +471,7 @@ __STORIES_DYNAMIC_COLORS__
         ? buildCssGradient(captionGradient.start, captionGradient.end, captionGradient.angle)
         : `linear-gradient(90deg, ${captionBgStart}, ${captionBgEnd})`;
 
-      return storiesStyle.replace("__STORIES_DYNAMIC_COLORS__", `
+      return injectTabDynamicStyle(getTabStyleAsset("stories", storiesStyle), "__STORIES_DYNAMIC_COLORS__", `
   .lp-stories {
     --story-ring-bg: ${ringBackground};
     --story-caption-bg-start: ${captionBgStart};

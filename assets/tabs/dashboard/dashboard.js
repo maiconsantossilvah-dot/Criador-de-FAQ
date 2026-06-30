@@ -44,6 +44,13 @@
           title: "Carrossel",
           summary: "Slides de impacto",
           meta: `${state.carousel.slides.length} slide${state.carousel.slides.length === 1 ? "" : "s"}`
+        },
+        {
+          tab: "bento",
+          icon: "BEN",
+          title: "Bento",
+          summary: "Grade visual de cards",
+          meta: state.bento && state.bento.html.trim() ? "HTML editado" : "Modelo padrão"
         }
       ].map((section) => section.tab === "stories" ? {
         ...section,

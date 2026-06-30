@@ -4,6 +4,89 @@
  * e sao carregadas antes deste arquivo nas paginas do app.
  */
 
+    const tabAssetManifest = {
+      faq: "faq/faq",
+      table: "tabela/tabela",
+      stories: "stories/stories",
+      article: "artigo/artigo",
+      carousel: "carrossel/carrossel",
+      bento: "bento/bento",
+      dashboard: "dashboard/dashboard",
+      template: "lp-container/lp-container"
+    };
+
+    const tabAssets = {};
+
+    function normalizeStyleBlock(cssOrStyle = "") {
+      const value = String(cssOrStyle || "").trim();
+      if (!value) {
+        return "";
+      }
+
+      return /^<style[\s>]/i.test(value) ? value : `<style>\n${value}\n</style>`;
+    }
+
+    function getTabAsset(tab, type, fallback = "") {
+      return tabAssets[tab] && typeof tabAssets[tab][type] === "string" && tabAssets[tab][type].trim()
+        ? tabAssets[tab][type]
+        : fallback;
+    }
+
+    function getTabHtmlAsset(tab, fallback = "") {
+      return String(getTabAsset(tab, "html", fallback) || "").trim();
+    }
+
+    function getTabStyleAsset(tab, fallbackStyle = "") {
+      const loadedCss = getTabAsset(tab, "css", "");
+      return loadedCss ? normalizeStyleBlock(loadedCss) : fallbackStyle;
+    }
+
+    function injectTabDynamicStyle(styleBlock, token, cssPatch) {
+      const style = normalizeStyleBlock(styleBlock);
+      const patch = String(cssPatch || "").trim();
+
+      if (style.includes(token)) {
+        return style.replace(token, patch);
+      }
+
+      if (!patch) {
+        return style;
+      }
+
+      return style.replace(/<\/style>\s*$/i, `${patch}\n</style>`);
+    }
+
+    async function loadTabAssets() {
+      if (typeof fetch !== "function") {
+        return;
+      }
+
+      const entries = Object.entries(tabAssetManifest);
+      await Promise.all(entries.map(async ([tab, basePath]) => {
+        const htmlPath = `assets/tabs/${basePath}.html`;
+        const cssPath = `assets/tabs/${basePath}.css`;
+        const result = {};
+
+        await Promise.all([
+          fetch(htmlPath, { cache: "no-store" })
+            .then((response) => response.ok ? response.text() : "")
+            .then((text) => { result.html = text; })
+            .catch(() => {}),
+          fetch(cssPath, { cache: "no-store" })
+            .then((response) => response.ok ? response.text() : "")
+            .then((text) => { result.css = text; })
+            .catch(() => {})
+        ]);
+
+        if ((result.html && result.html.trim()) || (result.css && result.css.trim())) {
+          tabAssets[tab] = {
+            ...(tabAssets[tab] || {}),
+            ...result
+          };
+        }
+      }));
+    }
+
 
 
 
@@ -21,6 +104,7 @@
           stories: {},
           article: {},
           carousel: {},
+          bento: {},
           template: {}
         }
       },
@@ -33,6 +117,7 @@
           stories: "",
           article: "",
           carousel: "",
+          bento: "",
           template: ""
         },
         items: {
@@ -41,6 +126,7 @@
           stories: [],
           article: [],
           carousel: [],
+          bento: [],
           template: []
         }
       },
@@ -53,6 +139,7 @@
         stories: {},
         article: {},
         carousel: {},
+        bento: {},
         template: {}
       },
       items: [
@@ -87,6 +174,10 @@
           title: "Titulo curto do produto",
           subtitle: "Descricao breve do produto, destacando os principais atributos de forma clara."
         },
+        html: "",
+        status: ""
+      },
+      bento: {
         html: "",
         status: ""
       },
@@ -504,6 +595,10 @@
         return { carousel: cloneValue(state.carousel), textStyles: getSnapshotTextStyles(tab) };
       }
 
+      if (tab === "bento") {
+        return { bento: cloneValue(state.bento), textStyles: getSnapshotTextStyles(tab) };
+      }
+
       if (tab === "template") {
         return { template: cloneValue(state.template), textStyles: getSnapshotTextStyles(tab) };
       }
@@ -541,6 +636,12 @@
 
       if (tab === "carousel" && snapshot.carousel) {
         state.carousel = cloneValue(snapshot.carousel);
+        applySnapshotTextStyles(tab, snapshot);
+        return;
+      }
+
+      if (tab === "bento" && snapshot.bento) {
+        state.bento = cloneValue(snapshot.bento);
         applySnapshotTextStyles(tab, snapshot);
         return;
       }
@@ -807,7 +908,7 @@
       }).join("") : `<option value="">Nenhum preset salvo</option>`;
       const hasSelection = Boolean(selectedId && presets.some((preset) => preset.id === selectedId));
 
-      const hasAnyPreset = ["faq", "table", "stories", "article", "carousel", "template"].some((presetTab) => getUserPresets(presetTab).length > 0);
+      const hasAnyPreset = ["faq", "table", "stories", "article", "carousel", "bento", "template"].some((presetTab) => getUserPresets(presetTab).length > 0);
 
       return `
         <details class="preset-panel" aria-label="Presets salvos">
@@ -861,7 +962,7 @@ ${optionMarkup}
     function normalizePresetItems(items) {
       const normalizedItems = {};
 
-      ["faq", "table", "stories", "article", "carousel", "template"].forEach((tab) => {
+      ["faq", "table", "stories", "article", "carousel", "bento", "template"].forEach((tab) => {
         normalizedItems[tab] = (Array.isArray(items && items[tab]) ? items[tab] : [])
           .map((preset) => ({
             id: preset && preset.id ? String(preset.id) : `preset-${Date.now()}-${Math.random().toString(16).slice(2)}`,
@@ -888,7 +989,7 @@ ${optionMarkup}
           state.presets.items = normalizePresetItems(items);
           state.presets.dirty = false;
 
-          ["faq", "table", "stories", "article", "carousel", "template"].forEach((tab) => {
+          ["faq", "table", "stories", "article", "carousel", "bento", "template"].forEach((tab) => {
             state.presets.selected[tab] = state.presets.items[tab][0]?.id || "";
           });
 
@@ -901,7 +1002,7 @@ ${optionMarkup}
     }
 
     function exportUserPresets() {
-      const hasAnyPreset = ["faq", "table", "stories", "article", "carousel", "template"].some((tab) => getUserPresets(tab).length > 0);
+      const hasAnyPreset = ["faq", "table", "stories", "article", "carousel", "bento", "template"].some((tab) => getUserPresets(tab).length > 0);
 
       if (!hasAnyPreset) {
         window.alert("Nenhum preset salvo para exportar.");
@@ -1498,6 +1599,20 @@ ${controls}
         return warnings;
       }
 
+      if (tab === "bento") {
+        const bentoHtml = buildBentoSectionHtml();
+        if (!hasFieldValue(bentoHtml)) {
+          addUniqueWarning(warnings, "Bento: HTML vazio");
+        }
+        collectHtmlAccessibilityWarnings(bentoHtml, "Bento").forEach((warning) => {
+          addUniqueWarning(warnings, warning);
+        });
+        if (/<script\b/i.test(bentoHtml)) {
+          addUniqueWarning(warnings, "Bento: contém script no HTML");
+        }
+        return warnings;
+      }
+
       if (tab === "template") {
         if (!hasFieldValue(state.template.html)) {
           addUniqueWarning(warnings, "LP: conteúdo da lp-container vazio");
@@ -1562,6 +1677,16 @@ ${controls}
           { ok: slides.length > 0, label: "Pelo menos um slide criado" },
           { ok: slides.every((slide) => hasFieldValue(slide.image)), label: "Slides com imagem" },
           { ok: slides.every((slide) => !hasFieldValue(slide.image) || hasFieldValue(slide.alt)), label: "Imagens com alt text" },
+          { ok: noWarnings, label: "Sem pendências antes de copiar", detail: warnings[0] || "" }
+        ];
+      }
+
+      if (tab === "bento") {
+        const bentoHtml = buildBentoSectionHtml();
+        return [
+          { ok: hasFieldValue(bentoHtml), label: "HTML do Bento preenchido" },
+          { ok: !/<script\b/i.test(bentoHtml), label: "Sem script dentro do Bento" },
+          { ok: !collectHtmlAccessibilityWarnings(bentoHtml, "Bento").length, label: "Imagens com alt text" },
           { ok: noWarnings, label: "Sem pendências antes de copiar", detail: warnings[0] || "" }
         ];
       }
@@ -1997,6 +2122,7 @@ ${itemMarkup}
       const isStoriesTab = currentPage === "conteudo" && currentEditorTab === "stories";
       const isArticleTab = currentPage === "conteudo" && currentEditorTab === "article";
       const isCarouselTab = currentPage === "conteudo" && currentEditorTab === "carousel";
+      const isBentoTab = currentPage === "conteudo" && currentEditorTab === "bento";
       const isTemplateTab = currentPage === "conteudo" && currentEditorTab === "template";
       const showHomeReturn = currentPage === "conteudo" && (!isDashboardTab || state.dashboard.view !== "layouts");
       const label = isTableTab ? "Adicionar linha" : "Adicionar pergunta";
@@ -2004,7 +2130,7 @@ ${itemMarkup}
         button.classList.toggle("is-hidden", !showHomeReturn);
       });
       addButtons.forEach((button) => {
-        button.classList.toggle("is-hidden", isDashboardTab || isStoriesTab || isArticleTab || isCarouselTab || isTemplateTab);
+        button.classList.toggle("is-hidden", isDashboardTab || isStoriesTab || isArticleTab || isCarouselTab || isBentoTab || isTemplateTab);
         button.textContent = "+";
         button.setAttribute("aria-label", label);
         button.setAttribute("title", label);
@@ -2123,7 +2249,8 @@ ${itemMarkup}
     }
 
     function buildFullHtml(includeTable) {
-      const styles = includeTable && hasTableData() ? `${faqStyle}\n\n${buildTableStyle()}` : faqStyle;
+      const faqStyles = buildFaqStyle();
+      const styles = includeTable && hasTableData() ? `${faqStyles}\n\n${buildTableStyle()}` : faqStyles;
 
       return `${styles}
 
@@ -2186,6 +2313,14 @@ ${buildCarouselStyle()}
 ${buildResponsiveStyle("carousel", { includeDraft: true })}`;
       }
 
+      if (currentPage === "conteudo" && currentEditorTab === "bento") {
+        return `${buildBentoSectionHtml()}
+
+${buildBentoStyle()}
+
+${buildResponsiveStyle("bento", { includeDraft: true })}`;
+      }
+
       if (currentPage === "conteudo" && currentEditorTab === "template") {
         return buildTemplatePreviewHtml();
       }
@@ -2193,7 +2328,7 @@ ${buildResponsiveStyle("carousel", { includeDraft: true })}`;
       if (currentPage === "conteudo") {
         return `${buildFaqSectionHtml()}
 
-${faqStyle}
+${buildFaqStyle()}
 
 ${buildResponsiveStyle("faq", { includeDraft: true })}`;
       }
@@ -2254,6 +2389,16 @@ ${buildResponsiveStyle("faq", { includeDraft: true })}`;
         return carouselHtml;
       }
 
+      if (currentEditorTab === "bento") {
+        const bentoHtml = buildBentoSectionHtml();
+
+        if (copyMode === "full") {
+          return buildResponsivePackage("bento", () => buildBentoSectionHtml(), buildBentoStyle);
+        }
+
+        return bentoHtml;
+      }
+
       if (currentEditorTab === "template") {
         if (copyMode === "full" && getResponsiveVersionList("template").length) {
           return buildResponsivePackage("template", () => buildTemplateOutputHtml("html"), () => buildTemplateHeaderStyle());
@@ -2265,7 +2410,7 @@ ${buildResponsiveStyle("faq", { includeDraft: true })}`;
       const faqHtml = buildFaqSectionHtml();
 
       if (copyMode === "full") {
-        return buildResponsivePackage("faq", () => buildFaqSectionHtml(), () => faqStyle);
+        return buildResponsivePackage("faq", () => buildFaqSectionHtml(), buildFaqStyle);
       }
 
       return faqHtml;
@@ -2292,6 +2437,7 @@ ${buildResponsiveStyle("faq", { includeDraft: true })}`;
         stories: 520,
         article: 1280,
         carousel: 1280,
+        bento: 1180,
         template: 1280
       };
 
@@ -2567,6 +2713,8 @@ ${buildResponsiveStyle("faq", { includeDraft: true })}`;
         editor.innerHTML = renderArticleEditor();
       } else if (currentPage === "conteudo" && currentEditorTab === "carousel") {
         editor.innerHTML = renderCarouselEditor();
+      } else if (currentPage === "conteudo" && currentEditorTab === "bento") {
+        editor.innerHTML = renderBentoEditor();
       } else if (currentPage === "conteudo" && currentEditorTab === "template") {
         editor.innerHTML = renderTemplateEditor();
       } else {
@@ -2773,6 +2921,20 @@ ${buildResponsiveStyle("faq", { includeDraft: true })}`;
       }
 
       markResponsiveDirty();
+
+      const bentoField = event.target.dataset.bentoField;
+      if (bentoField) {
+        if (typeof updateBentoBlockField === "function" && updateBentoBlockField(event.target)) {
+          return;
+        }
+
+        if (bentoField === "html") {
+          state.bento.html = event.target.value;
+          state.bento.status = "";
+          updateOutput();
+          return;
+        }
+      }
 
       const faqBulkField = event.target.dataset.faqBulk;
       if (faqBulkField) {
@@ -3223,7 +3385,7 @@ ${buildResponsiveStyle("faq", { includeDraft: true })}`;
       if (dashboardButton) {
         event.preventDefault();
         const nextDashboardTab = dashboardButton.dataset.dashboardTab;
-        if (["faq", "table", "stories", "article", "carousel", "template"].includes(nextDashboardTab)) {
+        if (["faq", "table", "stories", "article", "carousel", "bento", "template"].includes(nextDashboardTab)) {
           currentEditorTab = nextDashboardTab;
           renderEditor();
         }
@@ -3243,7 +3405,7 @@ ${buildResponsiveStyle("faq", { includeDraft: true })}`;
       }
 
       const action = button.dataset.action;
-      if (action.includes("story") || action.includes("article") || action.includes("carousel") || action.includes("template") || action.includes("responsive") || action.includes("preset")) {
+      if (action.includes("story") || action.includes("article") || action.includes("carousel") || action.includes("bento") || action.includes("template") || action.includes("responsive") || action.includes("preset")) {
         event.preventDefault();
         event.stopPropagation();
       }
@@ -3330,12 +3492,65 @@ ${buildResponsiveStyle("faq", { includeDraft: true })}`;
         "remove-article-tab",
         "add-carousel-slide",
         "remove-carousel-slide",
+        "add-bento-block",
+        "remove-bento-block",
+        "add-bento-table-column",
+        "remove-bento-table-column",
+        "add-bento-table-row",
+        "remove-bento-table-row",
+        "reset-bento-html",
         "insert-template-layout",
         "clear-template-html",
         "save-template-html-cache"
       ];
       if (mutatingActions.includes(action)) {
         markResponsiveDirty();
+      }
+
+      if (action === "reset-bento-html") {
+        state.bento.html = "";
+        state.bento.useCustomHtml = false;
+        if (typeof getDefaultBentoBlocks === "function") {
+          state.bento.blocks = getDefaultBentoBlocks();
+        }
+        state.bento.header = {
+          eyebrow: "Guia visual",
+          title: "Tudo que importa em uma grade so.",
+          lead: "Use a secao para destacar beneficios, usos, detalhes e provas rapidas de um produto sem virar um bloco pesado de leitura."
+        };
+        state.bento.status = "Modelo padrão restaurado.";
+        renderEditor(true);
+        return;
+      }
+
+      if (action === "add-bento-block") {
+        addBentoBlock(button.dataset.bentoType);
+        return;
+      }
+
+      if (action === "remove-bento-block") {
+        removeBentoBlock(Number(button.dataset.bentoBlock));
+        return;
+      }
+
+      if (action === "add-bento-table-column") {
+        addBentoTableColumn(Number(button.dataset.bentoBlock));
+        return;
+      }
+
+      if (action === "remove-bento-table-column") {
+        removeBentoTableColumn(Number(button.dataset.bentoBlock), Number(button.dataset.bentoColumn));
+        return;
+      }
+
+      if (action === "add-bento-table-row") {
+        addBentoTableRow(Number(button.dataset.bentoBlock));
+        return;
+      }
+
+      if (action === "remove-bento-table-row") {
+        removeBentoTableRow(Number(button.dataset.bentoBlock), Number(button.dataset.bentoRow));
+        return;
       }
 
       if (action === "remove") {
@@ -3412,7 +3627,7 @@ ${buildResponsiveStyle("faq", { includeDraft: true })}`;
     editorTabButtons.forEach((button) => {
       button.addEventListener("click", () => {
         const requestedTab = button.dataset.editorTab;
-        const nextEditorTab = ["faq", "table", "stories", "article", "carousel", "template"].includes(requestedTab) ? requestedTab : "faq";
+        const nextEditorTab = ["faq", "table", "stories", "article", "carousel", "bento", "template"].includes(requestedTab) ? requestedTab : "faq";
         if (nextEditorTab !== currentEditorTab && !returnToBaseVersion()) {
           return;
         }
@@ -3541,4 +3756,6 @@ ${buildResponsiveStyle("faq", { includeDraft: true })}`;
     loadUserPresets();
     loadTemplateHtmlCache();
     setTheme(getInitialTheme());
-    applyPage(getPageFromHash());
+    loadTabAssets().finally(() => {
+      applyPage(getPageFromHash());
+    });

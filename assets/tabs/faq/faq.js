@@ -139,6 +139,10 @@
     }
 </style>`;
 
+    function buildFaqStyle() {
+      return getTabStyleAsset("faq", faqStyle);
+    }
+
     function formatAnswer(value) {
       return escapeHtml(value.trim()).replace(/\r?\n/g, "<br>");
     }
@@ -168,6 +172,24 @@
         .filter(({ item }) => item.question.trim() || item.answer.trim())
         .map(({ item, index }) => renderFaqItem(item, index))
         .join("\n\n");
+
+      const template = getTabHtmlAsset("faq", "");
+      if (template && typeof DOMParser !== "undefined") {
+        const doc = new DOMParser().parseFromString(template, "text/html");
+        const section = doc.querySelector("#faq-section");
+        const list = section ? section.querySelector("#faq-section__list") : null;
+        const title = section ? section.querySelector("#faq-section__title, #faq-section-title") : null;
+
+        if (section && list) {
+          section.setAttribute("aria-labelledby", "faq-section__title");
+          if (title) {
+            title.id = "faq-section__title";
+            title.textContent = "Dúvidas Frequentes";
+          }
+          list.innerHTML = items;
+          return section.outerHTML;
+        }
+      }
 
       return `<section id="faq-section" aria-labelledby="faq-section__title">
 <div id="faq-section__header">

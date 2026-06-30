@@ -31,7 +31,7 @@
         return buildResponsivePackage("carousel", () => buildCarouselSectionHtml(), buildCarouselStyle);
       }
 
-      return buildResponsivePackage("faq", () => buildFaqSectionHtml(), () => faqStyle);
+      return buildResponsivePackage("faq", () => buildFaqSectionHtml(), buildFaqStyle);
     }
 
     function extractLpContainerHtml(value) {
@@ -1014,7 +1014,7 @@ ${containerHtml}`;
     }
 
     function getTextStyleTab(meta) {
-      return ["table", "stories", "article", "carousel", "template"].includes(meta.scope) ? meta.scope : "faq";
+      return ["table", "stories", "article", "carousel", "bento", "template"].includes(meta.scope) ? meta.scope : "faq";
     }
 
     function getPreviewTextStyleKey(meta) {
@@ -1028,7 +1028,8 @@ ${containerHtml}`;
         meta.groupIndex,
         meta.slideIndex,
         meta.tabIndex,
-        meta.tagIndex
+        meta.tagIndex,
+        meta.bentoNodeId
       ].filter((part) => part !== undefined && part !== null && part !== "").join(":");
     }
 
@@ -1043,7 +1044,8 @@ ${containerHtml}`;
         meta.groupIndex,
         meta.slideIndex,
         meta.tabIndex,
-        meta.tagIndex
+        meta.tagIndex,
+        meta.bentoNodeId
       ].filter((part) => part !== undefined && part !== null && part !== "").join(":");
     }
 
@@ -1154,6 +1156,7 @@ ${containerHtml}`;
           "data-ll-preview-position",
           "data-ll-preview-overlay-horizontal",
           "data-ll-preview-overlay-vertical",
+          "data-ll-preview-overlay-width",
           "data-ll-preview-manual-story",
           "data-ll-preview-story-active",
           "data-ll-preview-story-hidden",
@@ -1194,6 +1197,158 @@ ${containerHtml}`;
       }
       generatedHtml.value = buildOutputHtml("html");
       copyStatus.textContent = "";
+    }
+
+    function getBentoPreviewRoot() {
+      const doc = previewFrame.contentDocument;
+      return doc ? doc.querySelector(".ll-bento") : null;
+    }
+
+    function getBentoPreviewNode(meta) {
+      const doc = previewFrame.contentDocument;
+      if (!doc || !meta.bentoNodeId) {
+        return null;
+      }
+
+      return doc.querySelector(`[data-ll-bento-node="${meta.bentoNodeId}"]`);
+    }
+
+    function cleanBentoPreviewClone(container) {
+      const clone = container.cloneNode(true);
+      [clone, ...clone.querySelectorAll("*")].forEach((element) => {
+        [
+          "data-ll-bento-node",
+          "data-ll-preview-text",
+          "data-ll-preview-media",
+          "data-ll-preview-color",
+          "data-ll-preview-inline",
+          "data-ll-preview-position"
+        ].forEach((attribute) => element.removeAttribute(attribute));
+        element.removeAttribute("contenteditable");
+        element.removeAttribute("spellcheck");
+
+        const title = element.getAttribute("title") || "";
+        if (/^Clique para editar|^Clique para trocar|^Duplo clique para editar|^D[eê] dois cliques para trocar/i.test(title)) {
+          element.removeAttribute("title");
+        }
+      });
+
+      return clone;
+    }
+
+    function syncBentoHtmlFromPreview() {
+      const root = getBentoPreviewRoot();
+      if (!root) {
+        return;
+      }
+
+      const clone = cleanBentoPreviewClone(root);
+      state.bento.html = clone.outerHTML.trim();
+      state.bento.useCustomHtml = true;
+      state.bento.status = "Editado pela prévia.";
+
+      const textarea = editor.querySelector('[data-bento-field="html"]');
+      if (textarea && document.activeElement !== textarea) {
+        textarea.value = state.bento.html;
+      }
+
+      generatedHtml.value = buildOutputHtml("html");
+      copyStatus.textContent = "";
+      copyStatus.classList.remove("is-warning", "is-visible");
+    }
+
+    function getBentoMediaValue(element) {
+      if (!element) {
+        return "";
+      }
+
+      const tagName = element.tagName;
+      if (tagName === "SOURCE") {
+        return element.getAttribute("srcset") || "";
+      }
+
+      if (["IMG", "VIDEO", "IFRAME"].includes(tagName)) {
+        return element.getAttribute("src") || "";
+      }
+
+      const backgroundImage = element.style.backgroundImage || element.ownerDocument.defaultView.getComputedStyle(element).backgroundImage || "";
+      const urlMatch = backgroundImage.match(/url\(["']?(.+?)["']?\)/i);
+      return urlMatch ? urlMatch[1] : "";
+    }
+
+    function setBentoMediaValue(element, value) {
+      if (!element) {
+        return;
+      }
+
+      const normalizedValue = normalizeAssetUrl(value);
+      const safeUrl = normalizedValue.replaceAll('"', "%22");
+      const tagName = element.tagName;
+
+      if (tagName === "SOURCE") {
+        element.setAttribute("srcset", normalizedValue);
+        return;
+      }
+
+      if (tagName === "IMG") {
+        element.setAttribute("src", normalizedValue);
+        const picture = element.closest("picture");
+        if (picture) {
+          picture.querySelectorAll("source").forEach((source) => {
+            source.setAttribute("srcset", normalizedValue);
+          });
+        }
+        return;
+      }
+
+      if (tagName === "VIDEO" || tagName === "IFRAME") {
+        element.setAttribute("src", normalizedValue);
+        element.load?.();
+        return;
+      }
+
+      const view = element.ownerDocument.defaultView;
+      const currentBackground = element.style.backgroundImage || view.getComputedStyle(element).backgroundImage || "";
+      const nextUrl = `url("${safeUrl}")`;
+      element.style.backgroundImage = /url\(/i.test(currentBackground)
+        ? currentBackground.replace(/url\(["']?.+?["']?\)/i, nextUrl)
+        : nextUrl;
+    }
+
+    function updateBentoPreviewEditValue(meta, rawValue, normalizedValue) {
+      const element = getBentoPreviewNode(meta);
+      if (!element) {
+        return;
+      }
+
+      if (currentPage === "conteudo") {
+        markResponsiveDirty();
+      }
+
+      if (meta.type === "textStyle") {
+        const value = normalizePreviewText(rawValue && rawValue.text, Boolean(meta.multiline));
+        const style = normalizePreviewTextStyle(rawValue && rawValue.style ? rawValue.style : {});
+        element.textContent = value;
+        ["color", "fontSize", "fontWeight", "fontStyle", "textAlign", "lineHeight"].forEach((property) => {
+          element.style[property] = "";
+        });
+        if (style.color) element.style.color = style.color;
+        if (style.fontSize) element.style.fontSize = `${style.fontSize}px`;
+        if (style.fontWeight) element.style.fontWeight = style.fontWeight;
+        if (style.fontStyle) element.style.fontStyle = style.fontStyle;
+        if (style.textAlign) element.style.textAlign = style.textAlign;
+        if (style.lineHeight) element.style.lineHeight = String(style.lineHeight);
+      } else if (meta.type === "media") {
+        setBentoMediaValue(element, normalizedValue);
+      } else if (meta.type === "color") {
+        if (/gradient\(/i.test(normalizedValue)) {
+          element.style.background = normalizedValue;
+        } else {
+          element.style.backgroundColor = normalizedValue;
+        }
+      }
+
+      syncBentoHtmlFromPreview();
     }
 
     function getTemplateMediaValue(element) {
@@ -1982,6 +2137,11 @@ ${containerHtml}`;
         return value;
       }
 
+      if (meta.scope === "bento") {
+        syncBentoHtmlFromPreview();
+        return value;
+      }
+
       if (currentPage === "conteudo") {
         markResponsiveDirty();
       }
@@ -2071,6 +2231,24 @@ ${containerHtml}`;
     function readPreviewEditValue(meta) {
       if (meta.scope === "template") {
         return meta.value || "";
+      }
+
+      if (meta.scope === "bento") {
+        const element = getBentoPreviewNode(meta);
+        if (!element) {
+          return "";
+        }
+
+        if (meta.type === "media") {
+          return getBentoMediaValue(element);
+        }
+
+        if (meta.type === "color") {
+          const computed = element.ownerDocument.defaultView.getComputedStyle(element);
+          return colorToHex(computed.backgroundColor || "#ffffff", "#ffffff");
+        }
+
+        return element.innerText || element.textContent || "";
       }
 
       if (meta.scope === "faq") {
@@ -2165,6 +2343,11 @@ ${containerHtml}`;
 
       if (meta.scope === "template") {
         updateTemplatePreviewEditValue(meta, rawValue, value);
+        return;
+      }
+
+      if (meta.scope === "bento") {
+        updateBentoPreviewEditValue(meta, rawValue, value);
         return;
       }
 
@@ -2393,6 +2576,9 @@ ${containerHtml}`;
           outline-offset: 4px;
         }
         .ll-carousel__side-hint {
+          pointer-events: none !important;
+        }
+        .ll-bento__image-button {
           pointer-events: none !important;
         }
         [data-ll-template-iframe-parent] {
@@ -2868,9 +3054,57 @@ ${containerHtml}`;
         return "top";
       };
 
+      const getTemplateOverlayPositionHost = (element) => {
+        const doc = element?.ownerDocument;
+        const root = doc?.querySelector(".lp-container, .lp_container");
+        if (!element || !doc || !root) {
+          return null;
+        }
+
+        const offsetParent = element.offsetParent;
+        if (
+          offsetParent
+          && offsetParent !== doc.body
+          && offsetParent !== doc.documentElement
+          && root.contains(offsetParent)
+        ) {
+          return offsetParent;
+        }
+
+        const host = element.parentElement?.closest?.(
+          "section, article, figure, header, [class*='section' i], [class*='slide' i], [class*='panel' i], [class*='layout' i], [class*='banner' i], [class*='media' i]"
+        );
+        if (host && host !== element && root.contains(host)) {
+          return host;
+        }
+
+        return element.parentElement && root.contains(element.parentElement)
+          ? element.parentElement
+          : root;
+      };
+
       const applyTemplateOverlayPosition = (element, horizontal, vertical) => {
         const computed = element.ownerDocument.defaultView.getComputedStyle(element);
-        if (computed.position === "static") {
+        const host = getTemplateOverlayPositionHost(element);
+        if (host) {
+          const hostComputed = element.ownerDocument.defaultView.getComputedStyle(host);
+          if (hostComputed.position === "static") {
+            host.style.position = "relative";
+          }
+
+          const inlineWidth = (element.style.width || "").trim().toLowerCase();
+          const hasUsableInlineWidth = inlineWidth && inlineWidth !== "auto";
+          if (!element.dataset.llPreviewOverlayWidth && !hasUsableInlineWidth) {
+            const hostRect = host.getBoundingClientRect();
+            const elementRect = element.getBoundingClientRect();
+            if (hostRect.width > 0 && elementRect.width > 0) {
+              const widthPercent = Math.min(88, Math.max(24, (elementRect.width / hostRect.width) * 100));
+              element.dataset.llPreviewOverlayWidth = `${widthPercent.toFixed(2)}%`;
+            }
+          }
+        }
+
+        if (computed.position === "static" || computed.position === "relative") {
           element.style.position = "absolute";
         }
 
@@ -2879,10 +3113,17 @@ ${containerHtml}`;
         let translateX = "0";
         let translateY = "0";
 
-        element.style.left = "";
-        element.style.right = "";
-        element.style.top = "";
-        element.style.bottom = "";
+        element.style.inset = "auto";
+        element.style.left = "auto";
+        element.style.right = "auto";
+        element.style.top = "auto";
+        element.style.bottom = "auto";
+        element.style.boxSizing = "border-box";
+        element.style.maxWidth = "88%";
+        const nextInlineWidth = (element.style.width || "").trim().toLowerCase();
+        if ((!nextInlineWidth || nextInlineWidth === "auto") && element.dataset.llPreviewOverlayWidth) {
+          element.style.width = element.dataset.llPreviewOverlayWidth;
+        }
 
         if (normalizedHorizontal === "left") {
           element.style.left = "6%";
@@ -2902,9 +3143,7 @@ ${containerHtml}`;
           translateY = "-50%";
         }
 
-        element.style.transform = translateX === "0" && translateY === "0"
-          ? ""
-          : `translate(${translateX}, ${translateY})`;
+        element.style.transform = `translate(${translateX}, ${translateY})`;
         element.dataset.llPreviewOverlayHorizontal = normalizedHorizontal;
         element.dataset.llPreviewOverlayVertical = normalizedVertical;
       };
@@ -3063,6 +3302,17 @@ ${containerHtml}`;
         }, 0);
       };
 
+      const templateOverlayNamePattern = /group[-_\s]?text|grouptext|ll-carousel__caption|text[-_\s]?overlay|overlay[-_\s]?text|caption[-_\s]?overlay|legenda/i;
+
+      const isTemplateOverlaySignatureMatch = (element) => {
+        if (!element || element.nodeType !== 1) {
+          return false;
+        }
+
+        const signature = `${element.id || ""} ${typeof element.className === "string" ? element.className : ""}`;
+        return templateOverlayNamePattern.test(signature);
+      };
+
       const isTemplateOverlayCandidate = (element, root) => {
         if (!element || element === root || element.nodeType !== 1) {
           return false;
@@ -3072,10 +3322,21 @@ ${containerHtml}`;
           return false;
         }
 
-        const signature = `${element.id || ""} ${typeof element.className === "string" ? element.className : ""}`;
-        const looksLikeOverlay = /group[-_\s]?text|grouptext|ll-carousel__caption|text[-_\s]?overlay|overlay[-_\s]?text|caption[-_\s]?overlay|legenda/i.test(signature);
+        const looksLikeOverlay = isTemplateOverlaySignatureMatch(element);
         if (!looksLikeOverlay) {
           return false;
+        }
+
+        let parent = element.parentElement;
+        while (parent && parent !== root) {
+          if (
+            root.contains(parent)
+            && isTemplateOverlaySignatureMatch(parent)
+            && (parent.innerText || parent.textContent || "").trim()
+          ) {
+            return false;
+          }
+          parent = parent.parentElement;
         }
 
         return Boolean((element.innerText || element.textContent || "").trim());
@@ -3296,6 +3557,13 @@ ${containerHtml}`;
           element.dataset.llTemplateNode = `template-${Math.random().toString(16).slice(2)}`;
         }
         return element.dataset.llTemplateNode;
+      };
+
+      const markBentoNode = (element) => {
+        if (!element.dataset.llBentoNode) {
+          element.dataset.llBentoNode = `bento-${Math.random().toString(16).slice(2)}`;
+        }
+        return element.dataset.llBentoNode;
       };
 
       const hasDirectText = (element) => {
@@ -3733,7 +4001,7 @@ ${containerHtml}`;
           button.addEventListener("click", (event) => {
             event.preventDefault();
             const nextDashboardTab = button.dataset.dashboardPreviewTab;
-            if (["faq", "table", "stories", "article", "carousel", "template"].includes(nextDashboardTab)) {
+            if (["faq", "table", "stories", "article", "carousel", "bento", "template"].includes(nextDashboardTab)) {
               currentEditorTab = nextDashboardTab;
               state.dashboard.view = "layouts";
               renderEditor();
@@ -3837,6 +4105,66 @@ ${containerHtml}`;
           attachText(panel.querySelector(".ll-carousel__layout-text"), { scope: "carousel", slideIndex, field: "text" }, { multiline: true });
           attachText(panel.querySelector(".ll-carousel__caption h3"), { scope: "carousel", slideIndex, field: "captionTitle" });
           attachText(panel.querySelector(".ll-carousel__caption p"), { scope: "carousel", slideIndex, field: "captionText" }, { multiline: true });
+        });
+      }
+
+      if (tab === "bento") {
+        const root = doc.querySelector(".ll-bento");
+        if (!root) {
+          return;
+        }
+
+        [
+          ".ll-bento__eyebrow",
+          ".ll-bento__title",
+          ".ll-bento__lead",
+          ".ll-bento__chip",
+          ".ll-bento__stat",
+          ".ll-bento__card-title",
+          ".ll-bento__card-text",
+          ".ll-bento__list li",
+          ".ll-bento__footer-note",
+          ".ll-bento__media-action",
+          ".ll-bento__table-summary strong",
+          ".ll-bento__card--table .table-text-custom"
+        ].forEach((selector) => {
+          root.querySelectorAll(selector).forEach((element) => {
+            const id = markBentoNode(element);
+            attachText(element, {
+              scope: "bento",
+              field: "text",
+              bentoNodeId: id
+            }, {
+              multiline: element.matches(".ll-bento__lead, .ll-bento__card-text, .ll-bento__list li, .ll-bento__footer-note")
+            });
+          });
+        });
+
+        root.querySelectorAll("img, video, source").forEach((element) => {
+          const id = markBentoNode(element);
+          attachMedia(element, {
+            scope: "bento",
+            field: element.tagName === "SOURCE" ? "srcset" : "src",
+            bentoNodeId: id
+          }, element.tagName === "VIDEO" ? "URL do vídeo" : "URL da imagem");
+        });
+
+        root.querySelectorAll(".ll-bento__card--hero").forEach((element) => {
+          const id = markBentoNode(element);
+          attachMedia(element, {
+            scope: "bento",
+            field: "backgroundImage",
+            bentoNodeId: id
+          }, "URL da imagem de fundo");
+        });
+
+        [root, ...root.querySelectorAll(".ll-bento__card:not(.ll-bento__card--hero):not(.ll-bento__card--image), .ll-bento__lightbox-overlay")].forEach((element) => {
+          const id = markBentoNode(element);
+          attachColor(element, {
+            scope: "bento",
+            field: "backgroundColor",
+            bentoNodeId: id
+          }, "cor de fundo", { allowGradient: true, triggerEvent: "click" });
         });
       }
     }
