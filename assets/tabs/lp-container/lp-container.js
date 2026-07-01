@@ -536,6 +536,9 @@ ${containerHtml}`;
             valueInput.value = normalizeHexColor(valueInput.value);
             colorInput.value = valueInput.value;
             colorInput.style.setProperty("--preview-edit-color", valueInput.value);
+            if (colorGradientInputs?.toggle?.checked) {
+              colorGradientInputs.start.value = valueInput.value;
+            }
             applyLiveValue();
           }
         });
@@ -543,6 +546,9 @@ ${containerHtml}`;
         colorInput.addEventListener("input", () => {
           valueInput.value = normalizeHexColor(colorInput.value);
           colorInput.style.setProperty("--preview-edit-color", valueInput.value);
+          if (colorGradientInputs?.toggle?.checked) {
+            colorGradientInputs.start.value = valueInput.value;
+          }
           applyLiveValue();
         });
 
@@ -558,6 +564,9 @@ ${containerHtml}`;
               valueInput.value = normalizeHexColor(result.sRGBHex);
               colorInput.value = valueInput.value;
               colorInput.style.setProperty("--preview-edit-color", valueInput.value);
+              if (colorGradientInputs?.toggle?.checked) {
+                colorGradientInputs.start.value = valueInput.value;
+              }
               applyLiveValue();
             }
           } catch (error) {}
@@ -831,7 +840,7 @@ ${containerHtml}`;
       actions.appendChild(closeButton);
       form.appendChild(actions);
 
-      const applyLiveValue = (options = {}) => {
+      const applyLiveValue = (applyOptions = {}) => {
         let nextValue = String(valueInput.value || "").trim();
         if (isColor) {
           if (options.opacityField && colorOpacityInput && meta.scope === "carousel" && meta.slideIndex !== undefined) {
@@ -856,8 +865,8 @@ ${containerHtml}`;
         }
 
         if (isTextStyle) {
-          const nextText = normalizePreviewText(nextValue, Boolean(options.multiline));
-          const nextStyle = options.clearStyle ? {} : {
+          const nextText = normalizePreviewText(nextValue, Boolean(applyOptions.multiline));
+          const nextStyle = applyOptions.clearStyle ? {} : {
             color: styleInputs.color.value,
             fontSize: styleInputs.fontSize.value,
             fontWeight: styleInputs.fontWeight.value,
@@ -866,7 +875,7 @@ ${containerHtml}`;
             lineHeight: styleInputs.lineHeight.value
           };
 
-          updatePreviewEditValue({ ...meta, type: "textStyle", multiline: options.multiline }, {
+          updatePreviewEditValue({ ...meta, type: "textStyle", multiline: applyOptions.multiline }, {
             text: nextText,
             style: nextStyle
           });
@@ -1342,8 +1351,14 @@ ${containerHtml}`;
         setBentoMediaValue(element, normalizedValue);
       } else if (meta.type === "color") {
         if (/gradient\(/i.test(normalizedValue)) {
-          element.style.background = normalizedValue;
+          element.style.backgroundImage = normalizedValue;
+          element.style.backgroundColor = "";
         } else {
+          const view = element.ownerDocument.defaultView;
+          const backgroundImage = element.style.backgroundImage || view.getComputedStyle(element).backgroundImage || "";
+          if (backgroundImage && backgroundImage !== "none" && !/url\(/i.test(backgroundImage)) {
+            element.style.backgroundImage = "none";
+          }
           element.style.backgroundColor = normalizedValue;
         }
       }
@@ -2119,10 +2134,15 @@ ${containerHtml}`;
       } else if (meta.type === "color") {
         const computed = element.ownerDocument.defaultView.getComputedStyle(element);
         const backgroundImage = computed.backgroundImage || "";
-        if (backgroundImage && backgroundImage !== "none" && !/url\(/i.test(backgroundImage)) {
-          element.style.backgroundImage = "none";
+        if (/gradient\(/i.test(normalizedValue)) {
+          element.style.backgroundImage = normalizedValue;
+          element.style.backgroundColor = "";
+        } else {
+          if (backgroundImage && backgroundImage !== "none" && !/url\(/i.test(backgroundImage)) {
+            element.style.backgroundImage = "none";
+          }
+          element.style.backgroundColor = normalizedValue;
         }
-        element.style.backgroundColor = normalizedValue;
       }
 
       syncTemplateHtmlFromPreview();
@@ -2230,6 +2250,21 @@ ${containerHtml}`;
 
     function readPreviewEditValue(meta) {
       if (meta.scope === "template") {
+        if (meta.type === "color") {
+          const element = getTemplatePreviewNode(meta);
+          if (element) {
+            const computed = element.ownerDocument.defaultView.getComputedStyle(element);
+            const backgroundImage = element.style.backgroundImage || computed.backgroundImage || "";
+            if (backgroundImage && backgroundImage !== "none" && !/url\(/i.test(backgroundImage)) {
+              return backgroundImage;
+            }
+
+            if (!isTransparentColor(computed.backgroundColor)) {
+              return colorToHex(computed.backgroundColor || "#ffffff", "#ffffff");
+            }
+          }
+        }
+
         return meta.value || "";
       }
 
@@ -2245,6 +2280,10 @@ ${containerHtml}`;
 
         if (meta.type === "color") {
           const computed = element.ownerDocument.defaultView.getComputedStyle(element);
+          const backgroundImage = element.style.backgroundImage || computed.backgroundImage || "";
+          if (backgroundImage && backgroundImage !== "none" && !/url\(/i.test(backgroundImage)) {
+            return backgroundImage;
+          }
           return colorToHex(computed.backgroundColor || "#ffffff", "#ffffff");
         }
 
@@ -2311,6 +2350,14 @@ ${containerHtml}`;
 
       if (meta.scope === "carousel") {
         if (meta.slideIndex === undefined) {
+          if (meta.field === "softColor" && state.carousel.sectionGradientEnabled !== false) {
+            return buildCssGradient(
+              state.carousel.sectionGradientStart || "#ffffff",
+              state.carousel.sectionGradientEnd || state.carousel.softColor || "#f3f6fb",
+              180
+            );
+          }
+
           return state.carousel[meta.field] || "";
         }
 
@@ -2321,6 +2368,14 @@ ${containerHtml}`;
 
         if (meta.field === "navNumber") {
           return slide.navNumber || String(Number(meta.slideIndex) + 1).padStart(2, "0");
+        }
+
+        if (meta.field === "backgroundColor" && normalizeCarouselType(slide.type) === "impact" && slide.gradientEnabled !== false && !parseCssGradient(slide.backgroundColor)) {
+          return buildCssGradient(
+            slide.backgroundColor || "#f16425",
+            slide.gradientEndColor || slide.backgroundColor || "#ff8a4f",
+            normalizeCarouselGradientAngle(slide.gradientAngle)
+          );
         }
 
         return slide[meta.field] || "";
@@ -2425,10 +2480,21 @@ ${containerHtml}`;
       if (meta.scope === "carousel") {
         if (meta.slideIndex === undefined) {
           state.carousel[meta.field] = value;
+          if (meta.field === "softColor") {
+            state.carousel.sectionGradientEnabled = false;
+          }
         } else {
           const slide = state.carousel.slides[meta.slideIndex];
           if (slide) {
             slide[meta.field] = value;
+            if (meta.field === "backgroundColor" && normalizeCarouselType(slide.type) === "impact") {
+              const gradient = parseCssGradient(value);
+              slide.gradientEnabled = Boolean(gradient);
+              if (gradient) {
+                slide.gradientEndColor = gradient.end;
+                slide.gradientAngle = gradient.angle;
+              }
+            }
             state.carousel.openSlideIndex = meta.slideIndex;
             setCarouselPreviewSlide(meta.slideIndex);
           }
@@ -2642,6 +2708,10 @@ ${containerHtml}`;
           return;
         }
 
+        if (element.dataset.llPreviewText === "true") {
+          return;
+        }
+
         const multiline = Boolean(options.multiline);
         element.dataset.llPreviewText = "true";
         element.setAttribute("title", "Clique para editar texto e estilo. Dê dois cliques para editar só o texto.");
@@ -2682,6 +2752,13 @@ ${containerHtml}`;
         };
 
         element.addEventListener("click", (event) => {
+          if (options.disableSingleClickPopover) {
+            if (element.isContentEditable) {
+              event.stopPropagation();
+            }
+            return;
+          }
+
           if (element.isContentEditable) {
             event.stopPropagation();
             return;
@@ -2691,6 +2768,11 @@ ${containerHtml}`;
           event.stopPropagation();
           window.clearTimeout(singleClickTimer);
           singleClickTimer = window.setTimeout(() => {
+            if (options.faqColorTarget?.faqRoot && options.faqColorTarget?.summary) {
+              openTemplateFaqStylePopover(event, options.faqColorTarget.faqRoot, options.faqColorTarget.summary);
+              return;
+            }
+
             openPreviewEditPopover(event, { ...meta, type: "textStyle" }, {
               kind: "text-style",
               label: "Editar texto",
@@ -2870,14 +2952,14 @@ ${containerHtml}`;
         return Boolean(isTemplateStoryLike(element) && element.matches?.(".lp-stories__name, .lp-stories__title, .lp-stories__caption, [class*='story' i] [class*='name' i], [class*='story' i] [class*='title' i], [class*='story' i] [class*='caption' i], [class*='stories' i] [class*='name' i], [class*='stories' i] [class*='title' i], [class*='stories' i] [class*='caption' i]"));
       };
 
-      const attachMedia = (element, meta, label = "URL da mídia") => {
+      const attachMedia = (element, meta, label = "URL da mídia", options = {}) => {
         if (!element) {
           return;
         }
 
         element.dataset.llPreviewMedia = "true";
         const shouldPreserveClick = meta.scope === "template" && isTemplateInteractiveControl(element);
-        const triggerEvent = shouldPreserveClick ? "dblclick" : "click";
+        const triggerEvent = options.triggerEvent || (shouldPreserveClick ? "dblclick" : "click");
         element.setAttribute("title", triggerEvent === "dblclick" ? `Dê dois cliques para trocar ${label}.` : `Clique para trocar ${label}.`);
         element.addEventListener(triggerEvent, (event) => {
           if (element.dataset.llPreviewColor) {
@@ -2946,6 +3028,11 @@ ${containerHtml}`;
         element.dataset.llPreviewColor = "true";
         element.setAttribute("title", triggerEvent === "click" ? `Clique para editar ${label}.` : `Duplo clique para editar ${label}.`);
         element.addEventListener(triggerEvent, (event) => {
+          const interactiveTarget = event.target.closest('a[href], button, label[for], input, textarea, select, summary, [role="button"], [role="tab"], [role="link"], .ll-carousel__nav');
+          if (interactiveTarget && interactiveTarget !== element) {
+            return;
+          }
+
           const allowColorOnMedia = Boolean(options.allowOnMedia);
           if (element.dataset.llPreviewMedia && !allowColorOnMedia) {
             return;
@@ -3659,6 +3746,285 @@ ${containerHtml}`;
         return hasTemplateBackgroundImage(element);
       };
 
+      const ensureTemplateFaqStyle = (root) => {
+        const styleId = "ll-template-faq-custom-style";
+        let faqStyle = root.querySelector(`#${styleId}`);
+        if (!faqStyle) {
+          faqStyle = doc.createElement("style");
+          faqStyle.id = styleId;
+          root.insertBefore(faqStyle, root.firstChild);
+        }
+
+        faqStyle.textContent = `
+.lp-container .ll-template-faq-custom-colors #faq-section__summary.ll-template-faq-summary,
+.lp_container .ll-template-faq-custom-colors #faq-section__summary.ll-template-faq-summary,
+.lp-container .ll-template-faq-custom-colors .ll-template-faq-summary,
+.lp_container .ll-template-faq-custom-colors .ll-template-faq-summary,
+.lp-container.ll-template-faq-custom-colors #faq-section__summary.ll-template-faq-summary,
+.lp_container.ll-template-faq-custom-colors #faq-section__summary.ll-template-faq-summary,
+.lp-container.ll-template-faq-custom-colors .ll-template-faq-summary,
+.lp_container.ll-template-faq-custom-colors .ll-template-faq-summary {
+  background: var(--ll-template-faq-summary-bg) !important;
+}
+.lp-container .ll-template-faq-custom-colors #faq-section__summary.ll-template-faq-summary:hover,
+.lp_container .ll-template-faq-custom-colors #faq-section__summary.ll-template-faq-summary:hover,
+.lp-container .ll-template-faq-custom-colors .ll-template-faq-summary:hover,
+.lp_container .ll-template-faq-custom-colors .ll-template-faq-summary:hover,
+.lp-container.ll-template-faq-custom-colors #faq-section__summary.ll-template-faq-summary:hover,
+.lp_container.ll-template-faq-custom-colors #faq-section__summary.ll-template-faq-summary:hover,
+.lp-container.ll-template-faq-custom-colors .ll-template-faq-summary:hover,
+.lp_container.ll-template-faq-custom-colors .ll-template-faq-summary:hover {
+  background: var(--ll-template-faq-summary-hover-bg) !important;
+}
+`;
+        return faqStyle;
+      };
+
+      const getTemplateFaqRoot = (details, root) => {
+        return details.closest?.("#faq-section, [id*='faq' i], [class*='faq' i], section, article")
+          || details.parentElement
+          || root;
+      };
+
+      const isTemplateFaqDetails = (details, root) => {
+        if (!details || details.tagName !== "DETAILS" || !root.contains(details)) {
+          return false;
+        }
+
+        const summary = details.querySelector("summary");
+        if (!summary) {
+          return false;
+        }
+
+        const faqRoot = getTemplateFaqRoot(details, root);
+        const signature = [
+          details.id || "",
+          typeof details.className === "string" ? details.className : "",
+          summary.id || "",
+          typeof summary.className === "string" ? summary.className : "",
+          faqRoot?.id || "",
+          typeof faqRoot?.className === "string" ? faqRoot.className : "",
+          summary.textContent || ""
+        ].join(" ");
+
+        return /faq|d[uú]vida|pergunta|resposta|question|answer/i.test(signature);
+      };
+
+      const findTemplateFaqQuestion = (details) => {
+        const summary = details.querySelector("summary");
+        if (!summary) {
+          return null;
+        }
+
+        return summary.querySelector('[id="faq-section__q-text"], [id*="q-text"], [class*="question" i], [class*="pergunta" i], h1, h2, h3, h4, strong, p')
+          || Array.from(summary.children).find((child) => {
+            return !/icon|icone|arrow|seta/i.test(`${child.id || ""} ${typeof child.className === "string" ? child.className : ""}`)
+              && (child.innerText || child.textContent || "").trim();
+          })
+          || summary;
+      };
+
+      const findTemplateFaqAnswer = (details) => {
+        const summary = details.querySelector("summary");
+        const preferred = details.querySelector('[id="faq-section__a-text"], [id*="a-text"], [class*="answer" i], [class*="resposta" i]');
+        if (preferred && !summary?.contains(preferred)) {
+          return preferred;
+        }
+
+        return Array.from(details.querySelectorAll("p, div, span")).find((element) => {
+          return !summary?.contains(element)
+            && (element.innerText || element.textContent || "").trim()
+            && !element.querySelector?.("p, div, span");
+        }) || null;
+      };
+
+      const openTemplateFaqStylePopover = (sourceEvent, faqRoot, summary) => {
+        closePreviewEditPopover();
+        ensureTemplateFaqStyle(faqRoot);
+
+        const computed = summary.ownerDocument.defaultView.getComputedStyle(summary);
+        const initialNormal = colorToHex(
+          faqRoot.style.getPropertyValue("--ll-template-faq-summary-bg") || computed.backgroundColor || "#ffffff",
+          "#ffffff"
+        );
+        const initialHover = colorToHex(
+          faqRoot.style.getPropertyValue("--ll-template-faq-summary-hover-bg") || "#f9f9f9",
+          "#f9f9f9"
+        );
+
+        const form = document.createElement("form");
+        form.className = "preview-edit-popover preview-edit-popover--color";
+        form.setAttribute("role", "dialog");
+        form.setAttribute("aria-label", "Editar cores do FAQ");
+
+        const title = document.createElement("p");
+        title.className = "preview-edit-popover__title";
+        title.textContent = "Cores do FAQ";
+        form.appendChild(title);
+
+        const makeColorField = (labelText, initialValue) => {
+          const label = document.createElement("label");
+          label.className = "preview-edit-popover__mini-field";
+          const text = document.createElement("span");
+          text.textContent = labelText;
+          const row = document.createElement("div");
+          row.className = "preview-edit-popover__color-row preview-edit-popover__color-row--picker";
+          const color = document.createElement("input");
+          color.className = "preview-edit-popover__color";
+          color.type = "color";
+          color.value = initialValue;
+          color.style.setProperty("--preview-edit-color", initialValue);
+          const hex = document.createElement("input");
+          hex.className = "preview-edit-popover__field";
+          hex.type = "text";
+          hex.value = initialValue;
+          hex.placeholder = "#ffffff";
+          row.append(color, hex);
+          label.append(text, row);
+          form.appendChild(label);
+          return { color, hex };
+        };
+
+        const normal = makeColorField("Cor normal", initialNormal);
+        const hover = makeColorField("Cor hover", initialHover);
+
+        const actions = document.createElement("div");
+        actions.className = "preview-edit-popover__actions";
+        const closeButton = document.createElement("button");
+        closeButton.className = "button";
+        closeButton.type = "button";
+        closeButton.textContent = "Fechar";
+        actions.appendChild(closeButton);
+        form.appendChild(actions);
+
+        const syncPair = (pair) => {
+          if (isHexColor(pair.hex.value)) {
+            pair.hex.value = normalizeHexColor(pair.hex.value);
+            pair.color.value = pair.hex.value;
+            pair.color.style.setProperty("--preview-edit-color", pair.hex.value);
+          }
+        };
+
+        const applyFaqStyle = () => {
+          syncPair(normal);
+          syncPair(hover);
+          faqRoot.classList.add("ll-template-faq-custom-colors");
+          faqRoot.style.setProperty("--ll-template-faq-summary-bg", normal.color.value);
+          faqRoot.style.setProperty("--ll-template-faq-summary-hover-bg", hover.color.value);
+          syncTemplateHtmlFromPreview();
+        };
+
+        [normal, hover].forEach((pair) => {
+          pair.color.addEventListener("input", () => {
+            pair.hex.value = normalizeHexColor(pair.color.value);
+            pair.color.style.setProperty("--preview-edit-color", pair.hex.value);
+            applyFaqStyle();
+          });
+          pair.hex.addEventListener("input", () => {
+            if (isHexColor(pair.hex.value)) {
+              applyFaqStyle();
+            }
+          });
+          pair.hex.addEventListener("change", () => {
+            pair.hex.value = isHexColor(pair.hex.value) ? normalizeHexColor(pair.hex.value) : pair.color.value;
+            applyFaqStyle();
+          });
+        });
+
+        closeButton.addEventListener("click", closePreviewEditPopover);
+        form.addEventListener("submit", (event) => {
+          event.preventDefault();
+          closePreviewEditPopover();
+        });
+        previewEditKeyHandler = (event) => {
+          if (event.key === "Escape") {
+            closePreviewEditPopover();
+          }
+        };
+        previewEditOutsideHandler = (event) => {
+          if (previewEditPopover && !previewEditPopover.contains(event.target)) {
+            closePreviewEditPopover();
+          }
+        };
+
+        document.body.appendChild(form);
+        previewEditPopover = form;
+        positionPreviewEditPopover(sourceEvent);
+        window.setTimeout(() => {
+          document.addEventListener("mousedown", previewEditOutsideHandler, true);
+          document.addEventListener("keydown", previewEditKeyHandler, true);
+        }, 0);
+      };
+
+      const setupTemplateFaqEditing = (root) => {
+        const detailsList = Array.from(root.querySelectorAll("details")).filter((details) => {
+          return isTemplateFaqDetails(details, root);
+        });
+
+        if (!detailsList.length) {
+          return;
+        }
+
+        const firstFaqRoot = getTemplateFaqRoot(detailsList[0], root);
+        ensureTemplateFaqStyle(firstFaqRoot);
+
+        detailsList.forEach((details, index) => {
+          const summary = details.querySelector("summary");
+          if (!summary) {
+            return;
+          }
+
+          const faqRoot = getTemplateFaqRoot(details, root);
+          ensureTemplateFaqStyle(faqRoot);
+          summary.classList.add("ll-template-faq-summary");
+          summary.setAttribute("title", "Clique para abrir o FAQ. Dê dois cliques no fundo para mudar cor normal e hover.");
+
+          const question = findTemplateFaqQuestion(details);
+          const answer = findTemplateFaqAnswer(details);
+
+          if (question) {
+            attachText(question, {
+              scope: "template",
+              field: "text",
+              templateNodeId: markTemplateNode(question),
+              value: question.innerText || question.textContent || ""
+            }, { faqColorTarget: { faqRoot, summary } });
+          }
+
+          if (answer) {
+            attachText(answer, {
+              scope: "template",
+              field: "text",
+              templateNodeId: markTemplateNode(answer),
+              value: answer.innerText || answer.textContent || ""
+            }, { multiline: true });
+          }
+
+          details.addEventListener("toggle", () => {
+            syncTemplateHtmlFromPreview();
+          });
+
+          summary.addEventListener("click", (event) => {
+            if (event.target.closest("[data-ll-preview-text]")) {
+              return;
+            }
+
+            closePreviewEditPopover();
+            window.setTimeout(syncTemplateHtmlFromPreview, 0);
+          }, true);
+
+          summary.addEventListener("dblclick", (event) => {
+            if (event.target.closest("[data-ll-preview-text]")) {
+              return;
+            }
+
+            event.preventDefault();
+            event.stopPropagation();
+            openTemplateFaqStylePopover(event, faqRoot, summary);
+          });
+        });
+      };
+
       const resolveTemplateMediaNode = (element) => {
         if (!element || element.nodeType !== 1) {
           return null;
@@ -3924,6 +4290,8 @@ ${containerHtml}`;
           }
         });
 
+        setupTemplateFaqEditing(root);
+
         [root, ...root.querySelectorAll("*")].forEach((element) => {
           const header = findTemplateHeaderRoot(element, root);
           if (header && isTemplateHeaderBannerTarget(element, header)) {
@@ -3976,7 +4344,12 @@ ${containerHtml}`;
           if (!isOverlayElement && isTemplateColorCandidate(element, root)) {
             const id = markTemplateNode(element);
             const computed = element.ownerDocument.defaultView.getComputedStyle(element);
-            const backgroundColor = isTransparentColor(computed.backgroundColor) ? "#ffffff" : colorToHex(computed.backgroundColor || "#ffffff", "#ffffff");
+            const backgroundImage = computed.backgroundImage || "";
+            const backgroundColor = backgroundImage && backgroundImage !== "none" && !/url\(/i.test(backgroundImage)
+              ? backgroundImage
+              : isTransparentColor(computed.backgroundColor)
+                ? "#ffffff"
+                : colorToHex(computed.backgroundColor || "#ffffff", "#ffffff");
             attachColor(element, {
               scope: "template",
               field: "backgroundColor",
@@ -4076,6 +4449,44 @@ ${containerHtml}`;
       }
 
       if (tab === "carousel") {
+        const carouselRoot = doc.querySelector(".ll-carousel");
+        if (carouselRoot) {
+          carouselRoot.addEventListener("click", (event) => {
+            if (event.target.closest('[contenteditable="true"]')) {
+              return;
+            }
+
+            const label = event.target.closest(".ll-carousel__dot[for], .ll-carousel__side-hint[for]");
+            if (!label || !carouselRoot.contains(label)) {
+              return;
+            }
+
+            const input = getControlledInput(label);
+            if (!input || !input.matches?.('input[type="radio"]')) {
+              return;
+            }
+
+            event.preventDefault();
+            event.stopPropagation();
+
+            input.checked = true;
+            input.dispatchEvent(new doc.defaultView.Event("input", { bubbles: true }));
+            input.dispatchEvent(new doc.defaultView.Event("change", { bubbles: true }));
+
+            const slideMatch = String(input.id || label.getAttribute("for") || "").match(/(\d+)$/);
+            const slideIndex = slideMatch
+              ? Math.max(0, Number(slideMatch[1]) - 1)
+              : Array.from(carouselRoot.querySelectorAll(".ll-carousel__dot")).indexOf(label);
+
+            if (slideIndex >= 0) {
+              state.carousel.openSlideIndex = slideIndex;
+              setCarouselPreviewSlide(slideIndex);
+            }
+
+            updateOutput();
+          }, true);
+        }
+
         attachText(doc.querySelector(".ll-carousel__intro .ll-carousel__eyebrow"), { scope: "carousel", field: "eyebrow" });
         attachText(doc.querySelector(".ll-carousel__intro .ll-carousel__title"), { scope: "carousel", field: "title" });
         attachText(doc.querySelector(".ll-carousel__intro .ll-carousel__lead"), { scope: "carousel", field: "lead" }, { multiline: true });
@@ -4083,9 +4494,39 @@ ${containerHtml}`;
         attachColor(doc.querySelector(".ll-carousel__eyebrow"), { scope: "carousel", field: "brandColor" }, "cor de destaque");
 
         doc.querySelectorAll(".ll-carousel__dot").forEach((dot, slideIndex) => {
-          attachText(dot.querySelector(".ll-carousel__dot-number"), { scope: "carousel", slideIndex, field: "navNumber" });
-          attachText(dot.querySelector(".ll-carousel__dot-text"), { scope: "carousel", slideIndex, field: "navLabel" });
-          attachMedia(dot.querySelector(".ll-carousel__dot-icon"), { scope: "carousel", slideIndex, field: "navIconImage" }, "URL ou SVG do ícone");
+          let dotClickTimer = 0;
+          const activateDot = () => {
+            const targetId = dot.getAttribute("for");
+            const input = targetId ? doc.getElementById(targetId) : null;
+            if (input) {
+              input.checked = true;
+            }
+            state.carousel.openSlideIndex = slideIndex;
+            setCarouselPreviewSlide(slideIndex);
+            updateOutput();
+          };
+
+          dot.addEventListener("click", (event) => {
+            if (event.target?.isContentEditable) {
+              return;
+            }
+
+            event.preventDefault();
+            event.stopPropagation();
+            window.clearTimeout(dotClickTimer);
+            if (event.detail > 1) {
+              return;
+            }
+            dotClickTimer = window.setTimeout(activateDot, 280);
+          });
+
+          dot.addEventListener("dblclick", () => {
+            window.clearTimeout(dotClickTimer);
+          });
+
+          attachText(dot.querySelector(".ll-carousel__dot-number"), { scope: "carousel", slideIndex, field: "navNumber" }, { disableSingleClickPopover: true });
+          attachText(dot.querySelector(".ll-carousel__dot-text"), { scope: "carousel", slideIndex, field: "navLabel" }, { disableSingleClickPopover: true });
+          attachMedia(dot.querySelector(".ll-carousel__dot-icon"), { scope: "carousel", slideIndex, field: "navIconImage" }, "URL ou SVG do ícone", { triggerEvent: "dblclick" });
         });
 
         doc.querySelectorAll(".ll-carousel__panel").forEach((panel, slideIndex) => {

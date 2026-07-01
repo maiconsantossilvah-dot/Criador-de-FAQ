@@ -30,7 +30,7 @@
     container-name: ll-carousel-container;
     container-type: inline-size;
     margin-inline: auto;
-    padding: 2rem 1rem;
+    padding: 1rem;
     width: 100%;
   }
 

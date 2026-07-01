@@ -1920,17 +1920,34 @@ ${itemMarkup}
         || /^#?[0-9a-fA-F]{6}$/.test(String(value || "").trim());
     }
 
+    function normalizeCssColorStop(value, fallback = "#ea5b0c") {
+      const rawValue = String(value || "").trim();
+      if (isHexColor(rawValue)) {
+        return normalizeHexColor(rawValue);
+      }
+
+      const rgbMatch = rawValue.match(/^rgba?\(\s*(\d+(?:\.\d+)?)(?:\s*,\s*|\s+)(\d+(?:\.\d+)?)(?:\s*,\s*|\s+)(\d+(?:\.\d+)?)/i);
+      if (rgbMatch) {
+        return `#${rgbMatch.slice(1, 4).map((part) => {
+          return Math.min(255, Math.max(0, Math.round(Number(part)))).toString(16).padStart(2, "0");
+        }).join("")}`;
+      }
+
+      return normalizeHexColor(fallback);
+    }
+
     function parseCssGradient(value) {
       const rawValue = String(value || "").trim();
-      const match = rawValue.match(/^linear-gradient\(\s*(\d{1,3})deg\s*,\s*(#[0-9a-fA-F]{3,6})\s*,\s*(#[0-9a-fA-F]{3,6})\s*\)$/i);
+      const colorStop = "(#[0-9a-fA-F]{3,6}|rgba?\\([^)]*\\))";
+      const match = rawValue.match(new RegExp(`^linear-gradient\\(\\s*(\\d{1,3})deg\\s*,\\s*${colorStop}\\s*,\\s*${colorStop}\\s*\\)$`, "i"));
       if (!match) {
         return null;
       }
 
       return {
         angle: Math.min(360, Math.max(0, Number(match[1]))),
-        start: normalizeHexColor(match[2]),
-        end: normalizeHexColor(match[3])
+        start: normalizeCssColorStop(match[2]),
+        end: normalizeCssColorStop(match[3])
       };
     }
 
