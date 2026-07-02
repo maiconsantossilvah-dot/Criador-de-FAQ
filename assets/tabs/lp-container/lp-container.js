@@ -2702,6 +2702,15 @@ ${containerHtml}`;
         *::-webkit-scrollbar-corner {
           background: transparent;
         }
+      `;
+      doc.head.appendChild(style);
+
+      if (currentPage !== "conteudo") {
+        return;
+      }
+
+      const editStyle = doc.createElement("style");
+      editStyle.textContent = `
         [data-ll-preview-text],
         [data-ll-preview-media],
         [data-ll-preview-color],
@@ -2821,7 +2830,7 @@ ${containerHtml}`;
           box-shadow: 0 0 0 4px rgba(14, 165, 233, 0.12);
         }
       `;
-      doc.head.appendChild(style);
+      doc.head.appendChild(editStyle);
       doc.addEventListener("mousedown", (event) => {
         if (!event.target.closest("[data-ll-preview-text], [data-ll-preview-media], [data-ll-preview-color], [data-ll-preview-position]")) {
           closePreviewEditPopover();
