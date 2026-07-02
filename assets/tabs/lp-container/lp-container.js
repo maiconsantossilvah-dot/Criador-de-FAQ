@@ -49,6 +49,42 @@
       return container ? container.innerHTML.trim() : rawValue;
     }
 
+    function cleanTemplateEditorArtifacts(value) {
+      const rawValue = String(value || "").trim();
+      if (!rawValue || !/<\/?[a-z][\s\S]*>/i.test(rawValue)) {
+        return rawValue;
+      }
+
+      const parsedDocument = new DOMParser().parseFromString(`<div data-ll-clean-root>${rawValue}</div>`, "text/html");
+      const wrapper = parsedDocument.querySelector("[data-ll-clean-root]");
+      if (!wrapper) {
+        return rawValue;
+      }
+
+      wrapper.querySelectorAll("#ll-template-faq-custom-style").forEach((element) => {
+        element.remove();
+      });
+
+      Array.from(wrapper.querySelectorAll("*")).forEach((element) => {
+        if (element.classList) {
+          element.classList.remove("ll-template-faq-summary", "ll-template-faq-custom-colors");
+          if (!element.getAttribute("class")) {
+            element.removeAttribute("class");
+          }
+        }
+
+        if (element.style) {
+          element.style.removeProperty("--ll-template-faq-summary-bg");
+          element.style.removeProperty("--ll-template-faq-summary-hover-bg");
+          if (!element.getAttribute("style")) {
+            element.removeAttribute("style");
+          }
+        }
+      });
+
+      return wrapper.innerHTML.trim();
+    }
+
     function getTemplateHeaderDefaults() {
       return {
         type: "none",
@@ -338,7 +374,7 @@ ${frameCss}
     }
 
     function buildLpContainerHtml(value = state.template.html, options = {}) {
-      const content = extractLpContainerHtml(value);
+      const content = cleanTemplateEditorArtifacts(extractLpContainerHtml(value));
       const innerHtml = content || "";
       return `<div class="lp-container">
 ${innerHtml}
@@ -1155,6 +1191,9 @@ ${containerHtml}`;
 
     function cleanTemplatePreviewClone(container) {
       const clone = container.cloneNode(true);
+      clone.querySelectorAll("#ll-template-faq-custom-style").forEach((element) => {
+        element.remove();
+      });
       [clone, ...clone.querySelectorAll("*")].forEach((element) => {
         [
           "data-ll-template-node",
@@ -1237,6 +1276,19 @@ ${containerHtml}`;
         ].forEach((attribute) => element.removeAttribute(attribute));
         element.removeAttribute("contenteditable");
         element.removeAttribute("spellcheck");
+        if (element.classList) {
+          element.classList.remove("ll-template-faq-summary", "ll-template-faq-custom-colors");
+          if (!element.getAttribute("class")) {
+            element.removeAttribute("class");
+          }
+        }
+        if (element.style) {
+          element.style.removeProperty("--ll-template-faq-summary-bg");
+          element.style.removeProperty("--ll-template-faq-summary-hover-bg");
+          if (!element.getAttribute("style")) {
+            element.removeAttribute("style");
+          }
+        }
 
         const title = element.getAttribute("title") || "";
         if (/^Clique para editar|^Clique para trocar|^Duplo clique para editar|^D[eê] dois cliques para trocar/i.test(title)) {
@@ -3750,11 +3802,11 @@ ${containerHtml}`;
 
       const ensureTemplateFaqStyle = (root) => {
         const styleId = "ll-template-faq-custom-style";
-        let faqStyle = root.querySelector(`#${styleId}`);
+        let faqStyle = doc.getElementById(styleId);
         if (!faqStyle) {
           faqStyle = doc.createElement("style");
           faqStyle.id = styleId;
-          root.insertBefore(faqStyle, root.firstChild);
+          (doc.head || doc.documentElement).appendChild(faqStyle);
         }
 
         faqStyle.textContent = `
