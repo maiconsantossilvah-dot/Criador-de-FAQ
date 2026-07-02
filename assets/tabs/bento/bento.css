@@ -228,6 +228,20 @@
       aspect-ratio: 1 / 1;
     }
 
+    .ll-bento__card--text {
+      resize: both;
+      overflow: auto;
+      min-width: min(100%, 170px);
+      min-height: 150px;
+      max-width: none;
+      max-height: none;
+    }
+
+    .ll-bento__card--text:hover,
+    .ll-bento__card--text:focus-within {
+      z-index: 6;
+    }
+
     .ll-bento__card--detail {
       display: grid;
       place-items: center;
@@ -1018,11 +1032,17 @@
       }
     }
 
-.ll-bento__card--table {
+.ll-bento__expand--table {
   grid-column: span 9;
-  display: block;
   align-self: stretch;
   min-height: clamp(170px, 16vw, 230px);
+}
+
+.ll-bento__card--table {
+  display: grid;
+  width: 100%;
+  height: 100%;
+  min-height: 100%;
   padding: 0;
   overflow: hidden;
   background: var(--ll-bento-card);
@@ -1056,7 +1076,7 @@
       height: 100%;
       min-height: 100%;
       padding: clamp(16px, 2vw, 22px);
-      cursor: pointer;
+      cursor: default;
       list-style: none;
     }
 
@@ -1280,12 +1300,12 @@
       .ll-bento__card--small,
       .ll-bento__card--accent,
       .ll-bento__card--dark,
-      .ll-bento__card--table {
+      .ll-bento__expand--table {
         grid-area: auto;
       }
 
       .ll-bento__expand--hero,
-      .ll-bento__card--table {
+      .ll-bento__expand--table {
         grid-column: 1 / -1;
       }
 
@@ -1309,25 +1329,16 @@
         grid-area: detail;
       }
 
-      .ll-bento__card--table {
+      .ll-bento__expand--table {
         grid-area: auto;
-        grid-column: 1 / -1;
-      }
-
-      .ll-bento__card--table[open] {
-        grid-area: table;
         grid-column: 1 / -1;
       }
     }
 
     @media (max-width: 560px) {
-      .ll-bento__card--table {
+      .ll-bento__expand--table {
         grid-column: 1 / -1;
         min-height: 0;
-      }
-
-      .ll-bento__card--table[open] {
-        grid-column: 1 / -1;
       }
 
       .ll-bento__table-summary {
@@ -1386,72 +1397,6 @@
 
 .ll-bento__card--table:hover {
   transform: none;
-}
-
-.ll-bento__card--table:not([open]) {
-  min-height: clamp(205px, 18vw, 260px);
-}
-
-.ll-bento__card--table:not([open]) .ll-bento__table-summary {
-  position: absolute;
-  inset: 0;
-  display: block;
-  width: auto;
-  height: auto;
-  min-height: 0;
-  padding: clamp(16px, 2vw, 22px);
-  overflow: hidden;
-}
-
-.ll-bento__card--table:not([open]) .ll-bento__table-summary::before {
-  position: absolute;
-  left: clamp(14px, 1.5vw, 22px);
-  top: 50%;
-  z-index: 4;
-  grid-column: auto;
-  grid-row: auto;
-  transform: translateY(-50%);
-}
-
-.ll-bento__card--table:not([open]) .ll-bento__table-heading {
-  position: absolute;
-  left: clamp(52px, 4vw, 72px);
-  top: clamp(14px, 1.6vw, 22px);
-  right: clamp(92px, 10vw, 128px);
-  z-index: 3;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 0;
-}
-
-.ll-bento__card--table:not([open]) .ll-bento__table-heading strong {
-  max-width: none;
-  overflow: hidden;
-  font-size: clamp(1rem, 1.35vw, 1.35rem);
-  line-height: 1.05;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.ll-bento__card--table:not([open]) .ll-bento__table-preview {
-  position: absolute;
-  left: clamp(52px, 4vw, 72px);
-  right: clamp(16px, 2vw, 24px);
-  top: clamp(62px, 5vw, 76px);
-  bottom: clamp(16px, 2vw, 22px);
-  display: grid;
-  grid-column: auto;
-  grid-row: auto;
-  grid-auto-rows: minmax(42px, max-content);
-  gap: 7px;
-  width: auto;
-  height: auto;
-  min-height: 0;
-  padding-right: 2px;
-  margin: 0;
-  overflow: auto;
-  overscroll-behavior: contain;
 }
 
 .ll-bento__table-expand-button {
@@ -1552,32 +1497,18 @@
   cursor: pointer;
 }
 
-.ll-bento__card--table .ll-bento__table-popup-table {
+.ll-bento__table-popup-table {
   max-height: calc(min(82vh, 760px) - 64px);
   padding: clamp(14px, 2vw, 22px);
   overflow: auto;
   border-radius: 0;
 }
 
-.ll-bento__card--table .ll-bento__table-popup-table .table-design-custom {
+.ll-bento__table-popup-table .table-design-custom {
   min-width: 620px;
 }
 
 @media (max-width: 560px) {
-  .ll-bento__card--table:not([open]) {
-    min-height: 205px;
-  }
-
-  .ll-bento__card--table:not([open]) .ll-bento__table-heading {
-    left: 46px;
-    right: 88px;
-  }
-
-  .ll-bento__card--table:not([open]) .ll-bento__table-preview {
-    left: 46px;
-    top: 58px;
-  }
-
   .ll-bento__table-expand-button {
     min-height: 30px;
     padding: 7px 9px;

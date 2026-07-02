@@ -1231,7 +1231,9 @@ ${containerHtml}`;
           "data-ll-preview-media",
           "data-ll-preview-color",
           "data-ll-preview-inline",
-          "data-ll-preview-position"
+          "data-ll-preview-position",
+          "data-ll-bento-resize-block",
+          "data-ll-bento-resize-ready"
         ].forEach((attribute) => element.removeAttribute(attribute));
         element.removeAttribute("contenteditable");
         element.removeAttribute("spellcheck");
@@ -4554,6 +4556,110 @@ ${containerHtml}`;
         if (!root) {
           return;
         }
+
+        const persistBentoResize = (element) => {
+          if (!element || !element.isConnected) {
+            return;
+          }
+
+          const rect = element.getBoundingClientRect();
+          const width = Math.round(rect.width);
+          const height = Math.round(rect.height);
+          if (!Number.isFinite(width) || !Number.isFinite(height) || width <= 0 || height <= 0) {
+            return;
+          }
+
+          element.style.width = `${width}px`;
+          element.style.height = `${height}px`;
+
+          const blockIndex = Number(element.dataset.llBentoResizeBlock);
+          if (Number.isInteger(blockIndex) && state.bento?.blocks?.[blockIndex]) {
+            state.bento.blocks[blockIndex].resizeWidth = width;
+            state.bento.blocks[blockIndex].resizeHeight = height;
+          }
+
+          if (currentPage === "conteudo") {
+            markResponsiveDirty();
+          }
+
+          if (state.bento?.useCustomHtml) {
+            syncBentoHtmlFromPreview();
+          } else {
+            state.bento.status = "Tamanho salvo pela previa.";
+            generatedHtml.value = buildOutputHtml("html");
+            copyStatus.textContent = "";
+            copyStatus.classList.remove("is-warning", "is-visible");
+          }
+        };
+
+        const setupBentoResizePersistence = () => {
+          const textBlockIndexes = state.bento.blocks
+            .map((block, index) => block.type === "text" ? index : -1)
+            .filter((index) => index >= 0);
+          const resizeCards = Array.from(root.querySelectorAll(".ll-bento__card--text"));
+          const ResizeObserverCtor = doc.defaultView.ResizeObserver;
+          const resizeObserver = ResizeObserverCtor
+            ? new ResizeObserverCtor((entries) => {
+              entries.forEach((entry) => {
+                const element = entry.target;
+                if (!element.__llBentoResizeActive) {
+                  return;
+                }
+
+                const start = element.__llBentoResizeStart || {};
+                const width = Math.round(entry.contentRect.width);
+                const height = Math.round(entry.contentRect.height);
+                const changed = Math.abs(width - (start.width || width)) > 2
+                  || Math.abs(height - (start.height || height)) > 2;
+                if (!changed) {
+                  return;
+                }
+
+                window.clearTimeout(element.__llBentoResizeTimer);
+                element.__llBentoResizeTimer = window.setTimeout(() => persistBentoResize(element), 120);
+              });
+            })
+            : null;
+
+          resizeCards.forEach((element, orderIndex) => {
+            element.dataset.llBentoResizeReady = "true";
+            const blockIndex = textBlockIndexes[orderIndex];
+            if (blockIndex !== undefined) {
+              element.dataset.llBentoResizeBlock = String(blockIndex);
+            }
+
+            element.addEventListener("pointerdown", () => {
+              const rect = element.getBoundingClientRect();
+              element.__llBentoResizeStart = {
+                width: Math.round(rect.width),
+                height: Math.round(rect.height)
+              };
+              element.__llBentoResizeActive = true;
+            });
+
+            resizeObserver?.observe(element);
+          });
+
+          doc.addEventListener("pointerup", () => {
+            resizeCards.forEach((element) => {
+              if (!element.__llBentoResizeActive) {
+                return;
+              }
+
+              element.__llBentoResizeActive = false;
+              const rect = element.getBoundingClientRect();
+              const start = element.__llBentoResizeStart || {};
+              const changed = Math.abs(Math.round(rect.width) - (start.width || rect.width)) > 2
+                || Math.abs(Math.round(rect.height) - (start.height || rect.height)) > 2;
+              window.clearTimeout(element.__llBentoResizeTimer);
+              if (changed) {
+                persistBentoResize(element);
+              }
+            });
+          }, true);
+        };
+
+        setupBentoResizePersistence();
 
         [
           ".ll-bento__eyebrow",

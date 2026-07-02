@@ -50,6 +50,7 @@
           icon: "BEN",
           title: "Bento",
           summary: "Grade visual de cards",
+          badge: "&#9881;",
           meta: state.bento && state.bento.html.trim() ? "HTML editado" : "Modelo padrão"
         }
       ].map((section) => section.tab === "stories" ? {
@@ -1427,8 +1428,10 @@ ${trends}
         shadow: "0 18px 42px rgba(124, 58, 237, 0.14)"
       };
       const cards = getContentDashboardSections().map((section) => {
+        const badge = section.badge ? `<small class="ll-dashboard__badge" title="Em producao" aria-label="Em producao">${section.badge}</small>` : "";
         return `<button class="ll-dashboard__card" type="button" data-dashboard-preview-tab="${section.tab}" aria-label="Abrir ${escapeHtml(section.title)}">
           <span>${escapeHtml(section.icon)}</span>
+          ${badge}
           <strong>${escapeHtml(section.title)}</strong>
           <em>${escapeHtml(section.summary)}</em>
           <small>${escapeHtml(section.meta)}</small>
@@ -1556,6 +1559,7 @@ ${lpCard}
   }
 
   .ll-dashboard__card {
+    position: relative;
     display: grid;
     gap: 10px;
     min-height: 136px;
@@ -1595,6 +1599,27 @@ ${lpCard}
     font-size: 18px;
   }
 
+  .ll-dashboard__badge {
+    position: absolute;
+    top: 18px;
+    right: 18px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 38px;
+    height: 38px;
+    min-height: 38px;
+    padding: 0;
+    border: 0;
+    border-radius: 8px;
+    color: #101010;
+    background: #ffeb00;
+    box-shadow: 0 8px 18px rgba(255, 235, 0, 0.2);
+    font-size: 19px;
+    font-weight: 900;
+    line-height: 1;
+  }
+
   .ll-dashboard__card em {
     color: ${colors.muted};
     font-size: 13px;
@@ -1602,7 +1627,7 @@ ${lpCard}
     line-height: 1.35;
   }
 
-  .ll-dashboard__card small {
+  .ll-dashboard__card small:not(.ll-dashboard__badge) {
     align-self: end;
     color: ${colors.muted};
     font-size: 12px;

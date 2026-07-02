@@ -203,31 +203,26 @@ ${items}
 
     function renderFaqEditorItems() {
       return state.items.map((item, index) => `
-        <article class="faq-editor__item" data-index="${index}">
-          <div class="faq-editor__bar">
+        <details class="faq-editor__item" data-index="${index}" open>
+          <summary class="faq-editor__bar">
             <strong>Pergunta ${index + 1}</strong>
             <button class="button button--danger icon-button" type="button" data-action="remove" aria-label="Remover pergunta ${index + 1}" title="Remover pergunta">${trashIcon()}</button>
-          </div>
+          </summary>
           <div class="faq-editor__fields">
-            <p class="muted-note">Edite a pergunta e a resposta clicando no texto da prévia.</p>
+            <label class="field">
+              <span>Pergunta</span>
+              <input type="text" data-field="question" value="${escapeHtml(item.question)}">
+            </label>
+            <label class="field">
+              <span>Resposta</span>
+              <textarea data-field="answer">${escapeHtml(item.answer)}</textarea>
+            </label>
           </div>
-        </article>
+        </details>
       `).join("");
     }
 
-    function renderFaqEditorItems() {
-      return state.items.map((item, index) => `
-        <article class="faq-editor__item" data-index="${index}">
-          <div class="faq-editor__bar">
-            <strong>Pergunta ${index + 1}</strong>
-            <button class="button button--danger icon-button" type="button" data-action="remove" aria-label="Remover pergunta ${index + 1}" title="Remover pergunta">${trashIcon()}</button>
-          </div>
-          <div class="faq-editor__fields">
-            <p class="muted-note">Edite a pergunta e a resposta clicando no texto da prévia.</p>
-          </div>
-        </article>
-      `).join("");
-    }
+    window.renderFaqEditorItems = renderFaqEditorItems;
 
     function parseBulkFaq(value) {
       const normalized = value.replace(/\r\n?/g, "\n");

@@ -468,6 +468,7 @@
     const homeReturnButtons = Array.from(document.querySelectorAll("[data-dashboard-home-return]"));
     const addButtons = [document.querySelector("#addItem")].filter(Boolean);
     const htmlCopyButtons = Array.from(document.querySelectorAll('[data-copy-mode="html"]'));
+    const cssCopyButtons = Array.from(document.querySelectorAll('[data-copy-mode="css"]'));
     const fullCopyButtons = Array.from(document.querySelectorAll('[data-copy-mode="full"]'));
     const previewFullscreenButtons = Array.from(document.querySelectorAll("[data-preview-fullscreen]"));
     const focusModeButtons = Array.from(document.querySelectorAll("[data-focus-mode]"));
@@ -533,8 +534,10 @@
         subtitle: "Escolha a equipe para começar.",
         outputTitle: "",
         copyLabel: "",
+        cssCopyLabel: "",
         fullCopyLabel: "",
         copiedStatus: "",
+        cssCopiedStatus: "",
         fullCopiedStatus: ""
       },
       conteudo: {
@@ -542,8 +545,10 @@
         subtitle: "Monte layouts de conteudo com FAQ, tabela, stories, artigo, carrossel ou LP e copie HTML ou HTML/CSS conforme a necessidade.",
         outputTitle: "Prévia do layout",
         copyLabel: "Copiar HTML",
+        cssCopyLabel: "Copiar CSS",
         fullCopyLabel: "Copiar HTML/CSS",
         copiedStatus: "HTML copiado.",
+        cssCopiedStatus: "CSS copiado.",
         fullCopiedStatus: "HTML/CSS copiado."
       },
       tecnica: {
@@ -551,8 +556,10 @@
         subtitle: "Monte layouts tecnicos em FAQ e copie o bloco completo com HTML e CSS.",
         outputTitle: "HTML/CSS pronto",
         copyLabel: "Copiar HTML/CSS",
+        cssCopyLabel: "",
         fullCopyLabel: "",
         copiedStatus: "HTML/CSS copiado.",
+        cssCopiedStatus: "",
         fullCopiedStatus: ""
       }
     };
@@ -2158,6 +2165,7 @@ ${itemMarkup}
       if (currentPage === "home") {
         outputTitle.textContent = "";
         htmlCopyButtons.forEach((button) => button.classList.add("is-hidden"));
+        cssCopyButtons.forEach((button) => button.classList.add("is-hidden"));
         fullCopyButtons.forEach((button) => button.classList.add("is-hidden"));
         return;
       }
@@ -2179,6 +2187,11 @@ ${itemMarkup}
       htmlCopyButtons.forEach((button) => {
         button.textContent = config.copyLabel;
         button.classList.toggle("is-hidden", isDashboardTab);
+      });
+
+      cssCopyButtons.forEach((button) => {
+        button.textContent = config.cssCopyLabel || "Copiar CSS";
+        button.classList.toggle("is-hidden", currentPage !== "conteudo" || isDashboardTab);
       });
 
       fullCopyButtons.forEach((button) => {
@@ -2369,6 +2382,10 @@ ${buildResponsiveStyle("faq", { includeDraft: true })}`;
       if (currentEditorTab === "table") {
         const tableHtml = buildTableSectionHtml(true);
 
+        if (copyMode === "css") {
+          return buildTableStyle();
+        }
+
         if (copyMode === "full") {
           return buildResponsivePackage("table", () => buildTableSectionHtml(true), buildTableStyle);
         }
@@ -2378,6 +2395,10 @@ ${buildResponsiveStyle("faq", { includeDraft: true })}`;
 
       if (currentEditorTab === "stories") {
         const storiesHtml = buildStoriesSectionHtml();
+
+        if (copyMode === "css") {
+          return buildStoriesStyle();
+        }
 
         if (copyMode === "full") {
           return buildResponsivePackage("stories", () => buildStoriesSectionHtml(), buildStoriesStyle);
@@ -2389,6 +2410,10 @@ ${buildResponsiveStyle("faq", { includeDraft: true })}`;
       if (currentEditorTab === "article") {
         const articleHtml = buildArticleSectionHtml();
 
+        if (copyMode === "css") {
+          return buildArticleStyle();
+        }
+
         if (copyMode === "full") {
           return buildResponsivePackage("article", () => buildArticleSectionHtml(), buildArticleStyle);
         }
@@ -2398,6 +2423,10 @@ ${buildResponsiveStyle("faq", { includeDraft: true })}`;
 
       if (currentEditorTab === "carousel") {
         const carouselHtml = buildCarouselSectionHtml();
+
+        if (copyMode === "css") {
+          return buildCarouselStyle();
+        }
 
         if (copyMode === "full") {
           return buildResponsivePackage("carousel", () => buildCarouselSectionHtml(), buildCarouselStyle);
@@ -2409,6 +2438,10 @@ ${buildResponsiveStyle("faq", { includeDraft: true })}`;
       if (currentEditorTab === "bento") {
         const bentoHtml = buildBentoSectionHtml();
 
+        if (copyMode === "css") {
+          return buildBentoStyle();
+        }
+
         if (copyMode === "full") {
           return buildResponsivePackage("bento", () => buildBentoSectionHtml(), buildBentoStyle);
         }
@@ -2417,6 +2450,10 @@ ${buildResponsiveStyle("faq", { includeDraft: true })}`;
       }
 
       if (currentEditorTab === "template") {
+        if (copyMode === "css") {
+          return buildTemplateHeaderStyle();
+        }
+
         if (copyMode === "full" && getResponsiveVersionList("template").length) {
           return buildResponsivePackage("template", () => buildTemplateOutputHtml("html"), () => buildTemplateHeaderStyle());
         }
@@ -2425,6 +2462,10 @@ ${buildResponsiveStyle("faq", { includeDraft: true })}`;
       }
 
       const faqHtml = buildFaqSectionHtml();
+
+      if (copyMode === "css") {
+        return buildFaqStyle();
+      }
 
       if (copyMode === "full") {
         return buildResponsivePackage("faq", () => buildFaqSectionHtml(), buildFaqStyle);
@@ -2657,6 +2698,27 @@ ${buildResponsiveStyle("faq", { includeDraft: true })}`;
       copyStatus.classList.remove("is-warning", "is-visible");
     }
 
+    function renderEditableFaqEditorItems() {
+      return state.items.map((item, index) => `
+        <details class="faq-editor__item" data-index="${index}" open>
+          <summary class="faq-editor__bar">
+            <strong>Pergunta ${index + 1}</strong>
+            <button class="button button--danger icon-button" type="button" data-action="remove" aria-label="Remover pergunta ${index + 1}" title="Remover pergunta">${trashIcon()}</button>
+          </summary>
+          <div class="faq-editor__fields">
+            <label class="field">
+              <span>Pergunta</span>
+              <input type="text" data-field="question" value="${escapeHtml(item.question)}">
+            </label>
+            <label class="field">
+              <span>Resposta</span>
+              <textarea data-field="answer">${escapeHtml(item.answer)}</textarea>
+            </label>
+          </div>
+        </details>
+      `).join("");
+    }
+
     function renderFaqEditor() {
       return `
         <div class="editor-section-title">
@@ -2682,7 +2744,7 @@ ${buildResponsiveStyle("faq", { includeDraft: true })}`;
           </div>
         </details>
 
-        ${renderFaqEditorItems()}
+        ${renderEditableFaqEditorItems()}
       `;
     }
 
@@ -2801,9 +2863,11 @@ ${buildResponsiveStyle("faq", { includeDraft: true })}`;
     }
 
     function getCopyStatusMessage(copyMode, warnings) {
-      const baseStatus = copyMode === "full" && currentPage === "conteudo"
-        ? pageConfigs[currentPage].fullCopiedStatus
-        : pageConfigs[currentPage].copiedStatus;
+      const baseStatus = copyMode === "css" && currentPage === "conteudo"
+        ? pageConfigs[currentPage].cssCopiedStatus
+        : copyMode === "full" && currentPage === "conteudo"
+          ? pageConfigs[currentPage].fullCopiedStatus
+          : pageConfigs[currentPage].copiedStatus;
 
       if (!warnings.length) {
         return baseStatus;
@@ -2821,7 +2885,7 @@ ${buildResponsiveStyle("faq", { includeDraft: true })}`;
     }
 
     async function copyGeneratedHtml(mode = "html") {
-      const copyMode = mode === "full" ? "full" : "html";
+      const copyMode = mode === "full" ? "full" : mode === "css" ? "css" : "html";
       if (state.responsive.dirty && copyMode === "full") {
         const shouldCopy = window.confirm("Existe uma versão responsiva com alterações não salvas. Copiar agora não inclui esse rascunho. Copiar mesmo assim?");
         if (!shouldCopy) {
@@ -2830,8 +2894,9 @@ ${buildResponsiveStyle("faq", { includeDraft: true })}`;
       }
 
       const value = buildOutputHtml(copyMode);
-      const warnings = collectLayoutWarnings();
-      const blockers = collectHtmlLocalAssetBlockers(value, copyMode === "full" ? "HTML/CSS" : "HTML");
+      const warnings = copyMode === "css" ? [] : collectLayoutWarnings();
+      const blockerPrefix = copyMode === "full" ? "HTML/CSS" : copyMode === "css" ? "CSS" : "HTML";
+      const blockers = collectHtmlLocalAssetBlockers(value, blockerPrefix);
       generatedHtml.value = value;
 
       if (blockers.length) {
@@ -3422,6 +3487,11 @@ ${buildResponsiveStyle("faq", { includeDraft: true })}`;
       }
 
       const action = button.dataset.action;
+      if (button.closest("summary")) {
+        event.preventDefault();
+        event.stopPropagation();
+      }
+
       if (action.includes("story") || action.includes("article") || action.includes("carousel") || action.includes("bento") || action.includes("template") || action.includes("responsive") || action.includes("preset")) {
         event.preventDefault();
         event.stopPropagation();
@@ -3511,6 +3581,7 @@ ${buildResponsiveStyle("faq", { includeDraft: true })}`;
         "remove-carousel-slide",
         "add-bento-block",
         "remove-bento-block",
+        "remove-bento-block-type",
         "add-bento-table-column",
         "remove-bento-table-column",
         "add-bento-table-row",
@@ -3542,6 +3613,11 @@ ${buildResponsiveStyle("faq", { includeDraft: true })}`;
 
       if (action === "add-bento-block") {
         addBentoBlock(button.dataset.bentoType);
+        return;
+      }
+
+      if (action === "remove-bento-block-type") {
+        removeBentoBlockType(button.dataset.bentoType);
         return;
       }
 
@@ -3691,7 +3767,7 @@ ${buildResponsiveStyle("faq", { includeDraft: true })}`;
     addButtons.forEach((button) => {
       button.addEventListener("click", addCurrentItem);
     });
-    [...htmlCopyButtons, ...fullCopyButtons].forEach((button) => {
+    [...htmlCopyButtons, ...cssCopyButtons, ...fullCopyButtons].forEach((button) => {
       button.addEventListener("click", () => {
         copyGeneratedHtml(button.dataset.copyMode);
       });

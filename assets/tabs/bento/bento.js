@@ -1,7 +1,7 @@
 /**
  * Modulo oficial da aba Bento.
  * Carregado antes de assets/js/layout-lab.js.
- * O HTML/CSS base vem de bento-grid-section.html.
+ * O HTML/CSS base veio de 90_ARQUIVO_LOCAL/testes-e-prototipos/bento-grid-section.html.
  */
 
     const defaultBentoHtml = "<section class=\"ll-bento\" aria-labelledby=\"ll-bento-title\">\n      <header class=\"ll-bento__header\">\n        <p class=\"ll-bento__eyebrow\">Guia visual</p>\n        <h2 class=\"ll-bento__title\" id=\"ll-bento-title\">Tudo que importa em uma grade só.</h2>\n        <p class=\"ll-bento__lead\">Use a seção para destacar benefícios, usos, detalhes e provas rápidas de um produto sem virar um bloco pesado de leitura.</p>\n      </header>\n\n      <div class=\"ll-bento__grid\">\n        <div class=\"ll-bento__expand ll-bento__expand--hero\">\n        <input class=\"ll-bento__lightbox-toggle\" type=\"checkbox\" id=\"ll-bento-hero-expand\" aria-label=\"Abrir imagem principal ampliada\">\n        <div class=\"ll-bento__lightbox\" aria-label=\"Imagem principal ampliada\">\n          <label class=\"ll-bento__lightbox-backdrop\" for=\"ll-bento-hero-expand\" aria-label=\"Fechar imagem principal ampliada\"></label>\n          <figure class=\"ll-bento__lightbox-panel ll-bento__lightbox-panel--text\">\n            <img src=\"https://imgprd.martinsatacado.com.br/catalogoimg/catalogo/chinelo-havaianas-top-basic-cinza-praia-1225007-04.webp?ims=1200x\" alt=\"Imagem principal ampliada do produto\">\n            <label class=\"ll-bento__lightbox-clickzone\" for=\"ll-bento-hero-expand\" aria-label=\"Fechar imagem principal ampliada\"></label>\n            <div class=\"ll-bento__lightbox-overlay\" aria-hidden=\"true\">\n              <span class=\"ll-bento__chip\">Destaque</span>\n              <h3 class=\"ll-bento__card-title\">Escolha rápida.</h3>\n              <p class=\"ll-bento__card-text\">Uma área maior para imagem forte, benefício principal e leitura imediata.</p>\n            </div>\n            <label class=\"ll-bento__lightbox-close\" for=\"ll-bento-hero-expand\" aria-label=\"Fechar imagem principal ampliada\">×</label>\n          </figure>\n        </div>\n        <article class=\"ll-bento__card ll-bento__card--hero\">\n          <div>\n            <span class=\"ll-bento__chip\">Destaque</span>\n            <h3 class=\"ll-bento__card-title\">Escolha rápida.</h3>\n          </div>\n          <p class=\"ll-bento__card-text\">Uma área maior para imagem forte, benefício principal e leitura imediata.</p>\n          <span class=\"ll-bento__media-action\" aria-hidden=\"true\">Ampliar</span>\n          <label class=\"ll-bento__image-button\" for=\"ll-bento-hero-expand\" aria-label=\"Ampliar imagem principal\"></label>\n        </article>\n        </div>\n\n        <article class=\"ll-bento__card ll-bento__card--wide\">\n          <div>\n            <span class=\"ll-bento__chip\">Resumo</span>\n            <strong class=\"ll-bento__stat\">3x</strong>\n            <h3 class=\"ll-bento__card-title\">Mais fácil de comparar.</h3>\n          </div>\n          <p class=\"ll-bento__card-text\">Cards curtos funcionam bem para atributos técnicos, diferenciais e decisões rápidas.</p>\n        </article>\n\n        <div class=\"ll-bento__expand ll-bento__expand--image\">\n        <input class=\"ll-bento__lightbox-toggle\" type=\"checkbox\" id=\"ll-bento-image-expand\" aria-label=\"Abrir imagem ampliada\">\n        <div class=\"ll-bento__lightbox\" aria-label=\"Imagem ampliada\">\n          <label class=\"ll-bento__lightbox-backdrop\" for=\"ll-bento-image-expand\" aria-label=\"Fechar imagem ampliada\"></label>\n          <figure class=\"ll-bento__lightbox-panel\">\n            <img src=\"https://imgprd.martinsatacado.com.br/catalogoimg/catalogo/chinelo-havaianas-top-basic-cinza-praia-1225007-04.webp?ims=1200x\" alt=\"Produto ampliado em destaque\">\n            <label class=\"ll-bento__lightbox-clickzone\" for=\"ll-bento-image-expand\" aria-label=\"Fechar imagem ampliada\"></label>\n            <label class=\"ll-bento__lightbox-close\" for=\"ll-bento-image-expand\" aria-label=\"Fechar imagem ampliada\">×</label>\n          </figure>\n        </div>\n\n        <figure class=\"ll-bento__card ll-bento__card--image\">\n          <picture>\n            <source media=\"(max-width: 560px)\" srcset=\"https://imgprd.martinsatacado.com.br/catalogoimg/catalogo/chinelo-havaianas-top-basic-cinza-praia-1225007-04.webp?ims=500x\">\n            <img class=\"ll-bento__card-media\" src=\"https://imgprd.martinsatacado.com.br/catalogoimg/catalogo/chinelo-havaianas-top-basic-cinza-praia-1225007-04.webp?ims=760x\" alt=\"Produto em destaque para compor o bloco visual\">\n          </picture>\n          <span class=\"ll-bento__media-action\" aria-hidden=\"true\">Ampliar</span>\n          <label class=\"ll-bento__image-button\" for=\"ll-bento-image-expand\" aria-label=\"Ampliar imagem\"></label>\n        </figure>\n        </div>\n\n        <article class=\"ll-bento__card ll-bento__card--small ll-bento__card--use\">\n          <span class=\"ll-bento__chip\">Uso</span>\n          <div>\n            <h3 class=\"ll-bento__card-title\">Pronto para rotina.</h3>\n            <p class=\"ll-bento__card-text\">Texto curto para uma situação real de uso.</p>\n          </div>\n        </article>\n\n        <article class=\"ll-bento__card ll-bento__card--small ll-bento__card--detail\">\n          <span class=\"ll-bento__chip\">Detalhe</span>\n          <div>\n            <h3 class=\"ll-bento__card-title\">Ponto de atenção.</h3>\n            <p class=\"ll-bento__card-text\">Ideal para medida, material, compatibilidade ou cuidado.</p>\n          </div>\n        </article>\n\n        <article class=\"ll-bento__card ll-bento__card--accent\">\n          <span class=\"ll-bento__chip\">Checklist</span>\n          <div>\n            <h3 class=\"ll-bento__card-title\">Antes de comprar.</h3>\n            <ul class=\"ll-bento__list\">\n              <li>Confirme o tamanho ou modelo indicado.</li>\n              <li>Compare a aplicação com sua necessidade.</li>\n              <li>Veja o detalhe principal do produto.</li>\n            </ul>\n          </div>\n        </article>\n\n        <article class=\"ll-bento__card ll-bento__card--dark\">\n          <span class=\"ll-bento__chip\">Fechamento</span>\n          <div>\n            <h3 class=\"ll-bento__card-title\">Informação com respiro.</h3>\n            <p class=\"ll-bento__card-text\">Um card final para reforçar benefício, garantia, indicação ou contexto de uso.</p>\n            <p class=\"ll-bento__footer-note\">Sugestão: usar imagens horizontais entre 1200x800 e 1600x1000 para manter qualidade no desktop.</p>\n          </div>\n        </article>\n      </div>\n    </section>";
@@ -197,6 +197,18 @@
       renderEditor(true);
     }
 
+    function removeBentoBlockType(type) {
+      ensureBentoState();
+      const index = state.bento.blocks.map((block) => block.type).lastIndexOf(type);
+      if (index < 0) {
+        setBentoStatus("Nao existe bloco desse tipo para remover.");
+        renderEditor(true);
+        return;
+      }
+
+      removeBentoBlock(index);
+    }
+
     function changeBentoBlockType(index, type) {
       ensureBentoState();
       if (!canUseBentoBlockType(type, index)) {
@@ -316,6 +328,29 @@
       return "ll-bento__card--small ll-bento__card--use";
     }
 
+    function normalizeBentoResizeValue(value) {
+      const numericValue = Number(value);
+      return Number.isFinite(numericValue) && numericValue > 0
+        ? Math.round(numericValue)
+        : "";
+    }
+
+    function getBentoResizeStyle(block) {
+      const width = normalizeBentoResizeValue(block.resizeWidth);
+      const height = normalizeBentoResizeValue(block.resizeHeight);
+      const styles = [];
+
+      if (width) {
+        styles.push(`width: ${width}px`);
+      }
+
+      if (height) {
+        styles.push(`height: ${height}px`);
+      }
+
+      return styles.length ? ` style="${styles.join("; ")}"` : "";
+    }
+
     function renderBentoHeroBlock(block, index) {
       const id = `ll-bento-hero-${index}`;
       const rawImage = normalizeAssetUrl(block.image);
@@ -351,7 +386,7 @@
     function renderBentoTextBlock(block) {
       const stat = block.stat ? `<strong class="ll-bento__stat">${escapeHtml(block.stat)}</strong>` : "";
       const text = block.text ? `<p class="ll-bento__card-text">${escapeHtml(block.text)}</p>` : "";
-      return `<article class="ll-bento__card ll-bento__card--text ${getBentoBlockClass(block)}">
+      return `<article class="ll-bento__card ll-bento__card--text ${getBentoBlockClass(block)}"${getBentoResizeStyle(block)}>
         <span class="ll-bento__chip">${escapeHtml(block.label)}</span>
         <div>
           ${stat}
@@ -424,7 +459,7 @@
           </table>
         </section>`;
 
-      return `<details class="ll-bento__card ll-bento__card--table${besideDetailClass}" ${block.open ? "open" : ""}>
+      return `<div class="ll-bento__expand ll-bento__expand--table${besideDetailClass}">
         <input class="ll-bento__table-lightbox-toggle" type="checkbox" id="${popupId}" aria-label="Abrir tabela ampliada">
         <div class="ll-bento__table-lightbox" aria-label="Tabela ampliada">
           <label class="ll-bento__table-lightbox-backdrop" for="${popupId}" aria-label="Fechar tabela ampliada"></label>
@@ -436,16 +471,17 @@
             ${renderTable(`${popupId}-desc`, " ll-bento__table-popup-table")}
           </div>
         </div>
-        <label class="ll-bento__table-expand-button" for="${popupId}" aria-label="Ampliar tabela">Ampliar</label>
-        <summary class="ll-bento__table-summary">
-          <span class="ll-bento__table-heading">
-            <span class="ll-bento__chip">${escapeHtml(block.label || "Tabela")}</span>
-            <strong>${escapeHtml(block.title || "Tabela")}</strong>
-          </span>
-          <span class="ll-bento__table-preview" aria-hidden="true">${previewHead}${previewRows}</span>
-        </summary>
-        ${renderTable(`ll-bento-table-desc-${index}`)}
-      </details>`;
+        <article class="ll-bento__card ll-bento__card--table">
+          <label class="ll-bento__table-expand-button" for="${popupId}" aria-label="Ampliar tabela">Ampliar</label>
+          <div class="ll-bento__table-summary">
+            <span class="ll-bento__table-heading">
+              <span class="ll-bento__chip">${escapeHtml(block.label || "Tabela")}</span>
+              <strong>${escapeHtml(block.title || "Tabela")}</strong>
+            </span>
+            <span class="ll-bento__table-preview" aria-hidden="true">${previewHead}${previewRows}</span>
+          </div>
+        </article>
+      </div>`;
     }
 
     function renderBentoBlockHtml(block, index) {
@@ -467,10 +503,31 @@
   width: 100%;
 }
 
-.ll-bento__card--table {
+.ll-bento__expand--table {
   grid-column: span 9;
   align-self: stretch;
   min-height: clamp(170px, 16vw, 230px);
+}
+
+.ll-bento__card--table {
+  display: grid;
+  width: 100%;
+  height: 100%;
+  min-height: 100%;
+}
+
+.ll-bento__card--text {
+  resize: both;
+  overflow: auto;
+  min-width: min(100%, 170px);
+  min-height: 150px;
+  max-width: none;
+  max-height: none;
+}
+
+.ll-bento__card--text:hover,
+.ll-bento__card--text:focus-within {
+  z-index: 6;
 }
 
 .ll-bento__card--table-beside {
@@ -719,25 +776,16 @@
     grid-area: detail;
   }
 
-  .ll-bento__card--table {
+  .ll-bento__expand--table {
     grid-area: auto;
-    grid-column: 1 / -1;
-  }
-
-  .ll-bento__card--table[open] {
-    grid-area: table;
     grid-column: 1 / -1;
   }
 }
 
 @media (max-width: 560px) {
-  .ll-bento__card--table {
+  .ll-bento__expand--table {
     grid-column: 1 / -1;
     min-height: 0;
-  }
-
-  .ll-bento__card--table[open] {
-    grid-column: 1 / -1;
   }
 
   .ll-bento__table-summary {
@@ -791,72 +839,6 @@
 
 .ll-bento__card--table:hover {
   transform: none;
-}
-
-.ll-bento__card--table:not([open]) {
-  min-height: clamp(205px, 18vw, 260px);
-}
-
-.ll-bento__card--table:not([open]) .ll-bento__table-summary {
-  position: absolute;
-  inset: 0;
-  display: block;
-  width: auto;
-  height: auto;
-  min-height: 0;
-  padding: clamp(16px, 2vw, 22px);
-  overflow: hidden;
-}
-
-.ll-bento__card--table:not([open]) .ll-bento__table-summary::before {
-  position: absolute;
-  left: clamp(14px, 1.5vw, 22px);
-  top: 50%;
-  z-index: 4;
-  grid-column: auto;
-  grid-row: auto;
-  transform: translateY(-50%);
-}
-
-.ll-bento__card--table:not([open]) .ll-bento__table-heading {
-  position: absolute;
-  left: clamp(52px, 4vw, 72px);
-  top: clamp(14px, 1.6vw, 22px);
-  right: clamp(92px, 10vw, 128px);
-  z-index: 3;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 0;
-}
-
-.ll-bento__card--table:not([open]) .ll-bento__table-heading strong {
-  max-width: none;
-  overflow: hidden;
-  font-size: clamp(1rem, 1.35vw, 1.35rem);
-  line-height: 1.05;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.ll-bento__card--table:not([open]) .ll-bento__table-preview {
-  position: absolute;
-  left: clamp(52px, 4vw, 72px);
-  right: clamp(16px, 2vw, 24px);
-  top: clamp(62px, 5vw, 76px);
-  bottom: clamp(16px, 2vw, 22px);
-  display: grid;
-  grid-column: auto;
-  grid-row: auto;
-  grid-auto-rows: minmax(42px, max-content);
-  gap: 7px;
-  width: auto;
-  height: auto;
-  min-height: 0;
-  padding-right: 2px;
-  margin: 0;
-  overflow: auto;
-  overscroll-behavior: contain;
 }
 
 .ll-bento__table-expand-button {
@@ -957,32 +939,18 @@
   cursor: pointer;
 }
 
-.ll-bento__card--table .ll-bento__table-popup-table {
+.ll-bento__table-popup-table {
   max-height: calc(min(82vh, 760px) - 64px);
   padding: clamp(14px, 2vw, 22px);
   overflow: auto;
   border-radius: 0;
 }
 
-.ll-bento__card--table .ll-bento__table-popup-table .table-design-custom {
+.ll-bento__table-popup-table .table-design-custom {
   min-width: 620px;
 }
 
 @media (max-width: 560px) {
-  .ll-bento__card--table:not([open]) {
-    min-height: 205px;
-  }
-
-  .ll-bento__card--table:not([open]) .ll-bento__table-heading {
-    left: 46px;
-    right: 88px;
-  }
-
-  .ll-bento__card--table:not([open]) .ll-bento__table-preview {
-    left: 46px;
-    top: 58px;
-  }
-
   .ll-bento__table-expand-button {
     min-height: 30px;
     padding: 7px 9px;
@@ -1133,10 +1101,6 @@ ${blocks}
           ${renderBentoInput(index, "caption", "Caption de acessibilidade", block.caption)}
           ${renderBentoInput(index, "headerColor", "Cor do header HEX", block.headerColor)}
         </div>
-        <label class="field checkbox-field">
-          <input type="checkbox" ${block.open ? "checked" : ""} data-bento-field="open" data-bento-block="${index}">
-          <span>Comecar expandida</span>
-        </label>
         <div class="bento-table-editor">
           <div class="bento-table-editor__head">
             <strong>Colunas</strong>
@@ -1159,6 +1123,22 @@ ${blocks}
       const textCount = countBentoBlocks("text");
       const imageCount = countBentoBlocks("image");
       const tableCount = countBentoBlocks("table");
+      const addOptions = [
+        { type: "hero", icon: "H", title: "Hero", note: `${heroCount}/1`, count: heroCount, disabled: !canUseBentoBlockType("hero") },
+        { type: "text", icon: "T", title: "Texto", note: `${textCount}/5`, count: textCount, disabled: !canUseBentoBlockType("text") },
+        { type: "image", icon: "I", title: "Imagem", note: `${imageCount}/2`, count: imageCount, disabled: !canUseBentoBlockType("image") },
+        { type: "table", icon: "TB", title: "Tabela", note: `${tableCount}/1`, count: tableCount, disabled: !canUseBentoBlockType("table") }
+      ].map((option) => `
+        <div class="bento-add-grid__item">
+          <span class="bento-add-grid__actions" aria-label="Acoes do bloco ${escapeHtml(option.title)}">
+            <button class="bento-add-grid__button bento-add-grid__button--add" type="button" data-action="add-bento-block" data-bento-type="${option.type}" ${option.disabled ? "disabled" : ""} aria-label="Adicionar bloco ${escapeHtml(option.title)}" title="Adicionar bloco ${escapeHtml(option.title)}">+</button>
+            <button class="bento-add-grid__button bento-add-grid__button--remove" type="button" data-action="remove-bento-block-type" data-bento-type="${option.type}" ${(option.count <= 0 || state.bento.blocks.length <= 1) ? "disabled" : ""} aria-label="Remover bloco ${escapeHtml(option.title)}" title="Remover bloco ${escapeHtml(option.title)}">-</button>
+          </span>
+          <span class="bento-add-grid__icon" aria-hidden="true">${option.icon}</span>
+          <strong>${option.title}</strong>
+          <small>${option.note}</small>
+        </div>
+      `).join("");
 
       return `
         <section class="article-editor bento-editor" aria-label="Editor Bento grid">
@@ -1207,11 +1187,14 @@ ${blocks}
             </div>
           </details>
 
-          <div class="bento-add-grid">
-            <button class="button button--soft" type="button" data-action="add-bento-block" data-bento-type="hero" ${canUseBentoBlockType("hero") ? "" : "disabled"}>+ HERO</button>
-            <button class="button button--soft" type="button" data-action="add-bento-block" data-bento-type="text" ${canUseBentoBlockType("text") ? "" : "disabled"}>+ Texto</button>
-            <button class="button button--soft" type="button" data-action="add-bento-block" data-bento-type="image" ${canUseBentoBlockType("image") ? "" : "disabled"}>+ Imagem</button>
-            <button class="button button--soft" type="button" data-action="add-bento-block" data-bento-type="table" ${canUseBentoBlockType("table") ? "" : "disabled"}>+ Tabela</button>
+          <div class="bento-add-panel">
+            <div class="bento-add-panel__head">
+              <strong>Adicionar bloco</strong>
+              <span>Escolha um tipo dentro dos limites.</span>
+            </div>
+            <div class="bento-add-grid">
+              ${addOptions}
+            </div>
           </div>
           ${status}
 
