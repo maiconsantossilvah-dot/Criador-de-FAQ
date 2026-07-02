@@ -49,12 +49,13 @@
       return container ? container.innerHTML.trim() : rawValue;
     }
 
-    function cleanTemplateEditorArtifacts(value) {
+    function cleanTemplateEditorArtifacts(value, options = {}) {
       const rawValue = String(value || "").trim();
       if (!rawValue || !/<\/?[a-z][\s\S]*>/i.test(rawValue)) {
         return rawValue;
       }
 
+      const preservePreviewFaqState = options.preservePreviewFaqState === true;
       const parsedDocument = new DOMParser().parseFromString(`<div data-ll-clean-root>${rawValue}</div>`, "text/html");
       const wrapper = parsedDocument.querySelector("[data-ll-clean-root]");
       if (!wrapper) {
@@ -66,16 +67,51 @@
       });
 
       Array.from(wrapper.querySelectorAll("*")).forEach((element) => {
-        if (element.classList) {
+        if (!preservePreviewFaqState && element.style) {
+          const normalBg = element.style.getPropertyValue("--ll-template-faq-summary-bg");
+          const questionColor = element.style.getPropertyValue("--ll-template-faq-question-color");
+          const answerColor = element.style.getPropertyValue("--ll-template-faq-answer-color");
+
+          if (isHexColor(normalBg)) {
+            const summaryTargets = element.matches?.("summary, #faq-section__summary, .ll-template-faq-summary")
+              ? [element]
+              : Array.from(element.querySelectorAll("summary, #faq-section__summary, .ll-template-faq-summary"));
+            summaryTargets.forEach((target) => {
+              target.style.background = normalizeHexColor(normalBg);
+            });
+          }
+
+          if (isHexColor(questionColor)) {
+            const questionTargets = element.matches?.("#faq-section__q-text, [id*='q-text'], [class*='question' i], [class*='pergunta' i]")
+              ? [element]
+              : Array.from(element.querySelectorAll("#faq-section__q-text, [id*='q-text'], [class*='question' i], [class*='pergunta' i]"));
+            questionTargets.forEach((target) => {
+              target.style.color = normalizeHexColor(questionColor);
+            });
+          }
+
+          if (isHexColor(answerColor)) {
+            const answerTargets = element.matches?.("#faq-section__a-text, [id*='a-text'], [class*='answer' i], [class*='resposta' i]")
+              ? [element]
+              : Array.from(element.querySelectorAll("#faq-section__a-text, [id*='a-text'], [class*='answer' i], [class*='resposta' i]"));
+            answerTargets.forEach((target) => {
+              target.style.color = normalizeHexColor(answerColor);
+            });
+          }
+        }
+
+        if (!preservePreviewFaqState && element.classList) {
           element.classList.remove("ll-template-faq-summary", "ll-template-faq-custom-colors");
           if (!element.getAttribute("class")) {
             element.removeAttribute("class");
           }
         }
 
-        if (element.style) {
+        if (!preservePreviewFaqState && element.style) {
           element.style.removeProperty("--ll-template-faq-summary-bg");
           element.style.removeProperty("--ll-template-faq-summary-hover-bg");
+          element.style.removeProperty("--ll-template-faq-question-color");
+          element.style.removeProperty("--ll-template-faq-answer-color");
           if (!element.getAttribute("style")) {
             element.removeAttribute("style");
           }
@@ -373,8 +409,74 @@ ${frameCss}
 </style>`;
     }
 
+    function buildTemplateFaqCustomStyle() {
+      const rawValue = String(state.template.html || "").trim();
+      if (!rawValue || !/<\/?[a-z][\s\S]*>/i.test(rawValue)) {
+        return "";
+      }
+
+      const parsedDocument = new DOMParser().parseFromString(`<div data-ll-faq-style-root>${extractLpContainerHtml(rawValue)}</div>`, "text/html");
+      const wrapper = parsedDocument.querySelector("[data-ll-faq-style-root]");
+      const faqRoot = wrapper?.querySelector(".ll-template-faq-custom-colors, [style*='--ll-template-faq-summary-bg'], [style*='--ll-template-faq-summary-hover-bg']");
+      if (!faqRoot) {
+        return "";
+      }
+
+      const normalRaw = faqRoot.style.getPropertyValue("--ll-template-faq-summary-bg") || "";
+      const hoverRaw = faqRoot.style.getPropertyValue("--ll-template-faq-summary-hover-bg") || "";
+      const questionColorRaw = faqRoot.style.getPropertyValue("--ll-template-faq-question-color")
+        || wrapper.querySelector("#faq-section__q-text, [id*='q-text']")?.style.color
+        || "";
+      const answerColorRaw = faqRoot.style.getPropertyValue("--ll-template-faq-answer-color")
+        || wrapper.querySelector("#faq-section__a-text, [id*='a-text']")?.style.color
+        || "";
+      const optionalColorToHex = (value) => {
+        const rawColor = String(value || "").trim();
+        if (isHexColor(rawColor)) {
+          return normalizeHexColor(rawColor);
+        }
+
+        return /^rgba?\(/i.test(rawColor) ? colorToHex(rawColor, "#000000") : "";
+      };
+      const normal = optionalColorToHex(normalRaw);
+      const hover = optionalColorToHex(hoverRaw);
+      const questionColor = optionalColorToHex(questionColorRaw);
+      const answerColor = optionalColorToHex(answerColorRaw);
+      const rules = [];
+
+      if (isHexColor(normal)) {
+        rules.push(`#faq-section__summary { background: ${normal} !important; }`);
+      }
+
+      if (isHexColor(hover)) {
+        rules.push(`#faq-section__summary:hover { background: ${hover} !important; }`);
+      }
+
+      if (isHexColor(questionColor)) {
+        rules.push(`#faq-section__q-text { color: ${normalizeHexColor(questionColor)} !important; }`);
+      }
+
+      if (isHexColor(answerColor)) {
+        rules.push(`#faq-section__a-text { color: ${normalizeHexColor(answerColor)} !important; }`);
+      }
+
+      if (!rules.length) {
+        return "";
+      }
+
+      return `<style>
+${rules.join("\n")}
+</style>`;
+    }
+
+    function buildTemplateStyle() {
+      return [buildTemplateHeaderStyle(), buildTemplateFaqCustomStyle()].filter(Boolean).join("\n\n");
+    }
+
     function buildLpContainerHtml(value = state.template.html, options = {}) {
-      const content = cleanTemplateEditorArtifacts(extractLpContainerHtml(value));
+      const content = cleanTemplateEditorArtifacts(extractLpContainerHtml(value), {
+        preservePreviewFaqState: options.includeLabAttrs === true
+      });
       const innerHtml = content || "";
       return `<div class="lp-container">
 ${innerHtml}
@@ -388,7 +490,7 @@ ${innerHtml}
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   ${buildLpContainerCss(true)}
-  ${buildTemplateHeaderStyle()}
+  ${buildTemplateStyle()}
 </head>
 <body>
 ${buildLpContainerHtml(state.template.html, { includeLabAttrs: true })}
@@ -400,7 +502,7 @@ ${buildLpContainerHtml(state.template.html, { includeLabAttrs: true })}
       const containerHtml = buildLpContainerHtml();
 
       if (copyMode === "full") {
-        return `${buildTemplateHeaderStyle()}
+        return `${buildTemplateStyle()}
 
 <!-- HTML DO LAYOUT -->
 
@@ -3892,11 +3994,41 @@ ${containerHtml}`;
         }) || null;
       };
 
+      const getTemplateFaqTextTargets = (faqRoot) => {
+        const detailsList = Array.from(faqRoot.querySelectorAll("details")).filter((details) => {
+          return isTemplateFaqDetails(details, faqRoot);
+        });
+
+        return detailsList.reduce((targets, details) => {
+          const question = findTemplateFaqQuestion(details);
+          const answer = findTemplateFaqAnswer(details);
+
+          if (question && !targets.questions.includes(question)) {
+            targets.questions.push(question);
+          }
+
+          if (answer && !targets.answers.includes(answer)) {
+            targets.answers.push(answer);
+          }
+
+          return targets;
+        }, { questions: [], answers: [] });
+      };
+
       const openTemplateFaqStylePopover = (sourceEvent, faqRoot, summary) => {
         closePreviewEditPopover();
         ensureTemplateFaqStyle(faqRoot);
 
         const computed = summary.ownerDocument.defaultView.getComputedStyle(summary);
+        const faqTextTargets = getTemplateFaqTextTargets(faqRoot);
+        const firstQuestion = faqTextTargets.questions[0] || findTemplateFaqQuestion(summary.closest("details")) || summary;
+        const firstAnswer = faqTextTargets.answers[0] || null;
+        const questionComputed = firstQuestion
+          ? firstQuestion.ownerDocument.defaultView.getComputedStyle(firstQuestion)
+          : computed;
+        const answerComputed = firstAnswer
+          ? firstAnswer.ownerDocument.defaultView.getComputedStyle(firstAnswer)
+          : computed;
         const initialNormal = colorToHex(
           faqRoot.style.getPropertyValue("--ll-template-faq-summary-bg") || computed.backgroundColor || "#ffffff",
           "#ffffff"
@@ -3904,6 +4036,14 @@ ${containerHtml}`;
         const initialHover = colorToHex(
           faqRoot.style.getPropertyValue("--ll-template-faq-summary-hover-bg") || "#f9f9f9",
           "#f9f9f9"
+        );
+        const initialQuestionColor = colorToHex(
+          faqRoot.style.getPropertyValue("--ll-template-faq-question-color") || questionComputed.color || "#111827",
+          "#111827"
+        );
+        const initialAnswerColor = colorToHex(
+          faqRoot.style.getPropertyValue("--ll-template-faq-answer-color") || answerComputed.color || "#333333",
+          "#333333"
         );
 
         const form = document.createElement("form");
@@ -3941,6 +4081,8 @@ ${containerHtml}`;
 
         const normal = makeColorField("Cor normal", initialNormal);
         const hover = makeColorField("Cor hover", initialHover);
+        const questionText = makeColorField("Texto da pergunta", initialQuestionColor);
+        const answerText = makeColorField("Texto da resposta", initialAnswerColor);
 
         const actions = document.createElement("div");
         actions.className = "preview-edit-popover__actions";
@@ -3962,13 +4104,23 @@ ${containerHtml}`;
         const applyFaqStyle = () => {
           syncPair(normal);
           syncPair(hover);
+          syncPair(questionText);
+          syncPair(answerText);
           faqRoot.classList.add("ll-template-faq-custom-colors");
           faqRoot.style.setProperty("--ll-template-faq-summary-bg", normal.color.value);
           faqRoot.style.setProperty("--ll-template-faq-summary-hover-bg", hover.color.value);
+          faqRoot.style.setProperty("--ll-template-faq-question-color", questionText.color.value);
+          faqRoot.style.setProperty("--ll-template-faq-answer-color", answerText.color.value);
+          getTemplateFaqTextTargets(faqRoot).questions.forEach((element) => {
+            element.style.color = questionText.color.value;
+          });
+          getTemplateFaqTextTargets(faqRoot).answers.forEach((element) => {
+            element.style.color = answerText.color.value;
+          });
           syncTemplateHtmlFromPreview();
         };
 
-        [normal, hover].forEach((pair) => {
+        [normal, hover, questionText, answerText].forEach((pair) => {
           pair.color.addEventListener("input", () => {
             pair.hex.value = normalizeHexColor(pair.color.value);
             pair.color.style.setProperty("--preview-edit-color", pair.hex.value);
@@ -4031,7 +4183,7 @@ ${containerHtml}`;
           const faqRoot = getTemplateFaqRoot(details, root);
           ensureTemplateFaqStyle(faqRoot);
           summary.classList.add("ll-template-faq-summary");
-          summary.setAttribute("title", "Clique para abrir o FAQ. Dê dois cliques no fundo para mudar cor normal e hover.");
+          summary.setAttribute("title", "Clique para abrir o FAQ. Dê dois cliques no fundo para mudar as cores do FAQ.");
 
           const question = findTemplateFaqQuestion(details);
           const answer = findTemplateFaqAnswer(details);

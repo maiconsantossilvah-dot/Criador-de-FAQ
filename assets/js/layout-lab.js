@@ -2451,11 +2451,11 @@ ${buildResponsiveStyle("faq", { includeDraft: true })}`;
 
       if (currentEditorTab === "template") {
         if (copyMode === "css") {
-          return buildTemplateHeaderStyle();
+          return buildTemplateStyle();
         }
 
         if (copyMode === "full" && getResponsiveVersionList("template").length) {
-          return buildResponsivePackage("template", () => buildTemplateOutputHtml("html"), () => buildTemplateHeaderStyle());
+          return buildResponsivePackage("template", () => buildTemplateOutputHtml("html"), () => buildTemplateStyle());
         }
 
         return buildTemplateOutputHtml(copyMode);
