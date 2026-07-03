@@ -2715,7 +2715,7 @@ ${buildResponsiveStyle("faq", { includeDraft: true })}`;
 
     function renderEditableFaqEditorItems() {
       return state.items.map((item, index) => `
-        <details class="faq-editor__item" data-index="${index}" open>
+        <details class="faq-editor__item" data-index="${index}">
           <summary class="faq-editor__bar">
             <strong>Pergunta ${index + 1}</strong>
             <button class="button button--danger icon-button" type="button" data-action="remove" aria-label="Remover pergunta ${index + 1}" title="Remover pergunta">${trashIcon()}</button>
