@@ -142,6 +142,15 @@
         bento: {},
         template: {}
       },
+      classStyles: {
+        faq: {},
+        table: {},
+        stories: {},
+        article: {},
+        carousel: {},
+        bento: {},
+        template: {}
+      },
       items: [
         { question: "", answer: "" },
         { question: "", answer: "" },
@@ -2278,9 +2287,15 @@ ${itemMarkup}
       return blocks.join("\n\n");
     }
 
+    function buildTabStyleWithClass(tab, styleBuilder) {
+      const baseStyle = typeof styleBuilder === "function" ? styleBuilder() : "";
+      const classStyle = typeof buildPreviewClassStyle === "function" ? buildPreviewClassStyle(tab) : "";
+      return [baseStyle, classStyle].filter((part) => String(part || "").trim()).join("\n\n");
+    }
+
     function buildFullHtml(includeTable) {
-      const faqStyles = buildFaqStyle();
-      const styles = includeTable && hasTableData() ? `${faqStyles}\n\n${buildTableStyle()}` : faqStyles;
+      const faqStyles = buildTabStyleWithClass("faq", buildFaqStyle);
+      const styles = includeTable && hasTableData() ? `${faqStyles}\n\n${buildTabStyleWithClass("table", buildTableStyle)}` : faqStyles;
 
       return `${styles}
 
@@ -2314,7 +2329,7 @@ ${buildBlocksHtml(includeTable)}`;
       if (currentPage === "conteudo" && currentEditorTab === "table") {
         return `${buildTableSectionHtml(true)}
 
-${buildTableStyle()}
+${buildTabStyleWithClass("table", buildTableStyle)}
 
 ${buildResponsiveStyle("table", { includeDraft: true })}`;
       }
@@ -2322,7 +2337,7 @@ ${buildResponsiveStyle("table", { includeDraft: true })}`;
       if (currentPage === "conteudo" && currentEditorTab === "stories") {
         return `${buildStoriesSectionHtml(getStoriesPreviewTarget())}
 
-${buildStoriesStyle()}
+${buildTabStyleWithClass("stories", buildStoriesStyle)}
 
 ${buildResponsiveStyle("stories", { includeDraft: true })}`;
       }
@@ -2330,7 +2345,7 @@ ${buildResponsiveStyle("stories", { includeDraft: true })}`;
       if (currentPage === "conteudo" && currentEditorTab === "article") {
         return `${buildArticleSectionHtml()}
 
-${buildArticleStyle()}
+${buildTabStyleWithClass("article", buildArticleStyle)}
 
 ${buildResponsiveStyle("article", { includeDraft: true })}`;
       }
@@ -2338,7 +2353,7 @@ ${buildResponsiveStyle("article", { includeDraft: true })}`;
       if (currentPage === "conteudo" && currentEditorTab === "carousel") {
         return `${buildCarouselSectionHtml(state.carousel.previewSlideIndex)}
 
-${buildCarouselStyle()}
+${buildTabStyleWithClass("carousel", buildCarouselStyle)}
 
 ${buildResponsiveStyle("carousel", { includeDraft: true })}`;
       }
@@ -2346,7 +2361,7 @@ ${buildResponsiveStyle("carousel", { includeDraft: true })}`;
       if (currentPage === "conteudo" && currentEditorTab === "bento") {
         return `${buildBentoSectionHtml()}
 
-${buildBentoStyle()}
+${buildTabStyleWithClass("bento", buildBentoStyle)}
 
 ${buildResponsiveStyle("bento", { includeDraft: true })}`;
       }
@@ -2358,7 +2373,7 @@ ${buildResponsiveStyle("bento", { includeDraft: true })}`;
       if (currentPage === "conteudo") {
         return `${buildFaqSectionHtml()}
 
-${buildFaqStyle()}
+${buildTabStyleWithClass("faq", buildFaqStyle)}
 
 ${buildResponsiveStyle("faq", { includeDraft: true })}`;
       }
@@ -2383,11 +2398,11 @@ ${buildResponsiveStyle("faq", { includeDraft: true })}`;
         const tableHtml = buildTableSectionHtml(true);
 
         if (copyMode === "css") {
-          return buildTableStyle();
+          return buildTabStyleWithClass("table", buildTableStyle);
         }
 
         if (copyMode === "full") {
-          return buildResponsivePackage("table", () => buildTableSectionHtml(true), buildTableStyle);
+          return buildResponsivePackage("table", () => buildTableSectionHtml(true), () => buildTabStyleWithClass("table", buildTableStyle));
         }
 
         return tableHtml;
@@ -2397,11 +2412,11 @@ ${buildResponsiveStyle("faq", { includeDraft: true })}`;
         const storiesHtml = buildStoriesSectionHtml();
 
         if (copyMode === "css") {
-          return buildStoriesStyle();
+          return buildTabStyleWithClass("stories", buildStoriesStyle);
         }
 
         if (copyMode === "full") {
-          return buildResponsivePackage("stories", () => buildStoriesSectionHtml(), buildStoriesStyle);
+          return buildResponsivePackage("stories", () => buildStoriesSectionHtml(), () => buildTabStyleWithClass("stories", buildStoriesStyle));
         }
 
         return storiesHtml;
@@ -2411,11 +2426,11 @@ ${buildResponsiveStyle("faq", { includeDraft: true })}`;
         const articleHtml = buildArticleSectionHtml();
 
         if (copyMode === "css") {
-          return buildArticleStyle();
+          return buildTabStyleWithClass("article", buildArticleStyle);
         }
 
         if (copyMode === "full") {
-          return buildResponsivePackage("article", () => buildArticleSectionHtml(), buildArticleStyle);
+          return buildResponsivePackage("article", () => buildArticleSectionHtml(), () => buildTabStyleWithClass("article", buildArticleStyle));
         }
 
         return articleHtml;
@@ -2425,11 +2440,11 @@ ${buildResponsiveStyle("faq", { includeDraft: true })}`;
         const carouselHtml = buildCarouselSectionHtml();
 
         if (copyMode === "css") {
-          return buildCarouselStyle();
+          return buildTabStyleWithClass("carousel", buildCarouselStyle);
         }
 
         if (copyMode === "full") {
-          return buildResponsivePackage("carousel", () => buildCarouselSectionHtml(), buildCarouselStyle);
+          return buildResponsivePackage("carousel", () => buildCarouselSectionHtml(), () => buildTabStyleWithClass("carousel", buildCarouselStyle));
         }
 
         return carouselHtml;
@@ -2439,11 +2454,11 @@ ${buildResponsiveStyle("faq", { includeDraft: true })}`;
         const bentoHtml = buildBentoSectionHtml();
 
         if (copyMode === "css") {
-          return buildBentoStyle();
+          return buildTabStyleWithClass("bento", buildBentoStyle);
         }
 
         if (copyMode === "full") {
-          return buildResponsivePackage("bento", () => buildBentoSectionHtml(), buildBentoStyle);
+          return buildResponsivePackage("bento", () => buildBentoSectionHtml(), () => buildTabStyleWithClass("bento", buildBentoStyle));
         }
 
         return bentoHtml;
@@ -2451,11 +2466,11 @@ ${buildResponsiveStyle("faq", { includeDraft: true })}`;
 
       if (currentEditorTab === "template") {
         if (copyMode === "css") {
-          return buildTemplateStyle();
+          return buildTabStyleWithClass("template", buildTemplateStyle);
         }
 
         if (copyMode === "full" && getResponsiveVersionList("template").length) {
-          return buildResponsivePackage("template", () => buildTemplateOutputHtml("html"), () => buildTemplateStyle());
+          return buildResponsivePackage("template", () => buildTemplateOutputHtml("html"), () => buildTabStyleWithClass("template", buildTemplateStyle));
         }
 
         return buildTemplateOutputHtml(copyMode);
@@ -2464,11 +2479,11 @@ ${buildResponsiveStyle("faq", { includeDraft: true })}`;
       const faqHtml = buildFaqSectionHtml();
 
       if (copyMode === "css") {
-        return buildFaqStyle();
+        return buildTabStyleWithClass("faq", buildFaqStyle);
       }
 
       if (copyMode === "full") {
-        return buildResponsivePackage("faq", () => buildFaqSectionHtml(), buildFaqStyle);
+        return buildResponsivePackage("faq", () => buildFaqSectionHtml(), () => buildTabStyleWithClass("faq", buildFaqStyle));
       }
 
       return faqHtml;
@@ -3849,6 +3864,8 @@ ${buildResponsiveStyle("faq", { includeDraft: true })}`;
     loadUserPresets();
     loadTemplateHtmlCache();
     setTheme(getInitialTheme());
+    applyPage(getPageFromHash());
+    document.body.classList.remove("app-loading");
     loadTabAssets().finally(() => {
-      applyPage(getPageFromHash());
+      renderEditor(true);
     });

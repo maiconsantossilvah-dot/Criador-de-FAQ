@@ -227,6 +227,17 @@
       display: none;
     }
 
+    body.app-loading .topbar,
+    body.app-loading .layout,
+    body.app-loading [data-lab-home],
+    body.app-loading .editor-tools,
+    body.app-loading .editor-copy-actions,
+    body.app-loading .preview-devices {
+      visibility: hidden !important;
+      opacity: 0 !important;
+      pointer-events: none !important;
+    }
+
     html[data-page="conteudo"] .brand,
     html[data-page="conteudo"] .page-nav .page-nav__link {
       display: none;
@@ -2730,6 +2741,58 @@
       color: var(--field-label);
       font-size: 13px;
       font-weight: 850;
+    }
+
+    .preview-edit-popover__tabs {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 4px;
+      padding: 4px;
+      border: 1px solid var(--field-border);
+      border-radius: 8px;
+      background: var(--field-bg);
+    }
+
+    .preview-edit-popover__tabs button {
+      min-height: 32px;
+      border-radius: 6px;
+      color: var(--muted);
+      background: transparent;
+      font: inherit;
+      font-size: 12px;
+      font-weight: 850;
+      cursor: pointer;
+    }
+
+    .preview-edit-popover__tabs button:hover,
+    .preview-edit-popover__tabs button:focus-visible,
+    .preview-edit-popover__tabs button.is-active {
+      color: #ffffff;
+      background: var(--blue);
+      outline: none;
+    }
+
+    .preview-edit-popover__panel {
+      display: grid;
+      gap: 10px;
+    }
+
+    .preview-edit-popover__panel[hidden] {
+      display: none;
+    }
+
+    .preview-edit-popover__panel--class {
+      padding: 10px;
+      border: 1px solid var(--field-border);
+      border-radius: 8px;
+      background: rgba(124, 58, 237, 0.08);
+    }
+
+    .preview-edit-popover__note {
+      margin: 0;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.45;
     }
 
     .preview-edit-popover__field {

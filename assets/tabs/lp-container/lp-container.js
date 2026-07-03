@@ -16,22 +16,22 @@
 
     function buildTemplateLayoutPackage(tab = state.template.sourceLayout) {
       if (tab === "table") {
-        return buildResponsivePackage("table", () => buildTableSectionHtml(true), buildTableStyle);
+        return buildResponsivePackage("table", () => buildTableSectionHtml(true), () => buildTabStyleWithClass("table", buildTableStyle));
       }
 
       if (tab === "stories") {
-        return buildResponsivePackage("stories", () => buildStoriesSectionHtml(), buildStoriesStyle);
+        return buildResponsivePackage("stories", () => buildStoriesSectionHtml(), () => buildTabStyleWithClass("stories", buildStoriesStyle));
       }
 
       if (tab === "article") {
-        return buildResponsivePackage("article", () => buildArticleSectionHtml(), buildArticleStyle);
+        return buildResponsivePackage("article", () => buildArticleSectionHtml(), () => buildTabStyleWithClass("article", buildArticleStyle));
       }
 
       if (tab === "carousel") {
-        return buildResponsivePackage("carousel", () => buildCarouselSectionHtml(), buildCarouselStyle);
+        return buildResponsivePackage("carousel", () => buildCarouselSectionHtml(), () => buildTabStyleWithClass("carousel", buildCarouselStyle));
       }
 
-      return buildResponsivePackage("faq", () => buildFaqSectionHtml(), buildFaqStyle);
+      return buildResponsivePackage("faq", () => buildFaqSectionHtml(), () => buildTabStyleWithClass("faq", buildFaqStyle));
     }
 
     function extractLpContainerHtml(value) {
@@ -484,13 +484,17 @@ ${innerHtml}
     }
 
     function buildTemplatePreviewHtml() {
+      const templateStyle = typeof buildTabStyleWithClass === "function"
+        ? buildTabStyleWithClass("template", buildTemplateStyle)
+        : buildTemplateStyle();
+
       return `<!doctype html>
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   ${buildLpContainerCss(true)}
-  ${buildTemplateStyle()}
+  ${templateStyle}
 </head>
 <body>
 ${buildLpContainerHtml(state.template.html, { includeLabAttrs: true })}
@@ -502,7 +506,11 @@ ${buildLpContainerHtml(state.template.html, { includeLabAttrs: true })}
       const containerHtml = buildLpContainerHtml();
 
       if (copyMode === "full") {
-        return `${buildTemplateStyle()}
+        const templateStyle = typeof buildTabStyleWithClass === "function"
+          ? buildTabStyleWithClass("template", buildTemplateStyle)
+          : buildTemplateStyle();
+
+        return `${templateStyle}
 
 <!-- HTML DO LAYOUT -->
 
@@ -609,12 +617,14 @@ ${containerHtml}`;
       const isColor = kind === "color";
       const isTextStyle = kind === "text-style";
       const colorAllowsGradient = isColor && canUseGradientColor(meta, options);
+      const sourceElement = options.sourceElement || sourceEvent?.currentTarget || sourceEvent?.target || document.body;
+      const classCandidates = (isColor || isTextStyle) ? getPreviewClassCandidates(sourceElement) : [];
       const currentValue = isColor
         ? normalizeCssColorValue(readPreviewEditValue(meta))
         : String(readPreviewEditValue(meta) || "");
       const currentTextStyle = isTextStyle
         ? {
-            ...getComputedPreviewTextStyle(options.sourceElement || sourceEvent?.target || document.body),
+            ...getComputedPreviewTextStyle(sourceElement),
             ...getPreviewTextStyle(meta)
           }
         : {};
@@ -636,6 +646,10 @@ ${containerHtml}`;
       let colorOpacityInput = null;
       let styleInputs = null;
       let localAssetButton = null;
+      let editMode = "element";
+      let classSelect = null;
+      let classPropertySelect = null;
+      let resetClassButton = null;
 
       if (isColor) {
         const parsedGradient = parseCssGradient(currentValue);
@@ -959,6 +973,98 @@ ${containerHtml}`;
         }
       }
 
+      if ((isColor || isTextStyle) && classCandidates.length) {
+        const controlNodes = Array.from(form.children).filter((node) => node !== title);
+        const tabs = document.createElement("div");
+        tabs.className = "preview-edit-popover__tabs";
+
+        const elementTab = document.createElement("button");
+        elementTab.type = "button";
+        elementTab.textContent = "Elemento";
+        elementTab.className = "is-active";
+
+        const classTab = document.createElement("button");
+        classTab.type = "button";
+        classTab.textContent = "Classe";
+
+        tabs.append(elementTab, classTab);
+
+        const elementPanel = document.createElement("div");
+        elementPanel.className = "preview-edit-popover__panel";
+        controlNodes.forEach((node) => elementPanel.appendChild(node));
+
+        const classPanel = document.createElement("div");
+        classPanel.className = "preview-edit-popover__panel preview-edit-popover__panel--class";
+        classPanel.hidden = true;
+
+        const classField = document.createElement("label");
+        classField.className = "preview-edit-popover__mini-field";
+        const classLabel = document.createElement("span");
+        classLabel.textContent = "Classe alvo";
+        classSelect = document.createElement("select");
+        classCandidates.forEach((candidate) => {
+          const option = document.createElement("option");
+          option.value = candidate.className;
+          option.textContent = candidate.label;
+          classSelect.appendChild(option);
+        });
+        classField.append(classLabel, classSelect);
+        classPanel.appendChild(classField);
+
+        if (isColor) {
+          const propertyField = document.createElement("label");
+          propertyField.className = "preview-edit-popover__mini-field";
+          const propertyLabel = document.createElement("span");
+          propertyLabel.textContent = "Aplicar em";
+          classPropertySelect = document.createElement("select");
+          [
+            ["background", "Fundo"],
+            ["color", "Texto"],
+            ["border-color", "Borda"],
+            ["outline-color", "Contorno"]
+          ].forEach(([value, label]) => {
+            const option = document.createElement("option");
+            option.value = value;
+            option.textContent = label;
+            option.selected = inferPreviewClassColorProperty(meta, options) === value;
+            classPropertySelect.appendChild(option);
+          });
+          propertyField.append(propertyLabel, classPropertySelect);
+          classPanel.appendChild(propertyField);
+        }
+
+        const note = document.createElement("p");
+        note.className = "preview-edit-popover__note";
+        note.textContent = isTextStyle
+          ? "Nesta aba, os controles de estilo afetam todos os elementos com a classe escolhida. O texto continua individual."
+          : "Nesta aba, a cor selecionada afeta todos os elementos com a classe escolhida.";
+        classPanel.appendChild(note);
+
+        resetClassButton = document.createElement("button");
+        resetClassButton.type = "button";
+        resetClassButton.className = "button button--soft";
+        resetClassButton.textContent = "Limpar classe";
+        classPanel.appendChild(resetClassButton);
+
+        form.append(tabs, classPanel, elementPanel);
+
+        const setEditMode = (mode) => {
+          editMode = mode;
+          classPanel.hidden = mode !== "class";
+          if (isTextStyle && valueInput) {
+            valueInput.hidden = mode === "class";
+          }
+          elementTab.classList.toggle("is-active", mode === "element");
+          classTab.classList.toggle("is-active", mode === "class");
+        };
+
+        elementTab.addEventListener("click", () => setEditMode("element"));
+        classTab.addEventListener("click", () => setEditMode("class"));
+        classSelect.addEventListener("change", () => applyLiveValue({ multiline: options.multiline }));
+        classPropertySelect?.addEventListener("change", () => applyLiveValue({ multiline: options.multiline }));
+        resetClassButton.addEventListener("click", () => clearPreviewClassStyle(meta, classSelect.value));
+      }
+
       const actions = document.createElement("div");
       actions.className = "preview-edit-popover__actions";
 
@@ -1000,6 +1106,12 @@ ${containerHtml}`;
             colorInput.value = normalizeHexColor(nextValue);
           }
           colorInput?.style?.setProperty("--preview-edit-color", isHexColor(nextValue) ? normalizeHexColor(nextValue) : nextValue);
+
+          if (editMode === "class" && classSelect) {
+            const property = classPropertySelect?.value || inferPreviewClassColorProperty(meta, options);
+            setPreviewClassStyle(meta, classSelect.value, { [property]: nextValue });
+            return;
+          }
         }
 
         if (isTextStyle) {
@@ -1012,6 +1124,15 @@ ${containerHtml}`;
             fontStyle: styleInputs.fontStyle.value,
             lineHeight: styleInputs.lineHeight.value
           };
+
+          if (editMode === "class" && classSelect) {
+            if (applyOptions.clearStyle) {
+              clearPreviewClassStyle(meta, classSelect.value);
+            } else {
+              setPreviewClassStyle(meta, classSelect.value, nextStyle);
+            }
+            return;
+          }
 
           updatePreviewEditValue({ ...meta, type: "textStyle", multiline: applyOptions.multiline }, {
             text: nextText,
@@ -1275,6 +1396,189 @@ ${containerHtml}`;
     function previewTextStyleAttr(meta) {
       const style = buildPreviewTextStyle(meta);
       return style ? ` style="${escapeHtml(style)}"` : "";
+    }
+
+    function getPreviewClassStyleTab(meta = {}) {
+      return ["table", "stories", "article", "carousel", "bento", "template"].includes(meta.scope) ? meta.scope : "faq";
+    }
+
+    function escapeCssClassName(value) {
+      const className = String(value || "").trim();
+      if (!className) {
+        return "";
+      }
+
+      if (window.CSS && typeof window.CSS.escape === "function") {
+        return window.CSS.escape(className);
+      }
+
+      return className.replace(/[^a-zA-Z0-9_-]/g, "\\$&");
+    }
+
+    function isUsefulPreviewClass(className) {
+      const value = String(className || "").trim();
+      if (!value) {
+        return false;
+      }
+
+      return !/^(is-|has-|js-|sr-only|button$|field$|icon-button$|theme-toggle|preview-edit-popover|ql-|cm-)/.test(value);
+    }
+
+    function getPreviewClassCandidates(element) {
+      const doc = element?.ownerDocument || document;
+      const stopSelectors = ".preview-frame, .preview-shell, body, html";
+      const candidates = [];
+      const seen = new Set();
+      let current = element?.nodeType === 1 ? element : element?.parentElement;
+
+      while (current && current.nodeType === 1 && !current.matches?.(stopSelectors)) {
+        Array.from(current.classList || []).forEach((className) => {
+          if (!isUsefulPreviewClass(className) || seen.has(className)) {
+            return;
+          }
+
+          const selector = `.${escapeCssClassName(className)}`;
+          let count = 1;
+          try {
+            count = doc.querySelectorAll(selector).length || 1;
+          } catch (error) {}
+
+          seen.add(className);
+          candidates.push({
+            className,
+            selector,
+            count,
+            label: `.${className}${count > 1 ? ` (${count})` : ""}`
+          });
+        });
+
+        if (current.matches?.(".ll-carousel, .ll-bento, .lp-container, .lp_container, .table-container-custom, #faq-section, .faq-section")) {
+          break;
+        }
+
+        current = current.parentElement;
+      }
+
+      return candidates;
+    }
+
+    function inferPreviewClassColorProperty(meta = {}, options = {}) {
+      const field = String(meta.field || "").toLowerCase();
+      const label = String(options.label || "").toLowerCase();
+
+      if (field.includes("text") || field.includes("question") || field.includes("answer") || label.includes("texto")) {
+        return "color";
+      }
+
+      if (field.includes("border") || field.includes("ring") || field.includes("outline") || label.includes("borda")) {
+        return "border-color";
+      }
+
+      return "background";
+    }
+
+    function normalizePreviewClassDeclarations(style = {}) {
+      const declarations = {};
+
+      Object.entries(style || {}).forEach(([property, value]) => {
+        const rawValue = String(value ?? "").trim();
+        if (!rawValue) {
+          return;
+        }
+
+        if (property === "fontSize") {
+          declarations["font-size"] = `${normalizeTextStyleNumber(rawValue, 16, 8, 96)}px`;
+          return;
+        }
+
+        if (property === "fontWeight") {
+          declarations["font-weight"] = normalizePreviewFontWeight(rawValue);
+          return;
+        }
+
+        if (property === "fontStyle" && rawValue === "italic") {
+          declarations["font-style"] = "italic";
+          return;
+        }
+
+        if (property === "textAlign") {
+          declarations["text-align"] = normalizePreviewTextAlign(rawValue);
+          return;
+        }
+
+        if (property === "lineHeight") {
+          declarations["line-height"] = String(normalizeTextStyleNumber(rawValue, 1.35, 0.8, 2.6, 2));
+          return;
+        }
+
+        if (["background", "background-color", "color", "border-color", "outline-color"].includes(property)) {
+          declarations[property] = /^linear-gradient\(/i.test(rawValue) ? rawValue : normalizeCssColorValue(rawValue);
+        }
+      });
+
+      return declarations;
+    }
+
+    function setPreviewClassStyle(meta, className, declarations = {}) {
+      const cleanClassName = String(className || "").trim();
+      if (!cleanClassName) {
+        return;
+      }
+
+      const tab = getPreviewClassStyleTab(meta);
+      const normalized = normalizePreviewClassDeclarations(declarations);
+      if (!Object.keys(normalized).length) {
+        return;
+      }
+
+      state.classStyles = state.classStyles || {};
+      state.classStyles[tab] = state.classStyles[tab] || {};
+      state.classStyles[tab][cleanClassName] = {
+        className: cleanClassName,
+        selector: `.${escapeCssClassName(cleanClassName)}`,
+        declarations: {
+          ...((state.classStyles[tab][cleanClassName] && state.classStyles[tab][cleanClassName].declarations) || {}),
+          ...normalized
+        }
+      };
+
+      if (currentPage === "conteudo") {
+        markResponsiveDirty();
+      }
+
+      renderEditor(true);
+    }
+
+    function clearPreviewClassStyle(meta, className) {
+      const cleanClassName = String(className || "").trim();
+      const tab = getPreviewClassStyleTab(meta);
+      if (!cleanClassName || !state.classStyles?.[tab]?.[cleanClassName]) {
+        return;
+      }
+
+      delete state.classStyles[tab][cleanClassName];
+      if (currentPage === "conteudo") {
+        markResponsiveDirty();
+      }
+      renderEditor(true);
+    }
+
+    function buildPreviewClassStyle(tab) {
+      const styles = state.classStyles?.[tab] || {};
+      const rules = Object.values(styles).map((entry) => {
+        const selector = entry?.selector || (entry?.className ? `.${escapeCssClassName(entry.className)}` : "");
+        const declarations = Object.entries(entry?.declarations || {})
+          .filter(([, value]) => String(value || "").trim())
+          .map(([property, value]) => `  ${property}: ${value} !important;`);
+
+        return selector && declarations.length ? `${selector} {\n${declarations.join("\n")}\n}` : "";
+      }).filter(Boolean);
+
+      if (!rules.length) {
+        return "";
+      }
+
+      return `<style>\n/* Ajustes por classe feitos no preview */\n${rules.join("\n\n")}\n</style>`;
     }
 
     function getTemplatePreviewNode(meta) {
@@ -4671,6 +4975,10 @@ ${containerHtml}`;
               return;
             }
 
+            if (event.target.closest("[data-ll-preview-text], [data-ll-preview-media], [data-ll-preview-color], [data-ll-preview-position]")) {
+              return;
+            }
+
             const label = event.target.closest(".ll-carousel__dot[for], .ll-carousel__side-hint[for]");
             if (!label || !carouselRoot.contains(label)) {
               return;
@@ -4722,7 +5030,7 @@ ${containerHtml}`;
           };
 
           dot.addEventListener("click", (event) => {
-            if (event.target?.isContentEditable) {
+            if (event.target?.isContentEditable || event.target.closest("[data-ll-preview-text], [data-ll-preview-media]")) {
               return;
             }
 
@@ -4739,8 +5047,8 @@ ${containerHtml}`;
             window.clearTimeout(dotClickTimer);
           });
 
-          attachText(dot.querySelector(".ll-carousel__dot-number"), { scope: "carousel", slideIndex, field: "navNumber" }, { disableSingleClickPopover: true });
-          attachText(dot.querySelector(".ll-carousel__dot-text"), { scope: "carousel", slideIndex, field: "navLabel" }, { disableSingleClickPopover: true });
+          attachText(dot.querySelector(".ll-carousel__dot-number"), { scope: "carousel", slideIndex, field: "navNumber" });
+          attachText(dot.querySelector(".ll-carousel__dot-text"), { scope: "carousel", slideIndex, field: "navLabel" });
           attachMedia(dot.querySelector(".ll-carousel__dot-icon"), { scope: "carousel", slideIndex, field: "navIconImage" }, "URL ou SVG do ícone", { triggerEvent: "dblclick" });
         });
 
