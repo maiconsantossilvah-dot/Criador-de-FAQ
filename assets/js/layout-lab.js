@@ -1299,7 +1299,9 @@ ${optionMarkup}
       const baseSnapshot = getBaseSnapshot(tab);
 
       if (!versionDevices.length) {
-        return `${buildWithSnapshot(tab, baseSnapshot, styleBuilder)}
+        const css = buildWithSnapshot(tab, baseSnapshot, styleBuilder);
+        const markedCss = tab === "faq" ? wrapFaqCssMarkers(css) : css;
+        return `${markedCss}
 
 <!-- HTML DO LAYOUT -->
 
@@ -1326,11 +1328,14 @@ ${buildWithSnapshot(tab, baseSnapshot, htmlBuilder)}`;
         ...versionDevices.map((device) => `ll-responsive-output--has-${device}`)
       ].join(" ");
 
-      return `${baseCss}
+      const cssPackage = `${baseCss}
 
 ${versionBlocks.map((block) => block.css).join("\n\n")}
 
-${buildResponsiveSwitchStyle(versionDevices)}
+${buildResponsiveSwitchStyle(versionDevices)}`;
+      const markedCssPackage = tab === "faq" ? wrapFaqCssMarkers(cssPackage) : cssPackage;
+
+      return `${markedCssPackage}
 
 <!-- HTML DO LAYOUT -->
 
@@ -2287,19 +2292,43 @@ ${itemMarkup}
       return blocks.join("\n\n");
     }
 
+    function wrapFaqCssMarkers(css) {
+      const cleanCss = String(css || "").trim();
+      if (!cleanCss) {
+        return "";
+      }
+
+      if (cleanCss.includes("inicio-area-de-faq") && cleanCss.includes("final-area-de-faq")) {
+        return cleanCss;
+      }
+
+      return `<!-- /* inicio-area-de-faq */ -->
+
+${cleanCss}
+
+<!--   /* final-area-de-faq */ -->`;
+    }
+
     function buildTabStyleWithClass(tab, styleBuilder) {
       const baseStyle = typeof styleBuilder === "function" ? styleBuilder() : "";
       const classStyle = typeof buildPreviewClassStyle === "function" ? buildPreviewClassStyle(tab) : "";
       return [baseStyle, classStyle].filter((part) => String(part || "").trim()).join("\n\n");
     }
 
+    function buildFaqStylePackage(options = {}) {
+      const parts = [buildTabStyleWithClass("faq", buildFaqStyle)];
+      if (options.includeResponsive) {
+        parts.push(buildResponsiveStyle("faq", options.responsiveOptions || {}));
+      }
+
+      return wrapFaqCssMarkers(parts.filter((part) => String(part || "").trim()).join("\n\n"));
+    }
+
     function buildFullHtml(includeTable) {
-      const faqStyles = buildTabStyleWithClass("faq", buildFaqStyle);
+      const faqStyles = buildFaqStylePackage({ includeResponsive: true });
       const styles = includeTable && hasTableData() ? `${faqStyles}\n\n${buildTabStyleWithClass("table", buildTableStyle)}` : faqStyles;
 
       return `${styles}
-
-${buildResponsiveStyle("faq")}
 
 <!-- HTML DO LAYOUT -->
 
@@ -2373,9 +2402,7 @@ ${buildResponsiveStyle("bento", { includeDraft: true })}`;
       if (currentPage === "conteudo") {
         return `${buildFaqSectionHtml()}
 
-${buildTabStyleWithClass("faq", buildFaqStyle)}
-
-${buildResponsiveStyle("faq", { includeDraft: true })}`;
+${buildFaqStylePackage({ includeResponsive: true, responsiveOptions: { includeDraft: true } })}`;
       }
 
       return buildFullHtml(false);
@@ -2479,7 +2506,7 @@ ${buildResponsiveStyle("faq", { includeDraft: true })}`;
       const faqHtml = buildFaqSectionHtml();
 
       if (copyMode === "css") {
-        return buildTabStyleWithClass("faq", buildFaqStyle);
+        return buildFaqStylePackage();
       }
 
       if (copyMode === "full") {
