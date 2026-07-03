@@ -1612,6 +1612,7 @@ ${containerHtml}`;
           "data-ll-preview-overlay-vertical",
           "data-ll-preview-overlay-width",
           "data-ll-preview-manual-story",
+          "data-ll-preview-story-panel",
           "data-ll-preview-story-active",
           "data-ll-preview-story-hidden",
           "data-ll-preview-story-current",
@@ -3079,7 +3080,7 @@ ${containerHtml}`;
         }
         .lp-stories__nav {
           z-index: 38 !important;
-          pointer-events: none !important;
+          pointer-events: auto !important;
         }
         .lp-stories__arrow {
           pointer-events: auto !important;
@@ -3096,12 +3097,10 @@ ${containerHtml}`;
         .lp-stories[data-ll-preview-manual-story] .lp-stories__panel[data-ll-preview-story-active] {
           display: block !important;
         }
-        [data-ll-preview-manual-story] [class*="story" i][class*="panel" i],
-        [data-ll-preview-manual-story] [class*="stories" i][class*="panel" i] {
+        [data-ll-preview-manual-story] [data-ll-preview-story-panel] {
           display: none !important;
         }
-        [data-ll-preview-manual-story] [class*="story" i][class*="panel" i][data-ll-preview-story-active],
-        [data-ll-preview-manual-story] [class*="stories" i][class*="panel" i][data-ll-preview-story-active] {
+        [data-ll-preview-manual-story] [data-ll-preview-story-panel][data-ll-preview-story-active] {
           display: block !important;
         }
         .lp-stories [data-ll-preview-story-current] .lp-stories__ring,
@@ -3221,6 +3220,13 @@ ${containerHtml}`;
         };
 
         element.addEventListener("click", (event) => {
+          if (options.triggerEvent === "dblclick") {
+            if (element.isContentEditable) {
+              event.stopPropagation();
+            }
+            return;
+          }
+
           if (options.disableSingleClickPopover) {
             if (element.isContentEditable) {
               event.stopPropagation();
@@ -4619,6 +4625,7 @@ ${containerHtml}`;
         const escapeSelector = doc.defaultView.CSS?.escape || ((value) => String(value).replace(/["\\#.;,[\]()>+~*^$|=:\s]/g, "\\$&"));
         const targetId = target.id || "";
         const ariaControls = label?.getAttribute?.("aria-controls") || target.getAttribute?.("aria-controls") || "";
+        const panels = getTemplateStoryPanels(storyRoot);
         if (ariaControls) {
           const controlledPanel = doc.getElementById(ariaControls);
           if (controlledPanel && storyRoot.contains(controlledPanel)) {
@@ -4647,9 +4654,44 @@ ${containerHtml}`;
           ? `input[type="${target.type}"][name="${escapeSelector(target.name)}"]`
           : `input[type="${target.type}"]`;
         const inputs = Array.from(storyRoot.querySelectorAll(groupSelector));
-        const panels = Array.from(storyRoot.querySelectorAll(".lp-stories__panel, [class*='story' i][class*='panel' i], [class*='stories' i][class*='panel' i]"));
         const index = inputs.indexOf(target);
         return index >= 0 ? panels[index] || null : null;
+      };
+
+      const getTemplateStoryPanels = (storyRoot) => {
+        if (!storyRoot) {
+          return [];
+        }
+
+        const candidates = Array.from(storyRoot.querySelectorAll(".lp-stories__panel, [class*='story' i][class*='panel' i], [class*='stories' i][class*='panel' i]"));
+        return candidates.filter((element) => {
+          if (!element || element === storyRoot) {
+            return false;
+          }
+
+          const className = typeof element.className === "string" ? element.className.toLowerCase() : "";
+          if (/(^|\s)(lp-)?stories?(__|-)?panels(\s|$)/i.test(className) || className.includes("__panels")) {
+            return false;
+          }
+
+          return element.matches?.(".lp-stories__panel")
+            || !Array.from(element.children || []).some((child) => {
+              return child.matches?.(".lp-stories__panel, [class*='story' i][class*='panel' i], [class*='stories' i][class*='panel' i]");
+            });
+        });
+      };
+
+      const getTemplateStoryInputs = (storyRoot, target) => {
+        if (!storyRoot) {
+          return [];
+        }
+
+        const escapeSelector = doc.defaultView.CSS?.escape || ((value) => String(value).replace(/["\\#.;,[\]()>+~*^$|=:\s]/g, "\\$&"));
+        if (target?.name && target?.type) {
+          return Array.from(storyRoot.querySelectorAll(`input[type="${target.type}"][name="${escapeSelector(target.name)}"]`));
+        }
+
+        return Array.from(storyRoot.querySelectorAll('input[type="radio"], input[type="checkbox"]'));
       };
 
       const applyTemplateStorySelection = (label, target, root) => {
@@ -4664,8 +4706,14 @@ ${containerHtml}`;
         }
 
         storyRoot.dataset.llPreviewManualStory = "true";
-        storyRoot.querySelectorAll(".lp-stories__panel, [class*='story' i][class*='panel' i], [class*='stories' i][class*='panel' i]").forEach((item) => {
+        getTemplateStoryInputs(storyRoot, target).forEach((input) => {
+          input.checked = input === target;
+          input.toggleAttribute("checked", input === target);
+        });
+
+        getTemplateStoryPanels(storyRoot).forEach((item) => {
           const isActive = item === panel;
+          item.dataset.llPreviewStoryPanel = "true";
           item.toggleAttribute("data-ll-preview-story-active", isActive);
           item.toggleAttribute("data-ll-preview-story-hidden", !isActive);
         });
@@ -4674,6 +4722,8 @@ ${containerHtml}`;
           const current = getControlledInput(item);
           item.toggleAttribute("data-ll-preview-story-current", current === target);
         });
+
+        syncTemplateHtmlFromPreview();
       };
 
       const setupTemplatePreviewEditing = () => {
@@ -4693,10 +4743,16 @@ ${containerHtml}`;
             return;
           }
 
+          const storyRoot = findTemplateStoryRoot(label, root) || findTemplateStoryRoot(target, root);
+          if (!storyRoot) {
+            return;
+          }
+
+          event.preventDefault();
+          event.stopPropagation();
+
           const syncStorySelection = () => {
-            if (target.type === "radio") {
-              target.checked = true;
-            }
+            target.checked = true;
             target.dispatchEvent(new doc.defaultView.Event("input", { bubbles: true }));
             target.dispatchEvent(new doc.defaultView.Event("change", { bubbles: true }));
             applyTemplateStorySelection(label, target, root);
@@ -4762,14 +4818,14 @@ ${containerHtml}`;
             }
 
             const target = targetId ? doc.getElementById(targetId) : null;
-            try {
-              doc.defaultView.history.replaceState(null, "", rawHref);
-            } catch (_) {}
-
             if (target) {
               if (target.matches?.('input[type="radio"], input[type="checkbox"]')) {
+                const storyRoot = findTemplateStoryRoot(anchor, root) || findTemplateStoryRoot(target, root);
                 target.checked = true;
                 target.dispatchEvent(new doc.defaultView.Event("change", { bubbles: true }));
+                if (storyRoot) {
+                  applyTemplateStorySelection(anchor, target, root);
+                }
               } else {
                 target.scrollIntoView({ block: "nearest", inline: "nearest" });
               }
