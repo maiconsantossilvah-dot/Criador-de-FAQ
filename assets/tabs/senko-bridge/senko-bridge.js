@@ -320,8 +320,15 @@ function hasSenkoBridgeStackGroup(blocks = ensureSenkoBridgeState().blocks) {
   return false;
 }
 
+function hasSenkoBridgeStackableBlock(blocks = ensureSenkoBridgeState().blocks) {
+  return blocks.some((block) => Boolean(getSenkoBridgeStackKey(block)));
+}
+
 function buildSenkoBridgeStackCss() {
   return `
+:is(.section-32, .section-32-container, .section-32__container) {
+  border: 0 !important;
+}
 .senko-section-stack {
   display: grid;
   gap: 0;
@@ -336,6 +343,9 @@ function buildSenkoBridgeStackCss() {
   max-width: none !important;
   margin-top: 0 !important;
   margin-bottom: 0 !important;
+}
+.senko-section-stack--section32 :is(.section-32, .section-32-container, .section-32__container) {
+  border: 0 !important;
 }
 .senko-section-stack--section32 > :not(:first-child),
 .senko-section-stack--section32 > :not(:first-child) :is(section, article, div, figure, picture, img, .section-32, .section-32-container, .section-32__container, .section-32__groupimage-section),
@@ -353,12 +363,6 @@ function buildSenkoBridgeStackCss() {
   border-bottom-left-radius: 0 !important;
   border-bottom-right-radius: 0 !important;
 }
-.senko-section-stack--section32 > :not(:first-child) :is(.section-32__container, .section-32-container) {
-  border-top-width: 0 !important;
-}
-.senko-section-stack--section32 > .senko-section-stack__item:not(:first-child) :is(.section-32__container, .section-32-container) {
-  border-top-width: 0 !important;
-}
 .senko-section-stack--section32 > .senko-section-stack__item {
   display: block;
 }
@@ -370,7 +374,7 @@ function buildSenkoBridgeCssBundle() {
   const cssParts = bridge.blocks
     .map((block) => `/* ${block.name} - ${block.variantName} */\n${normalizeSenkoCss(block.css)}`)
     .filter((part) => part.trim())
-  if (hasSenkoBridgeStackGroup(bridge.blocks)) {
+  if (hasSenkoBridgeStackableBlock(bridge.blocks)) {
     cssParts.unshift(buildSenkoBridgeStackCss());
   }
   return cssParts.join("\n\n");
