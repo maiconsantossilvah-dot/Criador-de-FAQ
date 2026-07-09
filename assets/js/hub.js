@@ -1,7 +1,6 @@
 (() => {
   const redirectMap = {
-    "#qualidade-conteudo": "qualidade-conteudo.html",
-    "#qualidade-tecnica": "qualidade-tecnica.html"
+    "#qualidade-conteudo": "qualidade-conteudo.html"
   };
 
   if (redirectMap[window.location.hash]) {
