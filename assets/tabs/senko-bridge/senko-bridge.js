@@ -337,17 +337,30 @@ function buildSenkoBridgeStackCss() {
   margin-top: 0 !important;
   margin-bottom: 0 !important;
 }
-.senko-section-stack--section32 > :is(section, article, div):not(:first-child),
+.senko-section-stack--section32 > :not(:first-child),
+.senko-section-stack--section32 > :not(:first-child) :is(section, article, div, figure, picture, img, .section-32, .section-32-container, .section-32__container, .section-32__groupimage-section),
+.senko-section-stack--section32 > .senko-section-stack__item:not(:first-child),
 .senko-section-stack--section32 > .senko-section-stack__item:not(:first-child) > :is(section, article, div):first-child,
-.senko-section-stack--section32 > .senko-section-stack__item:not(:first-child) :is(.section-32, .section-32-container, .section-32__container, .section-32__groupimage-section) {
+.senko-section-stack--section32 > .senko-section-stack__item:not(:first-child) :is(section, article, div, figure, picture, img, .section-32, .section-32-container, .section-32__container, .section-32__groupimage-section) {
   border-top-left-radius: 0 !important;
   border-top-right-radius: 0 !important;
 }
-.senko-section-stack--section32 > :is(section, article, div):not(:last-child),
+.senko-section-stack--section32 > :not(:last-child),
+.senko-section-stack--section32 > :not(:last-child) :is(section, article, div, figure, picture, img, .section-32, .section-32-container, .section-32__container, .section-32__groupimage-section),
+.senko-section-stack--section32 > .senko-section-stack__item:not(:last-child),
 .senko-section-stack--section32 > .senko-section-stack__item:not(:last-child) > :is(section, article, div):first-child,
-.senko-section-stack--section32 > .senko-section-stack__item:not(:last-child) :is(.section-32, .section-32-container, .section-32__container, .section-32__groupimage-section) {
+.senko-section-stack--section32 > .senko-section-stack__item:not(:last-child) :is(section, article, div, figure, picture, img, .section-32, .section-32-container, .section-32__container, .section-32__groupimage-section) {
   border-bottom-left-radius: 0 !important;
   border-bottom-right-radius: 0 !important;
+}
+.senko-section-stack--section32 > :not(:first-child) :is(.section-32__container, .section-32-container) {
+  border-top-width: 0 !important;
+}
+.senko-section-stack--section32 > .senko-section-stack__item:not(:first-child) :is(.section-32__container, .section-32-container) {
+  border-top-width: 0 !important;
+}
+.senko-section-stack--section32 > .senko-section-stack__item {
+  display: block;
 }
 `;
 }
