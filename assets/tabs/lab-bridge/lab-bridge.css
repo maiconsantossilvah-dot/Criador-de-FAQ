@@ -1,0 +1,23 @@
+/* LabBridge usa a mesma estrutura visual do SenkoBridge. */
+html[data-page="conteudo"][data-editor-tab="labbridge"] .topbar [data-focus-mode],
+html[data-page="conteudo"][data-editor-tab="labbridge"] .topbar [data-preview-fullscreen],
+html[data-page="conteudo"][data-editor-tab="labbridge"] .topbar [data-code-focus-mode],
+html[data-page="conteudo"][data-editor-tab="labbridge"] .output-panel > .panel__head .actions,
+html[data-page="conteudo"][data-editor-tab="labbridge"] .editor-copy-actions {
+  display: none !important;
+}
+
+.labbridge-layout-card .senko-layout-card__add {
+  background: linear-gradient(135deg, #7c3aed, #ea5b0c);
+}
+
+#previewCanvas.is-lab-drop-target {
+  outline: 2px dashed rgba(124, 58, 237, 0.9);
+  outline-offset: -10px;
+  box-shadow: inset 0 0 0 9999px rgba(124, 58, 237, 0.08);
+}
+
+#previewCanvas.is-lab-drag-active .preview-frame,
+#previewCanvas.is-lab-drag-active iframe {
+  pointer-events: none;
+}

@@ -75,7 +75,7 @@
         tab: "senko",
         icon: "SK",
         title: "SenkoBridge",
-        summary: "Monte blocos do SenkoLib e transfira a montagem para o modo LP.",
+        summary: "Monte blocos do SenkoLib ou do Layout Lab e transfira a montagem para o modo LP.",
         badge: "&#9881;",
         meta: blockCount ? `${blockCount} bloco${blockCount === 1 ? "" : "s"} montado${blockCount === 1 ? "" : "s"}` : "Biblioteca Senko"
       };
@@ -1429,8 +1429,8 @@ ${trends}
       } : {
         ink: "#21172d",
         muted: "#6b5b7b",
-        bg: "#fbf8ff",
-        bgEnd: "#fff8f1",
+        bg: "#ffffff",
+        bgEnd: "#ffffff",
         hero: "linear-gradient(135deg, rgba(124, 58, 237, 0.12), rgba(234, 91, 12, 0.09)), #fffefd",
         card: "#fffefd",
         cardHover: "#fff7ef",
@@ -1469,7 +1469,6 @@ ${trends}
     </div>
     <small>${escapeHtml(senkoSection.meta)}</small>
   </button>`;
-
       return `<section class="ll-dashboard" aria-label="Dashboard do Layout Lab">
   <div class="ll-dashboard__hero">
     <h1>Central do Layout Lab</h1>
@@ -1489,14 +1488,22 @@ ${senkoCard}
 <style>
   html,
   body {
-    min-height: 100%;
+    height: 100%;
     margin: 0;
+    overflow: hidden;
     background: ${colors.bgEnd};
   }
 
+  *,
+  *::before,
+  *::after {
+    box-sizing: border-box;
+  }
+
   .ll-dashboard {
-    min-height: 100vh;
+    height: 100vh;
     padding: clamp(22px, 4vw, 46px);
+    overflow: hidden;
     color: ${colors.ink};
     background: linear-gradient(180deg, ${colors.bg}, ${colors.bgEnd});
     font-family: Inter, Arial, sans-serif;
@@ -1662,6 +1669,7 @@ ${senkoCard}
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 12px;
+    width: 100%;
   }
 
   .ll-dashboard__lp-card {
@@ -1670,7 +1678,7 @@ ${senkoCard}
     grid-template-columns: 46px minmax(0, 1fr) auto;
     gap: 16px;
     align-items: center;
-    min-height: 112px;
+    min-height: clamp(126px, 12vh, 154px);
     padding: 18px;
     border: 1px solid ${colors.line};
     border-radius: 8px;
@@ -1748,6 +1756,17 @@ ${senkoCard}
   }
 
   @media (max-width: 720px) {
+    html,
+    body {
+      overflow: auto;
+    }
+
+    .ll-dashboard {
+      height: auto;
+      min-height: 100vh;
+      overflow: visible;
+    }
+
     .ll-dashboard__lp {
       grid-template-columns: 1fr;
     }

@@ -20,6 +20,40 @@ html[data-page="conteudo"][data-editor-tab="senko"] .editor-copy-actions {
   overflow: hidden;
 }
 
+.senko-source-tabs {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  padding: 12px 14px 0;
+}
+
+.senko-source-tabs__button {
+  min-width: 0;
+  min-height: 38px;
+  border: 1px solid var(--panel-border);
+  border-radius: 8px;
+  color: var(--muted);
+  background: var(--panel);
+  font: inherit;
+  font-weight: 900;
+  cursor: pointer;
+  transition: transform 0.14s ease, border-color 0.14s ease, background 0.14s ease, color 0.14s ease;
+}
+
+.senko-source-tabs__button:hover,
+.senko-source-tabs__button:focus-visible {
+  border-color: rgba(255, 123, 50, 0.78);
+  color: var(--text);
+  outline: none;
+  transform: translateY(-1px);
+}
+
+.senko-source-tabs__button.is-active {
+  border-color: transparent;
+  color: #fff;
+  background: linear-gradient(135deg, #8a4ef6, #ff7b32);
+}
+
 .senko-builder__head {
   display: flex;
   align-items: center;

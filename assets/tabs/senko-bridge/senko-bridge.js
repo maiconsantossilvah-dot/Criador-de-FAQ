@@ -14,6 +14,7 @@ function ensureSenkoBridgeState() {
     error: "",
     status: "",
     query: "",
+    source: "senko",
     selectedVariants: {},
     layouts: [],
     variantsById: {},
@@ -179,6 +180,16 @@ function fixSenkoRelativeUrls(value) {
     });
 }
 
+function normalizeSenkoBridgeBlockCss(block) {
+  const css = normalizeSenkoCss(block?.css);
+  return block?.bridgeSource === "lab" ? css : fixSenkoRelativeUrls(css);
+}
+
+function normalizeSenkoBridgeBlockHtml(block) {
+  const html = normalizeSenkoHtml(block?.html);
+  return block?.bridgeSource === "lab" ? html : fixSenkoRelativeUrls(html);
+}
+
 function senkoBridgeEscape(value) {
   return String(value || "")
     .replace(/&/g, "&amp;")
@@ -190,7 +201,45 @@ function senkoBridgeEscape(value) {
 
 function getSenkoBridgeLayout(layoutId) {
   const bridge = ensureSenkoBridgeState();
+  if (isSenkoBridgeLabKey(layoutId)) {
+    const labId = getSenkoBridgeLabId(layoutId);
+    return getSenkoBridgeLabLayouts().find((layout) => layout.id === labId);
+  }
   return bridge.layouts.find((layout) => layout.id === layoutId);
+}
+
+function isSenkoBridgeLabKey(layoutId) {
+  return String(layoutId || "").startsWith("lab:");
+}
+
+function getSenkoBridgeLabId(layoutId) {
+  return String(layoutId || "").replace(/^lab:/, "");
+}
+
+function getSenkoBridgeLayoutKey(layout) {
+  return layout && layout.bridgeSource === "lab" ? `lab:${layout.id}` : layout?.id;
+}
+
+function getSenkoBridgeActiveSource() {
+  const bridge = ensureSenkoBridgeState();
+  return bridge.source === "lab" ? "lab" : "senko";
+}
+
+function getSenkoBridgeLabLayouts() {
+  if (typeof getLabBridgeLayouts !== "function") {
+    return [];
+  }
+
+  return getLabBridgeLayouts().map((layout) => ({
+    ...layout,
+    bridgeSource: "lab",
+    tags: [...(layout.tags || []), "layout lab", "lab"]
+  }));
+}
+
+function getSenkoBridgeSourceLayouts() {
+  const bridge = ensureSenkoBridgeState();
+  return getSenkoBridgeActiveSource() === "lab" ? getSenkoBridgeLabLayouts() : bridge.layouts;
 }
 
 function getSenkoBridgeSelectedEntry(layoutId) {
@@ -200,11 +249,25 @@ function getSenkoBridgeSelectedEntry(layoutId) {
     return null;
   }
 
+  if (isSenkoBridgeLabKey(layoutId) || layout.bridgeSource === "lab") {
+    const layoutKey = isSenkoBridgeLabKey(layoutId) ? layoutId : getSenkoBridgeLayoutKey(layout);
+    return {
+      sourceId: layoutKey,
+      bridgeSource: "lab",
+      name: layout.name || layout.id,
+      variantName: "Layout Lab",
+      html: layout.html,
+      css: layout.css,
+      tags: layout.tags || []
+    };
+  }
+
   const variantIndex = Number(bridge.selectedVariants[layoutId] ?? -1);
   const variants = bridge.variantsById[layoutId] || [];
   const variant = variantIndex >= 0 ? variants[variantIndex] : null;
   return {
     sourceId: layout.id,
+    bridgeSource: "senko",
     name: layout.name || layout.id,
     variantName: variant ? (variant.name || `Variante ${variantIndex + 1}`) : "Base do layout",
     html: variant ? variant.html : layout.html,
@@ -216,14 +279,16 @@ function getSenkoBridgeSelectedEntry(layoutId) {
 function getSenkoBridgeFilteredLayouts() {
   const bridge = ensureSenkoBridgeState();
   const query = String(bridge.query || "").trim().toLowerCase();
+  const layouts = getSenkoBridgeSourceLayouts();
   if (!query) {
-    return bridge.layouts;
+    return layouts;
   }
 
-  return bridge.layouts.filter((layout) => {
+  return layouts.filter((layout) => {
     return [
       layout.id,
       layout.name,
+      layout.summary,
       ...(layout.tags || [])
     ].join(" ").toLowerCase().includes(query);
   });
@@ -327,8 +392,14 @@ function hasSenkoBridgeStackableBlock(blocks = ensureSenkoBridgeState().blocks) 
 function buildSenkoBridgeStackCss() {
   return `
 :is(.section-32, .section-32-container, .section-32__container, .section-32__groupimage-section, .c32-carousel, .c32-slides, .c32-slide) {
+  box-sizing: border-box !important;
+  width: 100% !important;
+  max-width: none !important;
+  margin-left: auto !important;
+  margin-right: auto !important;
   border: 0 !important;
   outline: 0 !important;
+  border-radius: 0 !important;
 }
 :is(.section-32, .section-32-container, .section-32__container, .section-32__groupimage-section, .c32-carousel, .c32-slides, .c32-slide) {
   margin-top: 0 !important;
@@ -342,12 +413,18 @@ function buildSenkoBridgeStackCss() {
   display: block !important;
   width: 100% !important;
   min-width: 100% !important;
+  max-width: none !important;
+  height: auto !important;
+  margin: 0 auto !important;
   border: 0 !important;
   outline: 0 !important;
+  border-radius: 0 !important;
 }
 .senko-section-stack {
   display: grid;
   gap: 0;
+  width: 100%;
+  max-width: none;
   overflow: hidden;
 }
 .senko-section-stack > * {
@@ -361,7 +438,12 @@ function buildSenkoBridgeStackCss() {
   margin-bottom: 0 !important;
 }
 .senko-section-stack--section32 :is(.section-32, .section-32-container, .section-32__container) {
+  width: 100% !important;
+  max-width: none !important;
+  margin-left: auto !important;
+  margin-right: auto !important;
   border: 0 !important;
+  border-radius: 0 !important;
 }
 .senko-section-stack--section32 .senko-preview-block {
   margin: 0 !important;
@@ -395,7 +477,7 @@ function buildSenkoBridgeStackCss() {
 function buildSenkoBridgeCssBundle() {
   const bridge = ensureSenkoBridgeState();
   const cssParts = bridge.blocks
-    .map((block) => `/* ${block.name} - ${block.variantName} */\n${normalizeSenkoCss(block.css)}`)
+    .map((block) => `/* ${block.name} - ${block.variantName} */\n${normalizeSenkoBridgeBlockCss(block)}`)
     .filter((part) => part.trim())
   if (hasSenkoBridgeStackableBlock(bridge.blocks)) {
     cssParts.push(buildSenkoBridgeStackCss());
@@ -409,7 +491,7 @@ function buildSenkoBridgeHtmlBundle() {
   let group = [];
   let groupKey = "";
 
-  const renderBlock = (block) => `<!-- ${block.name} - ${block.variantName} -->\n${normalizeSenkoHtml(block.html)}`.trim();
+  const renderBlock = (block) => `<!-- ${block.name} - ${block.variantName} -->\n${normalizeSenkoBridgeBlockHtml(block)}`.trim();
   const flushGroup = () => {
     if (!group.length) {
       return;
@@ -441,8 +523,8 @@ function buildSenkoBridgeHtmlBundle() {
 }
 
 function buildSenkoBridgeOutputHtml(copyMode = "html") {
-  const css = fixSenkoRelativeUrls(buildSenkoBridgeCssBundle());
-  const html = fixSenkoRelativeUrls(buildSenkoBridgeHtmlBundle());
+  const css = buildSenkoBridgeCssBundle();
+  const html = buildSenkoBridgeHtmlBundle();
 
   if (copyMode === "css") {
     return css;
@@ -456,8 +538,8 @@ function buildSenkoBridgeOutputHtml(copyMode = "html") {
 }
 
 function buildSenkoBridgeTransferHtml() {
-  const css = fixSenkoRelativeUrls(buildSenkoBridgeCssBundle());
-  const html = fixSenkoRelativeUrls(buildSenkoBridgeHtmlBundle());
+  const css = buildSenkoBridgeCssBundle();
+  const html = buildSenkoBridgeHtmlBundle();
   return `<style>\n${css}\n</style>\n\n${html}`.trim();
 }
 
@@ -470,7 +552,7 @@ function buildSenkoBridgePreviewBlocksHtml() {
   const renderPreviewBlock = (block, index, isGrouped = false) => {
     return `<section class="senko-preview-block${isGrouped ? " senko-section-stack__item" : ""}" data-senko-preview-block="${index}">
   <button class="senko-preview-remove" type="button" data-senko-preview-remove="${index}" aria-label="Remover ${senkoBridgeEscape(block.name)}">&times;</button>
-${fixSenkoRelativeUrls(normalizeSenkoHtml(block.html))}
+${normalizeSenkoBridgeBlockHtml(block)}
 </section>`;
   };
 
@@ -508,7 +590,7 @@ ${fixSenkoRelativeUrls(normalizeSenkoHtml(block.html))}
 }
 
 function buildSenkoBridgePreviewHtml() {
-  const css = fixSenkoRelativeUrls(buildSenkoBridgeCssBundle());
+  const css = buildSenkoBridgeCssBundle();
   const html = buildSenkoBridgePreviewBlocksHtml();
   const content = html
     ? `<div class="lp-container">${html}</div>`
@@ -543,6 +625,8 @@ document.addEventListener("click", function(event) {
 }
 
 function buildSenkoBridgeMiniSrcdoc(entry) {
+  const css = entry?.bridgeSource === "lab" ? normalizeSenkoCss(entry.css) : fixSenkoRelativeUrls(normalizeSenkoCss(entry.css));
+  const html = entry?.bridgeSource === "lab" ? normalizeSenkoHtml(entry.html) : fixSenkoRelativeUrls(normalizeSenkoHtml(entry.html));
   return `<!doctype html>
 <html lang="pt-BR">
 <head>
@@ -552,12 +636,12 @@ function buildSenkoBridgeMiniSrcdoc(entry) {
 html, body { margin: 0; background: #fff; overflow: hidden; font-family: Arial, sans-serif; }
 body { width: 760px; min-height: 430px; transform-origin: top left; }
 .lp-container { width: 100%; background: #fff; overflow: hidden; }
-${fixSenkoRelativeUrls(normalizeSenkoCss(entry.css))}
+${css}
   </style>
 </head>
 <body>
 <div class="lp-container">
-${fixSenkoRelativeUrls(normalizeSenkoHtml(entry.html))}
+${html}
 </div>
 </body>
 </html>`;
@@ -601,32 +685,62 @@ function renderSenkoBridgeAfterMutation() {
   restoreSenkoBridgeScrollSnapshot(scrollSnapshot);
 }
 
-function renderSenkoBridgeEditor() {
+function buildSenkoBridgeLayoutCardsHtml(layouts = getSenkoBridgeFilteredLayouts()) {
   const bridge = ensureSenkoBridgeState();
-  if (!bridge.loaded && !bridge.loading && !bridge.error) {
-    window.setTimeout(() => loadSenkoBridgeLibrary(), 0);
-  }
 
-  const layouts = getSenkoBridgeFilteredLayouts();
-  const cards = layouts.map((layout) => {
-    const variants = bridge.variantsById[layout.id] || [];
-    const entry = getSenkoBridgeSelectedEntry(layout.id) || layout;
+  return layouts.map((layout) => {
+    const layoutKey = getSenkoBridgeLayoutKey(layout);
+    const variants = layout.bridgeSource === "lab" ? [] : bridge.variantsById[layout.id] || [];
+    const entry = getSenkoBridgeSelectedEntry(layoutKey) || layout;
     const variantOptions = [
       `<option value="-1">Base do layout</option>`,
-      ...variants.map((variant, index) => `<option value="${index}"${String(bridge.selectedVariants[layout.id] ?? "-1") === String(index) ? " selected" : ""}>${senkoBridgeEscape(variant.name || `Variante ${index + 1}`)}</option>`)
+      ...variants.map((variant, index) => `<option value="${index}"${String(bridge.selectedVariants[layoutKey] ?? "-1") === String(index) ? " selected" : ""}>${senkoBridgeEscape(variant.name || `Variante ${index + 1}`)}</option>`)
     ].join("");
 
-    return `<article class="senko-layout-card" draggable="true" data-senko-layout-card="${senkoBridgeEscape(layout.id)}" title="Clique ou arraste para adicionar">
-      <button class="senko-layout-card__add" type="button" data-action="add-senko-layout" data-senko-layout="${senkoBridgeEscape(layout.id)}" aria-label="Adicionar ${senkoBridgeEscape(layout.name || layout.id)}">+</button>
-      <div class="senko-layout-card__preview" role="button" tabindex="0" data-action="add-senko-layout" data-senko-layout="${senkoBridgeEscape(layout.id)}" aria-label="Adicionar ${senkoBridgeEscape(layout.name || layout.id)}">
+    return `<article class="senko-layout-card${layout.bridgeSource === "lab" ? " senko-layout-card--lab" : ""}" draggable="true" data-senko-layout-card="${senkoBridgeEscape(layoutKey)}" title="Clique ou arraste para adicionar">
+      <button class="senko-layout-card__add" type="button" data-action="add-senko-layout" data-senko-layout="${senkoBridgeEscape(layoutKey)}" aria-label="Adicionar ${senkoBridgeEscape(layout.name || layout.id)}">+</button>
+      <div class="senko-layout-card__preview" role="button" tabindex="0" data-action="add-senko-layout" data-senko-layout="${senkoBridgeEscape(layoutKey)}" aria-label="Adicionar ${senkoBridgeEscape(layout.name || layout.id)}">
         <iframe title="Miniatura de ${senkoBridgeEscape(layout.name || layout.id)}" srcdoc="${senkoBridgeEscape(buildSenkoBridgeMiniSrcdoc(entry))}"></iframe>
       </div>
       <div class="senko-layout-card__body">
         <strong>${senkoBridgeEscape(layout.name || layout.id)}</strong>
-        ${variants.length ? `<select class="senko-layout-card__variant" data-senko-variant="${senkoBridgeEscape(layout.id)}" aria-label="Variante de ${senkoBridgeEscape(layout.name || layout.id)}">${variantOptions}</select>` : `<small>Base do layout</small>`}
+        ${variants.length ? `<select class="senko-layout-card__variant" data-senko-variant="${senkoBridgeEscape(layoutKey)}" aria-label="Variante de ${senkoBridgeEscape(layout.name || layout.id)}">${variantOptions}</select>` : `<small>${layout.bridgeSource === "lab" ? "Layout Lab" : "Base do layout"}</small>`}
       </div>
     </article>`;
   }).join("");
+}
+
+function refreshSenkoBridgeLayoutList() {
+  const bridge = ensureSenkoBridgeState();
+  const listIsLoading = getSenkoBridgeActiveSource() === "senko" && bridge.loading;
+  const list = document.querySelector("[data-senko-bridge-list]");
+  if (!list) {
+    return false;
+  }
+
+  const cards = buildSenkoBridgeLayoutCardsHtml(getSenkoBridgeFilteredLayouts());
+  list.innerHTML = listIsLoading
+    ? '<div class="senko-builder__empty">Carregando...</div>'
+    : cards || '<div class="senko-builder__empty">Nenhum layout encontrado.</div>';
+
+  return true;
+}
+
+function renderSenkoBridgeEditor() {
+  const bridge = ensureSenkoBridgeState();
+  const activeSource = getSenkoBridgeActiveSource();
+  if (activeSource === "senko" && !bridge.loaded && !bridge.loading && !bridge.error) {
+    window.setTimeout(() => loadSenkoBridgeLibrary(), 0);
+  }
+
+  const layouts = getSenkoBridgeFilteredLayouts();
+  const cards = buildSenkoBridgeLayoutCardsHtml(layouts);
+  const sourceTabs = `<div class="senko-source-tabs" role="tablist" aria-label="Fonte dos layouts">
+        <button class="senko-source-tabs__button${activeSource === "senko" ? " is-active" : ""}" type="button" role="tab" aria-selected="${activeSource === "senko"}" data-action="set-senko-source" data-senko-source="senko">SenkoLib</button>
+        <button class="senko-source-tabs__button${activeSource === "lab" ? " is-active" : ""}" type="button" role="tab" aria-selected="${activeSource === "lab"}" data-action="set-senko-source" data-senko-source="lab">Layout Lab</button>
+      </div>`;
+  const listIsLoading = activeSource === "senko" && bridge.loading;
+  const searchPlaceholder = activeSource === "lab" ? "FAQ, tabela, stories..." : "Header, carrossel, FAQ...";
 
   const stack = bridge.blocks.length ? bridge.blocks.map((block, index) => {
     return `<article class="senko-builder-item">
@@ -645,12 +759,13 @@ function renderSenkoBridgeEditor() {
 
   return `<section class="senko-bridge-editor" aria-label="SenkoBridge">
     <div class="senko-bridge-card">
+      ${sourceTabs}
       <label class="senko-bridge-search">
         <span>Buscar layout</span>
-        <input type="search" data-senko-query value="${senkoBridgeEscape(bridge.query)}" placeholder="Header, carrossel, FAQ...">
+        <input type="search" data-senko-query value="${senkoBridgeEscape(bridge.query)}" placeholder="${senkoBridgeEscape(searchPlaceholder)}">
       </label>
-      <div class="senko-bridge-list">
-        ${bridge.loading ? '<div class="senko-builder__empty">Carregando...</div>' : cards || '<div class="senko-builder__empty">Nenhum layout encontrado.</div>'}
+      <div class="senko-bridge-list" data-senko-bridge-list>
+        ${listIsLoading ? '<div class="senko-builder__empty">Carregando...</div>' : cards || '<div class="senko-builder__empty">Nenhum layout encontrado.</div>'}
       </div>
     </div>
 

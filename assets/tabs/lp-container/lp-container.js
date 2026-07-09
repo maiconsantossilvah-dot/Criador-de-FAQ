@@ -892,21 +892,31 @@ ${containerHtml}`;
         const createInlineHexControl = (initialValue) => {
           const wrapper = document.createElement("div");
           wrapper.className = "preview-edit-popover__mini-color";
-          const swatch = document.createElement("span");
-          swatch.className = "preview-edit-popover__inline-swatch";
+          const color = document.createElement("input");
+          color.type = "color";
+          color.className = "preview-edit-popover__color preview-edit-popover__inline-swatch";
+          color.setAttribute("aria-label", "Abrir seletor de cor");
+          color.setAttribute("title", "Abrir seletor de cor");
           const input = document.createElement("input");
           input.type = "text";
           input.value = colorToHex(initialValue);
+          color.value = input.value;
           input.placeholder = "#111827";
-          swatch.style.setProperty("--preview-edit-color", input.value);
+          color.style.setProperty("--preview-edit-color", input.value);
           input.addEventListener("input", () => {
             if (isHexColor(input.value)) {
               input.value = normalizeHexColor(input.value);
-              swatch.style.setProperty("--preview-edit-color", input.value);
+              color.value = input.value;
+              color.style.setProperty("--preview-edit-color", input.value);
               applyLiveValue({ multiline: options.multiline });
             }
           });
-          wrapper.append(swatch, input);
+          color.addEventListener("input", () => {
+            input.value = normalizeHexColor(color.value);
+            color.style.setProperty("--preview-edit-color", input.value);
+            applyLiveValue({ multiline: options.multiline });
+          });
+          wrapper.append(color, input);
           wrapper.__llColorInput = input;
           return wrapper;
         };
