@@ -326,8 +326,24 @@ function hasSenkoBridgeStackableBlock(blocks = ensureSenkoBridgeState().blocks) 
 
 function buildSenkoBridgeStackCss() {
   return `
-:is(.section-32, .section-32-container, .section-32__container) {
+:is(.section-32, .section-32-container, .section-32__container, .section-32__groupimage-section, .c32-carousel, .c32-slides, .c32-slide) {
   border: 0 !important;
+  outline: 0 !important;
+}
+:is(.section-32, .section-32-container, .section-32__container, .section-32__groupimage-section, .c32-carousel, .c32-slides, .c32-slide) {
+  margin-top: 0 !important;
+  margin-bottom: 0 !important;
+}
+:is(.section-32__groupimage-section, .section-32__groupimage-section picture, .c32-slide picture) {
+  display: block !important;
+  line-height: 0 !important;
+}
+:is(.section-32__groupimage-section img, .c32-slide img) {
+  display: block !important;
+  width: 100% !important;
+  min-width: 100% !important;
+  border: 0 !important;
+  outline: 0 !important;
 }
 .senko-section-stack {
   display: grid;
@@ -346,6 +362,13 @@ function buildSenkoBridgeStackCss() {
 }
 .senko-section-stack--section32 :is(.section-32, .section-32-container, .section-32__container) {
   border: 0 !important;
+}
+.senko-section-stack--section32 .senko-preview-block {
+  margin: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  outline: 0 !important;
+  background: transparent !important;
 }
 .senko-section-stack--section32 > :not(:first-child),
 .senko-section-stack--section32 > :not(:first-child) :is(section, article, div, figure, picture, img, .section-32, .section-32-container, .section-32__container, .section-32__groupimage-section),
@@ -375,7 +398,7 @@ function buildSenkoBridgeCssBundle() {
     .map((block) => `/* ${block.name} - ${block.variantName} */\n${normalizeSenkoCss(block.css)}`)
     .filter((part) => part.trim())
   if (hasSenkoBridgeStackableBlock(bridge.blocks)) {
-    cssParts.unshift(buildSenkoBridgeStackCss());
+    cssParts.push(buildSenkoBridgeStackCss());
   }
   return cssParts.join("\n\n");
 }
