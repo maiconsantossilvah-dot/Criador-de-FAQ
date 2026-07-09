@@ -11,6 +11,7 @@
       article: "artigo/artigo",
       carousel: "carrossel/carrossel",
       bento: "bento/bento",
+      senko: "senko-bridge/senko-bridge",
       dashboard: "dashboard/dashboard",
       template: "lp-container/lp-container"
     };
@@ -105,6 +106,7 @@
           article: {},
           carousel: {},
           bento: {},
+          senko: {},
           template: {}
         }
       },
@@ -118,6 +120,7 @@
           article: "",
           carousel: "",
           bento: "",
+          senko: "",
           template: ""
         },
         items: {
@@ -127,6 +130,7 @@
           article: [],
           carousel: [],
           bento: [],
+          senko: [],
           template: []
         }
       },
@@ -140,6 +144,7 @@
         article: {},
         carousel: {},
         bento: {},
+        senko: {},
         template: {}
       },
       classStyles: {
@@ -149,6 +154,7 @@
         article: {},
         carousel: {},
         bento: {},
+        senko: {},
         template: {}
       },
       items: [
@@ -189,6 +195,17 @@
       bento: {
         html: "",
         status: ""
+      },
+      senkoBridge: {
+        loading: false,
+        loaded: false,
+        error: "",
+        status: "",
+        query: "",
+        selectedVariants: {},
+        layouts: [],
+        variantsById: {},
+        blocks: []
       },
       stories: {
         ariaLabel: "Stories visuais e representativos do produto",
@@ -465,6 +482,7 @@
     const previewDeviceButtons = Array.from(document.querySelectorAll("[data-preview-device]"));
     const responsivePreviewSaveButtons = Array.from(document.querySelectorAll("[data-responsive-preview-save]"));
     const responsivePreviewRemoveButtons = Array.from(document.querySelectorAll("[data-responsive-preview-remove]"));
+    const senkoTransferPreviewButtons = Array.from(document.querySelectorAll("[data-senko-transfer-preview]"));
     const copyStatus = document.querySelector("#copyStatus");
     const themeToggle = document.querySelector("#themeToggle");
     const homeThemeToggle = document.querySelector("#homeThemeToggle");
@@ -2102,7 +2120,7 @@ ${itemMarkup}
     }
 
     function normalizeArticleOverlayOpacity(value) {
-      const numericValue = Number(String(value ?? "").replace(",", "."));
+      const numericValue = Number(String(value || "").replace(",", "."));
       if (!Number.isFinite(numericValue)) {
         return 0.74;
       }
@@ -2111,7 +2129,7 @@ ${itemMarkup}
     }
 
     function normalizeCarouselCaptionOpacity(value) {
-      const numericValue = Number(String(value ?? "").replace(",", "."));
+      const numericValue = Number(String(value || "").replace(",", "."));
       if (!Number.isFinite(numericValue)) {
         return 0.64;
       }
@@ -2136,7 +2154,7 @@ ${itemMarkup}
     }
 
     function updateEditorTabs() {
-      const showTools = currentPage === "conteudo" && currentEditorTab !== "dashboard" && currentEditorTab !== "template";
+      const showTools = currentPage === "conteudo" && currentEditorTab !== "dashboard" && currentEditorTab !== "template" && currentEditorTab !== "senko";
       document.documentElement.dataset.editorTab = currentPage === "conteudo" ? currentEditorTab : "";
       document.documentElement.dataset.dashboardView = currentPage === "conteudo" && currentEditorTab === "dashboard" ? state.dashboard.view : "";
       editorTools.classList.toggle("is-hidden", !showTools);
@@ -2161,6 +2179,7 @@ ${itemMarkup}
       const isArticleTab = currentPage === "conteudo" && currentEditorTab === "article";
       const isCarouselTab = currentPage === "conteudo" && currentEditorTab === "carousel";
       const isBentoTab = currentPage === "conteudo" && currentEditorTab === "bento";
+      const isSenkoTab = currentPage === "conteudo" && currentEditorTab === "senko";
       const isTemplateTab = currentPage === "conteudo" && currentEditorTab === "template";
       const showHomeReturn = currentPage === "conteudo" && (!isDashboardTab || state.dashboard.view !== "layouts");
       const label = isTableTab ? "Adicionar linha" : "Adicionar pergunta";
@@ -2168,7 +2187,7 @@ ${itemMarkup}
         button.classList.toggle("is-hidden", !showHomeReturn);
       });
       addButtons.forEach((button) => {
-        button.classList.toggle("is-hidden", isDashboardTab || isStoriesTab || isArticleTab || isCarouselTab || isBentoTab || isTemplateTab);
+        button.classList.toggle("is-hidden", isDashboardTab || isStoriesTab || isArticleTab || isCarouselTab || isBentoTab || isSenkoTab || isTemplateTab);
         button.textContent = "+";
         button.setAttribute("aria-label", label);
         button.setAttribute("title", label);
@@ -2186,6 +2205,7 @@ ${itemMarkup}
 
       const isDashboardTab = currentPage === "conteudo" && currentEditorTab === "dashboard";
       const isTemplateTab = currentPage === "conteudo" && currentEditorTab === "template";
+      const isSenkoTab = currentPage === "conteudo" && currentEditorTab === "senko";
       outputTitle.textContent = isDashboardTab
         ? state.dashboard.view === "ecommerce-insights"
           ? "Guia de conteúdo"
@@ -2198,19 +2218,23 @@ ${itemMarkup}
           ? "Prévia da LP"
           : config.outputTitle;
 
+      if (isSenkoTab) {
+        outputTitle.textContent = "Montagem SenkoBridge";
+      }
+
       htmlCopyButtons.forEach((button) => {
         button.textContent = config.copyLabel;
-        button.classList.toggle("is-hidden", isDashboardTab);
+        button.classList.toggle("is-hidden", isDashboardTab || isSenkoTab);
       });
 
       cssCopyButtons.forEach((button) => {
         button.textContent = config.cssCopyLabel || "Copiar CSS";
-        button.classList.toggle("is-hidden", currentPage !== "conteudo" || isDashboardTab);
+        button.classList.toggle("is-hidden", currentPage !== "conteudo" || isDashboardTab || isSenkoTab);
       });
 
       fullCopyButtons.forEach((button) => {
         button.textContent = config.fullCopyLabel;
-        button.classList.toggle("is-hidden", currentPage !== "conteudo" || isDashboardTab);
+        button.classList.toggle("is-hidden", currentPage !== "conteudo" || isDashboardTab || isSenkoTab);
       });
     }
 
@@ -2395,6 +2419,10 @@ ${buildTabStyleWithClass("bento", buildBentoStyle)}
 ${buildResponsiveStyle("bento", { includeDraft: true })}`;
       }
 
+      if (currentPage === "conteudo" && currentEditorTab === "senko") {
+        return typeof buildSenkoBridgePreviewHtml === "function" ? buildSenkoBridgePreviewHtml() : "";
+      }
+
       if (currentPage === "conteudo" && currentEditorTab === "template") {
         return buildTemplatePreviewHtml();
       }
@@ -2491,13 +2519,25 @@ ${buildFaqStylePackage({ includeResponsive: true, responsiveOptions: { includeDr
         return bentoHtml;
       }
 
+      if (currentEditorTab === "senko") {
+        if (typeof buildSenkoBridgeOutputHtml !== "function") {
+          return "";
+        }
+
+        return buildSenkoBridgeOutputHtml(copyMode);
+      }
+
       if (currentEditorTab === "template") {
         if (copyMode === "css") {
-          return buildTabStyleWithClass("template", buildTemplateStyle);
+          const embeddedStyle = typeof buildTemplateEmbeddedStyle === "function" ? buildTemplateEmbeddedStyle() : "";
+          return [embeddedStyle, buildTabStyleWithClass("template", buildTemplateStyle)].filter(Boolean).join("\n\n");
         }
 
         if (copyMode === "full" && getResponsiveVersionList("template").length) {
-          return buildResponsivePackage("template", () => buildTemplateOutputHtml("html"), () => buildTabStyleWithClass("template", buildTemplateStyle));
+          return buildResponsivePackage("template", () => buildTemplateOutputHtml("html"), () => {
+            const embeddedStyle = typeof buildTemplateEmbeddedStyle === "function" ? buildTemplateEmbeddedStyle() : "";
+            return [embeddedStyle, buildTabStyleWithClass("template", buildTemplateStyle)].filter(Boolean).join("\n\n");
+          });
         }
 
         return buildTemplateOutputHtml(copyMode);
@@ -2538,6 +2578,7 @@ ${buildFaqStylePackage({ includeResponsive: true, responsiveOptions: { includeDr
         article: 1280,
         carousel: 1280,
         bento: 1180,
+        senko: 1280,
         template: 1280
       };
 
@@ -2557,7 +2598,26 @@ ${buildFaqStylePackage({ includeResponsive: true, responsiveOptions: { includeDr
     }
 
     function shouldShowResponsivePreviewActions() {
-      return currentPage === "conteudo" && currentEditorTab !== "dashboard";
+      return currentPage === "conteudo" && currentEditorTab !== "dashboard" && currentEditorTab !== "senko";
+    }
+
+    function transferSenkoBridgeToLp() {
+      if (typeof buildSenkoBridgeTransferHtml !== "function") {
+        return;
+      }
+      state.template.html = buildSenkoBridgeTransferHtml();
+      state.template.status = "Montagem do SenkoBridge transferida para o LP.";
+      currentEditorTab = "template";
+      renderEditor();
+    }
+
+    function updateSenkoTransferPreviewButtons() {
+      const showTransfer = currentPage === "conteudo" && currentEditorTab === "senko";
+      const hasBlocks = Boolean(showTransfer && state.senkoBridge && Array.isArray(state.senkoBridge.blocks) && state.senkoBridge.blocks.length);
+      senkoTransferPreviewButtons.forEach((button) => {
+        button.hidden = !showTransfer;
+        button.disabled = !hasBlocks;
+      });
     }
 
     function ensureResponsiveEditDeviceForPreview() {
@@ -2677,6 +2737,7 @@ ${buildFaqStylePackage({ includeResponsive: true, responsiveOptions: { includeDr
           button.hidden = !showResponsiveActions;
           button.disabled = !showResponsiveActions || !hasSavedVersion;
         });
+        updateSenkoTransferPreviewButtons();
         return;
       }
       if (currentPage === "conteudo" && currentEditorTab === "dashboard") {
@@ -2700,6 +2761,7 @@ ${buildFaqStylePackage({ includeResponsive: true, responsiveOptions: { includeDr
         button.hidden = !showResponsiveActions;
         button.disabled = !showResponsiveActions || !hasSavedVersion;
       });
+      updateSenkoTransferPreviewButtons();
     }
 
     function setPreviewDevice(device) {
@@ -2717,7 +2779,39 @@ ${buildFaqStylePackage({ includeResponsive: true, responsiveOptions: { includeDr
       updateOutput({ preservePreviewScroll: false });
     }
 
-    function scheduleTemplatePreviewUpdate(delay = 120) {
+    function getEditorFocusSnapshot() {
+      const activeElement = document.activeElement;
+      if (!activeElement || !editor.contains(activeElement)) {
+        return null;
+      }
+
+      if (!["TEXTAREA", "INPUT", "SELECT"].includes(activeElement.tagName)) {
+        return null;
+      }
+
+      return {
+        element: activeElement,
+        start: typeof activeElement.selectionStart === "number" ? activeElement.selectionStart : null,
+        end: typeof activeElement.selectionEnd === "number" ? activeElement.selectionEnd : null,
+        scrollTop: activeElement.scrollTop,
+        scrollLeft: activeElement.scrollLeft
+      };
+    }
+
+    function restoreEditorFocusSnapshot(snapshot) {
+      if (!snapshot || !snapshot.element || !document.contains(snapshot.element)) {
+        return;
+      }
+
+      snapshot.element.focus({ preventScroll: true });
+      if (snapshot.start !== null && typeof snapshot.element.setSelectionRange === "function") {
+        snapshot.element.setSelectionRange(snapshot.start, snapshot.end);
+      }
+      snapshot.element.scrollTop = snapshot.scrollTop || 0;
+      snapshot.element.scrollLeft = snapshot.scrollLeft || 0;
+    }
+
+    function scheduleTemplatePreviewUpdate(delay = 320) {
       window.clearTimeout(templatePreviewUpdateTimer);
       templatePreviewUpdateTimer = window.setTimeout(() => {
         updateOutput();
@@ -2725,6 +2819,7 @@ ${buildFaqStylePackage({ includeResponsive: true, responsiveOptions: { includeDr
     }
 
     function updateOutput(options = {}) {
+      const editorFocusSnapshot = getEditorFocusSnapshot();
       const preservePreviewScroll = options.preservePreviewScroll !== false;
       const previewScrollPosition = preservePreviewScroll ? getPreviewScrollPosition() : null;
       generatedHtml.value = buildOutputHtml("html");
@@ -2734,8 +2829,10 @@ ${buildFaqStylePackage({ includeResponsive: true, responsiveOptions: { includeDr
         if (previewScrollPosition) {
           restorePreviewScrollPosition(previewScrollPosition);
         }
+        restoreEditorFocusSnapshot(editorFocusSnapshot);
       }, { once: true });
       previewFrame.srcdoc = buildPreviewHtml();
+      restoreEditorFocusSnapshot(editorFocusSnapshot);
       copyStatus.textContent = "";
       copyStatus.classList.remove("is-warning", "is-visible");
     }
@@ -2836,6 +2933,8 @@ ${buildFaqStylePackage({ includeResponsive: true, responsiveOptions: { includeDr
         editor.innerHTML = renderCarouselEditor();
       } else if (currentPage === "conteudo" && currentEditorTab === "bento") {
         editor.innerHTML = renderBentoEditor();
+      } else if (currentPage === "conteudo" && currentEditorTab === "senko") {
+        editor.innerHTML = typeof renderSenkoBridgeEditor === "function" ? renderSenkoBridgeEditor() : "";
       } else if (currentPage === "conteudo" && currentEditorTab === "template") {
         editor.innerHTML = renderTemplateEditor();
       } else {
@@ -2843,7 +2942,7 @@ ${buildFaqStylePackage({ includeResponsive: true, responsiveOptions: { includeDr
       }
       setupTemplateCodeEditors(editor);
       if (currentPage === "conteudo" && currentEditorTab !== "dashboard") {
-        const presetMarkup = currentEditorTab === "template" ? "" : renderPresetPanel();
+        const presetMarkup = currentEditorTab === "template" || currentEditorTab === "senko" ? "" : renderPresetPanel();
         if (presetMarkup) {
           editor.insertAdjacentHTML("afterbegin", presetMarkup);
         }
@@ -3042,6 +3141,20 @@ ${buildFaqStylePackage({ includeResponsive: true, responsiveOptions: { includeDr
           scheduleTemplatePreviewUpdate();
           return;
         }
+      }
+
+      const senkoQueryField = event.target.dataset.senkoQuery;
+      if (senkoQueryField !== undefined) {
+        state.senkoBridge.query = event.target.value;
+        renderEditor(true);
+        return;
+      }
+
+      const senkoVariantId = event.target.dataset.senkoVariant;
+      if (senkoVariantId) {
+        state.senkoBridge.selectedVariants[senkoVariantId] = event.target.value;
+        renderEditor(true);
+        return;
       }
 
       markResponsiveDirty();
@@ -3509,7 +3622,7 @@ ${buildFaqStylePackage({ includeResponsive: true, responsiveOptions: { includeDr
       if (dashboardButton) {
         event.preventDefault();
         const nextDashboardTab = dashboardButton.dataset.dashboardTab;
-        if (["faq", "table", "stories", "article", "carousel", "bento", "template"].includes(nextDashboardTab)) {
+        if (["faq", "table", "stories", "article", "carousel", "bento", "senko", "template"].includes(nextDashboardTab)) {
           currentEditorTab = nextDashboardTab;
           renderEditor();
         }
@@ -3534,7 +3647,7 @@ ${buildFaqStylePackage({ includeResponsive: true, responsiveOptions: { includeDr
         event.stopPropagation();
       }
 
-      if (action.includes("story") || action.includes("article") || action.includes("carousel") || action.includes("bento") || action.includes("template") || action.includes("responsive") || action.includes("preset")) {
+      if (action.includes("story") || action.includes("article") || action.includes("carousel") || action.includes("bento") || action.includes("senko") || action.includes("template") || action.includes("responsive") || action.includes("preset")) {
         event.preventDefault();
         event.stopPropagation();
       }
@@ -3623,6 +3736,13 @@ ${buildFaqStylePackage({ includeResponsive: true, responsiveOptions: { includeDr
         "remove-carousel-slide",
         "add-bento-block",
         "remove-bento-block",
+        "reload-senko-library",
+        "add-senko-layout",
+        "remove-senko-block",
+        "move-senko-block-up",
+        "move-senko-block-down",
+        "duplicate-senko-block",
+        "transfer-senko-to-lp",
         "remove-bento-block-type",
         "add-bento-table-column",
         "remove-bento-table-column",
@@ -3665,6 +3785,60 @@ ${buildFaqStylePackage({ includeResponsive: true, responsiveOptions: { includeDr
 
       if (action === "remove-bento-block") {
         removeBentoBlock(Number(button.dataset.bentoBlock));
+        return;
+      }
+
+      if (action === "reload-senko-library") {
+        if (typeof loadSenkoBridgeLibrary === "function") {
+          loadSenkoBridgeLibrary(true);
+        }
+        return;
+      }
+
+      if (action === "preview-senko-layout") {
+        if (typeof previewSenkoBridgeLayout === "function") {
+          previewSenkoBridgeLayout(button.dataset.senkoLayout);
+        }
+        return;
+      }
+
+      if (action === "add-senko-layout") {
+        if (typeof addSenkoBridgeLayout === "function") {
+          addSenkoBridgeLayout(button.dataset.senkoLayout);
+        }
+        return;
+      }
+
+      if (action === "move-senko-block-up") {
+        if (typeof moveSenkoBridgeBlock === "function") {
+          moveSenkoBridgeBlock(Number(button.dataset.senkoBlock), -1);
+        }
+        return;
+      }
+
+      if (action === "move-senko-block-down") {
+        if (typeof moveSenkoBridgeBlock === "function") {
+          moveSenkoBridgeBlock(Number(button.dataset.senkoBlock), 1);
+        }
+        return;
+      }
+
+      if (action === "duplicate-senko-block") {
+        if (typeof duplicateSenkoBridgeBlock === "function") {
+          duplicateSenkoBridgeBlock(Number(button.dataset.senkoBlock));
+        }
+        return;
+      }
+
+      if (action === "remove-senko-block") {
+        if (typeof removeSenkoBridgeBlock === "function") {
+          removeSenkoBridgeBlock(Number(button.dataset.senkoBlock));
+        }
+        return;
+      }
+
+      if (action === "transfer-senko-to-lp") {
+        transferSenkoBridgeToLp();
         return;
       }
 
@@ -3759,10 +3933,91 @@ ${buildFaqStylePackage({ includeResponsive: true, responsiveOptions: { includeDr
       }
     });
 
+    editor.addEventListener("dragstart", (event) => {
+      const senkoCard = event.target.closest("[data-senko-layout-card]");
+      if (!senkoCard || currentEditorTab !== "senko") {
+        return;
+      }
+
+      event.dataTransfer.effectAllowed = "copy";
+      event.dataTransfer.setData("text/plain", senkoCard.dataset.senkoLayoutCard);
+      event.dataTransfer.setData("application/layout-lab-senko-layout", senkoCard.dataset.senkoLayoutCard);
+      senkoCard.classList.add("is-dragging");
+      previewCanvas.classList.add("is-senko-drag-active");
+    });
+
+    editor.addEventListener("dragend", (event) => {
+      const senkoCard = event.target.closest("[data-senko-layout-card]");
+      if (senkoCard) {
+        senkoCard.classList.remove("is-dragging");
+      }
+      previewCanvas.classList.remove("is-senko-drag-active");
+      previewCanvas.classList.remove("is-senko-drop-target");
+    });
+
+    previewCanvas.addEventListener("dragover", (event) => {
+      if (currentEditorTab !== "senko") {
+        return;
+      }
+
+      const transferTypes = Array.from(event.dataTransfer.types || []);
+      if (!transferTypes.includes("application/layout-lab-senko-layout") && !transferTypes.includes("text/plain")) {
+        return;
+      }
+
+      event.preventDefault();
+      event.dataTransfer.dropEffect = "copy";
+      previewCanvas.classList.add("is-senko-drop-target");
+    });
+
+    previewCanvas.addEventListener("dragleave", (event) => {
+      if (!previewCanvas.contains(event.relatedTarget)) {
+        previewCanvas.classList.remove("is-senko-drop-target");
+      }
+    });
+
+    previewCanvas.addEventListener("drop", (event) => {
+      if (currentEditorTab !== "senko") {
+        return;
+      }
+
+      const layoutId = event.dataTransfer.getData("application/layout-lab-senko-layout") || event.dataTransfer.getData("text/plain");
+      if (!layoutId || typeof addSenkoBridgeLayout !== "function") {
+        return;
+      }
+
+      event.preventDefault();
+      previewCanvas.classList.remove("is-senko-drag-active");
+      previewCanvas.classList.remove("is-senko-drop-target");
+      addSenkoBridgeLayout(layoutId);
+    });
+
+    window.addEventListener("message", (event) => {
+      if (event.source !== previewFrame.contentWindow) {
+        return;
+      }
+
+      const data = event.data || {};
+      if (data.type !== "layout-lab:senko-remove-preview-block") {
+        return;
+      }
+
+      if (currentPage !== "conteudo" || currentEditorTab !== "senko" || typeof removeSenkoBridgeBlock !== "function") {
+        return;
+      }
+
+      const blockIndex = Number(data.index);
+      if (!Number.isInteger(blockIndex)) {
+        return;
+      }
+
+      removeSenkoBridgeBlock(blockIndex);
+    });
+
     editorTabButtons.forEach((button) => {
       button.addEventListener("click", () => {
         const requestedTab = button.dataset.editorTab;
-        const nextEditorTab = ["faq", "table", "stories", "article", "carousel", "bento", "template"].includes(requestedTab) ? requestedTab : "faq";
+        const nextEditorTab = ["faq", "table", "stories", "article", "carousel", "bento", "senko", "template"].includes(requestedTab) ? requestedTab : "faq";
         if (nextEditorTab !== currentEditorTab && !returnToBaseVersion()) {
           return;
         }
@@ -3842,6 +4097,11 @@ ${buildFaqStylePackage({ includeResponsive: true, responsiveOptions: { includeDr
     responsivePreviewRemoveButtons.forEach((button) => {
       button.addEventListener("click", () => {
         removeResponsivePreviewVersion();
+      });
+    });
+    senkoTransferPreviewButtons.forEach((button) => {
+      button.addEventListener("click", () => {
+        transferSenkoBridgeToLp();
       });
     });
 

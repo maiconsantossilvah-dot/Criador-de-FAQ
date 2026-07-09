@@ -5,7 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Layout Lab</title>
     <link rel="icon" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA2NCA2NCIgcm9sZT0iaW1nIiBhcmlhLWxhYmVsPSJDcmlhZG9yIGRlIEZBUSI+CiAgPHBhdGggZD0iTTI5IDE0IDkgMzIgMjkgNTAiIGZpbGw9Im5vbmUiIHN0cm9rZT0iIzAwYThlOCIgc3Ryb2tlLXdpZHRoPSI3IiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiLz4KICA8cGF0aCBkPSJNMzUgMTQgNTUgMzIgMzUgNTAiIGZpbGw9Im5vbmUiIHN0cm9rZT0iIzAwYThlOCIgc3Ryb2tlLXdpZHRoPSI3IiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiLz4KICA8Y2lyY2xlIGN4PSIzMiIgY3k9IjMyIiByPSI1IiBmaWxsPSIjMGY3NjZlIi8+Cjwvc3ZnPg==" type="image/svg+xml">
-  <link rel="stylesheet" href="assets/css/layout-lab.css?v=20260706-hub-descritivo"></head>
+  <link rel="stylesheet" href="assets/css/layout-lab.css?v=20260706-hub-descritivo">
+  <link rel="stylesheet" href="assets/tabs/senko-bridge/senko-bridge.css?v=20260707-senko-clean-stack">
+</head>
 <body class="app-loading">
   <main class="app">
     <header class="topbar">
@@ -15,7 +17,6 @@
       </a>
       <nav class="page-nav" aria-label="Navegação importante">
         <a class="page-nav__link" href="#hub-conteudo" data-page-link="hub">Hub</a>
-        <a class="page-nav__link__senko" href="https://ygormartins-webm.github.io/SenkoLib/" target="_blank" data-page-link="SenkoLib">SenkoLib</a>  
       </nav>
       <div class="actions">
         <label class="theme-toggle theme-toggle--icon" for="themeToggle" aria-label="Alternar modo claro/escuro" title="Alternar modo claro/escuro">
@@ -121,6 +122,7 @@
                 <path d="M9 7V4h6v3" stroke-width="2" stroke-linejoin="round"></path>
               </svg>
             </button>
+            <button class="button button--orange preview-devices__action senko-transfer-preview" type="button" data-action="transfer-senko-to-lp" data-senko-transfer-preview hidden disabled>Transferir pro LP</button>
           </div>
         </div>
         <div class="panel__body output">
@@ -153,6 +155,7 @@
                     <path d="M9 7V4h6v3" stroke-width="2" stroke-linejoin="round"></path>
                   </svg>
                 </button>
+                <button class="button button--orange preview-devices__action senko-transfer-preview" type="button" data-action="transfer-senko-to-lp" data-senko-transfer-preview hidden disabled>Transferir pro LP</button>
               </div>
             </div>
             <div class="preview-canvas" id="previewCanvas">
@@ -169,9 +172,11 @@
   <script src="assets/tabs/artigo/artigo.js?v=20260706-hub-descritivo"></script>
   <script src="assets/tabs/carrossel/carrossel.js?v=20260706-hub-descritivo"></script>
   <script src="assets/tabs/bento/bento.js?v=20260706-hub-descritivo"></script>
-  <script src="assets/tabs/dashboard/dashboard.js?v=20260706-hub-descritivo"></script>
-  <script src="assets/tabs/lp-container/lp-container.js?v=20260706-hub-descritivo"></script>
-  <script src="assets/js/layout-lab.js?v=20260706-hub-descritivo"></script>
+  <script src="assets/tabs/senko-bridge/senko-library-local.js?v=20260706-senko-local"></script>
+  <script src="assets/tabs/senko-bridge/senko-bridge.js?v=20260707-senko-clean-stack"></script>
+  <script src="assets/tabs/dashboard/dashboard.js?v=20260709-senko-beta"></script>
+  <script src="assets/tabs/lp-container/lp-container.js?v=20260709-lp-clean-copy"></script>
+  <script src="assets/js/layout-lab.js?v=20260709-transfer-copy"></script>
 </body>
 </html>
 

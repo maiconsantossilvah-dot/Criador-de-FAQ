@@ -69,6 +69,18 @@
       };
     }
 
+    function getSenkoBridgeDashboardSection() {
+      const blockCount = state.senkoBridge && state.senkoBridge.blocks ? state.senkoBridge.blocks.length : 0;
+      return {
+        tab: "senko",
+        icon: "SK",
+        title: "SenkoBridge",
+        summary: "Monte blocos do SenkoLib e transfira a montagem para o modo LP.",
+        badge: "&#9881;",
+        meta: blockCount ? `${blockCount} bloco${blockCount === 1 ? "" : "s"} montado${blockCount === 1 ? "" : "s"}` : "Biblioteca Senko"
+      };
+    }
+
     function getContentDashboardGuides() {
       return [
         {
@@ -106,15 +118,15 @@
         </button>`;
       }).join("");
 
-      return `<section class="dashboard-home" aria-label="Dashboard de layouts">
+      return `<section class="dashboard-home" aria-label="Hub do Layout Lab">
         <div class="dashboard-home__hero">
           <p class="dashboard-home__eyebrow">Layout Lab</p>
-          <h3>Índices e guias de conteúdo.</h3>
-          <p>Use esta coluna como biblioteca rápida. Os layouts ficam na área grande da prévia, prontos para abrir.</p>
+          <h3>Central de criação de conteúdo.</h3>
+          <p>Use o painel da direita para abrir layouts. Aqui ficam os guias de apoio para consultar quando precisar de direção visual, textual ou estratégica.</p>
         </div>
         <p class="dashboard-home__section-title">
-          <strong>Guias disponíveis</strong>
-          <span>Abra um guia para consultar sem sair do início.</span>
+          <strong>Guias de apoio</strong>
+          <span>Consulta rápida para montar layouts com mais intenção.</span>
         </p>
         <div class="dashboard-home__grid">
 ${cards}
@@ -1446,19 +1458,31 @@ ${trends}
     </div>
     <small>${escapeHtml(lpSection.meta)}</small>
   </button>`;
+      const senkoSection = getSenkoBridgeDashboardSection();
+      const senkoBadge = senkoSection.badge ? `<b class="ll-dashboard__beta-badge" title="Beta" aria-label="Beta">${senkoSection.badge}</b>` : "";
+      const senkoCard = `<button class="ll-dashboard__lp-card ll-dashboard__lp-card--senko" type="button" data-dashboard-preview-tab="${senkoSection.tab}" aria-label="Abrir ${escapeHtml(senkoSection.title)}">
+    <span>${escapeHtml(senkoSection.icon)}</span>
+    ${senkoBadge}
+    <div>
+      <strong>${escapeHtml(senkoSection.title)}</strong>
+      <em>${escapeHtml(senkoSection.summary)}</em>
+    </div>
+    <small>${escapeHtml(senkoSection.meta)}</small>
+  </button>`;
 
       return `<section class="ll-dashboard" aria-label="Dashboard do Layout Lab">
   <div class="ll-dashboard__hero">
-    <h1>Qualidade Conteúdo</h1>
-    <small>Escolha um layout para começar. Os guias ficam na coluna da esquerda.</small>
+    <h1>Central do Layout Lab</h1>
+    <small>Abra um layout, edite o conteúdo e copie o bloco no formato certo. Os guias ficam na coluna lateral para consulta.</small>
   </div>
-  <p class="ll-dashboard__section-label">Layouts de conteúdo</p>
+  <p class="ll-dashboard__section-label">Layouts disponíveis</p>
   <div class="ll-dashboard__grid">
 ${cards}
   </div>
-  <p class="ll-dashboard__section-label ll-dashboard__section-label--lp">Modo de integração</p>
+  <p class="ll-dashboard__section-label ll-dashboard__section-label--lp">LP e integração</p>
   <div class="ll-dashboard__lp">
 ${lpCard}
+${senkoCard}
   </div>
 </section>
 
@@ -1636,9 +1660,12 @@ ${lpCard}
 
   .ll-dashboard__lp {
     display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
   }
 
   .ll-dashboard__lp-card {
+    position: relative;
     display: grid;
     grid-template-columns: 46px minmax(0, 1fr) auto;
     gap: 16px;
@@ -1660,6 +1687,10 @@ ${lpCard}
     border-color: ${colors.warm};
     outline: none;
     transform: translateY(-2px);
+  }
+
+  .ll-dashboard__lp-card--senko {
+    background: linear-gradient(135deg, ${colors.card}, rgba(234, 91, 12, 0.14));
   }
 
   .ll-dashboard__lp-card span {
@@ -1698,7 +1729,29 @@ ${lpCard}
     white-space: nowrap;
   }
 
+  .ll-dashboard__beta-badge {
+    position: absolute;
+    top: 18px;
+    right: 18px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 38px;
+    height: 38px;
+    border-radius: 8px;
+    color: #101010;
+    background: #ffeb00;
+    box-shadow: 0 8px 18px rgba(255, 235, 0, 0.2);
+    font-size: 19px;
+    font-weight: 900;
+    line-height: 1;
+  }
+
   @media (max-width: 720px) {
+    .ll-dashboard__lp {
+      grid-template-columns: 1fr;
+    }
+
     .ll-dashboard__lp-card {
       grid-template-columns: 46px minmax(0, 1fr);
     }

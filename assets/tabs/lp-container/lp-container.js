@@ -49,6 +49,46 @@
       return container ? container.innerHTML.trim() : rawValue;
     }
 
+    function extractTemplateEmbeddedCss(value = state.template.html) {
+      const rawValue = String(value || "").trim();
+      if (!rawValue || !/<style\b/i.test(rawValue)) {
+        return "";
+      }
+
+      const parsedDocument = new DOMParser().parseFromString(`<div data-ll-style-root>${rawValue}</div>`, "text/html");
+      const wrapper = parsedDocument.querySelector("[data-ll-style-root]");
+      if (!wrapper) {
+        return "";
+      }
+
+      return Array.from(wrapper.querySelectorAll("style"))
+        .map((element) => element.textContent || "")
+        .map((css) => css.trim())
+        .filter(Boolean)
+        .join("\n\n");
+    }
+
+    function stripTemplateEmbeddedStyles(value) {
+      const rawValue = String(value || "").trim();
+      if (!rawValue || !/<style\b/i.test(rawValue)) {
+        return rawValue;
+      }
+
+      const parsedDocument = new DOMParser().parseFromString(`<div data-ll-style-root>${rawValue}</div>`, "text/html");
+      const wrapper = parsedDocument.querySelector("[data-ll-style-root]");
+      if (!wrapper) {
+        return rawValue;
+      }
+
+      wrapper.querySelectorAll("style").forEach((element) => element.remove());
+      return wrapper.innerHTML.trim();
+    }
+
+    function buildTemplateEmbeddedStyle(value = state.template.html) {
+      const css = extractTemplateEmbeddedCss(value);
+      return css ? `<style>\n${css}\n</style>` : "";
+    }
+
     function cleanTemplateEditorArtifacts(value, options = {}) {
       const rawValue = String(value || "").trim();
       if (!rawValue || !/<\/?[a-z][\s\S]*>/i.test(rawValue)) {
@@ -474,7 +514,9 @@ ${rules.join("\n")}
     }
 
     function buildLpContainerHtml(value = state.template.html, options = {}) {
-      const content = cleanTemplateEditorArtifacts(extractLpContainerHtml(value), {
+      const extractedContent = extractLpContainerHtml(value);
+      const contentWithoutStyles = stripTemplateEmbeddedStyles(extractedContent);
+      const content = cleanTemplateEditorArtifacts(contentWithoutStyles, {
         preservePreviewFaqState: options.includeLabAttrs === true
       });
       const innerHtml = content || "";
@@ -494,6 +536,7 @@ ${innerHtml}
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   ${buildLpContainerCss(true)}
+  ${buildTemplateEmbeddedStyle()}
   ${templateStyle}
 </head>
 <body>
@@ -509,8 +552,9 @@ ${buildLpContainerHtml(state.template.html, { includeLabAttrs: true })}
         const templateStyle = typeof buildTabStyleWithClass === "function"
           ? buildTabStyleWithClass("template", buildTemplateStyle)
           : buildTemplateStyle();
+        const embeddedStyle = buildTemplateEmbeddedStyle();
 
-        return `${templateStyle}
+        return `${[embeddedStyle, templateStyle].filter(Boolean).join("\n\n")}
 
 <!-- HTML DO LAYOUT -->
 
@@ -985,7 +1029,7 @@ ${containerHtml}`;
 
         const classTab = document.createElement("button");
         classTab.type = "button";
-        classTab.textContent = "Classe";
+        classTab.textContent = "Classe/ID";
 
         tabs.append(elementTab, classTab);
 
@@ -1000,7 +1044,7 @@ ${containerHtml}`;
         const classField = document.createElement("label");
         classField.className = "preview-edit-popover__mini-field";
         const classLabel = document.createElement("span");
-        classLabel.textContent = "Classe alvo";
+        classLabel.textContent = "Classe ou ID alvo";
         classSelect = document.createElement("select");
         classCandidates.forEach((candidate) => {
           const option = document.createElement("option");
@@ -1036,8 +1080,8 @@ ${containerHtml}`;
         const note = document.createElement("p");
         note.className = "preview-edit-popover__note";
         note.textContent = isTextStyle
-          ? "Nesta aba, os controles de estilo afetam todos os elementos com a classe escolhida. O texto continua individual."
-          : "Nesta aba, a cor selecionada afeta todos os elementos com a classe escolhida.";
+          ? "Nesta aba, os controles de estilo afetam todos os elementos com a classe ou ID escolhido. O texto continua individual."
+          : "Nesta aba, a cor selecionada afeta todos os elementos com a classe ou ID escolhido.";
         classPanel.appendChild(note);
 
         resetClassButton = document.createElement("button");
@@ -1251,7 +1295,7 @@ ${containerHtml}`;
     }
 
     function normalizeTextStyleNumber(value, fallback, min, max, decimals = 0) {
-      const numericValue = Number(String(value ?? "").replace(",", "."));
+    const numericValue = Number(String(value || "").replace(",", "."));
       if (!Number.isFinite(numericValue)) {
         return fallback;
       }
@@ -1421,7 +1465,7 @@ ${containerHtml}`;
         return false;
       }
 
-      return !/^(is-|has-|js-|sr-only|button$|field$|icon-button$|theme-toggle|preview-edit-popover|ql-|cm-)/.test(value);
+      return !/^(is-|has-|js-|sr-only|button$|field$|icon-button$|theme-toggle|preview-edit-popover|ll-template-|ql-|cm-)/.test(value);
     }
 
     function getPreviewClassCandidates(element) {
@@ -1452,6 +1496,23 @@ ${containerHtml}`;
           });
         });
 
+        const elementId = String(current.id || "").trim();
+        if (elementId && !seen.has(`#${elementId}`) && !/^ll-template-|^preview-|^codex-/i.test(elementId)) {
+          const selector = `#${escapeCssClassName(elementId)}`;
+          let count = 1;
+          try {
+            count = doc.querySelectorAll(selector).length || 1;
+          } catch (error) {}
+
+          seen.add(`#${elementId}`);
+          candidates.push({
+            className: `#${elementId}`,
+            selector,
+            count,
+            label: `#${elementId}${count > 1 ? ` (${count})` : ""}`
+          });
+        }
+
         if (current.matches?.(".ll-carousel, .ll-bento, .lp-container, .lp_container, .table-container-custom, #faq-section, .faq-section")) {
           break;
         }
@@ -1481,7 +1542,7 @@ ${containerHtml}`;
       const declarations = {};
 
       Object.entries(style || {}).forEach(([property, value]) => {
-        const rawValue = String(value ?? "").trim();
+    const rawValue = String(value || "").trim();
         if (!rawValue) {
           return;
         }
@@ -1519,9 +1580,22 @@ ${containerHtml}`;
       return declarations;
     }
 
+    function normalizePreviewSelectorValue(value) {
+      const rawValue = String(value || "").trim();
+      if (!rawValue) {
+        return null;
+      }
+
+      if (rawValue.startsWith(".") || rawValue.startsWith("#")) {
+        return { key: rawValue, selector: rawValue };
+      }
+
+      return { key: rawValue, selector: `.${escapeCssClassName(rawValue)}` };
+    }
+
     function setPreviewClassStyle(meta, className, declarations = {}) {
-      const cleanClassName = String(className || "").trim();
-      if (!cleanClassName) {
+      const normalizedSelector = normalizePreviewSelectorValue(className);
+      if (!normalizedSelector) {
         return;
       }
 
@@ -1533,11 +1607,11 @@ ${containerHtml}`;
 
       state.classStyles = state.classStyles || {};
       state.classStyles[tab] = state.classStyles[tab] || {};
-      state.classStyles[tab][cleanClassName] = {
-        className: cleanClassName,
-        selector: `.${escapeCssClassName(cleanClassName)}`,
+      state.classStyles[tab][normalizedSelector.key] = {
+        className: normalizedSelector.key,
+        selector: normalizedSelector.selector,
         declarations: {
-          ...((state.classStyles[tab][cleanClassName] && state.classStyles[tab][cleanClassName].declarations) || {}),
+          ...((state.classStyles[tab][normalizedSelector.key] && state.classStyles[tab][normalizedSelector.key].declarations) || {}),
           ...normalized
         }
       };
@@ -1550,13 +1624,13 @@ ${containerHtml}`;
     }
 
     function clearPreviewClassStyle(meta, className) {
-      const cleanClassName = String(className || "").trim();
+      const normalizedSelector = normalizePreviewSelectorValue(className);
       const tab = getPreviewClassStyleTab(meta);
-      if (!cleanClassName || !state.classStyles?.[tab]?.[cleanClassName]) {
+      if (!normalizedSelector || !state.classStyles?.[tab]?.[normalizedSelector.key]) {
         return;
       }
 
-      delete state.classStyles[tab][cleanClassName];
+      delete state.classStyles[tab][normalizedSelector.key];
       if (currentPage === "conteudo") {
         markResponsiveDirty();
       }
@@ -3243,11 +3317,6 @@ ${containerHtml}`;
           event.stopPropagation();
           window.clearTimeout(singleClickTimer);
           singleClickTimer = window.setTimeout(() => {
-            if (options.faqColorTarget?.faqRoot && options.faqColorTarget?.summary) {
-              openTemplateFaqStylePopover(event, options.faqColorTarget.faqRoot, options.faqColorTarget.summary);
-              return;
-            }
-
             openPreviewEditPopover(event, { ...meta, type: "textStyle" }, {
               kind: "text-style",
               label: "Editar texto",
@@ -4513,7 +4582,7 @@ ${containerHtml}`;
               field: "text",
               templateNodeId: markTemplateNode(question),
               value: question.innerText || question.textContent || ""
-            }, { faqColorTarget: { faqRoot, summary } });
+            });
           }
 
           if (answer) {
@@ -4949,7 +5018,7 @@ ${containerHtml}`;
           button.addEventListener("click", (event) => {
             event.preventDefault();
             const nextDashboardTab = button.dataset.dashboardPreviewTab;
-            if (["faq", "table", "stories", "article", "carousel", "bento", "template"].includes(nextDashboardTab)) {
+            if (["faq", "table", "stories", "article", "carousel", "bento", "senko", "template"].includes(nextDashboardTab)) {
               currentEditorTab = nextDashboardTab;
               state.dashboard.view = "layouts";
               renderEditor();
