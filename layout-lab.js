@@ -1214,11 +1214,75 @@ ${optionMarkup}
         .map((selector) => selector.startsWith(scope) ? selector : `${scope} ${selector}`)
         .join(", ");
 
+      const findStatementEnd = (source, startIndex) => {
+        let quote = "";
+        let inComment = false;
+
+        for (let index = startIndex; index < source.length; index += 1) {
+          const char = source[index];
+          const nextChar = source[index + 1];
+
+          if (inComment) {
+            if (char === "*" && nextChar === "/") {
+              inComment = false;
+              index += 1;
+            }
+            continue;
+          }
+
+          if (quote) {
+            if (char === "\\") {
+              index += 1;
+              continue;
+            }
+
+            if (char === quote) {
+              quote = "";
+            }
+            continue;
+          }
+
+          if (char === "/" && nextChar === "*") {
+            inComment = true;
+            index += 1;
+            continue;
+          }
+
+          if (char === "\"" || char === "'") {
+            quote = char;
+            continue;
+          }
+
+          if (char === "{") {
+            return -1;
+          }
+
+          if (char === ";") {
+            return index;
+          }
+        }
+
+        return -1;
+      };
+
       const scopeBlock = (source) => {
         let output = "";
         let cursor = 0;
 
         while (cursor < source.length) {
+          const leadingGap = source.slice(cursor).match(/^\s*/)?.[0] || "";
+          const trimmedStart = cursor + leadingGap.length;
+
+          if (source[trimmedStart] === "@") {
+            const statementEnd = findStatementEnd(source, trimmedStart);
+
+            if (statementEnd !== -1) {
+              output += source.slice(cursor, statementEnd + 1);
+              cursor = statementEnd + 1;
+              continue;
+            }
+          }
+
           const openIndex = source.indexOf("{", cursor);
 
           if (openIndex === -1) {
