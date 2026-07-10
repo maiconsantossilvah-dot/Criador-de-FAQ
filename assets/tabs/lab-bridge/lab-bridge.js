@@ -115,6 +115,29 @@ ${rowHtml}
          </section>`;
 }
 
+function buildLabBridgeIllustrativeNoteHtml() {
+  return `<p class="p__end" aria-label="Informações complementares">
+          <strong>Imagens Meramente Ilustrativas</strong>
+          </p>`;
+}
+
+function buildLabBridgeIllustrativeNoteCss() {
+  return `.p__end {
+  color: #8a8a8a;
+  font-family: sans-serif;
+  font-size: clamp(1rem, 2vw, 1.2rem);
+  text-wrap: pretty;
+  text-align: center;
+  padding: 40px 0;
+}
+
+@media (prefers-contrast: more) {
+  .p__end {
+    color: #000;
+  }
+}`;
+}
+
 function getLabBridgeLayouts() {
   const definitions = [
     {
@@ -164,6 +187,14 @@ function getLabBridgeLayouts() {
       tags: ["bento", "grid", "cards"],
       html: typeof buildBentoSectionHtml === "function" ? buildBentoSectionHtml() : "",
       css: typeof buildTabStyleWithClass === "function" ? buildTabStyleWithClass("bento", buildBentoStyle) : ""
+    },
+    {
+      id: "illustrative-note",
+      name: "Aviso ilustrativo",
+      summary: "Imagens meramente ilustrativas",
+      tags: ["aviso", "imagens", "ilustrativas", "final", "observacao"],
+      html: buildLabBridgeIllustrativeNoteHtml(),
+      css: buildLabBridgeIllustrativeNoteCss()
     }
   ];
 

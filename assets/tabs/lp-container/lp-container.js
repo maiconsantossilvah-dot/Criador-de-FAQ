@@ -2145,6 +2145,36 @@ ${containerHtml}`;
       return Boolean(banner && target && (target === banner || banner.contains(target)));
     }
 
+    function getTemplateHeaderBadgeElement(headerElement) {
+      if (!headerElement) {
+        return null;
+      }
+
+      return headerElement.querySelector(".product-header__badge, .video-header__badge, [class*='badge' i], [class*='logo' i]");
+    }
+
+    function getTemplateHeaderLogoElement(headerElement) {
+      if (!headerElement) {
+        return null;
+      }
+
+      const badge = getTemplateHeaderBadgeElement(headerElement);
+      return headerElement.querySelector(".product-header__badge-img, .video-header__badge-img")
+        || badge?.querySelector?.("img, svg")
+        || null;
+    }
+
+    function isTemplateHeaderLogoTarget(target, headerElement) {
+      if (!target || !headerElement) {
+        return false;
+      }
+
+      const logo = getTemplateHeaderLogoElement(headerElement);
+      const badge = getTemplateHeaderBadgeElement(headerElement);
+      return Boolean((logo && (target === logo || logo.contains?.(target)))
+        || (badge && (target === badge || badge.contains?.(target))));
+    }
+
     function getTemplateHeaderBannerImage(headerElement) {
       const banner = getTemplateHeaderBannerElement(headerElement);
       if (!banner) {
@@ -2302,6 +2332,10 @@ ${containerHtml}`;
         banner.style.cursor = "pointer";
         banner.setAttribute("title", "Clique para editar o banner.");
         banner.addEventListener("click", (event) => {
+          if (isTemplateHeaderLogoTarget(event.target, element)) {
+            return;
+          }
+
           event.preventDefault();
           event.stopPropagation();
           openTemplateHeaderPopover(event, element);
@@ -2469,7 +2503,8 @@ ${containerHtml}`;
     function openTemplateImagePopover(sourceEvent, element, meta, label) {
       const root = element?.ownerDocument?.querySelector(".lp-container, .lp_container");
       const header = root ? findTemplateHeaderRoot(element, root) : null;
-      if (header && isTemplateHeaderBannerTarget(sourceEvent?.target || element, header)) {
+      const isHeaderLogo = header && isTemplateHeaderLogoTarget(sourceEvent?.target || element, header);
+      if (header && isTemplateHeaderBannerTarget(sourceEvent?.target || element, header) && !isHeaderLogo) {
         openTemplateHeaderPopover(sourceEvent, header);
         return;
       }
@@ -2498,7 +2533,8 @@ ${containerHtml}`;
 
       const altInput = document.createElement("input");
       altInput.type = "text";
-      altInput.value = element.getAttribute("alt") || "";
+      const headerBadge = isHeaderLogo ? getTemplateHeaderBadgeElement(header) : null;
+      altInput.value = headerBadge?.getAttribute("aria-label") || element.getAttribute("alt") || "";
       createField("Alt text", altInput);
 
       const actions = document.createElement("div");
@@ -2514,7 +2550,12 @@ ${containerHtml}`;
         const normalizedUrl = normalizeAssetUrl(urlInput.value);
         urlInput.value = normalizedUrl;
         setTemplateMediaValue(element, normalizedUrl);
-        element.setAttribute("alt", altInput.value);
+        if (headerBadge) {
+          headerBadge.setAttribute("aria-label", altInput.value);
+          element.setAttribute("alt", "");
+        } else {
+          element.setAttribute("alt", altInput.value);
+        }
         syncTemplateHtmlFromPreview();
       };
 
@@ -4456,6 +4497,26 @@ ${containerHtml}`;
         }, { questions: [], answers: [] });
       };
 
+      const findTemplateFaqTitle = (faqRoot) => {
+        if (!faqRoot) {
+          return null;
+        }
+
+        const titleSelectors = [
+          "#faq-section__title",
+          "#faq-section-title",
+          "[id*='faq' i][id*='title' i]",
+          "[class*='faq' i][class*='title' i]",
+          "h1",
+          "h2"
+        ].join(", ");
+
+        return Array.from(faqRoot.querySelectorAll(titleSelectors)).find((element) => {
+          return !element.closest("details")
+            && (element.innerText || element.textContent || "").trim();
+        }) || null;
+      };
+
       const openTemplateFaqStylePopover = (sourceEvent, faqRoot, summary) => {
         closePreviewEditPopover();
         ensureTemplateFaqStyle(faqRoot);
@@ -4822,6 +4883,15 @@ ${containerHtml}`;
 
         const firstFaqRoot = getTemplateFaqRoot(detailsList[0], root);
         ensureTemplateFaqStyle(firstFaqRoot);
+        const faqTitle = findTemplateFaqTitle(firstFaqRoot);
+        if (faqTitle) {
+          attachText(faqTitle, {
+            scope: "template",
+            field: "text",
+            templateNodeId: markTemplateNode(faqTitle),
+            value: faqTitle.innerText || faqTitle.textContent || ""
+          }, { multiline: false });
+        }
 
         detailsList.forEach((details, index) => {
           const summary = details.querySelector("summary");
@@ -5539,6 +5609,10 @@ ${containerHtml}`;
             return;
           }
 
+          if (isTemplateHeaderLogoTarget(event.target, header)) {
+            return;
+          }
+
           event.preventDefault();
           event.stopPropagation();
           openTemplateHeaderPopover(event, header);
@@ -5555,7 +5629,7 @@ ${containerHtml}`;
 
         [root, ...root.querySelectorAll("*")].forEach((element) => {
           const header = findTemplateHeaderRoot(element, root);
-          if (header && isTemplateHeaderBannerTarget(element, header)) {
+          if (header && isTemplateHeaderBannerTarget(element, header) && !isTemplateHeaderLogoTarget(element, header)) {
             return;
           }
 

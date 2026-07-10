@@ -2,7 +2,6 @@
 html[data-page="conteudo"][data-editor-tab="senko"] .topbar [data-focus-mode],
 html[data-page="conteudo"][data-editor-tab="senko"] .topbar [data-preview-fullscreen],
 html[data-page="conteudo"][data-editor-tab="senko"] .topbar [data-code-focus-mode],
-html[data-page="conteudo"][data-editor-tab="senko"] .output-panel > .panel__head .actions,
 html[data-page="conteudo"][data-editor-tab="senko"] .editor-copy-actions {
   display: none !important;
 }
@@ -321,4 +320,9 @@ html[data-page="conteudo"][data-editor-tab="senko"] .editor-copy-actions {
   min-height: 30px;
   padding: 6px 12px;
   white-space: nowrap;
+}
+
+.senko-transfer-preview--head {
+  min-height: 38px;
+  padding: 9px 16px;
 }
