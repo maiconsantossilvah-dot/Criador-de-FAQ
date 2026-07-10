@@ -1247,20 +1247,17 @@ ${optionMarkup}
         return -1;
       };
 
-      const scopeSelectorList = (selectorText) => selectorText
-        .split(",")
-        .map((selector) => selector.trim())
-        .filter(Boolean)
-        .map((selector) => selector.startsWith(scope) ? selector : `${scope} ${selector}`)
-        .join(", ");
-
-      const findStatementEnd = (source, startIndex) => {
+      const splitTopLevelSelectors = (selectorText) => {
+        const selectors = [];
+        let start = 0;
+        let parenthesesDepth = 0;
+        let bracketsDepth = 0;
         let quote = "";
         let inComment = false;
 
-        for (let index = startIndex; index < source.length; index += 1) {
-          const char = source[index];
-          const nextChar = source[index + 1];
+        for (let index = 0; index < selectorText.length; index += 1) {
+          const char = selectorText[index];
+          const nextChar = selectorText[index + 1];
 
           if (inComment) {
             if (char === "*" && nextChar === "/") {
@@ -1293,36 +1290,83 @@ ${optionMarkup}
             continue;
           }
 
-          if (char === "{") {
-            return -1;
+          if (char === "(") {
+            parenthesesDepth += 1;
+            continue;
           }
 
-          if (char === ";") {
-            return index;
+          if (char === ")") {
+            parenthesesDepth = Math.max(0, parenthesesDepth - 1);
+            continue;
+          }
+
+          if (char === "[") {
+            bracketsDepth += 1;
+            continue;
+          }
+
+          if (char === "]") {
+            bracketsDepth = Math.max(0, bracketsDepth - 1);
+            continue;
+          }
+
+          if (
+            char === "," &&
+            parenthesesDepth === 0 &&
+            bracketsDepth === 0
+          ) {
+            selectors.push(selectorText.slice(start, index));
+            start = index + 1;
           }
         }
 
-        return -1;
+        selectors.push(selectorText.slice(start));
+        return selectors;
       };
+
+      const scopeSingleSelector = (selector) => {
+        const trimmedSelector = selector.trim();
+
+        if (!trimmedSelector) {
+          return "";
+        }
+
+        const alreadyScoped =
+          trimmedSelector === scope ||
+          trimmedSelector.startsWith(`${scope} `) ||
+          trimmedSelector.startsWith(`${scope}.`) ||
+          trimmedSelector.startsWith(`${scope}#`) ||
+          trimmedSelector.startsWith(`${scope}[`) ||
+          trimmedSelector.startsWith(`${scope}:`) ||
+          trimmedSelector.startsWith(`${scope}>`) ||
+          trimmedSelector.startsWith(`${scope}+`) ||
+          trimmedSelector.startsWith(`${scope}~`);
+
+        if (alreadyScoped) {
+          return trimmedSelector;
+        }
+
+        const documentRootMatch = trimmedSelector.match(
+          /^(?:html\s+body|:root|html|body)(?=$|[.#:[\s>+~])/i
+        );
+
+        if (documentRootMatch) {
+          return `${scope}${trimmedSelector.slice(documentRootMatch[0].length)}`;
+        }
+
+        return `${scope} ${trimmedSelector}`;
+      };
+
+      const scopeSelectorList = (selectorText) => splitTopLevelSelectors(selectorText)
+        .map(scopeSingleSelector)
+        .filter(Boolean)
+        .join(", ");
 
       const scopeBlock = (source) => {
         let output = "";
         let cursor = 0;
 
         while (cursor < source.length) {
-          const leadingGap = source.slice(cursor).match(/^\s*/)?.[0] || "";
-          const trimmedStart = cursor + leadingGap.length;
-
-          if (source[trimmedStart] === "@") {
-            const statementEnd = findStatementEnd(source, trimmedStart);
-
-            if (statementEnd !== -1) {
-              output += source.slice(cursor, statementEnd + 1);
-              cursor = statementEnd + 1;
-              continue;
-            }
-          }
-
           const openIndex = source.indexOf("{", cursor);
 
           if (openIndex === -1) {
