@@ -923,6 +923,13 @@ ${containerHtml}`;
 
         const textColorControl = createInlineHexControl(currentTextStyle.color);
         const textColorInput = textColorControl.__llColorInput;
+        const backgroundColorControl = options.backgroundElement
+          ? createInlineHexControl(colorToHex(
+              sourceElement.ownerDocument.defaultView.getComputedStyle(sourceElement).backgroundColor || "#0ea5e9",
+              "#0ea5e9"
+            ))
+          : null;
+        const backgroundColorInput = backgroundColorControl?.__llColorInput || null;
 
         const fontSizeInput = document.createElement("input");
         fontSizeInput.type = "number";
@@ -982,6 +989,9 @@ ${containerHtml}`;
         lineHeightInput.value = String(currentTextStyle.lineHeight || 1.35);
 
         createMiniField("Cor", textColorControl);
+        if (backgroundColorControl) {
+          createMiniField("Fundo", backgroundColorControl);
+        }
         createMiniField("Tamanho", fontSizeInput);
         createMiniField("Peso", fontWeightSelect);
         createMiniField("Alinhamento", textAlignSelect);
@@ -991,6 +1001,7 @@ ${containerHtml}`;
 
         styleInputs = {
           color: textColorInput,
+          backgroundColor: backgroundColorInput,
           fontSize: fontSizeInput,
           fontWeight: fontWeightSelect,
           textAlign: textAlignSelect,
@@ -1172,6 +1183,7 @@ ${containerHtml}`;
           const nextText = normalizePreviewText(nextValue, Boolean(applyOptions.multiline));
           const nextStyle = applyOptions.clearStyle ? {} : {
             color: styleInputs.color.value,
+            ...(styleInputs.backgroundColor ? { backgroundColor: styleInputs.backgroundColor.value } : {}),
             fontSize: styleInputs.fontSize.value,
             fontWeight: styleInputs.fontWeight.value,
             textAlign: styleInputs.textAlign.value,
@@ -1188,7 +1200,7 @@ ${containerHtml}`;
             return;
           }
 
-          updatePreviewEditValue({ ...meta, type: "textStyle", multiline: applyOptions.multiline }, {
+          updatePreviewEditValue({ ...meta, type: "textStyle", multiline: applyOptions.multiline, allowBackgroundStyle: Boolean(styleInputs.backgroundColor) }, {
             text: nextText,
             style: nextStyle
           });
@@ -1218,7 +1230,7 @@ ${containerHtml}`;
       closeButton.addEventListener("click", closePreviewEditPopover);
 
       if (isTextStyle && styleInputs) {
-        Object.values(styleInputs).forEach((input) => {
+        Object.values(styleInputs).filter(Boolean).forEach((input) => {
           input.addEventListener("input", () => applyLiveValue({ multiline: options.multiline }));
           input.addEventListener("change", () => applyLiveValue({ multiline: options.multiline }));
         });
@@ -1378,6 +1390,10 @@ ${containerHtml}`;
         normalized.color = colorToHex(style.color);
       }
 
+      if (style.backgroundColor) {
+        normalized.backgroundColor = colorToHex(style.backgroundColor, "#0ea5e9");
+      }
+
       if (style.fontSize !== undefined && style.fontSize !== "") {
         normalized.fontSize = normalizeTextStyleNumber(style.fontSize, 16, 8, 96);
       }
@@ -1422,6 +1438,10 @@ ${containerHtml}`;
 
       if (style.color) {
         declarations.push(`color: ${style.color}`);
+      }
+
+      if (style.backgroundColor) {
+        declarations.push(`background-color: ${style.backgroundColor}`);
       }
 
       if (style.fontSize) {
@@ -1684,6 +1704,27 @@ ${containerHtml}`;
       clone.querySelectorAll("#ll-template-faq-custom-style").forEach((element) => {
         element.remove();
       });
+      clone.querySelectorAll("[data-ll-template-faq-title-text]").forEach((element) => {
+        const parent = element.parentNode;
+        if (!parent) {
+          return;
+        }
+
+        if (parent.nodeType === 1 && element.getAttribute("style")) {
+          Array.from(element.style).forEach((property) => {
+            parent.style.setProperty(
+              property,
+              element.style.getPropertyValue(property),
+              element.style.getPropertyPriority(property)
+            );
+          });
+        }
+
+        while (element.firstChild) {
+          parent.insertBefore(element.firstChild, element);
+        }
+        element.remove();
+      });
       [clone, ...clone.querySelectorAll("*")].forEach((element) => {
         [
           "data-ll-template-node",
@@ -1703,7 +1744,8 @@ ${containerHtml}`;
           "data-ll-template-iframe-parent",
           "data-ll-table-edit-root",
           "data-ll-preview-header-editor",
-          "data-ll-preview-header-banner"
+          "data-ll-preview-header-banner",
+          "data-ll-template-faq-title-ready"
         ].forEach((attribute) => element.removeAttribute(attribute));
         element.removeAttribute("contenteditable");
         element.removeAttribute("spellcheck");
@@ -2710,7 +2752,11 @@ ${containerHtml}`;
         ["color", "fontSize", "fontWeight", "fontStyle", "textAlign", "lineHeight"].forEach((property) => {
           element.style[property] = "";
         });
+        if (meta.allowBackgroundStyle || style.backgroundColor) {
+          element.style.backgroundColor = "";
+        }
         if (style.color) element.style.color = style.color;
+        if (style.backgroundColor) element.style.backgroundColor = style.backgroundColor;
         if (style.fontSize) element.style.fontSize = `${style.fontSize}px`;
         if (style.fontWeight) element.style.fontWeight = style.fontWeight;
         if (style.fontStyle) element.style.fontStyle = style.fontStyle;
@@ -2837,6 +2883,13 @@ ${containerHtml}`;
 
     function readPreviewEditValue(meta) {
       if (meta.scope === "template") {
+        if (meta.type === "textStyle") {
+          const element = getTemplatePreviewNode(meta);
+          if (element) {
+            return element.innerText || element.textContent || meta.value || "";
+          }
+        }
+
         if (meta.type === "color") {
           const element = getTemplatePreviewNode(meta);
           if (element) {
@@ -4497,7 +4550,7 @@ ${containerHtml}`;
         }, { questions: [], answers: [] });
       };
 
-      const findTemplateFaqTitle = (faqRoot) => {
+      const findTemplateFaqTitle = (faqRoot, fallbackRoot = null) => {
         if (!faqRoot) {
           return null;
         }
@@ -4511,10 +4564,75 @@ ${containerHtml}`;
           "h2"
         ].join(", ");
 
-        return Array.from(faqRoot.querySelectorAll(titleSelectors)).find((element) => {
+        const searchRoots = [faqRoot];
+        if (fallbackRoot && fallbackRoot !== faqRoot) {
+          searchRoots.push(fallbackRoot);
+        }
+
+        const titleCandidates = searchRoots.flatMap((searchRoot) => {
+          const matches = Array.from(searchRoot.querySelectorAll(titleSelectors));
+          return searchRoot.matches?.(titleSelectors) ? [searchRoot, ...matches] : matches;
+        });
+
+        return titleCandidates.find((element) => {
           return !element.closest("details")
             && (element.innerText || element.textContent || "").trim();
         }) || null;
+      };
+
+      const ensureTemplateFaqTitleTextElement = (titleElement) => {
+        const existing = titleElement.querySelector(":scope > [data-ll-template-faq-title-text]");
+        if (existing) {
+          return existing;
+        }
+
+        const docRef = titleElement.ownerDocument;
+        const span = docRef.createElement("span");
+        span.dataset.llTemplateFaqTitleText = "true";
+
+        const directTextNodes = Array.from(titleElement.childNodes).filter((node) => {
+          return node.nodeType === Node.TEXT_NODE && node.textContent.trim();
+        });
+
+        if (directTextNodes.length) {
+          titleElement.insertBefore(span, directTextNodes[0]);
+          directTextNodes.forEach((node) => {
+            span.appendChild(node);
+          });
+          return span;
+        }
+
+        return Array.from(titleElement.children).find((child) => {
+          const tagName = String(child.tagName || "").toLowerCase();
+          return !["svg", "img", "picture", "video", "source", "iframe"].includes(tagName)
+            && (child.innerText || child.textContent || "").trim();
+        }) || titleElement;
+      };
+
+      const attachTemplateFaqTitleEditor = (titleElement) => {
+        if (!titleElement || titleElement.dataset.llTemplateFaqTitleReady === "true") {
+          return;
+        }
+
+        titleElement.dataset.llTemplateFaqTitleReady = "true";
+        const titleNodeId = markTemplateNode(titleElement);
+        attachColor(titleElement, {
+          scope: "template",
+          field: "backgroundColor",
+          templateNodeId: titleNodeId,
+          value: colorToHex(
+            titleElement.ownerDocument.defaultView.getComputedStyle(titleElement).backgroundColor || "#0ea5e9",
+            "#0ea5e9"
+          )
+        }, "cor de fundo do título do FAQ", { triggerEvent: "click" });
+
+        const textTarget = ensureTemplateFaqTitleTextElement(titleElement);
+        attachText(textTarget, {
+          scope: "template",
+          field: "text",
+          templateNodeId: markTemplateNode(textTarget),
+          value: textTarget.innerText || textTarget.textContent || ""
+        }, { multiline: false });
       };
 
       const openTemplateFaqStylePopover = (sourceEvent, faqRoot, summary) => {
@@ -4883,15 +5001,8 @@ ${containerHtml}`;
 
         const firstFaqRoot = getTemplateFaqRoot(detailsList[0], root);
         ensureTemplateFaqStyle(firstFaqRoot);
-        const faqTitle = findTemplateFaqTitle(firstFaqRoot);
-        if (faqTitle) {
-          attachText(faqTitle, {
-            scope: "template",
-            field: "text",
-            templateNodeId: markTemplateNode(faqTitle),
-            value: faqTitle.innerText || faqTitle.textContent || ""
-          }, { multiline: false });
-        }
+        const faqTitle = findTemplateFaqTitle(firstFaqRoot, root);
+        attachTemplateFaqTitleEditor(faqTitle);
 
         detailsList.forEach((details, index) => {
           const summary = details.querySelector("summary");
@@ -5642,6 +5753,10 @@ ${containerHtml}`;
           }
 
           if (!isOverlayElement && isTemplateTextCandidate(element)) {
+            if (element.dataset.llTemplateFaqTitleReady === "true") {
+              return;
+            }
+
             const id = markTemplateNode(element);
             const shouldUseDblClick = isRadioToggleLabel(element) || isStoryLabelText(element);
             attachText(element, {
