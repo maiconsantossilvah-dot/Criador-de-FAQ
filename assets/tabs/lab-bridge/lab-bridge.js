@@ -33,6 +33,88 @@ function normalizeLabBridgeHtml(html) {
   return String(html || "").trim();
 }
 
+function buildLabBridgeDefaultFaqHtml() {
+  const items = [
+    [
+      "O que este produto entrega no uso diario?",
+      "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Integer facilisis ajuda a destacar o beneficio principal de forma simples."
+    ],
+    [
+      "Para qual situacao ele e mais indicado?",
+      "Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Use esta resposta para explicar contexto, aplicacao e expectativa."
+    ],
+    [
+      "Quais cuidados devo considerar antes da compra?",
+      "Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris. Informe medidas, compatibilidade ou qualquer ponto de atencao."
+    ],
+    [
+      "Como comparar este item com outras opcoes?",
+      "Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore. Compare diferenciais, materiais, capacidade ou desempenho."
+    ],
+    [
+      "Existe alguma informacao complementar importante?",
+      "Excepteur sint occaecat cupidatat non proident. Finalize com uma observacao curta, clara e util para a decisao de compra."
+    ]
+  ];
+
+  const faqItems = items.map(([question, answer]) => `        <!-- Cole aqui as perguntas e respostas -->
+        <li id="faq-section__item">
+<details id="faq-section__details">
+<summary id="faq-section__summary">
+<h3 id="faq-section__q-text"> ${labBridgeEscape(question)} </h3>
+<span id="faq-section__icon" aria-hidden="true"></span>
+</summary>
+<div id="faq-section__a-inner">
+<p id="faq-section__a-text"> ${labBridgeEscape(answer)} </p>
+</div>
+</details>
+</li>
+        <!-------------------------->`).join("\n\n");
+
+  return `<section id="faq-section" aria-labelledby="faq-section__title">
+<div id="faq-section__header">
+<h2 id="faq-section__title">Duvidas Frequentes</h2>
+</div>
+<ul id="faq-section__list" role="list">
+${faqItems}
+</ul>
+</section>`;
+}
+
+function buildLabBridgeDefaultTableHtml() {
+  const rows = [
+    ["1225007", "Produto exemplo para demonstracao"],
+    ["1225008", "Item relacionado com variacao de tamanho"],
+    ["1225009", "Modelo complementar para comparacao"],
+    ["1225010", "Opcao indicada para uso frequente"],
+    ["1225011", "Produto alternativo com detalhe tecnico"],
+    ["1225012", "Referencia adicional para lista de apoio"]
+  ];
+  const rowHtml = rows.map((row) => `               <tr class="table-tr-custom">
+                 <td class="table-text-custom table-td-custom-title">${labBridgeEscape(row[0])}</td>
+                 <td class="table-text-custom table-td-custom-sub">${labBridgeEscape(row[1])}</td>
+               </tr>`).join("\n");
+
+  return `<section class="table-container-custom" aria-label="tabela contendo produtos relacionados e citados dentro deste conteudo">
+          <table class="table-design-custom" aria-describedby="table-desc">
+            <caption id="table-desc" class="sr-only">
+          produtos relacionados
+          </caption>
+            <thead class="table-head-custom">
+               <tr class="table-tr-custom">
+                 <th class="table-text-custom table-th-custom table-th-custom--col-1 table-th-custom--first" scope="col">SKU
+                 </th>
+                 <th class="table-text-custom table-th-custom table-th-custom--col-2 table-th-custom--last" scope="col">TITULO
+                 </th>
+               </tr>
+             </thead>
+             <tbody>
+${rowHtml}
+             </tbody>
+           </table>
+         </section>`;
+}
+
 function getLabBridgeLayouts() {
   const definitions = [
     {
@@ -40,7 +122,7 @@ function getLabBridgeLayouts() {
       name: "FAQ",
       summary: "Perguntas e respostas",
       tags: ["faq", "duvidas", "perguntas"],
-      html: typeof buildFaqSectionHtml === "function" ? buildFaqSectionHtml() : "",
+      html: buildLabBridgeDefaultFaqHtml(),
       css: typeof buildTabStyleWithClass === "function" ? buildTabStyleWithClass("faq", buildFaqStyle) : ""
     },
     {
@@ -48,7 +130,7 @@ function getLabBridgeLayouts() {
       name: "Tabela",
       summary: "Produtos, SKUs e listas",
       tags: ["tabela", "sku", "produtos"],
-      html: typeof buildTableSectionHtml === "function" ? buildTableSectionHtml(true) : "",
+      html: buildLabBridgeDefaultTableHtml(),
       css: typeof buildTabStyleWithClass === "function" ? buildTabStyleWithClass("table", buildTableStyle) : ""
     },
     {

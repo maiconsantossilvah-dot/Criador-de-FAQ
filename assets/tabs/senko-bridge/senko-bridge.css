@@ -75,6 +75,13 @@ html[data-page="conteudo"][data-editor-tab="senko"] .editor-copy-actions {
   line-height: 1.35;
 }
 
+.senko-builder__clear {
+  flex: 0 0 auto;
+  min-height: 34px;
+  padding: 8px 12px;
+  white-space: nowrap;
+}
+
 .senko-bridge-search {
   display: grid;
   gap: 8px;
@@ -244,11 +251,36 @@ html[data-page="conteudo"][data-editor-tab="senko"] .editor-copy-actions {
 
 .senko-builder-item {
   display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
   gap: 10px;
   border: 1px solid var(--panel-border);
   border-radius: 10px;
   background: var(--panel);
   padding: 12px;
+  cursor: grab;
+  transition: transform 0.14s ease, border-color 0.14s ease, background 0.14s ease, opacity 0.14s ease;
+}
+
+.senko-builder-item:hover,
+.senko-builder-item:focus-within {
+  border-color: rgba(255, 123, 50, 0.68);
+  transform: translateY(-1px);
+}
+
+.senko-builder-item.is-dragging {
+  opacity: 0.58;
+  cursor: grabbing;
+}
+
+.senko-builder-item.is-drop-before {
+  border-top-color: #ff7b32;
+  box-shadow: inset 0 3px 0 #ff7b32;
+}
+
+.senko-builder-item.is-drop-after {
+  border-bottom-color: #ff7b32;
+  box-shadow: inset 0 -3px 0 #ff7b32;
 }
 
 .senko-builder-item strong {
@@ -261,19 +293,26 @@ html[data-page="conteudo"][data-editor-tab="senko"] .editor-copy-actions {
 }
 
 .senko-builder-item__actions {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr) minmax(88px, 1.25fr);
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
   gap: 6px;
 }
 
 .senko-builder-item__actions .button {
   min-width: 0;
-  padding-inline: 8px;
+  width: 38px;
+  height: 38px;
+  padding: 0;
+  display: grid;
+  place-items: center;
 }
 
 .senko-builder-item__remove {
   background: #e52525;
   color: #fff;
+  font-size: 1.2rem;
+  line-height: 1;
 }
 
 .senko-transfer-preview {

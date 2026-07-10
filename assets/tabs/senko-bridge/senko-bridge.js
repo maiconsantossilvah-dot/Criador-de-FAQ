@@ -391,34 +391,13 @@ function hasSenkoBridgeStackableBlock(blocks = ensureSenkoBridgeState().blocks) 
 
 function buildSenkoBridgeStackCss() {
   return `
-:is(.section-32, .section-32-container, .section-32__container, .section-32__groupimage-section, .c32-carousel, .c32-slides, .c32-slide) {
-  box-sizing: border-box !important;
-  width: 100% !important;
-  max-width: none !important;
-  margin-left: auto !important;
-  margin-right: auto !important;
-  border: 0 !important;
-  outline: 0 !important;
-  border-radius: 0 !important;
+.senko-section-flow {
+  display: grid;
+  gap: clamp(18px, 3vw, 34px);
+  width: 100%;
 }
-:is(.section-32, .section-32-container, .section-32__container, .section-32__groupimage-section, .c32-carousel, .c32-slides, .c32-slide) {
-  margin-top: 0 !important;
-  margin-bottom: 0 !important;
-}
-:is(.section-32__groupimage-section, .section-32__groupimage-section picture, .c32-slide picture) {
-  display: block !important;
-  line-height: 0 !important;
-}
-:is(.section-32__groupimage-section img, .c32-slide img) {
-  display: block !important;
-  width: 100% !important;
-  min-width: 100% !important;
-  max-width: none !important;
-  height: auto !important;
-  margin: 0 auto !important;
-  border: 0 !important;
-  outline: 0 !important;
-  border-radius: 0 !important;
+.senko-section-flow > * {
+  min-width: 0;
 }
 .senko-section-stack {
   display: grid;
@@ -430,6 +409,33 @@ function buildSenkoBridgeStackCss() {
 .senko-section-stack > * {
   margin-top: 0 !important;
   margin-bottom: 0 !important;
+}
+.senko-section-stack--section32 :is(.section-32, .section-32-container, .section-32__container, .section-32__groupimage-section, .c32-carousel, .c32-slides, .c32-slide) {
+  box-sizing: border-box !important;
+  width: 100% !important;
+  max-width: none !important;
+  margin-left: auto !important;
+  margin-right: auto !important;
+  border: 0 !important;
+  outline: 0 !important;
+}
+.senko-section-stack--section32 :is(.section-32, .section-32-container, .section-32__container, .section-32__groupimage-section, .c32-carousel, .c32-slides, .c32-slide) {
+  margin-top: 0 !important;
+  margin-bottom: 0 !important;
+}
+.senko-section-stack--section32 :is(.section-32__groupimage-section, .section-32__groupimage-section picture, .c32-slide picture) {
+  display: block !important;
+  line-height: 0 !important;
+}
+.senko-section-stack--section32 :is(.section-32__groupimage-section img, .c32-slide img) {
+  display: block !important;
+  width: 100% !important;
+  min-width: 100% !important;
+  max-width: none !important;
+  height: auto !important;
+  margin: 0 auto !important;
+  border: 0 !important;
+  outline: 0 !important;
 }
 .senko-section-stack--section32 > :is(section, article, div),
 .senko-section-stack--section32 > .senko-section-stack__item > :is(section, article, div):first-child {
@@ -443,7 +449,6 @@ function buildSenkoBridgeStackCss() {
   margin-left: auto !important;
   margin-right: auto !important;
   border: 0 !important;
-  border-radius: 0 !important;
 }
 .senko-section-stack--section32 .senko-preview-block {
   margin: 0 !important;
@@ -479,7 +484,7 @@ function buildSenkoBridgeCssBundle() {
   const cssParts = bridge.blocks
     .map((block) => `/* ${block.name} - ${block.variantName} */\n${normalizeSenkoBridgeBlockCss(block)}`)
     .filter((part) => part.trim())
-  if (hasSenkoBridgeStackableBlock(bridge.blocks)) {
+  if (bridge.blocks.length > 1 || hasSenkoBridgeStackGroup(bridge.blocks)) {
     cssParts.push(buildSenkoBridgeStackCss());
   }
   return cssParts.join("\n\n");
@@ -519,7 +524,10 @@ function buildSenkoBridgeHtmlBundle() {
   });
 
   flushGroup();
-  return parts.filter((part) => part.trim()).join("\n\n");
+  const html = parts.filter((part) => part.trim()).join("\n\n");
+  return bridge.blocks.length > 1 && html
+    ? `<div class="senko-section-flow">\n${html}\n</div>`
+    : html;
 }
 
 function buildSenkoBridgeOutputHtml(copyMode = "html") {
@@ -586,7 +594,10 @@ ${normalizeSenkoBridgeBlockHtml(block)}
   });
 
   flushGroup();
-  return parts.join("\n\n");
+  const html = parts.join("\n\n");
+  return bridge.blocks.length > 1 && html
+    ? `<div class="senko-section-flow">\n${html}\n</div>`
+    : html;
 }
 
 function buildSenkoBridgePreviewHtml() {
@@ -743,19 +754,17 @@ function renderSenkoBridgeEditor() {
   const searchPlaceholder = activeSource === "lab" ? "FAQ, tabela, stories..." : "Header, carrossel, FAQ...";
 
   const stack = bridge.blocks.length ? bridge.blocks.map((block, index) => {
-    return `<article class="senko-builder-item">
+    return `<article class="senko-builder-item" draggable="true" data-senko-builder-block="${index}" aria-label="Arraste para reordenar ${senkoBridgeEscape(block.name)}">
       <div>
         <strong>${index + 1}. ${senkoBridgeEscape(block.name)}</strong>
         <small>${senkoBridgeEscape(block.variantName)}</small>
       </div>
       <div class="senko-builder-item__actions">
-        <button class="button button--soft" type="button" data-action="move-senko-block-up" data-senko-block="${index}" aria-label="Subir">↑</button>
-        <button class="button button--soft" type="button" data-action="move-senko-block-down" data-senko-block="${index}" aria-label="Descer">↓</button>
-        <button class="button button--soft" type="button" data-action="duplicate-senko-block" data-senko-block="${index}" aria-label="Duplicar">⧉</button>
-        <button class="button button--danger senko-builder-item__remove" type="button" data-action="remove-senko-block" data-senko-block="${index}" aria-label="Remover">Remover</button>
+        <button class="button button--soft" type="button" data-action="duplicate-senko-block" data-senko-block="${index}" aria-label="Duplicar">&#x29c9;</button>
+        <button class="button button--danger senko-builder-item__remove" type="button" data-action="remove-senko-block" data-senko-block="${index}" aria-label="Remover">&times;</button>
       </div>
     </article>`;
-  }).join("") : '<div class="senko-builder__empty">Clique na miniatura, use o botão + ou arraste um layout para a prévia.</div>';
+  }).join("") : '<div class="senko-builder__empty">Clique na miniatura, use o botao + ou arraste um layout para a previa.</div>';
 
   return `<section class="senko-bridge-editor" aria-label="SenkoBridge">
     <div class="senko-bridge-card">
@@ -775,6 +784,7 @@ function renderSenkoBridgeEditor() {
           <h3>Montagem</h3>
           <p>${bridge.blocks.length} bloco${bridge.blocks.length === 1 ? "" : "s"} na LP.</p>
         </div>
+        ${bridge.blocks.length ? '<button class="button button--danger senko-builder__clear" type="button" data-action="clear-senko-blocks">Limpar canvas</button>' : ''}
       </div>
       <div class="senko-builder__stack">
         ${stack}
@@ -825,6 +835,28 @@ function moveSenkoBridgeBlock(index, direction) {
   renderSenkoBridgeAfterMutation();
 }
 
+function reorderSenkoBridgeBlock(fromIndex, toIndex) {
+  const bridge = ensureSenkoBridgeState();
+  const from = Number(fromIndex);
+  let to = Number(toIndex);
+  if (!Number.isInteger(from) || !Number.isInteger(to) || from < 0 || from >= bridge.blocks.length) {
+    return;
+  }
+
+  to = Math.max(0, Math.min(to, bridge.blocks.length));
+  if (from === to) {
+    return;
+  }
+
+  const [block] = bridge.blocks.splice(from, 1);
+  if (from < to) {
+    to -= 1;
+  }
+  to = Math.max(0, Math.min(to, bridge.blocks.length));
+  bridge.blocks.splice(to, 0, block);
+  renderSenkoBridgeAfterMutation();
+}
+
 function duplicateSenkoBridgeBlock(index) {
   const bridge = ensureSenkoBridgeState();
   const block = bridge.blocks[index];
@@ -845,5 +877,16 @@ function removeSenkoBridgeBlock(index) {
     return;
   }
   bridge.blocks.splice(index, 1);
+  renderSenkoBridgeAfterMutation();
+}
+
+function clearSenkoBridgeBlocks() {
+  const bridge = ensureSenkoBridgeState();
+  if (!bridge.blocks.length) {
+    return;
+  }
+
+  bridge.blocks = [];
+  bridge.status = "Canvas limpo.";
   renderSenkoBridgeAfterMutation();
 }

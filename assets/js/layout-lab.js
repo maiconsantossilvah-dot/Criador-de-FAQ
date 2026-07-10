@@ -3805,6 +3805,7 @@ ${buildFaqStylePackage({ includeResponsive: true, responsiveOptions: { includeDr
         "remove-bento-block",
         "reload-senko-library",
         "add-senko-layout",
+        "clear-senko-blocks",
         "remove-senko-block",
         "move-senko-block-up",
         "move-senko-block-down",
@@ -3883,6 +3884,13 @@ ${buildFaqStylePackage({ includeResponsive: true, responsiveOptions: { includeDr
       if (action === "add-senko-layout") {
         if (typeof addSenkoBridgeLayout === "function") {
           addSenkoBridgeLayout(button.dataset.senkoLayout);
+        }
+        return;
+      }
+
+      if (action === "clear-senko-blocks") {
+        if (typeof clearSenkoBridgeBlocks === "function") {
+          clearSenkoBridgeBlocks();
         }
         return;
       }
@@ -4037,6 +4045,19 @@ ${buildFaqStylePackage({ includeResponsive: true, responsiveOptions: { includeDr
     });
 
     editor.addEventListener("dragstart", (event) => {
+      const senkoBuilderItem = event.target.closest("[data-senko-builder-block]");
+      if (senkoBuilderItem && currentEditorTab === "senko") {
+        if (event.target.closest("button, input, select, textarea")) {
+          event.preventDefault();
+          return;
+        }
+
+        event.dataTransfer.effectAllowed = "move";
+        event.dataTransfer.setData("application/layout-lab-senko-block", senkoBuilderItem.dataset.senkoBuilderBlock);
+        senkoBuilderItem.classList.add("is-dragging");
+        return;
+      }
+
       const senkoCard = event.target.closest("[data-senko-layout-card]");
       if (senkoCard && currentEditorTab === "senko") {
         event.dataTransfer.effectAllowed = "copy";
@@ -4059,10 +4080,17 @@ ${buildFaqStylePackage({ includeResponsive: true, responsiveOptions: { includeDr
 
     editor.addEventListener("dragend", (event) => {
       const senkoCard = event.target.closest("[data-senko-layout-card]");
+      const senkoBuilderItem = event.target.closest("[data-senko-builder-block]");
       const labCard = event.target.closest("[data-lab-layout-card]");
       if (senkoCard) {
         senkoCard.classList.remove("is-dragging");
       }
+      if (senkoBuilderItem) {
+        senkoBuilderItem.classList.remove("is-dragging");
+      }
+      editor.querySelectorAll("[data-senko-builder-block]").forEach((item) => {
+        item.classList.remove("is-drop-before", "is-drop-after");
+      });
       if (labCard) {
         labCard.classList.remove("is-dragging");
       }
@@ -4070,6 +4098,67 @@ ${buildFaqStylePackage({ includeResponsive: true, responsiveOptions: { includeDr
       previewCanvas.classList.remove("is-senko-drop-target");
       previewCanvas.classList.remove("is-lab-drag-active");
       previewCanvas.classList.remove("is-lab-drop-target");
+    });
+
+    editor.addEventListener("dragover", (event) => {
+      if (currentEditorTab !== "senko") {
+        return;
+      }
+
+      const transferTypes = Array.from(event.dataTransfer.types || []);
+      if (!transferTypes.includes("application/layout-lab-senko-block")) {
+        return;
+      }
+
+      const stack = event.target.closest(".senko-builder__stack");
+      if (!stack) {
+        return;
+      }
+
+      event.preventDefault();
+      event.dataTransfer.dropEffect = "move";
+      const targetItem = event.target.closest("[data-senko-builder-block]");
+      stack.querySelectorAll("[data-senko-builder-block]").forEach((item) => {
+        item.classList.remove("is-drop-before", "is-drop-after");
+      });
+
+      if (targetItem) {
+        const rect = targetItem.getBoundingClientRect();
+        const after = event.clientY > rect.top + rect.height / 2;
+        targetItem.classList.add(after ? "is-drop-after" : "is-drop-before");
+      }
+    });
+
+    editor.addEventListener("drop", (event) => {
+      if (currentEditorTab !== "senko") {
+        return;
+      }
+
+      const fromIndex = Number(event.dataTransfer.getData("application/layout-lab-senko-block"));
+      if (!Number.isInteger(fromIndex) || typeof reorderSenkoBridgeBlock !== "function") {
+        return;
+      }
+
+      const stack = event.target.closest(".senko-builder__stack");
+      if (!stack) {
+        return;
+      }
+
+      event.preventDefault();
+      const targetItem = event.target.closest("[data-senko-builder-block]");
+      let toIndex = stack.querySelectorAll("[data-senko-builder-block]").length;
+      if (targetItem) {
+        const rect = targetItem.getBoundingClientRect();
+        toIndex = Number(targetItem.dataset.senkoBuilderBlock);
+        if (event.clientY > rect.top + rect.height / 2) {
+          toIndex += 1;
+        }
+      }
+
+      stack.querySelectorAll("[data-senko-builder-block]").forEach((item) => {
+        item.classList.remove("is-drop-before", "is-drop-after");
+      });
+      reorderSenkoBridgeBlock(fromIndex, toIndex);
     });
 
     previewCanvas.addEventListener("dragover", (event) => {

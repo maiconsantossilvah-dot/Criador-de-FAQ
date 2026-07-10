@@ -1701,6 +1701,7 @@ ${containerHtml}`;
           "data-ll-preview-story-hidden",
           "data-ll-preview-story-current",
           "data-ll-template-iframe-parent",
+          "data-ll-table-edit-root",
           "data-ll-preview-header-editor",
           "data-ll-preview-header-banner"
         ].forEach((attribute) => element.removeAttribute(attribute));
@@ -3199,6 +3200,48 @@ ${containerHtml}`;
         .ll-bento__image-button {
           pointer-events: none !important;
         }
+        [data-ll-table-edit-root] {
+          position: relative !important;
+        }
+        [data-ll-table-helper-button] {
+          position: absolute;
+          z-index: 2147482600;
+          width: 26px;
+          height: 26px;
+          border: 1px solid rgba(255, 255, 255, 0.82);
+          border-radius: 8px;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          padding: 0;
+          background: rgba(234, 91, 12, 0.92);
+          color: #fff;
+          font: 800 17px/1 Arial, sans-serif;
+          cursor: pointer;
+          opacity: 0;
+          pointer-events: none;
+          transform: scale(0.92);
+          box-shadow: 0 10px 20px rgba(15, 23, 42, 0.18);
+          transition: opacity 0.14s ease, transform 0.14s ease, background 0.14s ease;
+        }
+        [data-ll-table-edit-root]:hover > [data-ll-table-helper-button],
+        [data-ll-table-edit-root]:focus-within > [data-ll-table-helper-button] {
+          opacity: 1;
+          pointer-events: auto;
+          transform: scale(1);
+        }
+        [data-ll-table-helper-button]:hover {
+          background: #f97316;
+          transform: scale(1.08);
+        }
+        [data-ll-table-add-column] {
+          top: 8px;
+          right: 8px;
+        }
+        [data-ll-table-add-row] {
+          left: 8px;
+          bottom: 8px;
+        }
         [data-ll-template-iframe-parent] {
           position: relative !important;
         }
@@ -4445,16 +4488,40 @@ ${containerHtml}`;
         );
 
         const form = document.createElement("form");
-        form.className = "preview-edit-popover preview-edit-popover--color";
+        form.className = "preview-edit-popover preview-edit-popover--color preview-edit-popover--faq";
         form.setAttribute("role", "dialog");
-        form.setAttribute("aria-label", "Editar cores do FAQ");
+        form.setAttribute("aria-label", "Editar FAQ");
 
         const title = document.createElement("p");
         title.className = "preview-edit-popover__title";
-        title.textContent = "Cores do FAQ";
+        title.textContent = "Editar FAQ";
         form.appendChild(title);
 
-        const makeColorField = (labelText, initialValue) => {
+        const tabs = document.createElement("div");
+        tabs.className = "preview-edit-popover__tabs";
+        const summaryTab = document.createElement("button");
+        summaryTab.type = "button";
+        summaryTab.textContent = "Summary";
+        summaryTab.className = "is-active";
+        const textTab = document.createElement("button");
+        textTab.type = "button";
+        textTab.textContent = "Texto";
+        const classTab = document.createElement("button");
+        classTab.type = "button";
+        classTab.textContent = "Classe/ID";
+        tabs.append(summaryTab, textTab, classTab);
+        form.appendChild(tabs);
+
+        const summaryPanel = document.createElement("div");
+        summaryPanel.className = "preview-edit-popover__panel";
+        const textPanel = document.createElement("div");
+        textPanel.className = "preview-edit-popover__panel";
+        textPanel.hidden = true;
+        const classPanel = document.createElement("div");
+        classPanel.className = "preview-edit-popover__panel preview-edit-popover__panel--class";
+        classPanel.hidden = true;
+
+        const makeColorField = (parent, labelText, initialValue) => {
           const label = document.createElement("label");
           label.className = "preview-edit-popover__mini-field";
           const text = document.createElement("span");
@@ -4473,14 +4540,172 @@ ${containerHtml}`;
           hex.placeholder = "#ffffff";
           row.append(color, hex);
           label.append(text, row);
-          form.appendChild(label);
+          parent.appendChild(label);
           return { color, hex };
         };
 
-        const normal = makeColorField("Cor normal", initialNormal);
-        const hover = makeColorField("Cor hover", initialHover);
-        const questionText = makeColorField("Texto da pergunta", initialQuestionColor);
-        const answerText = makeColorField("Texto da resposta", initialAnswerColor);
+        const makeSelect = (options, value) => {
+          const select = document.createElement("select");
+          options.forEach((option) => {
+            const item = document.createElement("option");
+            item.value = option.value;
+            item.textContent = option.label;
+            item.selected = option.value === value;
+            select.appendChild(item);
+          });
+          return select;
+        };
+
+        const makeMiniField = (parent, labelText, input) => {
+          const label = document.createElement("label");
+          label.className = "preview-edit-popover__mini-field";
+          const text = document.createElement("span");
+          text.textContent = labelText;
+          label.append(text, input);
+          parent.appendChild(label);
+          return input;
+        };
+
+        const normal = makeColorField(summaryPanel, "Fundo normal do summary", initialNormal);
+        const hover = makeColorField(summaryPanel, "Fundo hover do summary", initialHover);
+
+        const createTextStyleFields = (parent, labelText, target, fallbackColor) => {
+          const group = document.createElement("div");
+          group.className = "preview-edit-popover__group";
+          const groupTitle = document.createElement("p");
+          groupTitle.className = "preview-edit-popover__note";
+          groupTitle.textContent = labelText;
+          group.appendChild(groupTitle);
+
+          const targetComputed = target?.ownerDocument.defaultView.getComputedStyle(target) || computed;
+          const color = makeColorField(group, "Cor", colorToHex(targetComputed.color || fallbackColor, fallbackColor));
+          const grid = document.createElement("div");
+          grid.className = "preview-edit-popover__grid";
+
+          const fontSize = document.createElement("input");
+          fontSize.type = "number";
+          fontSize.min = "8";
+          fontSize.max = "96";
+          fontSize.step = "1";
+          fontSize.value = String(normalizeTextStyleNumber(targetComputed.fontSize, 16, 8, 96));
+
+          const fontWeight = makeSelect([
+            { value: "300", label: "Leve" },
+            { value: "400", label: "Normal" },
+            { value: "500", label: "Medio" },
+            { value: "600", label: "Semibold" },
+            { value: "700", label: "Bold" },
+            { value: "800", label: "Extra bold" },
+            { value: "900", label: "Black" }
+          ], normalizePreviewFontWeight(targetComputed.fontWeight));
+
+          const textAlign = makeSelect([
+            { value: "left", label: "Esquerda" },
+            { value: "center", label: "Centro" },
+            { value: "right", label: "Direita" },
+            { value: "justify", label: "Justificado" }
+          ], normalizePreviewTextAlign(targetComputed.textAlign));
+
+          const lineHeight = document.createElement("input");
+          lineHeight.type = "number";
+          lineHeight.min = "0.8";
+          lineHeight.max = "2.6";
+          lineHeight.step = "0.05";
+          lineHeight.value = String(normalizeTextStyleNumber(targetComputed.lineHeight, 1.35, 0.8, 2.6, 2));
+
+          makeMiniField(grid, "Tamanho", fontSize);
+          makeMiniField(grid, "Peso", fontWeight);
+          makeMiniField(grid, "Alinhamento", textAlign);
+          makeMiniField(grid, "Altura da linha", lineHeight);
+          group.appendChild(grid);
+          parent.appendChild(group);
+
+          return { color, fontSize, fontWeight, textAlign, lineHeight };
+        };
+
+        const questionStyle = createTextStyleFields(textPanel, "Perguntas", firstQuestion, initialQuestionColor);
+        const answerStyle = createTextStyleFields(textPanel, "Respostas", firstAnswer || firstQuestion, initialAnswerColor);
+
+        const classCandidates = [
+          ...getPreviewClassCandidates(summary),
+          ...getPreviewClassCandidates(firstQuestion),
+          ...getPreviewClassCandidates(firstAnswer),
+          ...getPreviewClassCandidates(faqRoot)
+        ].reduce((items, candidate) => {
+          if (!candidate || items.some((item) => item.value === candidate.selector)) {
+            return items;
+          }
+          items.push({ value: candidate.selector, label: candidate.label });
+          return items;
+        }, []);
+
+        if (classCandidates.length) {
+          const classSelect = makeSelect(classCandidates, classCandidates[0].value);
+          makeMiniField(classPanel, "Classe ou ID alvo", classSelect);
+          const classApply = makeSelect([
+            { value: "summary-bg", label: "Fundo normal do summary" },
+            { value: "summary-hover", label: "Fundo hover do summary" },
+            { value: "text", label: "Texto" },
+            { value: "border", label: "Borda" },
+            { value: "outline", label: "Contorno" }
+          ], "summary-bg");
+          makeMiniField(classPanel, "Aplicar em", classApply);
+          const classColor = makeColorField(classPanel, "Cor da classe", initialNormal);
+          const classNote = document.createElement("p");
+          classNote.className = "preview-edit-popover__note";
+          classNote.textContent = "Use esta aba para afetar todos os elementos com a mesma classe ou ID.";
+          classPanel.appendChild(classNote);
+          const resetClassButton = document.createElement("button");
+          resetClassButton.type = "button";
+          resetClassButton.className = "button button--soft";
+          resetClassButton.textContent = "Limpar classe";
+          classPanel.appendChild(resetClassButton);
+
+          const applyClassStyle = () => {
+            syncPair(classColor);
+            const targetSelector = classApply.value === "summary-hover"
+              ? `${classSelect.value}:hover`
+              : classSelect.value;
+            const property = {
+              "summary-bg": "background",
+              "summary-hover": "background",
+              text: "color",
+              border: "border-color",
+              outline: "outline-color"
+            }[classApply.value] || "background";
+            setPreviewClassStyle({ scope: "template", field: "faqClass" }, targetSelector, { [property]: classColor.color.value });
+          };
+
+          classColor.color.addEventListener("input", () => {
+            classColor.hex.value = normalizeHexColor(classColor.color.value);
+            classColor.color.style.setProperty("--preview-edit-color", classColor.hex.value);
+            applyClassStyle();
+          });
+          classColor.hex.addEventListener("input", () => {
+            if (isHexColor(classColor.hex.value)) {
+              applyClassStyle();
+            }
+          });
+          classColor.hex.addEventListener("change", () => {
+            classColor.hex.value = isHexColor(classColor.hex.value) ? normalizeHexColor(classColor.hex.value) : classColor.color.value;
+            applyClassStyle();
+          });
+          classSelect.addEventListener("change", applyClassStyle);
+          classApply.addEventListener("change", applyClassStyle);
+          resetClassButton.addEventListener("click", () => {
+            const targetSelector = classApply.value === "summary-hover"
+              ? `${classSelect.value}:hover`
+              : classSelect.value;
+            clearPreviewClassStyle({ scope: "template", field: "faqClass" }, targetSelector);
+          });
+        } else {
+          const emptyClassNote = document.createElement("p");
+          emptyClassNote.className = "preview-edit-popover__note";
+          emptyClassNote.textContent = "Nenhuma classe ou ID util foi encontrado neste FAQ.";
+          classPanel.appendChild(emptyClassNote);
+        }
+
+        form.append(summaryPanel, textPanel, classPanel);
 
         const actions = document.createElement("div");
         actions.className = "preview-edit-popover__actions";
@@ -4502,23 +4727,30 @@ ${containerHtml}`;
         const applyFaqStyle = () => {
           syncPair(normal);
           syncPair(hover);
-          syncPair(questionText);
-          syncPair(answerText);
+          syncPair(questionStyle.color);
+          syncPair(answerStyle.color);
           faqRoot.classList.add("ll-template-faq-custom-colors");
           faqRoot.style.setProperty("--ll-template-faq-summary-bg", normal.color.value);
           faqRoot.style.setProperty("--ll-template-faq-summary-hover-bg", hover.color.value);
-          faqRoot.style.setProperty("--ll-template-faq-question-color", questionText.color.value);
-          faqRoot.style.setProperty("--ll-template-faq-answer-color", answerText.color.value);
+          faqRoot.style.setProperty("--ll-template-faq-question-color", questionStyle.color.color.value);
+          faqRoot.style.setProperty("--ll-template-faq-answer-color", answerStyle.color.color.value);
+          const applyTextStyle = (element, fields) => {
+            element.style.color = fields.color.color.value;
+            element.style.fontSize = `${normalizeTextStyleNumber(fields.fontSize.value, 16, 8, 96)}px`;
+            element.style.fontWeight = normalizePreviewFontWeight(fields.fontWeight.value);
+            element.style.textAlign = normalizePreviewTextAlign(fields.textAlign.value);
+            element.style.lineHeight = String(normalizeTextStyleNumber(fields.lineHeight.value, 1.35, 0.8, 2.6, 2));
+          };
           getTemplateFaqTextTargets(faqRoot).questions.forEach((element) => {
-            element.style.color = questionText.color.value;
+            applyTextStyle(element, questionStyle);
           });
           getTemplateFaqTextTargets(faqRoot).answers.forEach((element) => {
-            element.style.color = answerText.color.value;
+            applyTextStyle(element, answerStyle);
           });
           syncTemplateHtmlFromPreview();
         };
 
-        [normal, hover, questionText, answerText].forEach((pair) => {
+        [normal, hover, questionStyle.color, answerStyle.color].forEach((pair) => {
           pair.color.addEventListener("input", () => {
             pair.hex.value = normalizeHexColor(pair.color.value);
             pair.color.style.setProperty("--preview-edit-color", pair.hex.value);
@@ -4534,6 +4766,25 @@ ${containerHtml}`;
             applyFaqStyle();
           });
         });
+
+        [questionStyle, answerStyle].forEach((fields) => {
+          [fields.fontSize, fields.fontWeight, fields.textAlign, fields.lineHeight].forEach((input) => {
+            input.addEventListener("input", applyFaqStyle);
+            input.addEventListener("change", applyFaqStyle);
+          });
+        });
+
+        const setFaqPanel = (panelName) => {
+          summaryPanel.hidden = panelName !== "summary";
+          textPanel.hidden = panelName !== "text";
+          classPanel.hidden = panelName !== "class";
+          summaryTab.classList.toggle("is-active", panelName === "summary");
+          textTab.classList.toggle("is-active", panelName === "text");
+          classTab.classList.toggle("is-active", panelName === "class");
+        };
+        summaryTab.addEventListener("click", () => setFaqPanel("summary"));
+        textTab.addEventListener("click", () => setFaqPanel("text"));
+        classTab.addEventListener("click", () => setFaqPanel("class"));
 
         closeButton.addEventListener("click", closePreviewEditPopover);
         form.addEventListener("submit", (event) => {
@@ -4592,7 +4843,7 @@ ${containerHtml}`;
               field: "text",
               templateNodeId: markTemplateNode(question),
               value: question.innerText || question.textContent || ""
-            });
+            }, { disableSingleClickPopover: true });
           }
 
           if (answer) {
@@ -4601,7 +4852,7 @@ ${containerHtml}`;
               field: "text",
               templateNodeId: markTemplateNode(answer),
               value: answer.innerText || answer.textContent || ""
-            }, { multiline: true });
+            }, { multiline: true, disableSingleClickPopover: true });
           }
 
           details.addEventListener("toggle", () => {
@@ -4609,11 +4860,12 @@ ${containerHtml}`;
           });
 
           summary.addEventListener("click", (event) => {
-            if (event.target.closest("[data-ll-preview-text]")) {
+            if (event.detail > 1 || event.target.closest("[data-ll-preview-inline]")) {
               return;
             }
 
-            closePreviewEditPopover();
+            event.stopImmediatePropagation();
+            openTemplateFaqStylePopover(event, faqRoot, summary);
             window.setTimeout(syncTemplateHtmlFromPreview, 0);
           }, true);
 
@@ -4627,6 +4879,360 @@ ${containerHtml}`;
             openTemplateFaqStylePopover(event, faqRoot, summary);
           });
         });
+      };
+
+      const getTemplateTableRoot = (element, root) => {
+        const table = element.closest?.(".table-container-custom, .ll-bento__card--table, table, .table-design-custom");
+        if (!table) {
+          return null;
+        }
+
+        return table.closest?.(".table-container-custom, .ll-bento__card--table")
+          || (table.tagName === "TABLE" ? table : table.querySelector?.("table"))
+          || table
+          || root;
+      };
+
+      const isTemplateTableElement = (element, root) => {
+        return Boolean(element?.closest?.(".table-container-custom, .table-design-custom, .table-text-custom, table, th, td")
+          && root.contains(element));
+      };
+
+      const openTemplateTableStylePopover = (sourceEvent, tableRoot) => {
+        if (!tableRoot) {
+          return;
+        }
+
+        closePreviewEditPopover();
+
+        const table = tableRoot.tagName === "TABLE" ? tableRoot : tableRoot.querySelector("table") || tableRoot;
+        const headerCells = Array.from(tableRoot.querySelectorAll("th, .table-th-custom"));
+        const bodyCells = Array.from(tableRoot.querySelectorAll("td, .table-td-custom, .table-td-custom-title, .table-td-custom-sub"));
+        const sampleHeader = headerCells[0] || table;
+        const sampleBody = bodyCells[0] || sampleHeader;
+        const headerComputed = sampleHeader.ownerDocument.defaultView.getComputedStyle(sampleHeader);
+        const bodyComputed = sampleBody.ownerDocument.defaultView.getComputedStyle(sampleBody);
+        const initialHeaderBg = colorToHex(headerComputed.backgroundColor || "#ea5b0c", "#ea5b0c");
+        const initialHeaderColor = colorToHex(headerComputed.color || "#ffffff", "#ffffff");
+        const initialBodyColor = colorToHex(bodyComputed.color || "#111827", "#111827");
+        const initialBorderColor = colorToHex(bodyComputed.borderBottomColor || headerComputed.borderBottomColor || "#d5dbe7", "#d5dbe7");
+
+        const form = document.createElement("form");
+        form.className = "preview-edit-popover preview-edit-popover--color";
+        form.setAttribute("role", "dialog");
+        form.setAttribute("aria-label", "Editar tabela");
+
+        const title = document.createElement("p");
+        title.className = "preview-edit-popover__title";
+        title.textContent = "Tabela";
+        form.appendChild(title);
+
+        const makeColorField = (labelText, initialValue) => {
+          const label = document.createElement("label");
+          label.className = "preview-edit-popover__mini-field";
+          const text = document.createElement("span");
+          text.textContent = labelText;
+          const row = document.createElement("div");
+          row.className = "preview-edit-popover__color-row preview-edit-popover__color-row--picker";
+          const color = document.createElement("input");
+          color.className = "preview-edit-popover__color";
+          color.type = "color";
+          color.value = initialValue;
+          color.style.setProperty("--preview-edit-color", initialValue);
+          const hex = document.createElement("input");
+          hex.className = "preview-edit-popover__field";
+          hex.type = "text";
+          hex.value = initialValue;
+          hex.placeholder = "#ea5b0c";
+          row.append(color, hex);
+          label.append(text, row);
+          form.appendChild(label);
+          return { color, hex };
+        };
+
+        const headerBg = makeColorField("Fundo do cabecalho", initialHeaderBg);
+        const headerText = makeColorField("Texto do cabecalho", initialHeaderColor);
+        const bodyText = makeColorField("Texto das linhas", initialBodyColor);
+        const border = makeColorField("Bordas", initialBorderColor);
+
+        const actions = document.createElement("div");
+        actions.className = "preview-edit-popover__actions";
+        const closeButton = document.createElement("button");
+        closeButton.className = "button";
+        closeButton.type = "button";
+        closeButton.textContent = "Fechar";
+        actions.appendChild(closeButton);
+        form.appendChild(actions);
+
+        const syncPair = (pair) => {
+          if (isHexColor(pair.hex.value)) {
+            pair.hex.value = normalizeHexColor(pair.hex.value);
+            pair.color.value = pair.hex.value;
+            pair.color.style.setProperty("--preview-edit-color", pair.hex.value);
+          }
+        };
+
+        const applyTableStyle = () => {
+          [headerBg, headerText, bodyText, border].forEach(syncPair);
+          headerCells.forEach((cell) => {
+            cell.style.backgroundColor = headerBg.color.value;
+            cell.style.color = headerText.color.value;
+            cell.style.borderColor = border.color.value;
+          });
+          bodyCells.forEach((cell) => {
+            cell.style.color = bodyText.color.value;
+            cell.style.borderColor = border.color.value;
+          });
+          tableRoot.querySelectorAll(".table-text-custom, th, td").forEach((cell) => {
+            cell.style.borderBottomColor = border.color.value;
+          });
+          syncTemplateHtmlFromPreview();
+        };
+
+        [headerBg, headerText, bodyText, border].forEach((pair) => {
+          pair.color.addEventListener("input", () => {
+            pair.hex.value = normalizeHexColor(pair.color.value);
+            pair.color.style.setProperty("--preview-edit-color", pair.hex.value);
+            applyTableStyle();
+          });
+          pair.hex.addEventListener("input", () => {
+            if (isHexColor(pair.hex.value)) {
+              applyTableStyle();
+            }
+          });
+          pair.hex.addEventListener("change", () => {
+            pair.hex.value = isHexColor(pair.hex.value) ? normalizeHexColor(pair.hex.value) : pair.color.value;
+            applyTableStyle();
+          });
+        });
+
+        closeButton.addEventListener("click", closePreviewEditPopover);
+        form.addEventListener("submit", (event) => {
+          event.preventDefault();
+          closePreviewEditPopover();
+        });
+        previewEditKeyHandler = (event) => {
+          if (event.key === "Escape") {
+            closePreviewEditPopover();
+          }
+        };
+        previewEditOutsideHandler = (event) => {
+          if (previewEditPopover && !previewEditPopover.contains(event.target)) {
+            closePreviewEditPopover();
+          }
+        };
+
+        document.body.appendChild(form);
+        previewEditPopover = form;
+        positionPreviewEditPopover(sourceEvent);
+        window.setTimeout(() => {
+          document.addEventListener("mousedown", previewEditOutsideHandler, true);
+          document.addEventListener("keydown", previewEditKeyHandler, true);
+        }, 0);
+      };
+
+      const getTemplateTableElement = (tableRoot) => {
+        if (!tableRoot) {
+          return null;
+        }
+
+        return tableRoot.tagName === "TABLE" ? tableRoot : tableRoot.querySelector("table");
+      };
+
+      const getTemplateTableToolHost = (tableRoot) => {
+        if (!tableRoot) {
+          return null;
+        }
+
+        return tableRoot.tagName === "TABLE" ? tableRoot.parentElement : tableRoot;
+      };
+
+      const clearTemplateTablePreviewAttrs = (element) => {
+        if (!element?.attributes) {
+          return element;
+        }
+
+        Array.from(element.attributes).forEach((attribute) => {
+          if (attribute.name.startsWith("data-ll-")) {
+            element.removeAttribute(attribute.name);
+          }
+        });
+        element.removeAttribute("contenteditable");
+        element.removeAttribute("spellcheck");
+        element.removeAttribute("title");
+        return element;
+      };
+
+      const getTemplateTableColumnCount = (table) => {
+        const rows = Array.from(table?.rows || []);
+        return rows.reduce((max, row) => Math.max(max, row.cells.length), 0);
+      };
+
+      const normalizeTemplateTableHeaderCorners = (table) => {
+        const headerRows = Array.from(table?.tHead?.rows || table?.querySelectorAll("thead tr") || []);
+        headerRows.forEach((row) => {
+          const cells = Array.from(row.cells || []);
+          cells.forEach((cell, index) => {
+            if (cells.length === 1) {
+              cell.style.borderRadius = "10px 10px 0 0";
+            } else if (index === 0) {
+              cell.style.borderRadius = "10px 0 0 0";
+            } else if (index === cells.length - 1) {
+              cell.style.borderRadius = "0 10px 0 0";
+            } else {
+              cell.style.borderRadius = "0";
+            }
+          });
+        });
+      };
+
+      const makeTemplateTableCell = (docRef, sourceCell, tagName, text) => {
+        const cell = sourceCell ? sourceCell.cloneNode(false) : docRef.createElement(tagName);
+        clearTemplateTablePreviewAttrs(cell);
+        cell.textContent = text;
+        return cell;
+      };
+
+      const addTemplateTableColumn = (tableRoot) => {
+        const table = getTemplateTableElement(tableRoot);
+        if (!table) {
+          return;
+        }
+
+        const docRef = table.ownerDocument;
+        const headerRows = Array.from(table.tHead?.rows || table.querySelectorAll("thead tr") || []);
+        headerRows.forEach((row) => {
+          const source = row.cells[row.cells.length - 1] || null;
+          row.appendChild(makeTemplateTableCell(docRef, source, "th", "COLUNA"));
+        });
+
+        const body = table.tBodies?.[0] || table.createTBody();
+        const bodyRows = Array.from(body.rows || []);
+        if (!bodyRows.length) {
+          const row = body.insertRow();
+          const count = Math.max(1, getTemplateTableColumnCount(table));
+          for (let index = 0; index < count; index += 1) {
+            row.appendChild(makeTemplateTableCell(docRef, null, "td", index === count - 1 ? "Novo item" : ""));
+          }
+        } else {
+          bodyRows.forEach((row) => {
+            const source = row.cells[row.cells.length - 1] || null;
+            row.appendChild(makeTemplateTableCell(docRef, source, "td", "Novo item"));
+          });
+        }
+
+        normalizeTemplateTableHeaderCorners(table);
+        syncTemplateHtmlFromPreview();
+      };
+
+      const addTemplateTableRow = (tableRoot) => {
+        const table = getTemplateTableElement(tableRoot);
+        if (!table) {
+          return;
+        }
+
+        const docRef = table.ownerDocument;
+        const body = table.tBodies?.[0] || table.createTBody();
+        const sourceRow = body.rows?.[body.rows.length - 1] || null;
+        const nextRow = sourceRow ? sourceRow.cloneNode(false) : docRef.createElement("tr");
+        clearTemplateTablePreviewAttrs(nextRow);
+        const columnCount = Math.max(1, getTemplateTableColumnCount(table));
+
+        for (let index = 0; index < columnCount; index += 1) {
+          const sourceCell = sourceRow?.cells?.[index] || sourceRow?.cells?.[sourceRow.cells.length - 1] || null;
+          nextRow.appendChild(makeTemplateTableCell(docRef, sourceCell, "td", "Novo item"));
+        }
+
+        body.appendChild(nextRow);
+        syncTemplateHtmlFromPreview();
+      };
+
+      const ensureTemplateTableTools = (tableRoot, root) => {
+        const table = getTemplateTableElement(tableRoot);
+        const host = getTemplateTableToolHost(tableRoot);
+        if (!table || !host || !root.contains(host)) {
+          return;
+        }
+
+        host.dataset.llTableEditRoot = "true";
+        if (host.querySelector(":scope > [data-ll-table-helper-button]")) {
+          return;
+        }
+
+        const makeButton = (kind, title) => {
+          const button = host.ownerDocument.createElement("button");
+          button.type = "button";
+          button.textContent = "+";
+          button.title = title;
+          button.setAttribute("aria-label", title);
+          button.dataset.llTemplateHelper = "true";
+          button.dataset.llTableHelperButton = "true";
+          if (kind === "column") {
+            button.dataset.llTableAddColumn = "true";
+          } else {
+            button.dataset.llTableAddRow = "true";
+          }
+          button.addEventListener("click", (event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            event.stopImmediatePropagation();
+            if (kind === "column") {
+              addTemplateTableColumn(tableRoot);
+            } else {
+              addTemplateTableRow(tableRoot);
+            }
+          });
+          return button;
+        };
+
+        host.append(
+          makeButton("column", "Adicionar coluna"),
+          makeButton("row", "Adicionar linha")
+        );
+      };
+
+      const setupTemplateTableTools = (root) => {
+        const tableRoots = new Set();
+        root.querySelectorAll(".table-container-custom, .ll-bento__card--table, .table-design-custom, table").forEach((element) => {
+          const tableRoot = getTemplateTableRoot(element, root);
+          if (tableRoot) {
+            tableRoots.add(tableRoot);
+          }
+        });
+        tableRoots.forEach((tableRoot) => ensureTemplateTableTools(tableRoot, root));
+      };
+
+      const setupTemplateTableEditing = (root) => {
+        setupTemplateTableTools(root);
+
+        if (root.dataset.llTemplateTableEditing === "true") {
+          return;
+        }
+
+        root.dataset.llTemplateTableEditing = "true";
+        root.addEventListener("click", (event) => {
+          if (event.target.closest("[data-ll-table-helper-button]")) {
+            return;
+          }
+
+          if (event.detail > 1 || event.target.closest("[data-ll-preview-inline]")) {
+            return;
+          }
+
+          const target = event.target.closest(".table-container-custom, .table-design-custom, .table-text-custom, table, th, td");
+          if (!target || !root.contains(target)) {
+            return;
+          }
+
+          const tableRoot = getTemplateTableRoot(target, root);
+          if (!tableRoot) {
+            return;
+          }
+
+          event.preventDefault();
+          event.stopImmediatePropagation();
+          openTemplateTableStylePopover(event, tableRoot);
+        }, true);
       };
 
       const resolveTemplateMediaNode = (element) => {
@@ -4945,6 +5551,7 @@ ${containerHtml}`;
         });
 
         setupTemplateFaqEditing(root);
+        setupTemplateTableEditing(root);
 
         [root, ...root.querySelectorAll("*")].forEach((element) => {
           const header = findTemplateHeaderRoot(element, root);
