@@ -176,21 +176,6 @@
       };
     }
 
-    function getTemplateHeaderDefaults() {
-      return {
-        type: "none",
-        imageUrl: "https://imgprd.martinsatacado.com.br/catalogoimg/catalogo/header.jpg",
-        imageAlt: "",
-        videoUrl: "https://imgprd.martinsatacado.com.br/catalogoimg/catalogo/header-precon.webm",
-        posterUrl: "https://imgprd.martinsatacado.com.br/catalogoimg/catalogo/header_precon.webp",
-        logoUrl: "https://static1.efacil.com.br/wcsstore//AuroraStorefrontAssetStore/PDP/precon/logo-precon.png",
-        logoLabel: "Logo da marca dentro de um circulo laranja",
-        brand: "marca",
-        title: "Titulo curto do produto",
-        subtitle: "Descricao breve do produto, destacando os principais atributos de forma clara."
-      };
-    }
-
     function stripHeaderImageVariant(url) {
       const rawUrl = normalizeAssetUrl(url);
       const [withoutHash, hash = ""] = rawUrl.split("#");
@@ -412,13 +397,13 @@ body {
 }
 
 body {
-  font-family: Arial, sans-serif;
   color: #111827;
 }
 ` : "";
 
       return `<style>
 ${frameCss}
+${includeFrame ? "" : `
 .lp-container,
 .lp_container {
   box-sizing: border-box;
@@ -446,6 +431,7 @@ ${frameCss}
 .lp_container iframe {
   max-width: 100%;
 }
+`}
 </style>`;
     }
 

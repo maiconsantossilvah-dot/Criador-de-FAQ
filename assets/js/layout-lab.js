@@ -1247,17 +1247,13 @@ ${optionMarkup}
         return -1;
       };
 
-      const splitTopLevelSelectors = (selectorText) => {
-        const selectors = [];
-        let start = 0;
-        let parenthesesDepth = 0;
-        let bracketsDepth = 0;
+      const findNextRuleBrace = (source, startIndex) => {
         let quote = "";
         let inComment = false;
 
-        for (let index = 0; index < selectorText.length; index += 1) {
-          const char = selectorText[index];
-          const nextChar = selectorText[index + 1];
+        for (let index = startIndex; index < source.length; index += 1) {
+          const char = source[index];
+          const nextChar = source[index + 1];
 
           if (inComment) {
             if (char === "*" && nextChar === "/") {
@@ -1290,84 +1286,117 @@ ${optionMarkup}
             continue;
           }
 
-          if (char === "(") {
-            parenthesesDepth += 1;
-            continue;
-          }
-
-          if (char === ")") {
-            parenthesesDepth = Math.max(0, parenthesesDepth - 1);
-            continue;
-          }
-
-          if (char === "[") {
-            bracketsDepth += 1;
-            continue;
-          }
-
-          if (char === "]") {
-            bracketsDepth = Math.max(0, bracketsDepth - 1);
-            continue;
-          }
-
-          if (
-            char === "," &&
-            parenthesesDepth === 0 &&
-            bracketsDepth === 0
-          ) {
-            selectors.push(selectorText.slice(start, index));
-            start = index + 1;
+          if (char === "{") {
+            return index;
           }
         }
 
-        selectors.push(selectorText.slice(start));
-        return selectors;
+        return -1;
       };
 
-      const scopeSingleSelector = (selector) => {
-        const trimmedSelector = selector.trim();
+      const splitSelectorList = (selectorText) => {
+        const selectors = [];
+        let current = "";
+        let quote = "";
+        let depth = 0;
 
-        if (!trimmedSelector) {
-          return "";
+        for (let index = 0; index < selectorText.length; index += 1) {
+          const char = selectorText[index];
+
+          if (quote) {
+            current += char;
+            if (char === "\\") {
+              index += 1;
+              current += selectorText[index] || "";
+              continue;
+            }
+            if (char === quote) {
+              quote = "";
+            }
+            continue;
+          }
+
+          if (char === "\"" || char === "'") {
+            quote = char;
+            current += char;
+            continue;
+          }
+
+          if (char === "(" || char === "[" || char === "{") {
+            depth += 1;
+            current += char;
+            continue;
+          }
+
+          if (char === ")" || char === "]" || char === "}") {
+            depth = Math.max(0, depth - 1);
+            current += char;
+            continue;
+          }
+
+          if (char === "," && depth === 0) {
+            selectors.push(current.trim());
+            current = "";
+            continue;
+          }
+
+          current += char;
         }
 
-        const alreadyScoped =
-          trimmedSelector === scope ||
-          trimmedSelector.startsWith(`${scope} `) ||
-          trimmedSelector.startsWith(`${scope}.`) ||
-          trimmedSelector.startsWith(`${scope}#`) ||
-          trimmedSelector.startsWith(`${scope}[`) ||
-          trimmedSelector.startsWith(`${scope}:`) ||
-          trimmedSelector.startsWith(`${scope}>`) ||
-          trimmedSelector.startsWith(`${scope}+`) ||
-          trimmedSelector.startsWith(`${scope}~`);
-
-        if (alreadyScoped) {
-          return trimmedSelector;
+        if (current.trim()) {
+          selectors.push(current.trim());
         }
 
-        const documentRootMatch = trimmedSelector.match(
-          /^(?:html\s+body|:root|html|body)(?=$|[.#:[\s>+~])/i
-        );
-
-        if (documentRootMatch) {
-          return `${scope}${trimmedSelector.slice(documentRootMatch[0].length)}`;
-        }
-
-        return `${scope} ${trimmedSelector}`;
+        return selectors.filter(Boolean);
       };
 
-      const scopeSelectorList = (selectorText) => splitTopLevelSelectors(selectorText)
-        .map(scopeSingleSelector)
-        .filter(Boolean)
+      const scopeSelectorList = (selectorText) => splitSelectorList(selectorText)
+        .map((selector) => selector.startsWith(scope) ? selector : `${scope} ${selector}`)
         .join(", ");
+
+      const splitRulePrelude = (rawPrelude) => {
+        let prefix = "";
+        let rest = rawPrelude;
+
+        while (rest) {
+          const whitespace = rest.match(/^\s*/)?.[0] || "";
+          if (whitespace) {
+            prefix += whitespace;
+            rest = rest.slice(whitespace.length);
+          }
+
+          if (rest.startsWith("/*")) {
+            const commentEnd = rest.indexOf("*/");
+            if (commentEnd === -1) {
+              break;
+            }
+            prefix += rest.slice(0, commentEnd + 2);
+            rest = rest.slice(commentEnd + 2);
+            continue;
+          }
+
+          const nonBlockAtRule = rest.match(/^@(charset|import|namespace)\b[\s\S]*?;\s*/i);
+          if (nonBlockAtRule) {
+            prefix += nonBlockAtRule[0];
+            rest = rest.slice(nonBlockAtRule[0].length);
+            continue;
+          }
+
+          break;
+        }
+
+        return {
+          prefix,
+          prelude: rest.trim()
+        };
+      };
 
       const scopeBlock = (source) => {
         let output = "";
         let cursor = 0;
 
         while (cursor < source.length) {
-          const openIndex = source.indexOf("{", cursor);
+          const openIndex = findNextRuleBrace(source, cursor);
 
           if (openIndex === -1) {
             output += source.slice(cursor);
@@ -1375,7 +1404,7 @@ ${optionMarkup}
           }
 
           const rawPrelude = source.slice(cursor, openIndex);
-          const prelude = rawPrelude.trim();
+          const { prefix, prelude } = splitRulePrelude(rawPrelude);
           const closeIndex = findMatchingBrace(source, openIndex);
 
           if (!prelude || closeIndex === -1) {
@@ -1383,14 +1412,13 @@ ${optionMarkup}
             break;
           }
 
-          const leadingWhitespace = rawPrelude.match(/^\s*/)?.[0] || "";
           const body = source.slice(openIndex + 1, closeIndex);
 
           if (prelude.startsWith("@")) {
             const shouldScopeNestedRules = /^@(media|supports|container|layer)\b/i.test(prelude);
-            output += `${leadingWhitespace}${prelude} {${shouldScopeNestedRules ? scopeBlock(body) : body}}`;
+            output += `${prefix}${prelude} {${shouldScopeNestedRules ? scopeBlock(body) : body}}`;
           } else {
-            output += `${leadingWhitespace}${scopeSelectorList(prelude)} {${body}}`;
+            output += `${prefix}${scopeSelectorList(prelude)} {${body}}`;
           }
 
           cursor = closeIndex + 1;
@@ -1403,9 +1431,25 @@ ${optionMarkup}
     }
 
     function scopeResponsiveStyle(value, scope) {
-      return String(value || "").replace(/<style>([\s\S]*?)<\/style>/g, (match, css) => {
+      const styleOutput = String(value || "");
+
+      if (!styleOutput.trim()) {
+        return "";
+      }
+
+      if (!/<style\b/i.test(styleOutput)) {
+        return `<style>\n${scopeResponsiveCss(styleOutput, scope)}\n</style>`;
+      }
+
+      return styleOutput.replace(/<style\b[^>]*>([\s\S]*?)<\/style>/gi, (match, css) => {
         return `<style>\n${scopeResponsiveCss(css, scope)}\n</style>`;
       });
+    }
+
+    function repairResponsiveCssOutput(value) {
+      return String(value || "")
+        .replace(/(^|\n)([ \t]*)\.ll-responsive-version--(?:base|mobile|tablet|desktop)\s+(\/\*[\s\S]*?\*\/\s*@(?:media|supports|container|layer)\b)/gi, "$1$2$3")
+        .replace(/(^|\n)([ \t]*)\.ll-responsive-version--(?:base|mobile|tablet|desktop)\s+(@(?:media|supports|container|layer|keyframes|font-face|property|page|-[\w-]+-keyframes)\b)/gi, "$1$2$3");
     }
 
     function buildWithSnapshot(tab, snapshot, builder) {
@@ -1449,11 +1493,11 @@ ${optionMarkup}
       if (!versionDevices.length) {
         const css = buildWithSnapshot(tab, baseSnapshot, styleBuilder);
         const markedCss = tab === "faq" ? wrapFaqCssMarkers(css) : css;
-        return `${markedCss}
+        return repairResponsiveCssOutput(`${markedCss}
 
 <!-- HTML DO LAYOUT -->
 
-${buildWithSnapshot(tab, baseSnapshot, htmlBuilder)}`;
+${buildWithSnapshot(tab, baseSnapshot, htmlBuilder)}`);
       }
 
       const baseHtml = buildWithSnapshot(tab, baseSnapshot, htmlBuilder);
@@ -1483,7 +1527,7 @@ ${versionBlocks.map((block) => block.css).join("\n\n")}
 ${buildResponsiveSwitchStyle(versionDevices)}`;
       const markedCssPackage = tab === "faq" ? wrapFaqCssMarkers(cssPackage) : cssPackage;
 
-      return `${markedCssPackage}
+      return repairResponsiveCssOutput(`${markedCssPackage}
 
 <!-- HTML DO LAYOUT -->
 
@@ -1494,7 +1538,7 @@ ${baseHtml}
 ${versionBlocks.map((block) => `  <div class="ll-responsive-version ll-responsive-version--${block.device}">
 ${block.html}
   </div>`).join("\n")}
-</div>`;
+</div>`);
     }
 
     function renderResponsiveEditor() {
@@ -2351,7 +2395,7 @@ ${itemMarkup}
           : config.outputTitle;
 
       if (isSenkoTab) {
-        outputTitle.textContent = "Montagem SenkoBridge";
+        outputTitle.textContent = "Montagem Sludge";
       }
 
       if (isLabBridgeTab) {
@@ -2766,7 +2810,7 @@ ${buildFaqStylePackage({ includeResponsive: true, responsiveOptions: { includeDr
         return;
       }
       state.template.html = buildSenkoBridgeTransferHtml();
-      state.template.status = "Montagem do SenkoBridge transferida para o LP.";
+      state.template.status = "Montagem do Sludge transferida para o LP.";
       currentEditorTab = "template";
       renderEditor();
     }
@@ -3198,7 +3242,8 @@ ${buildFaqStylePackage({ includeResponsive: true, responsiveOptions: { includeDr
         }
       }
 
-      const value = buildOutputHtml(copyMode);
+      const rawValue = buildOutputHtml(copyMode);
+      const value = copyMode === "full" || copyMode === "css" ? repairResponsiveCssOutput(rawValue) : rawValue;
       const warnings = copyMode === "css" ? [] : collectLayoutWarnings();
       const blockerPrefix = copyMode === "full" ? "HTML/CSS" : copyMode === "css" ? "CSS" : "HTML";
       const blockers = collectHtmlLocalAssetBlockers(value, blockerPrefix);
