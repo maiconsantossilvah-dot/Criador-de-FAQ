@@ -613,7 +613,7 @@ function buildSenkoBridgePreviewHtml() {
   const html = buildSenkoBridgePreviewBlocksHtml();
   const content = html
     ? `<div class="lp-container">${html}</div>`
-    : '<div class="senko-empty-preview"><strong>Quadro vazio.</strong><br>Adicione layouts do SenkoLib pela coluna da esquerda.</div>';
+    : '<div class="senko-empty-preview"><strong>Quadro vazio.</strong><br>Adicione layouts pela coluna da esquerda.</div>';
 
   return `<!doctype html>
 <html lang="pt-BR">

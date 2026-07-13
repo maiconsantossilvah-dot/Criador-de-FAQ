@@ -2395,7 +2395,7 @@ ${itemMarkup}
           : config.outputTitle;
 
       if (isSenkoTab) {
-        outputTitle.textContent = "Montagem Sludge";
+        outputTitle.textContent = "Montagem SenkoBridge";
       }
 
       if (isLabBridgeTab) {
@@ -2810,7 +2810,7 @@ ${buildFaqStylePackage({ includeResponsive: true, responsiveOptions: { includeDr
         return;
       }
       state.template.html = buildSenkoBridgeTransferHtml();
-      state.template.status = "Montagem do Sludge transferida para o LP.";
+      state.template.status = "Montagem do SenkoBridge transferida para o LP.";
       currentEditorTab = "template";
       renderEditor();
     }

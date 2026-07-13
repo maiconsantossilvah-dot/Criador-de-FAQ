@@ -76,8 +76,7 @@
         icon: "SK",
         title: "SenkoBridge",
         summary: "Monte blocos do SenkoLib ou do Layout Lab e transfira a montagem para o modo LP.",
-        badge: "&#9881;",
-        meta: blockCount ? `${blockCount} bloco${blockCount === 1 ? "" : "s"} montado${blockCount === 1 ? "" : "s"}` : "Biblioteca Senko"
+        meta: blockCount ? `${blockCount} bloco${blockCount === 1 ? "" : "s"} montado${blockCount === 1 ? "" : "s"}` : "Biblioteca de layouts"
       };
     }
 
@@ -1698,7 +1697,18 @@ ${senkoCard}
   }
 
   .ll-dashboard__lp-card--senko {
-    background: linear-gradient(135deg, ${colors.card}, rgba(234, 91, 12, 0.14));
+    background: linear-gradient(135deg, ${colors.card}, ${isDark ? "rgba(251, 146, 60, 0.14)" : "rgba(251, 146, 60, 0.10)"});
+  }
+
+  .ll-dashboard__lp-card--senko:hover,
+  .ll-dashboard__lp-card--senko:focus-visible {
+    border-color: ${colors.warm};
+    box-shadow: ${isDark ? "0 10px 22px rgba(251, 146, 60, 0.12)" : "0 10px 22px rgba(251, 146, 60, 0.16)"};
+  }
+
+  .ll-dashboard__lp-card--senko span {
+    color: #ffffff;
+    background: linear-gradient(135deg, ${colors.accent}, ${colors.warm});
   }
 
   .ll-dashboard__lp-card span {
