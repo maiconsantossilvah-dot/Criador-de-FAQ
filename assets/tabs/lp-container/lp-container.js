@@ -248,10 +248,6 @@
       return `<section class="product-header"${managedAttribute} aria-label="Cabeçalho do produto">
   <header class="product-header__banner">
     <picture style="width:100%; height:100%; margin:0;">
-      <source media="(max-width: 430px)" srcset="${escapeHtml(withHeaderImageSize(cleanImageUrl, 430))}">
-      <source media="(max-width: 768px)" srcset="${escapeHtml(withHeaderImageSize(cleanImageUrl, 768))}">
-      <source media="(max-width: 1024px)" srcset="${escapeHtml(withHeaderImageSize(cleanImageUrl, 1024))}">
-      <source media="(max-width: 1200px)" srcset="${escapeHtml(withHeaderImageSize(cleanImageUrl, 1200))}">
       <img src="${escapeHtml(cleanImageUrl)}" alt="${escapeHtml(header.imageAlt)}" class="product-header__banner-img" loading="eager">
     </picture>${logoHtml}
   </header>
@@ -1869,7 +1865,12 @@ ${containerHtml}`;
       const tagName = element.tagName;
 
       if (tagName === "SOURCE") {
-        element.setAttribute("srcset", normalizedValue);
+        if (element.closest("picture")) {
+          element.remove();
+        } else {
+          element.setAttribute("src", normalizedValue);
+          element.removeAttribute("srcset");
+        }
         return;
       }
 
@@ -1878,7 +1879,7 @@ ${containerHtml}`;
         const picture = element.closest("picture");
         if (picture) {
           picture.querySelectorAll("source").forEach((source) => {
-            source.setAttribute("srcset", normalizedValue);
+            source.remove();
           });
         }
         return;
@@ -2019,7 +2020,7 @@ ${containerHtml}`;
         const picture = element.closest("picture");
         if (picture) {
           picture.querySelectorAll("source").forEach((source) => {
-            source.setAttribute("srcset", normalizedValue);
+            source.remove();
           });
         } else {
           element.removeAttribute("srcset");
@@ -2230,9 +2231,8 @@ ${containerHtml}`;
       }
 
       const sources = banner.querySelectorAll("picture source");
-      const sizes = [430, 768, 1024, 1200];
-      sources.forEach((source, index) => {
-        source.setAttribute("srcset", withHeaderImageSize(cleanUrl, sizes[index] || 1200));
+      sources.forEach((source) => {
+        source.remove();
       });
     }
 
@@ -2312,10 +2312,6 @@ ${containerHtml}`;
         const cleanImageUrl = stripHeaderImageVariant(data.imageUrl);
         wrapper.innerHTML = `<header class="product-header__banner">
     <picture style="width:100%; height:100%; margin:0;">
-      <source media="(max-width: 430px)" srcset="${escapeHtml(withHeaderImageSize(cleanImageUrl, 430))}">
-      <source media="(max-width: 768px)" srcset="${escapeHtml(withHeaderImageSize(cleanImageUrl, 768))}">
-      <source media="(max-width: 1024px)" srcset="${escapeHtml(withHeaderImageSize(cleanImageUrl, 1024))}">
-      <source media="(max-width: 1200px)" srcset="${escapeHtml(withHeaderImageSize(cleanImageUrl, 1200))}">
       <img src="${escapeHtml(cleanImageUrl)}" alt="${escapeHtml(data.imageAlt || "")}" class="product-header__banner-img" loading="eager">
     </picture>
   </header>`;
@@ -5260,6 +5256,22 @@ ${containerHtml}`;
         return cell;
       };
 
+      const attachTemplateTableCellText = (cell) => {
+        if (!cell || !["TD", "TH"].includes(cell.tagName)) {
+          return;
+        }
+
+        const id = markTemplateNode(cell);
+        attachText(cell, {
+          scope: "template",
+          field: "text",
+          templateNodeId: id,
+          value: cell.innerText || cell.textContent || ""
+        }, {
+          multiline: true
+        });
+      };
+
       const addTemplateTableColumn = (tableRoot) => {
         const table = getTemplateTableElement(tableRoot);
         if (!table) {
@@ -5270,7 +5282,9 @@ ${containerHtml}`;
         const headerRows = Array.from(table.tHead?.rows || table.querySelectorAll("thead tr") || []);
         headerRows.forEach((row) => {
           const source = row.cells[row.cells.length - 1] || null;
-          row.appendChild(makeTemplateTableCell(docRef, source, "th", "COLUNA"));
+          const cell = makeTemplateTableCell(docRef, source, "th", "COLUNA");
+          row.appendChild(cell);
+          attachTemplateTableCellText(cell);
         });
 
         const body = table.tBodies?.[0] || table.createTBody();
@@ -5279,12 +5293,16 @@ ${containerHtml}`;
           const row = body.insertRow();
           const count = Math.max(1, getTemplateTableColumnCount(table));
           for (let index = 0; index < count; index += 1) {
-            row.appendChild(makeTemplateTableCell(docRef, null, "td", index === count - 1 ? "Novo item" : ""));
+            const cell = makeTemplateTableCell(docRef, null, "td", index === count - 1 ? "Novo item" : "");
+            row.appendChild(cell);
+            attachTemplateTableCellText(cell);
           }
         } else {
           bodyRows.forEach((row) => {
             const source = row.cells[row.cells.length - 1] || null;
-            row.appendChild(makeTemplateTableCell(docRef, source, "td", "Novo item"));
+            const cell = makeTemplateTableCell(docRef, source, "td", "Novo item");
+            row.appendChild(cell);
+            attachTemplateTableCellText(cell);
           });
         }
 
@@ -5307,7 +5325,9 @@ ${containerHtml}`;
 
         for (let index = 0; index < columnCount; index += 1) {
           const sourceCell = sourceRow?.cells?.[index] || sourceRow?.cells?.[sourceRow.cells.length - 1] || null;
-          nextRow.appendChild(makeTemplateTableCell(docRef, sourceCell, "td", "Novo item"));
+          const cell = makeTemplateTableCell(docRef, sourceCell, "td", "Novo item");
+          nextRow.appendChild(cell);
+          attachTemplateTableCellText(cell);
         }
 
         body.appendChild(nextRow);
@@ -5383,6 +5403,10 @@ ${containerHtml}`;
           }
 
           if (event.detail > 1 || event.target.closest("[data-ll-preview-inline]")) {
+            return;
+          }
+
+          if (event.target.closest("[data-ll-preview-text]")) {
             return;
           }
 

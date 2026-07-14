@@ -1493,11 +1493,11 @@ ${optionMarkup}
       if (!versionDevices.length) {
         const css = buildWithSnapshot(tab, baseSnapshot, styleBuilder);
         const markedCss = tab === "faq" ? wrapFaqCssMarkers(css) : css;
-        return repairResponsiveCssOutput(`${markedCss}
+        return cleanPictureSourcesFromOutput(repairResponsiveCssOutput(`${markedCss}
 
 <!-- HTML DO LAYOUT -->
 
-${buildWithSnapshot(tab, baseSnapshot, htmlBuilder)}`);
+${buildWithSnapshot(tab, baseSnapshot, htmlBuilder)}`));
       }
 
       const baseHtml = buildWithSnapshot(tab, baseSnapshot, htmlBuilder);
@@ -1527,7 +1527,7 @@ ${versionBlocks.map((block) => block.css).join("\n\n")}
 ${buildResponsiveSwitchStyle(versionDevices)}`;
       const markedCssPackage = tab === "faq" ? wrapFaqCssMarkers(cssPackage) : cssPackage;
 
-      return repairResponsiveCssOutput(`${markedCssPackage}
+      return cleanPictureSourcesFromOutput(repairResponsiveCssOutput(`${markedCssPackage}
 
 <!-- HTML DO LAYOUT -->
 
@@ -1538,7 +1538,66 @@ ${baseHtml}
 ${versionBlocks.map((block) => `  <div class="ll-responsive-version ll-responsive-version--${block.device}">
 ${block.html}
   </div>`).join("\n")}
-</div>`);
+</div>`));
+    }
+
+    function stripOutputImageSizeVariant(value) {
+      const rawValue = String(value || "").trim();
+      if (!rawValue) {
+        return "";
+      }
+
+      const hashIndex = rawValue.indexOf("#");
+      const hash = hashIndex >= 0 ? rawValue.slice(hashIndex) : "";
+      const withoutHash = hashIndex >= 0 ? rawValue.slice(0, hashIndex) : rawValue;
+      const queryIndex = withoutHash.indexOf("?");
+      if (queryIndex === -1) {
+        return rawValue;
+      }
+
+      const path = withoutHash.slice(0, queryIndex);
+      const query = withoutHash.slice(queryIndex + 1)
+        .split("&")
+        .filter((param) => param && !/^ims=/i.test(param))
+        .join("&");
+
+      return `${path}${query ? `?${query}` : ""}${hash}`;
+    }
+
+    function cleanPictureSourcesFromOutput(value) {
+      const rawValue = String(value || "");
+      if (!rawValue || (!/<picture[\s>]/i.test(rawValue) && !/\ssrcset\s*=/i.test(rawValue))) {
+        return rawValue;
+      }
+
+      if (typeof DOMParser === "undefined") {
+        return rawValue
+          .replace(/<source\b[^>]*\ssrcset=(["'])[\s\S]*?\1[^>]*>/gi, "")
+          .replace(/\s+srcset=(["'])[\s\S]*?\1/gi, "");
+      }
+
+      const parsedDocument = new DOMParser().parseFromString(`<div data-ll-output-picture-cleaner>${rawValue}</div>`, "text/html");
+      const wrapper = parsedDocument.querySelector("[data-ll-output-picture-cleaner]");
+      if (!wrapper) {
+        return rawValue;
+      }
+
+      wrapper.querySelectorAll("picture").forEach((picture) => {
+        picture.querySelectorAll("source[srcset]").forEach((source) => {
+          source.remove();
+        });
+
+        const image = picture.querySelector("img[src]");
+        if (image) {
+          image.setAttribute("src", stripOutputImageSizeVariant(image.getAttribute("src")));
+        }
+      });
+
+      wrapper.querySelectorAll("[srcset]").forEach((element) => {
+        element.removeAttribute("srcset");
+      });
+
+      return wrapper.innerHTML;
     }
 
     function renderResponsiveEditor() {
@@ -2620,7 +2679,7 @@ ${buildFaqStylePackage({ includeResponsive: true, responsiveOptions: { includeDr
       return buildFullHtml(false);
     }
 
-    function buildOutputHtml(copyMode = "html") {
+    function buildOutputHtmlRaw(copyMode = "html") {
       if (currentPage === "home") {
         return "";
       }
@@ -2746,6 +2805,11 @@ ${buildFaqStylePackage({ includeResponsive: true, responsiveOptions: { includeDr
       }
 
       return faqHtml;
+    }
+
+    function buildOutputHtml(copyMode = "html") {
+      const value = buildOutputHtmlRaw(copyMode);
+      return copyMode === "css" ? value : cleanPictureSourcesFromOutput(value);
     }
 
     function getPreviewTextStyle(meta) {

@@ -684,15 +684,8 @@ __STORIES_DYNAMIC_COLORS__
                 </video>`;
       }
 
-      const mobileSrc = escapeHtml(buildStoryImageVariant(slide.src, "400x"));
-      const desktopSrc = escapeHtml(buildStoryImageVariant(slide.src, "430x"));
-      const wideSrc = escapeHtml(buildStoryImageVariant(slide.src, "960x"));
-
       return `<picture class="lp-stories__picture">
-                  <source media="(max-width: 499px)" srcset="${mobileSrc}">
-                  <source media="(min-width: 992px)" srcset="${wideSrc}">
-                  <source media="(min-width: 500px)" srcset="${desktopSrc}">
-                  <img class="lp-stories__image" src="${wideSrc || desktopSrc || src}" alt="${alt}" width="1080" height="1920" loading="lazy">
+                  <img class="lp-stories__image" src="${src}" alt="${alt}" width="1080" height="1920" loading="lazy">
                 </picture>`;
     }
 

@@ -411,7 +411,6 @@
         </div>
         <figure class="ll-bento__card ll-bento__card--image">
           <picture>
-            <source media="(max-width: 560px)" srcset="${image}">
             <img class="ll-bento__card-media" src="${image}" alt="${escapeBentoAttr(block.alt)}">
           </picture>
           <span class="ll-bento__media-action" aria-hidden="true">Ampliar</span>

@@ -183,7 +183,9 @@
     line-height: 1.02;
     margin: 0;
     max-width: 100%;
+    overflow-wrap: normal;
     text-wrap: balance;
+    word-break: normal;
   }
 
   .ll-carousel__layout-text {
@@ -192,6 +194,8 @@
     line-height: 1.45;
     margin: 0;
     max-width: 100%;
+    overflow-wrap: normal;
+    word-break: normal;
   }
 
   .ll-carousel__media-card {
@@ -484,6 +488,58 @@
     width: 20px;
   }
 
+  @media (min-width: 761px) and (max-width: 1180px) {
+    .ll-carousel__layout--impact {
+      gap: clamp(1.25rem, 2.6vw, 2.75rem);
+      padding: clamp(1.25rem, 2.8vw, 2.5rem);
+    }
+
+    .ll-carousel__layout-copy {
+      max-width: min(32ch, 100%);
+      min-width: 0;
+      position: relative;
+      z-index: 3;
+    }
+
+    .ll-carousel__layout-title {
+      font-size: clamp(1.35rem, 2.45vw, 2.35rem);
+      line-height: 1.06;
+      text-wrap: balance;
+    }
+
+    .ll-carousel__layout-text {
+      font-size: clamp(0.76rem, 0.9vw, 0.95rem);
+      line-height: 1.38;
+      max-width: min(32ch, 100%);
+    }
+  }
+
+  @container ll-carousel-container (min-width: 621px) and (max-width: 980px) {
+    .ll-carousel__layout--impact {
+      gap: clamp(1.25rem, 3cqw, 2.75rem);
+      padding: clamp(1.25rem, 2.8cqw, 2.5rem);
+    }
+
+    .ll-carousel__layout-copy {
+      max-width: min(28ch, 100%);
+      min-width: 0;
+      position: relative;
+      z-index: 3;
+    }
+
+    .ll-carousel__layout-title {
+      font-size: clamp(1.25rem, 2.9cqw, 2.15rem);
+      line-height: 1.06;
+      text-wrap: balance;
+    }
+
+    .ll-carousel__layout-text {
+      font-size: clamp(0.74rem, 1.15cqw, 0.9rem);
+      line-height: 1.38;
+      max-width: min(28ch, 100%);
+    }
+  }
+
   @media (max-width: 760px) {
     .ll-carousel__container {
       padding: 1rem 0.75rem;
@@ -504,12 +560,37 @@
     }
 
     .ll-carousel__viewport {
-      aspect-ratio: 4 / 5;
+      aspect-ratio: auto;
       border-radius: 0.95rem;
+      height: clamp(22rem, 105vw, 26rem);
+      min-height: 22rem;
+    }
+
+    .ll-carousel__track {
+      height: 100%;
+      min-height: 0;
+    }
+
+    .ll-carousel__control--1:checked ~ .ll-carousel__viewport .ll-carousel__panel--1,
+    .ll-carousel__control--2:checked ~ .ll-carousel__viewport .ll-carousel__panel--2,
+    .ll-carousel__control--3:checked ~ .ll-carousel__viewport .ll-carousel__panel--3,
+    .ll-carousel__control--4:checked ~ .ll-carousel__viewport .ll-carousel__panel--4 {
+      height: 100%;
+      inset: 0;
+      min-height: 0;
+      overflow: hidden;
+      position: absolute;
+    }
+
+    .ll-carousel__layout {
+      height: 100%;
+      max-height: 100%;
+      min-height: 0;
+      overflow: hidden;
     }
 
     .ll-carousel__layout--impact {
-      align-content: center;
+      align-content: start;
       gap: 0.9rem;
       grid-template-columns: minmax(0, 1fr);
       grid-template-rows: auto minmax(0, 1fr);
@@ -520,6 +601,7 @@
       grid-column: 1;
       grid-row: 1;
       justify-self: stretch;
+      max-height: none;
       max-width: none;
     }
 
@@ -537,6 +619,10 @@
       grid-row: 1;
     }
 
+    .ll-carousel__layout--impact-reverse {
+      grid-template-rows: minmax(0, 1fr) auto;
+    }
+
     .ll-carousel__layout-title {
       font-size: clamp(1.3rem, 6vw, 1.85rem);
       line-height: 1.04;
@@ -548,27 +634,39 @@
     }
 
     .ll-carousel__media-card {
+      aspect-ratio: auto;
       border-radius: 0.8rem;
+      height: 100%;
+      min-height: 0;
       max-height: 100%;
       max-width: 100%;
     }
 
     .ll-carousel__layout--media {
       background: var(--ll-carousel-media-bg, #0d2333);
+      height: 100%;
+      min-height: 0;
+      overflow: hidden;
       padding: 0.65rem;
     }
 
     .ll-carousel__figure {
-      display: block;
+      display: grid;
+      gap: 0.55rem;
+      grid-template-rows: minmax(0, 1fr) auto;
       height: 100%;
+      min-height: 0;
+      overflow: hidden;
     }
 
     .ll-carousel__figure .ll-carousel__picture,
     .ll-carousel__figure > .ll-carousel__video {
+      aspect-ratio: 16 / 9;
       background: #101821;
       border-radius: 0.75rem;
       display: block;
       height: 100%;
+      max-height: 100%;
       min-height: 0;
       overflow: hidden;
     }
@@ -585,14 +683,14 @@
     .ll-carousel__caption {
       background: var(--ll-carousel-caption-bg, rgba(0, 0, 0, 0.62));
       border-radius: 0.85rem;
-      bottom: var(--ll-carousel-caption-bottom, 0.72rem);
-      left: var(--ll-carousel-caption-left, 0.72rem);
-      max-width: min(86%, 26rem);
+      bottom: auto;
+      left: auto;
+      max-width: none;
       padding: 0.72rem;
-      position: absolute;
-      right: var(--ll-carousel-caption-right, auto);
-      top: var(--ll-carousel-caption-top, auto);
-      transform: translate(var(--ll-carousel-caption-translate-x, 0), var(--ll-carousel-caption-translate-y, 0));
+      position: static;
+      right: auto;
+      top: auto;
+      transform: none;
     }
 
     .ll-carousel__caption h3 {
@@ -644,16 +742,45 @@
     .ll-carousel__side-hint {
       width: 28%;
     }
+
+    .ll-carousel__indicators {
+      display: none;
+    }
   }
 
   @container ll-carousel-container (max-width: 620px) {
     .ll-carousel__viewport {
-      aspect-ratio: 4 / 5;
+      aspect-ratio: auto;
       border-radius: 0.95rem;
+      height: clamp(22rem, 105cqw, 26rem);
+      min-height: 22rem;
+    }
+
+    .ll-carousel__track {
+      height: 100%;
+      min-height: 0;
+    }
+
+    .ll-carousel__control--1:checked ~ .ll-carousel__viewport .ll-carousel__panel--1,
+    .ll-carousel__control--2:checked ~ .ll-carousel__viewport .ll-carousel__panel--2,
+    .ll-carousel__control--3:checked ~ .ll-carousel__viewport .ll-carousel__panel--3,
+    .ll-carousel__control--4:checked ~ .ll-carousel__viewport .ll-carousel__panel--4 {
+      height: 100%;
+      inset: 0;
+      min-height: 0;
+      overflow: hidden;
+      position: absolute;
+    }
+
+    .ll-carousel__layout {
+      height: 100%;
+      max-height: 100%;
+      min-height: 0;
+      overflow: hidden;
     }
 
     .ll-carousel__layout--impact {
-      align-content: center;
+      align-content: start;
       gap: 0.9rem;
       grid-template-columns: minmax(0, 1fr);
       grid-template-rows: auto minmax(0, 1fr);
@@ -664,6 +791,7 @@
       grid-column: 1;
       grid-row: 1;
       justify-self: stretch;
+      max-height: none;
       max-width: none;
     }
 
@@ -681,6 +809,10 @@
       grid-row: 1;
     }
 
+    .ll-carousel__layout--impact-reverse {
+      grid-template-rows: minmax(0, 1fr) auto;
+    }
+
     .ll-carousel__layout-title {
       font-size: clamp(1.3rem, 7.5cqw, 1.85rem);
     }
@@ -690,22 +822,40 @@
       line-height: 1.32;
     }
 
+    .ll-carousel__media-card {
+      aspect-ratio: auto;
+      border-radius: 0.8rem;
+      height: 100%;
+      min-height: 0;
+      max-height: 100%;
+      max-width: 100%;
+    }
+
     .ll-carousel__layout--media {
       background: var(--ll-carousel-media-bg, #0d2333);
+      height: 100%;
+      min-height: 0;
+      overflow: hidden;
       padding: 0.65rem;
     }
 
     .ll-carousel__figure {
-      display: block;
+      display: grid;
+      gap: 0.55rem;
+      grid-template-rows: minmax(0, 1fr) auto;
       height: 100%;
+      min-height: 0;
+      overflow: hidden;
     }
 
     .ll-carousel__figure .ll-carousel__picture,
     .ll-carousel__figure > .ll-carousel__video {
+      aspect-ratio: 16 / 9;
       background: #101821;
       border-radius: 0.75rem;
       display: block;
       height: 100%;
+      max-height: 100%;
       min-height: 0;
       overflow: hidden;
     }
@@ -722,14 +872,14 @@
     .ll-carousel__caption {
       background: var(--ll-carousel-caption-bg, rgba(0, 0, 0, 0.62));
       border-radius: 0.85rem;
-      bottom: var(--ll-carousel-caption-bottom, 0.72rem);
-      left: var(--ll-carousel-caption-left, 0.72rem);
-      max-width: min(86%, 26rem);
+      bottom: auto;
+      left: auto;
+      max-width: none;
       padding: 0.72rem;
-      position: absolute;
-      right: var(--ll-carousel-caption-right, auto);
-      top: var(--ll-carousel-caption-top, auto);
-      transform: translate(var(--ll-carousel-caption-translate-x, 0), var(--ll-carousel-caption-translate-y, 0));
+      position: static;
+      right: auto;
+      top: auto;
+      transform: none;
     }
 
     .ll-carousel__caption h3 {
@@ -766,6 +916,10 @@
     .ll-carousel__dot-text {
       font-size: 0.78rem;
       line-height: 1.05;
+    }
+
+    .ll-carousel__indicators {
+      display: none;
     }
   }
 __CAROUSEL_DYNAMIC_COLORS__
@@ -1041,20 +1195,7 @@ __CAROUSEL_DYNAMIC_COLORS__
     }
 
     function renderCarouselPicture(slide) {
-      const src = normalizeAssetUrl(slide.image);
-      const sources = [
-        ["(max-width: 320px)", "242x"],
-        ["(max-width: 375px)", "297x"],
-        ["(max-width: 425px)", "347x"],
-        ["(max-width: 768px)", "702x"],
-        ["(max-width: 1024px)", "958x"],
-        ["(max-width: 1440px)", "1214x"]
-      ].map(([media, size]) => {
-        return `<source media="${media}" srcset="${escapeHtml(buildCarouselImageVariant(src, size))}">`;
-      }).join("\n              ");
-
       return `<picture class="ll-carousel__picture">
-              ${sources}
               ${renderCarouselImage(slide)}
             </picture>`;
     }
