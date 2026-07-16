@@ -5,6 +5,11 @@
 
 const SENKO_BRIDGE_CDN_ROOT = "https://cdn.jsdelivr.net/gh/YgorMartins-webm/SenkoLib@main/app/features/biblioteca/";
 const SENKO_BRIDGE_PAGE_ROOT = "https://ygormartins-webm.github.io/SenkoLib/";
+const SENKO_BRIDGE_JSON_CATALOG_URLS = [
+  "https://raw.githubusercontent.com/YgorMartins-webm/SenkoLib/main/layouts.json",
+  "https://raw.githubusercontent.com/YgorMartins-webm/SenkoLib/main/app/features/biblioteca/data/layouts.json",
+  `${SENKO_BRIDGE_PAGE_ROOT}layouts.json`
+];
 const SENKO_BRIDGE_SCRIPT_TIMEOUT_MS = 8000;
 
 function ensureSenkoBridgeState() {
@@ -94,18 +99,127 @@ function senkoBridgeLoadScript(src) {
   });
 }
 
+function senkoBridgeCacheBust(url, token) {
+  if (!token) {
+    return url;
+  }
+  return `${url}${url.includes("?") ? "&" : "?"}llv=${encodeURIComponent(token)}`;
+}
+
+function getSenkoBridgeManifestFile(entry) {
+  if (!entry) {
+    return "";
+  }
+  if (typeof entry === "string") {
+    return entry;
+  }
+  if (typeof entry.file === "string") {
+    return entry.file;
+  }
+  if (typeof entry.path === "string") {
+    return entry.path;
+  }
+  return "";
+}
+
+function normalizeSenkoBridgeCatalog(payload) {
+  if (!payload || !Array.isArray(payload.layouts)) {
+    return null;
+  }
+
+  const variantsById = payload.variantsById && typeof payload.variantsById === "object"
+    ? cloneSenkoBridgeValue(payload.variantsById)
+    : {};
+  const layouts = payload.layouts
+    .map((layout) => {
+      if (!layout || typeof layout !== "object") {
+        return null;
+      }
+
+      const id = layout.id || layout.slug || layout.key || layout.name || layout.title;
+      const html = layout.html || layout.markup || layout.content || "";
+      const css = layout.css || layout.styles || "";
+      if (!id || (!html && !css)) {
+        return null;
+      }
+
+      if (Array.isArray(layout.variants)) {
+        variantsById[id] = layout.variants;
+      }
+
+      return {
+        ...layout,
+        id,
+        name: layout.name || layout.title || id,
+        tags: Array.isArray(layout.tags) ? layout.tags : [],
+        html,
+        css
+      };
+    })
+    .filter(Boolean);
+
+  return layouts.length ? { layouts, variantsById } : null;
+}
+
+async function loadSenkoBridgeJsonCatalog() {
+  if (typeof fetch !== "function") {
+    return null;
+  }
+
+  for (const url of SENKO_BRIDGE_JSON_CATALOG_URLS) {
+    try {
+      const response = await fetch(senkoBridgeCacheBust(url, Date.now()), { cache: "no-store" });
+      if (!response.ok) {
+        continue;
+      }
+      const catalog = normalizeSenkoBridgeCatalog(await response.json());
+      if (catalog) {
+        return catalog;
+      }
+    } catch (error) {
+      // Continua tentando as proximas fontes; o manifesto JS ainda e o fallback principal.
+    }
+  }
+
+  return null;
+}
+
+async function loadSenkoBridgeManifestScripts(force = false) {
+  const cacheToken = force ? Date.now() : "";
+  delete window.SenkoLib;
+  delete window.SenkoBibliotecaManifest;
+
+  await senkoBridgeLoadScript(senkoBridgeCacheBust(`${SENKO_BRIDGE_CDN_ROOT}scripts/senkolib-core.js`, cacheToken));
+  await senkoBridgeLoadScript(senkoBridgeCacheBust(`${SENKO_BRIDGE_CDN_ROOT}data/manifest.js`, cacheToken));
+
+  const manifest = window.SenkoBibliotecaManifest;
+  if (!manifest || !Array.isArray(manifest.layouts)) {
+    throw new Error("Manifesto do SenkoLib nao trouxe layouts.");
+  }
+
+  const layoutFiles = manifest.layouts.map(getSenkoBridgeManifestFile).filter(Boolean);
+  const variantFiles = (manifest.variants || []).map(getSenkoBridgeManifestFile).filter(Boolean);
+
+  for (const path of layoutFiles) {
+    await senkoBridgeLoadScript(senkoBridgeCacheBust(`${SENKO_BRIDGE_CDN_ROOT}data/${path}`, cacheToken));
+  }
+
+  for (const path of variantFiles) {
+    await senkoBridgeLoadScript(senkoBridgeCacheBust(`${SENKO_BRIDGE_CDN_ROOT}data/${path}`, cacheToken));
+  }
+
+  const layouts = window.SenkoLib && typeof window.SenkoLib.getAll === "function" ? window.SenkoLib.getAll() : [];
+  const variantsById = {};
+  layouts.forEach((layout) => {
+    variantsById[layout.id] = window.SenkoLib.getVariants(layout.id) || [];
+  });
+
+  return { layouts, variantsById };
+}
+
 async function loadSenkoBridgeLibrary(force = false) {
   const bridge = ensureSenkoBridgeState();
   if (bridge.loading || (bridge.loaded && !force)) {
-    return;
-  }
-
-  const localData = getSenkoBridgeLocalData();
-  if (!force && localData) {
-    applySenkoBridgeData(localData, "bundle local");
-    if (typeof renderEditor === "function") {
-      renderEditor(true);
-    }
     return;
   }
 
@@ -117,31 +231,13 @@ async function loadSenkoBridgeLibrary(force = false) {
   }
 
   try {
-    delete window.SenkoLib;
-    delete window.SenkoBibliotecaManifest;
-
-    await senkoBridgeLoadScript(`${SENKO_BRIDGE_CDN_ROOT}scripts/senkolib-core.js`);
-    await senkoBridgeLoadScript(`${SENKO_BRIDGE_CDN_ROOT}data/manifest.js`);
-
-    const manifest = window.SenkoBibliotecaManifest;
-    if (!manifest || !Array.isArray(manifest.layouts)) {
-      throw new Error("Manifesto do SenkoLib nao trouxe layouts.");
+    const catalog = await loadSenkoBridgeJsonCatalog();
+    if (catalog) {
+      applySenkoBridgeData(catalog, "catalogo layouts.json");
+    } else {
+      const manifestData = await loadSenkoBridgeManifestScripts(force);
+      applySenkoBridgeData(manifestData, "SenkoLib remoto");
     }
-
-    for (const path of manifest.layouts) {
-      await senkoBridgeLoadScript(`${SENKO_BRIDGE_CDN_ROOT}data/${path}`);
-    }
-
-    for (const path of manifest.variants || []) {
-      await senkoBridgeLoadScript(`${SENKO_BRIDGE_CDN_ROOT}data/${path}`);
-    }
-
-    const layouts = window.SenkoLib && typeof window.SenkoLib.getAll === "function" ? window.SenkoLib.getAll() : [];
-    const variantsById = {};
-    layouts.forEach((layout) => {
-      variantsById[layout.id] = window.SenkoLib.getVariants(layout.id) || [];
-    });
-    applySenkoBridgeData({ layouts, variantsById }, "CDN SenkoLib");
   } catch (error) {
     const fallbackData = getSenkoBridgeLocalData();
     if (fallbackData) {
