@@ -5,12 +5,20 @@
 
 const SENKO_BRIDGE_CDN_ROOT = "https://cdn.jsdelivr.net/gh/YgorMartins-webm/SenkoLib@main/app/features/biblioteca/";
 const SENKO_BRIDGE_PAGE_ROOT = "https://ygormartins-webm.github.io/SenkoLib/";
+const SENKO_BRIDGE_PAGE_LIBRARY_ROOT = `${SENKO_BRIDGE_PAGE_ROOT}app/features/biblioteca/`;
+const SENKO_BRIDGE_REMOTE_ROOTS = [
+  SENKO_BRIDGE_PAGE_LIBRARY_ROOT,
+  SENKO_BRIDGE_CDN_ROOT
+];
 const SENKO_BRIDGE_JSON_CATALOG_URLS = [
   "https://raw.githubusercontent.com/YgorMartins-webm/SenkoLib/main/layouts.json",
   "https://raw.githubusercontent.com/YgorMartins-webm/SenkoLib/main/app/features/biblioteca/data/layouts.json",
   `${SENKO_BRIDGE_PAGE_ROOT}layouts.json`
 ];
 const SENKO_BRIDGE_SCRIPT_TIMEOUT_MS = 8000;
+const SENKO_BRIDGE_FETCH_TIMEOUT_MS = 3500;
+const SENKO_BRIDGE_REMOTE_TIMEOUT_MS = 18000;
+const SENKO_BRIDGE_SCRIPT_BATCH_SIZE = 8;
 
 function ensureSenkoBridgeState() {
   state.senkoBridge = {
@@ -106,6 +114,38 @@ function senkoBridgeCacheBust(url, token) {
   return `${url}${url.includes("?") ? "&" : "?"}llv=${encodeURIComponent(token)}`;
 }
 
+function senkoBridgeWithTimeout(promise, ms, message) {
+  let timeoutId = 0;
+  const timeout = new Promise((resolve, reject) => {
+    timeoutId = window.setTimeout(() => reject(new Error(message)), ms);
+  });
+
+  return Promise.race([promise, timeout]).finally(() => {
+    window.clearTimeout(timeoutId);
+  });
+}
+
+async function senkoBridgeFetchJsonWithTimeout(url) {
+  if (typeof AbortController === "undefined") {
+    return senkoBridgeWithTimeout(
+      fetch(senkoBridgeCacheBust(url, Date.now()), { cache: "no-store" }),
+      SENKO_BRIDGE_FETCH_TIMEOUT_MS,
+      `Tempo esgotado carregando ${url}`
+    );
+  }
+
+  const controller = new AbortController();
+  const timeoutId = window.setTimeout(() => controller.abort(), SENKO_BRIDGE_FETCH_TIMEOUT_MS);
+  try {
+    return await fetch(senkoBridgeCacheBust(url, Date.now()), {
+      cache: "no-store",
+      signal: controller.signal
+    });
+  } finally {
+    window.clearTimeout(timeoutId);
+  }
+}
+
 function getSenkoBridgeManifestFile(entry) {
   if (!entry) {
     return "";
@@ -120,6 +160,10 @@ function getSenkoBridgeManifestFile(entry) {
     return entry.path;
   }
   return "";
+}
+
+function normalizeSenkoBridgeRoot(root) {
+  return String(root || "").endsWith("/") ? String(root || "") : `${root}/`;
 }
 
 function normalizeSenkoBridgeCatalog(payload) {
@@ -168,7 +212,7 @@ async function loadSenkoBridgeJsonCatalog() {
 
   for (const url of SENKO_BRIDGE_JSON_CATALOG_URLS) {
     try {
-      const response = await fetch(senkoBridgeCacheBust(url, Date.now()), { cache: "no-store" });
+      const response = await senkoBridgeFetchJsonWithTimeout(url);
       if (!response.ok) {
         continue;
       }
@@ -184,13 +228,24 @@ async function loadSenkoBridgeJsonCatalog() {
   return null;
 }
 
-async function loadSenkoBridgeManifestScripts(force = false) {
+async function senkoBridgeLoadScriptFiles(paths, root, cacheToken) {
+  const baseRoot = normalizeSenkoBridgeRoot(root);
+  for (let index = 0; index < paths.length; index += SENKO_BRIDGE_SCRIPT_BATCH_SIZE) {
+    const batch = paths.slice(index, index + SENKO_BRIDGE_SCRIPT_BATCH_SIZE);
+    await Promise.all(batch.map((path) => {
+      return senkoBridgeLoadScript(senkoBridgeCacheBust(`${baseRoot}data/${path}`, cacheToken));
+    }));
+  }
+}
+
+async function loadSenkoBridgeManifestScriptsFromRoot(root, force = false) {
   const cacheToken = force ? Date.now() : "";
+  const baseRoot = normalizeSenkoBridgeRoot(root);
   delete window.SenkoLib;
   delete window.SenkoBibliotecaManifest;
 
-  await senkoBridgeLoadScript(senkoBridgeCacheBust(`${SENKO_BRIDGE_CDN_ROOT}scripts/senkolib-core.js`, cacheToken));
-  await senkoBridgeLoadScript(senkoBridgeCacheBust(`${SENKO_BRIDGE_CDN_ROOT}data/manifest.js`, cacheToken));
+  await senkoBridgeLoadScript(senkoBridgeCacheBust(`${baseRoot}scripts/senkolib-core.js`, cacheToken));
+  await senkoBridgeLoadScript(senkoBridgeCacheBust(`${baseRoot}data/manifest.js`, cacheToken));
 
   const manifest = window.SenkoBibliotecaManifest;
   if (!manifest || !Array.isArray(manifest.layouts)) {
@@ -200,13 +255,8 @@ async function loadSenkoBridgeManifestScripts(force = false) {
   const layoutFiles = manifest.layouts.map(getSenkoBridgeManifestFile).filter(Boolean);
   const variantFiles = (manifest.variants || []).map(getSenkoBridgeManifestFile).filter(Boolean);
 
-  for (const path of layoutFiles) {
-    await senkoBridgeLoadScript(senkoBridgeCacheBust(`${SENKO_BRIDGE_CDN_ROOT}data/${path}`, cacheToken));
-  }
-
-  for (const path of variantFiles) {
-    await senkoBridgeLoadScript(senkoBridgeCacheBust(`${SENKO_BRIDGE_CDN_ROOT}data/${path}`, cacheToken));
-  }
+  await senkoBridgeLoadScriptFiles(layoutFiles, baseRoot, cacheToken);
+  await senkoBridgeLoadScriptFiles(variantFiles, baseRoot, cacheToken);
 
   const layouts = window.SenkoLib && typeof window.SenkoLib.getAll === "function" ? window.SenkoLib.getAll() : [];
   const variantsById = {};
@@ -215,6 +265,23 @@ async function loadSenkoBridgeManifestScripts(force = false) {
   });
 
   return { layouts, variantsById };
+}
+
+async function loadSenkoBridgeManifestScripts(force = false) {
+  let lastError = null;
+  for (const root of SENKO_BRIDGE_REMOTE_ROOTS) {
+    try {
+      return await senkoBridgeWithTimeout(
+        loadSenkoBridgeManifestScriptsFromRoot(root, force),
+        SENKO_BRIDGE_REMOTE_TIMEOUT_MS,
+        `Tempo esgotado carregando SenkoLib remoto em ${root}`
+      );
+    } catch (error) {
+      lastError = error;
+    }
+  }
+
+  throw lastError || new Error("Nao foi possivel carregar o SenkoLib remoto.");
 }
 
 async function loadSenkoBridgeLibrary(force = false) {
