@@ -74,7 +74,7 @@
   display: grid;
   grid-template-columns: repeat(12, minmax(0, 1fr));
   grid-auto-rows: minmax(150px, auto);
-  gap: 14px;
+  gap: 1rem;
   align-items: stretch;
   width: 100%;
   perspective: 1200px;
@@ -179,13 +179,21 @@
       min-height: 100%;
     }
 
-    .ll-bento__expand--image {
+.ll-bento__expand--image {
       grid-column: span 2;
       align-self: center;
       justify-self: center;
       width: 100%;
       aspect-ratio: 1 / 1;
       border-radius: 100%;
+    }
+
+    .ll-bento__expand--image-square {
+      grid-column: span 3;
+      align-self: start;
+      justify-self: start;
+      min-height: 0;
+      border-radius: var(--ll-bento-radius);
     }
 
     .ll-bento__expand--image .ll-bento__card--image {
@@ -210,10 +218,11 @@
       color: #ffffff;
     }
 
-    .ll-bento__card--image {
+.ll-bento__card--image {
       align-self: center;
       justify-self: center;
       width: 100%;
+      height: 100%;
       min-height: 0;
       padding: 0;
       aspect-ratio: 1 / 1;
@@ -222,25 +231,237 @@
       cursor: zoom-in;
     }
 
+    .ll-bento__expand--image-square .ll-bento__card--image {
+      aspect-ratio: auto;
+      border-radius: inherit;
+    }
+
     .ll-bento__card--small {
       grid-column: span 3;
       min-height: 0;
       aspect-ratio: 1 / 1;
     }
 
-    .ll-bento__card--text {
-      resize: both;
-      overflow: auto;
-      min-width: min(100%, 170px);
-      min-height: 150px;
-      max-width: none;
-      max-height: none;
-    }
+.ll-bento__card--text {
+  align-self: start;
+  justify-self: start;
+  resize: none;
+  overflow: auto;
+  min-width: min(100%, 170px);
+  min-height: 150px;
+  max-width: var(--ll-bento-resize-max-width, 100%);
+  max-height: var(--ll-bento-resize-max-height, 560px);
+}
 
-    .ll-bento__card--text:hover,
-    .ll-bento__card--text:focus-within {
-      z-index: 6;
-    }
+.ll-bento__resize-handle {
+  position: absolute;
+  z-index: 9;
+  display: block;
+  opacity: 0;
+  touch-action: none;
+  transition: opacity 0.16s ease, background-color 0.16s ease;
+}
+
+.ll-bento__card--text:hover .ll-bento__resize-handle,
+.ll-bento__card--text:focus-within .ll-bento__resize-handle {
+  opacity: 1;
+}
+
+.ll-bento__resize-handle--vertical {
+  left: 50%;
+  bottom: 3px;
+  width: 52px;
+  height: 11px;
+  transform: translateX(-50%);
+  cursor: ns-resize;
+  opacity: 0.58;
+}
+
+.ll-bento__resize-handle--vertical::before {
+  content: "";
+  position: absolute;
+  top: 4px;
+  left: 7px;
+  right: 7px;
+  height: 3px;
+  border-radius: 999px;
+  background: rgba(234, 91, 12, 0.88);
+  box-shadow: 0 1px 2px rgba(16, 24, 40, 0.18);
+}
+
+.ll-bento__resize-handle--horizontal {
+  top: 50%;
+  right: 3px;
+  width: 11px;
+  height: 52px;
+  transform: translateY(-50%);
+  cursor: ew-resize;
+}
+
+.ll-bento__resize-handle--horizontal::before {
+  content: "";
+  position: absolute;
+  top: 7px;
+  bottom: 7px;
+  left: 4px;
+  width: 3px;
+  border-radius: 999px;
+  background: rgba(234, 91, 12, 0.88);
+  box-shadow: 0 1px 2px rgba(16, 24, 40, 0.18);
+}
+
+.ll-bento__resize-handle--both {
+  right: 3px;
+  bottom: 3px;
+  width: 12px;
+  height: 12px;
+  border-right: 2px solid rgba(234, 91, 12, 0.94);
+  border-bottom: 2px solid rgba(234, 91, 12, 0.94);
+  border-radius: 0 0 3px 0;
+  cursor: nwse-resize;
+}
+
+.ll-bento__card--text:hover,
+.ll-bento__card--text:focus-within {
+  z-index: 6;
+}
+
+.ll-bento__expand--image-square {
+  resize: horizontal;
+  overflow: hidden;
+  min-width: min(100%, 150px);
+  min-height: 0;
+  max-width: var(--ll-bento-resize-max-width, 100%);
+  max-height: var(--ll-bento-resize-max-height, 560px);
+}
+
+.ll-bento__expand--image-square:hover,
+.ll-bento__expand--image-square:focus-within {
+  z-index: 6;
+}
+
+.ll-bento__expand--image-square::after {
+  content: "";
+  position: absolute;
+  right: 6px;
+  bottom: 6px;
+  z-index: 5;
+  width: 11px;
+  height: 11px;
+  border-right: 2px solid rgba(255, 255, 255, 0.84);
+  border-bottom: 2px solid rgba(255, 255, 255, 0.84);
+  border-radius: 0 0 4px 0;
+  opacity: 0.88;
+  pointer-events: none;
+}
+
+.ll-bento__expand--image-square .ll-bento__image-button {
+  right: 18px;
+  bottom: 18px;
+}
+
+.ll-bento__expand--image-rectangle {
+  aspect-ratio: 4 / 3;
+  min-height: 130px;
+  resize: both;
+}
+
+.ll-bento__expand--image-circle {
+  grid-column: span 3;
+  align-self: start;
+  justify-self: start;
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  border-radius: 100%;
+  resize: horizontal;
+  overflow: hidden;
+  min-width: min(100%, 150px);
+  min-height: 0;
+  max-width: var(--ll-bento-resize-max-width, 100%);
+  max-height: var(--ll-bento-resize-max-height, 560px);
+}
+
+.ll-bento__expand--image-circle:hover,
+.ll-bento__expand--image-circle:focus-within {
+  z-index: 6;
+}
+
+.ll-bento__expand--image-circle .ll-bento__card--image {
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  padding: 0;
+  aspect-ratio: auto;
+  border-radius: inherit;
+}
+
+.ll-bento__expand--image-circle .ll-bento__image-button {
+  right: 18px;
+  bottom: 18px;
+}
+
+.ll-bento__editor-add {
+  position: absolute;
+  z-index: 8;
+  display: grid;
+  grid-column: span 3;
+  place-items: center;
+  min-height: 150px;
+  border: 1px dashed rgba(234, 91, 12, 0.52);
+  border-radius: var(--ll-bento-radius);
+  background: rgba(255, 255, 255, 0.52);
+}
+
+.ll-bento__editor-add__trigger {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border: 0;
+  border-radius: 999px;
+  color: #ffffff;
+  background: var(--ll-bento-accent);
+  font: 800 1.3rem/1 Arial, Helvetica, sans-serif;
+  cursor: pointer;
+  box-shadow: 0 5px 12px rgba(234, 91, 12, 0.22);
+}
+
+.ll-bento__editor-add__menu {
+  position: absolute;
+  z-index: 20;
+  top: 50%;
+  left: 50%;
+  display: none;
+  gap: 6px;
+  padding: 7px;
+  border: 1px solid rgba(16, 24, 40, 0.16);
+  border-radius: 12px;
+  background: #ffffff;
+  box-shadow: 0 10px 26px rgba(16, 24, 40, 0.16);
+  transform: translate(-50%, -50%);
+}
+
+.ll-bento__editor-add.is-open .ll-bento__editor-add__menu {
+  display: flex;
+}
+
+.ll-bento__editor-add__menu button {
+  min-height: 30px;
+  padding: 0 10px;
+  border: 1px solid var(--ll-bento-line);
+  border-radius: 8px;
+  color: var(--ll-bento-ink);
+  background: #ffffff;
+  font: 800 0.74rem/1 Arial, Helvetica, sans-serif;
+  cursor: pointer;
+}
+
+.ll-bento__editor-add__menu button:hover,
+.ll-bento__editor-add__menu button:focus-visible {
+  border-color: var(--ll-bento-accent);
+  color: var(--ll-bento-accent);
+  outline: 0;
+}
 
     .ll-bento__card--detail {
       display: grid;
@@ -704,18 +925,26 @@
       .ll-bento__grid {
         grid-template-columns: repeat(2, minmax(0, 1fr));
         grid-template-areas:
-          "summary image"
           "hero hero"
+          "summary image"
           "use detail"
           "check close";
         grid-auto-rows: auto;
-        gap: clamp(8px, 1.6vw, 12px);
+        gap: 1rem;
       }
 
       .ll-bento__card {
         min-height: clamp(124px, 21vw, 180px);
         padding: clamp(12px, 2vw, 20px);
         border-radius: clamp(16px, 2.8vw, 24px);
+      }
+
+      .ll-bento__card--text {
+        width: 100% !important;
+        height: auto !important;
+        max-width: 100% !important;
+        max-height: none !important;
+        resize: none;
       }
 
       .ll-bento__card--wide,
@@ -733,8 +962,28 @@
 
       .ll-bento__expand--image {
         grid-area: image;
-        width: min(100%, 220px);
+        width: min(100%, 220px) !important;
+        height: auto !important;
+        max-width: 100% !important;
+        max-height: none !important;
         min-height: 0;
+        aspect-ratio: 1 / 1;
+        border-radius: clamp(16px, 2.8vw, 24px);
+        align-self: center;
+        justify-self: center;
+        resize: none;
+      }
+
+      .ll-bento__expand--image-square {
+        width: 100% !important;
+        border-radius: clamp(16px, 2.8vw, 24px);
+        align-self: start;
+        justify-self: stretch;
+      }
+
+      .ll-bento__expand--image-circle {
+        width: min(100%, 220px) !important;
+        height: auto !important;
         aspect-ratio: 1 / 1;
         border-radius: 100%;
         align-self: center;
@@ -745,8 +994,8 @@
         width: 100%;
         height: 100%;
         padding: 0;
-        aspect-ratio: 1 / 1;
-        border-radius: 100%;
+        aspect-ratio: auto;
+        border-radius: inherit;
       }
 
       .ll-bento__expand--hero {
@@ -780,6 +1029,12 @@
       .ll-bento__card--dark {
         grid-area: close;
         min-height: clamp(140px, 22vw, 200px);
+      }
+
+      .ll-bento__editor-add {
+        grid-column: span 1;
+        min-height: 124px;
+        border-radius: clamp(16px, 2.8vw, 24px);
       }
     }
 
@@ -819,12 +1074,12 @@
       .ll-bento__grid {
         grid-template-columns: repeat(2, minmax(0, 1fr));
         grid-template-areas:
-          "summary image"
           "hero hero"
+          "summary image"
           "use detail"
           "check close";
         grid-auto-rows: auto;
-        gap: 7px;
+        gap: 1rem;
       }
 
       .ll-bento__card {
@@ -857,8 +1112,21 @@
       .ll-bento__expand--image {
         grid-area: image;
         min-height: 0;
-        width: 100%;
+        width: 100% !important;
+        height: auto !important;
         aspect-ratio: 1 / 1;
+        border-radius: 16px;
+      }
+
+      .ll-bento__expand--image:not(.ll-bento__expand--image-square) {
+        border-radius: 100%;
+      }
+
+      .ll-bento__expand--image-square {
+        border-radius: 16px;
+      }
+
+      .ll-bento__expand--image-circle {
         border-radius: 100%;
       }
 
@@ -866,8 +1134,8 @@
         padding: 0;
         overflow: hidden;
         width: 100%;
-        aspect-ratio: 1 / 1;
-        border-radius: 100%;
+        aspect-ratio: auto;
+        border-radius: inherit;
         background: #dbeafe;
       }
 
@@ -924,6 +1192,11 @@
         background:
           radial-gradient(circle at 88% 18%, rgba(234, 91, 12, 0.28), transparent 34%),
           var(--ll-bento-deep);
+      }
+
+      .ll-bento__editor-add {
+        min-height: 106px;
+        border-radius: 16px;
       }
 
       .ll-bento__card--image picture {
@@ -1288,8 +1561,8 @@
   @media (max-width: 900px) {
     .ll-bento__grid {
       grid-template-areas:
-        "summary image"
         "hero hero"
+        "summary image"
         "use detail"
         "table table";
     }

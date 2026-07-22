@@ -533,6 +533,7 @@
     let isFocusMode = false;
     let isCodeFocusMode = false;
     let templatePreviewUpdateTimer = 0;
+    let actionFeedbackTimer = 0;
     const fixedStartPage = document.documentElement.dataset.startPage || document.body?.dataset.startPage || "";
     let currentPage = fixedStartPage || "home";
     let currentEditorTab = "dashboard";
@@ -825,13 +826,14 @@
 
       if (device === "base") {
         rememberBaseSnapshot(tab);
-        return;
+        return true;
       }
 
       state.responsive.saved[tab] = state.responsive.saved[tab] || {};
       state.responsive.saved[tab][device] = getTabSnapshot(tab);
       state.responsive.dirty = false;
       renderEditor(true);
+      return true;
     }
 
     function discardResponsiveDraft() {
@@ -1103,12 +1105,12 @@ ${optionMarkup}
 
       if (!name) {
         window.alert("Dê um nome para o preset antes de salvar.");
-        return;
+        return false;
       }
 
       if (state.responsive.editDevice !== "base" && state.responsive.dirty) {
         window.alert("Salve ou descarte a versão responsiva aberta antes de salvar o preset.");
-        return;
+        return false;
       }
 
       const presets = getUserPresets(tab);
@@ -1124,7 +1126,7 @@ ${optionMarkup}
       if (existingIndex >= 0) {
         const shouldReplace = window.confirm("Já existe um preset com esse nome. Substituir?");
         if (!shouldReplace) {
-          return;
+          return false;
         }
         presets[existingIndex] = preset;
       } else {
@@ -1135,6 +1137,7 @@ ${optionMarkup}
       state.presets.dirty = true;
       persistUserPresets();
       renderEditor(true);
+      return true;
     }
 
     function loadSelectedUserPreset() {
@@ -2916,10 +2919,10 @@ ${buildFaqStylePackage({ includeResponsive: true, responsiveOptions: { includeDr
 
     function saveResponsivePreviewVersion() {
       if (!ensureResponsiveEditDeviceForPreview()) {
-        return;
+        return false;
       }
 
-      saveResponsiveDraft();
+      return saveResponsiveDraft();
     }
 
     function removeResponsivePreviewVersion() {
@@ -3289,6 +3292,36 @@ ${buildFaqStylePackage({ includeResponsive: true, responsiveOptions: { includeDr
       }, 650);
     }
 
+    function showActionFeedback(message, button, options = {}) {
+      let toast = document.querySelector("#actionFeedbackToast");
+      if (!toast) {
+        toast = document.createElement("div");
+        toast.id = "actionFeedbackToast";
+        toast.className = "action-feedback-toast";
+        toast.setAttribute("role", "status");
+        toast.setAttribute("aria-live", "polite");
+        document.body.append(toast);
+      }
+
+      toast.textContent = message;
+      toast.classList.toggle("is-warning", Boolean(options.warning));
+      toast.classList.remove("is-visible");
+      void toast.offsetWidth;
+      toast.classList.add("is-visible");
+
+      if (button) {
+        button.classList.remove("is-action-confirmed");
+        void button.offsetWidth;
+        button.classList.add("is-action-confirmed");
+        window.setTimeout(() => button.classList.remove("is-action-confirmed"), 520);
+      }
+
+      window.clearTimeout(actionFeedbackTimer);
+      actionFeedbackTimer = window.setTimeout(() => {
+        toast.classList.remove("is-visible", "is-warning");
+      }, options.warning ? 5200 : 2500);
+    }
+
     function getCopyStatusMessage(copyMode, warnings) {
       const baseStatus = copyMode === "css" && currentPage === "conteudo"
         ? pageConfigs[currentPage].cssCopiedStatus
@@ -3311,7 +3344,7 @@ ${buildFaqStylePackage({ includeResponsive: true, responsiveOptions: { includeDr
       return `Não copiei. Existem imagens ou mídias locais/temporárias: ${visibleBlockers}${remaining}. Troque por URL hospedada antes de copiar.`;
     }
 
-    async function copyGeneratedHtml(mode = "html") {
+    async function copyGeneratedHtml(mode = "html", button) {
       const copyMode = mode === "full" ? "full" : mode === "css" ? "css" : "html";
       if (state.responsive.dirty && copyMode === "full") {
         const shouldCopy = window.confirm("Existe uma versão responsiva com alterações não salvas. Copiar agora não inclui esse rascunho. Copiar mesmo assim?");
@@ -3337,6 +3370,7 @@ ${buildFaqStylePackage({ includeResponsive: true, responsiveOptions: { includeDr
           copyStatus.textContent = "";
           copyStatus.classList.remove("is-warning", "is-visible");
         }, 9000);
+        showActionFeedback(getCopyBlockedStatusMessage(blockers), button, { warning: true });
         return;
       }
 
@@ -3355,6 +3389,7 @@ ${buildFaqStylePackage({ includeResponsive: true, responsiveOptions: { includeDr
       void copyStatus.offsetWidth;
       copyStatus.classList.add("is-visible");
       triggerMicroInteraction("copy");
+      showActionFeedback(getCopyStatusMessage(copyMode, warnings), button, { warning: warnings.length > 0 });
       window.setTimeout(() => {
         copyStatus.textContent = "";
         copyStatus.classList.remove("is-warning", "is-visible");
@@ -3953,7 +3988,9 @@ ${buildFaqStylePackage({ includeResponsive: true, responsiveOptions: { includeDr
       }
 
       if (action === "save-user-preset") {
-        saveUserPreset();
+        if (saveUserPreset()) {
+          showActionFeedback("Preset salvo neste navegador.", button);
+        }
         return;
       }
 
@@ -3999,12 +4036,16 @@ ${buildFaqStylePackage({ includeResponsive: true, responsiveOptions: { includeDr
       }
 
       if (action === "save-template-html-cache") {
-        saveTemplateHtmlCache();
+        if (saveTemplateHtmlCache()) {
+          showActionFeedback("Conteudo da LP salvo neste navegador.", button);
+        }
         return;
       }
 
       if (action === "save-responsive") {
-        saveResponsiveDraft();
+        if (saveResponsiveDraft()) {
+          showActionFeedback("Versao responsiva salva.", button);
+        }
         return;
       }
 
@@ -4050,10 +4091,6 @@ ${buildFaqStylePackage({ includeResponsive: true, responsiveOptions: { includeDr
         "move-lab-block-down",
         "duplicate-lab-block",
         "remove-bento-block-type",
-        "add-bento-table-column",
-        "remove-bento-table-column",
-        "add-bento-table-row",
-        "remove-bento-table-row",
         "reset-bento-html",
         "insert-template-layout",
         "clear-template-html",
@@ -4064,6 +4101,9 @@ ${buildFaqStylePackage({ includeResponsive: true, responsiveOptions: { includeDr
       }
 
       if (action === "reset-bento-html") {
+        if (typeof recordBentoUndo === "function") {
+          recordBentoUndo();
+        }
         state.bento.html = "";
         state.bento.useCustomHtml = false;
         if (typeof getDefaultBentoBlocks === "function") {
@@ -4080,7 +4120,7 @@ ${buildFaqStylePackage({ includeResponsive: true, responsiveOptions: { includeDr
       }
 
       if (action === "add-bento-block") {
-        addBentoBlock(button.dataset.bentoType);
+        addBentoBlock(button.dataset.bentoType, { shape: button.dataset.bentoShape });
         return;
       }
 
@@ -4158,26 +4198,6 @@ ${buildFaqStylePackage({ includeResponsive: true, responsiveOptions: { includeDr
 
       if (action === "transfer-senko-to-lp") {
         transferSenkoBridgeToLp();
-        return;
-      }
-
-      if (action === "add-bento-table-column") {
-        addBentoTableColumn(Number(button.dataset.bentoBlock));
-        return;
-      }
-
-      if (action === "remove-bento-table-column") {
-        removeBentoTableColumn(Number(button.dataset.bentoBlock), Number(button.dataset.bentoColumn));
-        return;
-      }
-
-      if (action === "add-bento-table-row") {
-        addBentoTableRow(Number(button.dataset.bentoBlock));
-        return;
-      }
-
-      if (action === "remove-bento-table-row") {
-        removeBentoTableRow(Number(button.dataset.bentoBlock), Number(button.dataset.bentoRow));
         return;
       }
 
@@ -4521,7 +4541,7 @@ ${buildFaqStylePackage({ includeResponsive: true, responsiveOptions: { includeDr
     });
     [...htmlCopyButtons, ...cssCopyButtons, ...fullCopyButtons].forEach((button) => {
       button.addEventListener("click", () => {
-        copyGeneratedHtml(button.dataset.copyMode);
+        copyGeneratedHtml(button.dataset.copyMode, button);
       });
     });
     previewFullscreenButtons.forEach((button) => {
@@ -4546,7 +4566,9 @@ ${buildFaqStylePackage({ includeResponsive: true, responsiveOptions: { includeDr
     });
     responsivePreviewSaveButtons.forEach((button) => {
       button.addEventListener("click", () => {
-        saveResponsivePreviewVersion();
+        if (saveResponsivePreviewVersion()) {
+          showActionFeedback("Versao responsiva salva.", button);
+        }
       });
     });
     responsivePreviewRemoveButtons.forEach((button) => {
@@ -4561,6 +4583,20 @@ ${buildFaqStylePackage({ includeResponsive: true, responsiveOptions: { includeDr
     });
 
     window.addEventListener("keydown", (event) => {
+      const isBentoUndo = (event.ctrlKey || event.metaKey)
+        && !event.shiftKey
+        && event.key.toLowerCase() === "z"
+        && currentPage === "conteudo"
+        && currentEditorTab === "bento";
+      const target = event.target;
+      const isNativeTextEdit = target instanceof Element
+        && Boolean(target.closest("input, textarea, select, [contenteditable='true']"));
+
+      if (isBentoUndo && !isNativeTextEdit && typeof undoBentoChange === "function" && undoBentoChange()) {
+        event.preventDefault();
+        return;
+      }
+
       if (event.key === "Escape" && isPreviewFullscreen) {
         setPreviewFullscreen(false);
         return;

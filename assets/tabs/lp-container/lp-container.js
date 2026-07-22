@@ -6543,25 +6543,130 @@ ${containerHtml}`;
           return;
         }
 
+        const getBentoResizeBounds = (element, referenceRect) => {
+          const grid = root.querySelector(".ll-bento__grid") || root;
+          const gridRect = grid.getBoundingClientRect();
+          const elementRect = referenceRect || element.getBoundingClientRect();
+          const isCircle = element.classList.contains("ll-bento__expand--image-circle");
+          const isImage = isCircle || element.classList.contains("ll-bento__expand--image-square");
+          const minWidth = isImage ? 150 : 170;
+          const minHeight = 150;
+          const minimumGap = Number.parseFloat(doc.defaultView.getComputedStyle(doc.documentElement).fontSize) || 16;
+          const siblingRects = Array.from(grid.children)
+            .filter((item) => item !== element && !item.classList.contains("ll-bento__editor-add"))
+            .map((item) => item.getBoundingClientRect())
+            .filter((rect) => rect.width > 0 && rect.height > 0);
+          // A borda externa do grid e permitida. A folga de 1rem vale apenas
+          // entre dois blocos, para nao reduzir um card que ja encosta no fim.
+          let rightEdge = gridRect.right;
+          let bottomEdge = gridRect.bottom;
+
+          siblingRects.forEach((siblingRect) => {
+            const sharesRow = siblingRect.top < elementRect.bottom - minimumGap
+              && siblingRect.bottom > elementRect.top + minimumGap;
+            const sharesColumn = siblingRect.left < elementRect.right - minimumGap
+              && siblingRect.right > elementRect.left + minimumGap;
+
+            if (sharesRow && siblingRect.left >= elementRect.right - 1) {
+              rightEdge = Math.min(rightEdge, siblingRect.left - minimumGap);
+            }
+
+            if (sharesColumn && siblingRect.top >= elementRect.bottom - 1) {
+              bottomEdge = Math.min(bottomEdge, siblingRect.top - minimumGap);
+            }
+          });
+
+          let maxWidth = Math.max(minWidth, Math.floor(rightEdge - elementRect.left));
+          let maxHeight = Math.max(minHeight, Math.floor(bottomEdge - elementRect.top));
+
+          // A alca deve ajustar o card dentro da composicao existente. Sem esse
+          // teto, um arrasto longo cria uma nova faixa vazia no grid e quebra o ritmo.
+          if (!isCircle) {
+            maxWidth = Math.min(maxWidth, Math.max(minWidth, Math.round(elementRect.width + 320)));
+            maxHeight = Math.min(maxHeight, Math.max(minHeight, Math.round(elementRect.height + 240)));
+          }
+
+          if (isCircle) {
+            const maxSide = Math.max(minWidth, Math.min(maxWidth, maxHeight));
+            maxWidth = maxSide;
+            maxHeight = maxSide;
+          }
+
+          return { minWidth, minHeight, maxWidth, maxHeight };
+        };
+
+        const constrainBentoResize = (element) => {
+          if (!element || !element.isConnected) {
+            return;
+          }
+
+          const currentWidth = Math.round(element.offsetWidth);
+          const currentHeight = Math.round(element.offsetHeight);
+          const isCircle = element.classList.contains("ll-bento__expand--image-circle");
+          const lockedBounds = element.__llBentoResizeBounds;
+          const liveBounds = getBentoResizeBounds(element);
+          const minWidth = lockedBounds?.minWidth || liveBounds.minWidth;
+          const minHeight = lockedBounds?.minHeight || liveBounds.minHeight;
+          const maxWidth = Math.min(lockedBounds?.maxWidth || Number.POSITIVE_INFINITY, liveBounds.maxWidth);
+          const maxHeight = Math.min(lockedBounds?.maxHeight || Number.POSITIVE_INFINITY, liveBounds.maxHeight);
+
+          element.style.setProperty("--ll-bento-resize-max-width", `${maxWidth}px`);
+          element.style.setProperty("--ll-bento-resize-max-height", `${maxHeight}px`);
+
+          if (isCircle) {
+            const side = Math.max(minWidth, Math.min(currentWidth, maxWidth, maxHeight));
+            element.style.width = `${side}px`;
+            element.style.setProperty("--ll-bento-circle-size", `${side}px`);
+            element.style.height = `${side}px`;
+            return;
+          }
+
+          if (currentWidth > maxWidth) {
+            element.style.width = `${maxWidth}px`;
+          }
+          if (currentHeight > maxHeight) {
+            element.style.height = `${maxHeight}px`;
+          }
+        };
+
         const persistBentoResize = (element) => {
           if (!element || !element.isConnected) {
             return;
           }
 
+          constrainBentoResize(element);
           const rect = element.getBoundingClientRect();
+          const isCircle = element.classList.contains("ll-bento__expand--image-circle");
           const width = Math.round(rect.width);
           const height = Math.round(rect.height);
           if (!Number.isFinite(width) || !Number.isFinite(height) || width <= 0 || height <= 0) {
             return;
           }
 
-          element.style.width = `${width}px`;
-          element.style.height = `${height}px`;
+          const size = isCircle ? Math.min(width, height) : null;
+          const start = element.__llBentoResizeStart || {};
+          const widthChanged = Math.abs(width - (start.width || width)) > 2;
+          const heightChanged = Math.abs(height - (start.height || height)) > 2;
+          if (isCircle || widthChanged) {
+            element.style.width = `${size || width}px`;
+          }
+          if (isCircle) {
+            element.style.setProperty("--ll-bento-circle-size", `${size}px`);
+            element.style.height = `${size}px`;
+          } else if (heightChanged) {
+            element.style.height = `${height}px`;
+          }
 
           const blockIndex = Number(element.dataset.llBentoResizeBlock);
           if (Number.isInteger(blockIndex) && state.bento?.blocks?.[blockIndex]) {
-            state.bento.blocks[blockIndex].resizeWidth = width;
-            state.bento.blocks[blockIndex].resizeHeight = height;
+            if (isCircle || widthChanged) {
+              state.bento.blocks[blockIndex].resizeWidth = size || width;
+            }
+            if (isCircle) {
+              state.bento.blocks[blockIndex].resizeHeight = "";
+            } else if (heightChanged) {
+              state.bento.blocks[blockIndex].resizeHeight = height;
+            }
           }
 
           if (currentPage === "conteudo") {
@@ -6579,10 +6684,12 @@ ${containerHtml}`;
         };
 
         const setupBentoResizePersistence = () => {
-          const textBlockIndexes = state.bento.blocks
-            .map((block, index) => block.type === "text" ? index : -1)
+          const resizableBlockIndexes = state.bento.blocks
+            .map((block, index) => ["text", "image"].includes(block.type) ? index : -1)
             .filter((index) => index >= 0);
-          const resizeCards = Array.from(root.querySelectorAll(".ll-bento__card--text"));
+          const resizeCards = Array.from(
+            root.querySelectorAll(".ll-bento__card--text, .ll-bento__expand--image-square, .ll-bento__expand--image-circle")
+          );
           const ResizeObserverCtor = doc.defaultView.ResizeObserver;
           const resizeObserver = ResizeObserverCtor
             ? new ResizeObserverCtor((entries) => {
@@ -6609,22 +6716,158 @@ ${containerHtml}`;
 
           resizeCards.forEach((element, orderIndex) => {
             element.dataset.llBentoResizeReady = "true";
-            const blockIndex = textBlockIndexes[orderIndex];
+            const blockIndex = resizableBlockIndexes[orderIndex];
             if (blockIndex !== undefined) {
               element.dataset.llBentoResizeBlock = String(blockIndex);
             }
 
-            element.addEventListener("pointerdown", () => {
+            constrainBentoResize(element);
+
+            const isCircle = element.matches(".ll-bento__expand--image-circle");
+            if ((element.matches(".ll-bento__card--text") || isCircle) && !element.querySelector("[data-ll-bento-resize-handle]")) {
+              const handleAxes = isCircle ? ["circle"] : ["vertical", "horizontal", "both"];
+              handleAxes.forEach((axis) => {
+                const handle = doc.createElement("span");
+                handle.className = `ll-bento__resize-handle ll-bento__resize-handle--${axis}`;
+                handle.dataset.llBentoResizeHandle = axis;
+                handle.setAttribute("aria-hidden", "true");
+                element.append(handle);
+              });
+            }
+
+            const isResizeHandlePointer = (event) => {
+              if (isCircle) {
+                return false;
+              }
+              const rect = element.getBoundingClientRect();
+              const gripSize = 26;
+              return event.clientX >= rect.right - gripSize
+                && event.clientY >= rect.bottom - gripSize;
+            };
+
+            element.addEventListener("pointerdown", (event) => {
+              // Keep resize-grip gestures out of the preview editors attached to the
+              // card and its text children.
+              const customHandle = event.target.closest?.("[data-ll-bento-resize-handle]");
+              element.__llBentoSuppressPreviewClick = Boolean(customHandle) || isResizeHandlePointer(event);
+              constrainBentoResize(element);
               const rect = element.getBoundingClientRect();
               element.__llBentoResizeStart = {
                 width: Math.round(rect.width),
                 height: Math.round(rect.height)
               };
+              element.__llBentoResizeBounds = getBentoResizeBounds(element, rect);
               element.__llBentoResizeActive = true;
+            }, true);
+
+            element.addEventListener("click", (event) => {
+              if (!element.__llBentoSuppressPreviewClick) {
+                return;
+              }
+
+              element.__llBentoSuppressPreviewClick = false;
+              event.preventDefault();
+              event.stopImmediatePropagation();
+            }, true);
+
+            element.querySelectorAll("[data-ll-bento-resize-handle]").forEach((handle) => {
+              handle.addEventListener("pointerdown", (event) => {
+                if (event.button !== 0) {
+                  return;
+                }
+
+                event.preventDefault();
+                event.stopPropagation();
+                element.__llBentoSuppressPreviewClick = true;
+                const axis = handle.dataset.llBentoResizeHandle || "both";
+                const startRect = element.getBoundingClientRect();
+                const startX = event.clientX;
+                const startY = event.clientY;
+                const minWidth = 170;
+                const minHeight = 150;
+                const resizeBounds = getBentoResizeBounds(element, startRect);
+                element.__llBentoResizeStart = {
+                  width: Math.round(startRect.width),
+                  height: Math.round(startRect.height)
+                };
+                element.__llBentoResizeBounds = resizeBounds;
+                element.__llBentoResizeActive = true;
+                handle.setPointerCapture?.(event.pointerId);
+
+                const move = (moveEvent) => {
+                  if (moveEvent.pointerId !== event.pointerId) {
+                    return;
+                  }
+
+                  if (axis === "circle") {
+                    const delta = Math.max(moveEvent.clientX - startX, moveEvent.clientY - startY);
+                    const requestedSize = Math.round(startRect.width + delta);
+                    const safeSize = Math.min(
+                      resizeBounds.maxWidth,
+                      resizeBounds.maxHeight,
+                      Math.max(minWidth, requestedSize)
+                    );
+                  element.style.width = `${safeSize}px`;
+                    element.style.setProperty("--ll-bento-circle-size", `${safeSize}px`);
+                    element.style.height = `${safeSize}px`;
+                  } else if (axis !== "vertical") {
+                    const requestedWidth = Math.round(startRect.width + moveEvent.clientX - startX);
+                    const safeWidth = Math.min(resizeBounds.maxWidth, Math.max(minWidth, requestedWidth));
+                    element.style.width = `${safeWidth}px`;
+                  }
+                  if (axis !== "horizontal" && axis !== "circle") {
+                    const requestedHeight = Math.round(startRect.height + moveEvent.clientY - startY);
+                    const safeHeight = Math.min(resizeBounds.maxHeight, Math.max(minHeight, requestedHeight));
+                    element.style.height = `${safeHeight}px`;
+                  }
+                  constrainBentoResize(element);
+                };
+
+                const finish = (finishEvent) => {
+                  if (finishEvent.pointerId !== event.pointerId) {
+                    return;
+                  }
+
+                  doc.defaultView.removeEventListener("pointermove", move, true);
+                  doc.defaultView.removeEventListener("pointerup", finish, true);
+                  doc.defaultView.removeEventListener("pointercancel", finish, true);
+                  element.__llBentoResizeActive = false;
+                  persistBentoResize(element);
+                  delete element.__llBentoResizeBounds;
+                  doc.defaultView.setTimeout(() => {
+                    element.__llBentoSuppressPreviewClick = false;
+                  }, 260);
+                };
+
+                doc.defaultView.addEventListener("pointermove", move, true);
+                doc.defaultView.addEventListener("pointerup", finish, true);
+                doc.defaultView.addEventListener("pointercancel", finish, true);
+              });
+
+              handle.addEventListener("click", (event) => {
+                event.preventDefault();
+                event.stopPropagation();
+              });
             });
 
             resizeObserver?.observe(element);
           });
+
+          let resizeFrame = 0;
+          doc.addEventListener("pointermove", () => {
+            if (resizeFrame) {
+              return;
+            }
+
+            resizeFrame = doc.defaultView.requestAnimationFrame(() => {
+              resizeFrame = 0;
+              resizeCards.forEach((element) => {
+                if (element.__llBentoResizeActive) {
+                  constrainBentoResize(element);
+                }
+              });
+            });
+          }, true);
 
           doc.addEventListener("pointerup", () => {
             resizeCards.forEach((element) => {
@@ -6641,11 +6884,340 @@ ${containerHtml}`;
               if (changed) {
                 persistBentoResize(element);
               }
+              delete element.__llBentoResizeBounds;
             });
           }, true);
         };
 
         setupBentoResizePersistence();
+
+        const setupBentoBlockReordering = () => {
+          const grid = root.querySelector(".ll-bento__grid");
+          if (!grid || state.bento?.useCustomHtml) {
+            return;
+          }
+
+          // O grid gerado pelo Bento segue a mesma ordem de state.bento.blocks.
+          // Ao soltar um card sobre outro, o card-alvo abre caminho na grade em
+          // vez de os dois disputarem a mesma area visual.
+          const blocks = Array.from(grid.children)
+            .filter((item) => !item.classList.contains("ll-bento__editor-add"));
+          if (blocks.length < 2 || blocks.length !== state.bento.blocks.length) {
+            return;
+          }
+
+          root.querySelectorAll(".ll-bento__editor-add").forEach((item) => item.remove());
+
+          const editorStyleId = "ll-bento-editor-reorder-style";
+          if (!doc.getElementById(editorStyleId)) {
+            const style = doc.createElement("style");
+            style.id = editorStyleId;
+            style.textContent = `
+              .ll-bento__editor-drag-handle {
+                position: absolute;
+                top: 10px;
+                right: 10px;
+                z-index: 30;
+                display: grid;
+                place-items: center;
+                width: 30px;
+                height: 30px;
+                padding: 0;
+                border: 1px solid rgba(255, 255, 255, 0.44);
+                border-radius: 9px;
+                color: #ffffff;
+                background: rgba(16, 24, 40, 0.66);
+                box-shadow: 0 4px 12px rgba(16, 24, 40, 0.16);
+                cursor: grab;
+                opacity: 0;
+                transform: translateY(-4px);
+                transition: opacity 0.16s ease, transform 0.16s ease, background-color 0.16s ease;
+              }
+
+              .ll-bento__grid > :hover > .ll-bento__editor-drag-handle,
+              .ll-bento__editor-drag-handle:focus-visible {
+                opacity: 1;
+                transform: translateY(0);
+              }
+
+              .ll-bento__editor-drag-handle:active {
+                cursor: grabbing;
+              }
+
+              .ll-bento__editor-drag-handle:focus-visible {
+                outline: 3px solid rgba(234, 91, 12, 0.78);
+                outline-offset: 2px;
+              }
+
+              .ll-bento__expand--image-circle > .ll-bento__editor-drag-handle {
+                z-index: 40;
+                opacity: 0.96;
+                transform: translateY(0);
+              }
+
+              .ll-bento__editor-dragging {
+                opacity: 0.38;
+                filter: saturate(0.72);
+              }
+
+              .ll-bento__editor-drop-target {
+                outline: 2px solid rgba(234, 91, 12, 0.84);
+                outline-offset: 5px;
+              }
+
+              .ll-bento__editor-drop-target::after {
+                content: "";
+                position: absolute;
+                inset: 0;
+                z-index: 25;
+                border-radius: inherit;
+                background: rgba(234, 91, 12, 0.08);
+                pointer-events: none;
+              }
+            `;
+            doc.head.append(style);
+          }
+
+          let draggedBlock = null;
+          const clearDropState = () => {
+            blocks.forEach((item) => item.classList.remove("ll-bento__editor-dragging", "ll-bento__editor-drop-target"));
+          };
+
+          const moveBlockToTarget = (sourceIndex, targetIndex) => {
+            if (!Number.isInteger(sourceIndex) || !Number.isInteger(targetIndex) || sourceIndex === targetIndex) {
+              return;
+            }
+
+            if (typeof recordBentoUndo === "function") {
+              recordBentoUndo();
+            }
+
+            const [movedBlock] = state.bento.blocks.splice(sourceIndex, 1);
+            const destinationIndex = sourceIndex < targetIndex ? targetIndex - 1 : targetIndex;
+            state.bento.blocks.splice(destinationIndex, 0, movedBlock);
+            state.bento.status = "Blocos reorganizados na grade.";
+            markResponsiveDirty();
+            renderEditor(true);
+          };
+
+          const beginBlockDrag = (event, block, blockIndex) => {
+            const isImageBlock = block.matches(".ll-bento__expand--image-circle, .ll-bento__expand--image-square");
+            const startedFromHandle = Boolean(event.target.closest?.(".ll-bento__editor-drag-handle"));
+            if (!startedFromHandle && !isImageBlock) {
+              event.preventDefault();
+              return;
+            }
+
+            draggedBlock = block;
+            clearDropState();
+            block.classList.add("ll-bento__editor-dragging");
+            event.dataTransfer?.setData("application/x-layout-lab-bento", String(blockIndex));
+            event.dataTransfer?.setData("text/plain", "Layout Lab Bento");
+            if (event.dataTransfer) {
+              event.dataTransfer.effectAllowed = "move";
+              event.dataTransfer.setDragImage(block, Math.min(48, block.clientWidth / 2), Math.min(36, block.clientHeight / 2));
+            }
+          };
+
+          blocks.forEach((block, blockIndex) => {
+            block.dataset.llBentoBlockIndex = String(blockIndex);
+            block.classList.add("ll-bento__editor-reorderable");
+            const isImageBlock = block.matches(".ll-bento__expand--image-circle, .ll-bento__expand--image-square");
+            block.draggable = isImageBlock;
+
+            let handle = block.querySelector(":scope > .ll-bento__editor-drag-handle");
+            if (!handle) {
+              handle = doc.createElement("button");
+              handle.type = "button";
+              handle.className = "ll-bento__editor-drag-handle";
+              handle.draggable = true;
+              handle.setAttribute("aria-label", "Reorganizar bloco na grade");
+              handle.title = "Arraste para reorganizar";
+              handle.innerHTML = `<svg viewBox="0 0 24 24" width="16" height="16" fill="none" aria-hidden="true"><path d="M8 7h.01M12 7h.01M16 7h.01M8 12h.01M12 12h.01M16 12h.01M8 17h.01M12 17h.01M16 17h.01" stroke="currentColor" stroke-width="3" stroke-linecap="round"/></svg>`;
+              block.append(handle);
+            }
+
+            handle.addEventListener("pointerdown", (event) => {
+              event.stopPropagation();
+            }, true);
+
+            handle.addEventListener("click", (event) => {
+              event.preventDefault();
+              event.stopPropagation();
+            });
+
+            block.addEventListener("dragstart", (event) => beginBlockDrag(event, block, blockIndex));
+
+            block.addEventListener("dragend", () => {
+              draggedBlock = null;
+              clearDropState();
+            });
+
+            block.addEventListener("dragover", (event) => {
+              if (!draggedBlock || draggedBlock === block) {
+                return;
+              }
+              event.preventDefault();
+              event.dataTransfer.dropEffect = "move";
+              clearDropState();
+              draggedBlock.classList.add("ll-bento__editor-dragging");
+              block.classList.add("ll-bento__editor-drop-target");
+            });
+
+            block.addEventListener("dragleave", (event) => {
+              if (!block.contains(event.relatedTarget)) {
+                block.classList.remove("ll-bento__editor-drop-target");
+              }
+            });
+
+            block.addEventListener("drop", (event) => {
+              if (!draggedBlock || draggedBlock === block) {
+                return;
+              }
+              event.preventDefault();
+              event.stopPropagation();
+              const sourceIndex = Number(draggedBlock.dataset.llBentoBlockIndex);
+              const targetIndex = Number(block.dataset.llBentoBlockIndex);
+              draggedBlock = null;
+              clearDropState();
+              moveBlockToTarget(sourceIndex, targetIndex);
+            });
+          });
+        };
+
+        setupBentoBlockReordering();
+
+        const addBentoPreviewSlots = () => {
+          const grid = root.querySelector(".ll-bento__grid");
+          if (!grid || state.bento?.useCustomHtml) {
+            return;
+          }
+
+          const availableTypes = ["text", "image"].filter((type) => canUseBentoBlockType(type));
+          if (!availableTypes.length) {
+            return;
+          }
+
+          // Cinco blocos ja formam a composicao-base do Bento. A partir dai,
+          // os espacos entre cards fazem parte do ritmo visual, nao sao vagas.
+          if (state.bento.blocks.length >= 5) {
+            return;
+          }
+
+          // Um card redimensionado passa a definir a ocupacao final do Bento.
+          // Nao oferecemos novas insercoes por cima dessa composicao manual.
+          const hasManuallySizedBlock = state.bento.blocks.some((block) => (
+            Number(block.resizeWidth) > 0 || Number(block.resizeHeight) > 0
+          ));
+          if (hasManuallySizedBlock) {
+            return;
+          }
+
+          const layoutItems = Array.from(grid.children)
+            .filter((item) => !item.classList.contains("ll-bento__editor-add"))
+            .map((item) => item.getBoundingClientRect())
+            .filter((rect) => rect.width > 0 && rect.height > 0);
+          if (!layoutItems.length) {
+            return;
+          }
+
+          const gridRect = grid.getBoundingClientRect();
+          const contentTop = Math.min(...layoutItems.map((rect) => rect.top));
+          const contentBottom = Math.max(...layoutItems.map((rect) => rect.bottom));
+          const minSlotWidth = doc.defaultView.innerWidth <= 560 ? 84 : 132;
+          const minSlotHeight = doc.defaultView.innerWidth <= 560 ? 84 : 118;
+          const yStops = [...new Set([contentTop, contentBottom, ...layoutItems.flatMap((rect) => [rect.top, rect.bottom])])]
+            .sort((first, second) => first - second);
+          const emptySlots = [];
+
+          for (let row = 0; row < yStops.length - 1; row += 1) {
+            const top = yStops[row];
+            const bottom = yStops[row + 1];
+            const height = bottom - top;
+            if (height < minSlotHeight) {
+              continue;
+            }
+
+            const occupied = layoutItems
+              .filter((rect) => rect.top <= top + 1 && rect.bottom >= bottom - 1)
+              .map((rect) => ({ left: Math.max(gridRect.left, rect.left), right: Math.min(gridRect.right, rect.right) }))
+              .sort((first, second) => first.left - second.left);
+            const gaps = [];
+            let cursor = gridRect.left;
+
+            occupied.forEach((interval) => {
+              if (interval.left - cursor >= minSlotWidth) {
+                gaps.push({ left: cursor, right: interval.left });
+              }
+              cursor = Math.max(cursor, interval.right);
+            });
+
+            if (gridRect.right - cursor >= minSlotWidth) {
+              gaps.push({ left: cursor, right: gridRect.right });
+            }
+
+            gaps.forEach((gap) => {
+              emptySlots.push({
+                left: gap.left - gridRect.left,
+                top: top - gridRect.top,
+                width: gap.right - gap.left,
+                height
+              });
+            });
+          }
+
+          const slots = emptySlots
+            .sort((first, second) => (second.width * second.height) - (first.width * first.height))
+            .slice(0, 2);
+          if (!slots.length) {
+            return;
+          }
+
+          if (doc.defaultView.getComputedStyle(grid).position === "static") {
+            grid.style.position = "relative";
+          }
+
+          slots.forEach((slotBounds) => {
+            const slot = doc.createElement("div");
+            slot.className = "ll-bento__editor-add";
+            slot.style.left = `${Math.round(slotBounds.left)}px`;
+            slot.style.top = `${Math.round(slotBounds.top)}px`;
+            slot.style.width = `${Math.round(slotBounds.width)}px`;
+            slot.style.height = `${Math.round(slotBounds.height)}px`;
+            slot.innerHTML = `
+              <button class="ll-bento__editor-add__trigger" type="button" aria-label="Adicionar bloco ao Bento">+</button>
+              <div class="ll-bento__editor-add__menu" role="group" aria-label="Adicionar bloco">
+                ${availableTypes.map((type) => `<button type="button" data-bento-preview-add="${type}">${type === "text" ? "Texto" : "Imagem"}</button>`).join("")}
+              </div>`;
+
+            const stopPreviewEvent = (event) => event.stopPropagation();
+            slot.addEventListener("pointerdown", stopPreviewEvent);
+            slot.addEventListener("click", stopPreviewEvent);
+
+            const trigger = slot.querySelector(".ll-bento__editor-add__trigger");
+            trigger?.addEventListener("click", (event) => {
+              event.preventDefault();
+              event.stopPropagation();
+              grid.querySelectorAll(".ll-bento__editor-add.is-open").forEach((item) => {
+                if (item !== slot) item.classList.remove("is-open");
+              });
+              slot.classList.toggle("is-open");
+            });
+
+            slot.querySelectorAll("[data-bento-preview-add]").forEach((button) => {
+              button.addEventListener("click", (event) => {
+                event.preventDefault();
+                event.stopPropagation();
+                const type = button.dataset.bentoPreviewAdd;
+                if (type && canUseBentoBlockType(type)) {
+                  addBentoBlock(type);
+                }
+              });
+            });
+
+            grid.append(slot);
+          });
+        };
 
         [
           ".ll-bento__eyebrow",
@@ -6747,10 +7319,13 @@ ${containerHtml}`;
       try {
         localStorage.setItem(templateCacheKey, state.template.html || "");
         state.template.status = "Conteúdo da LP salvo neste navegador.";
+        renderEditor(true);
+        return true;
       } catch (error) {
         state.template.status = "Não consegui salvar no navegador.";
+        renderEditor(true);
+        return false;
       }
-      renderEditor(true);
     }
 
     function loadTemplateHtmlCache() {

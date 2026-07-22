@@ -152,6 +152,22 @@
       }
     }
 
+    @keyframes ll-action-confirm {
+      0% {
+        transform: scale(1);
+      }
+
+      42% {
+        transform: scale(1.055);
+        filter: brightness(1.12);
+      }
+
+      100% {
+        transform: scale(1);
+        filter: brightness(1);
+      }
+    }
+
     body {
       margin: 0;
       height: 100vh;
@@ -2136,11 +2152,11 @@
 
     .bento-add-panel {
       display: grid;
-      gap: 12px;
-      padding: 12px;
+      gap: 10px;
+      padding: 10px;
       border: 1px solid var(--line);
-      border-radius: 8px;
-      background: color-mix(in srgb, var(--surface) 82%, var(--purple) 18%);
+      border-radius: 10px;
+      background: color-mix(in srgb, var(--surface) 90%, var(--purple) 10%);
     }
 
     .bento-add-panel__head {
@@ -2164,97 +2180,108 @@
 
     .bento-add-grid {
       display: grid;
-      grid-template-columns: repeat(4, minmax(0, 1fr));
-      gap: 10px;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
     }
 
-    .bento-add-grid__item {
+    .bento-add-tile {
       position: relative;
       display: grid;
-      gap: 6px;
+      grid-template-areas:
+        "icon plus"
+        "copy copy";
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 7px 12px;
       min-width: 0;
-      min-height: 92px;
-      padding: 12px 10px;
+      min-height: 78px;
+      padding: 10px;
       border: 1px solid var(--line);
-      border-radius: 8px;
+      border-radius: 10px;
       color: var(--ink);
       background: var(--editor-item-bg);
       text-align: left;
-      transition: transform 0.16s ease, border-color 0.16s ease, background 0.16s ease, opacity 0.16s ease;
+      cursor: pointer;
+      transition: transform 0.18s ease, border-color 0.18s ease, background 0.18s ease, box-shadow 0.18s ease, opacity 0.18s ease;
     }
 
-    .bento-add-grid__item:hover,
-    .bento-add-grid__item:focus-within {
+    .bento-add-tile:hover,
+    .bento-add-tile:focus-visible {
       border-color: var(--orange);
-      background: color-mix(in srgb, var(--editor-item-bg) 86%, var(--orange) 14%);
-      outline: none;
+      background: color-mix(in srgb, var(--editor-item-bg) 90%, var(--orange) 10%);
+      box-shadow: 0 5px 14px color-mix(in srgb, var(--orange) 16%, transparent);
       transform: translateY(-2px);
+      outline: none;
     }
 
-    .bento-add-grid__actions {
-      position: absolute;
-      top: 8px;
-      right: 8px;
-      display: inline-flex;
-      gap: 4px;
-      align-items: center;
+    .bento-add-tile:active:not(:disabled) {
+      transform: translateY(0) scale(0.98);
     }
 
-    .bento-add-grid__button {
+    .bento-add-tile:disabled {
+      cursor: not-allowed;
+      opacity: 0.45;
+    }
+
+    .bento-add-tile__icon {
+      grid-area: icon;
       display: grid;
-      width: 22px;
-      height: 22px;
+      width: 46px;
+      height: 34px;
       place-items: center;
       padding: 0;
-      border: 1px solid transparent;
-      border-radius: 6px;
-      color: #ffffff;
-      background: var(--orange);
-      font-size: 15px;
-      font-weight: 950;
+      border: 2px solid currentColor;
+      border-radius: 7px;
+      color: var(--ink);
+    }
+
+    .bento-add-tile__icon svg {
+      width: 24px;
+      height: 24px;
+      stroke: currentColor;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      stroke-width: 2.2;
+    }
+
+    .bento-add-tile__plus {
+      grid-area: plus;
+      align-self: center;
+      color: var(--orange);
+      font-size: 2.15rem;
+      font-weight: 700;
       line-height: 1;
-      cursor: pointer;
     }
 
-    .bento-add-grid__button--remove {
-      background: #ef233c;
+    .bento-add-tile__copy {
+      grid-area: copy;
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 6px;
     }
 
-    .bento-add-grid__button:disabled {
-      color: var(--muted);
-      background: transparent;
-      border-color: var(--line);
-      cursor: not-allowed;
-      opacity: 0.56;
-    }
-
-    .bento-add-grid__icon {
-      display: inline-grid;
-      width: 28px;
-      height: 28px;
-      place-items: center;
-      border-radius: 8px;
-      color: #ffffff;
-      background: linear-gradient(135deg, var(--purple), var(--orange));
-      font-size: 11px;
-      font-weight: 950;
-    }
-
-    .bento-add-grid__item strong {
+    .bento-add-tile__copy strong {
       color: var(--ink);
       font-size: 13px;
     }
 
-    .bento-add-grid__item small {
+    .bento-add-tile__copy small {
       color: var(--muted);
       font-size: 11px;
       font-weight: 800;
     }
 
-    .bento-add-grid .button {
-      min-width: 0;
-      padding-inline: 10px;
-      white-space: nowrap;
+    .bento-add-tile--image .bento-add-tile__icon {
+      color: var(--orange);
+    }
+
+    .bento-add-tile--circle .bento-add-tile__icon {
+      border-radius: 999px;
+    }
+
+    .bento-add-tile--text .bento-add-tile__icon {
+      font-size: 1.3rem;
+      font-weight: 900;
     }
 
     .bento-block-list {
@@ -2493,6 +2520,43 @@
       color: #a16207;
       text-align: left;
       line-height: 1.4;
+    }
+
+    .action-feedback-toast {
+      position: fixed;
+      z-index: 10050;
+      right: 24px;
+      bottom: 24px;
+      max-width: min(420px, calc(100vw - 32px));
+      padding: 11px 14px;
+      border: 1px solid rgba(74, 222, 128, 0.48);
+      border-radius: 10px;
+      color: #ecfdf5;
+      background: rgba(12, 45, 31, 0.96);
+      box-shadow: 0 14px 34px rgba(0, 0, 0, 0.22);
+      font-size: 0.82rem;
+      font-weight: 800;
+      line-height: 1.35;
+      opacity: 0;
+      pointer-events: none;
+      transform: translateY(12px);
+      transition: opacity 0.18s ease, transform 0.18s ease;
+    }
+
+    .action-feedback-toast.is-visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    .action-feedback-toast.is-warning {
+      border-color: rgba(251, 191, 36, 0.58);
+      color: #fef3c7;
+      background: rgba(69, 43, 8, 0.96);
+    }
+
+    .button.is-action-confirmed,
+    .preview-devices__action.is-action-confirmed {
+      animation: ll-action-confirm 0.48s ease;
     }
 
     .output {
