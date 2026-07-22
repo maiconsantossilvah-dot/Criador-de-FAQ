@@ -3036,6 +3036,27 @@
       padding: 16px;
     }
 
+    .preview-edit-popover--carousel-nav {
+      width: min(560px, calc(100vw - 24px));
+      max-height: min(74vh, 680px);
+      overflow: auto;
+      overscroll-behavior: contain;
+    }
+
+    .preview-edit-popover--carousel-nav .preview-edit-popover__group {
+      display: grid;
+      gap: 9px;
+      padding: 11px;
+      border: 1px solid var(--field-border);
+      border-radius: 8px;
+      background: color-mix(in srgb, var(--field-bg) 76%, var(--panel));
+    }
+
+    .preview-edit-popover--carousel-nav .article-toggle {
+      width: fit-content;
+      margin-top: 2px;
+    }
+
     .preview-edit-popover__title {
       margin: 0;
       color: var(--field-label);

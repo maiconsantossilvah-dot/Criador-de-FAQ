@@ -319,10 +319,24 @@
         sectionGradientEnabled: true,
         sectionGradientStart: "#ffffff",
         sectionGradientEnd: "#fff0f6",
+        dotBackgroundColor: "#ffffff",
+        dotTextColor: "#14202b",
+        dotBorderColor: "#d9e2ea",
         dotHoverColor: "#fff9f2",
+        dotHoverTextColor: "#14202b",
+        dotHoverBorderColor: "#ee6911",
         dotActiveColor: "#fff4e0",
+        dotActiveTextColor: "#ee6911",
         dotActiveBorderColor: "#ee6911",
+        dotRadius: 12,
+        dotBorderWidth: 1,
+        dotMinHeight: 62,
+        dotPaddingX: 16,
+        dotHoverLift: 4,
+        dotShadowOpacity: 0,
+        showNavIcons: true,
         dotIconBackgroundColor: "#f0ede8",
+        dotIconColor: "#14202b",
         dotIconActiveBackgroundColor: "#ee6911",
         dotIconActiveColor: "#ffffff",
         showIndicators: true,
@@ -3606,7 +3620,9 @@ ${buildFaqStylePackage({ includeResponsive: true, responsiveOptions: { includeDr
             state.carousel.sectionGradientEnabled = event.target.checked;
           } else if (carouselField === "showIndicators") {
             state.carousel.showIndicators = event.target.checked;
-          } else if (["brandColor", "softColor", "sectionGradientStart", "sectionGradientEnd", "dotHoverColor", "dotActiveColor", "dotActiveBorderColor", "dotIconBackgroundColor", "dotIconActiveBackgroundColor", "dotIconActiveColor", "indicatorColor", "indicatorActiveColor"].includes(carouselField)) {
+          } else if (carouselField === "showNavIcons") {
+            state.carousel.showNavIcons = event.target.checked;
+          } else if (["brandColor", "softColor", "sectionGradientStart", "sectionGradientEnd", "dotBackgroundColor", "dotTextColor", "dotBorderColor", "dotHoverColor", "dotHoverTextColor", "dotHoverBorderColor", "dotActiveColor", "dotActiveTextColor", "dotActiveBorderColor", "dotIconBackgroundColor", "dotIconColor", "dotIconActiveBackgroundColor", "dotIconActiveColor", "indicatorColor", "indicatorActiveColor"].includes(carouselField)) {
             state.carousel[carouselField] = normalizeHexColor(event.target.value);
           } else {
             state.carousel[carouselField] = event.target.value;
@@ -3747,7 +3763,7 @@ ${buildFaqStylePackage({ includeResponsive: true, responsiveOptions: { includeDr
         return;
       }
 
-      if (event.target.matches("select") || event.target.matches('[data-article-field="shellBackgroundEnabled"], [data-article-field="overlayEnabled"], [data-article-field="tabsProtectionEnabled"], [data-carousel-field="showIntro"], [data-carousel-field="sectionGradientEnabled"], [data-carousel-field="showIndicators"], [data-carousel-field="reverse"], [data-carousel-field="gradientEnabled"]')) {
+      if (event.target.matches("select") || event.target.matches('[data-article-field="shellBackgroundEnabled"], [data-article-field="overlayEnabled"], [data-article-field="tabsProtectionEnabled"], [data-carousel-field="showIntro"], [data-carousel-field="sectionGradientEnabled"], [data-carousel-field="showNavIcons"], [data-carousel-field="showIndicators"], [data-carousel-field="reverse"], [data-carousel-field="gradientEnabled"]')) {
         event.target.dispatchEvent(new Event("input", { bubbles: true }));
       }
     });

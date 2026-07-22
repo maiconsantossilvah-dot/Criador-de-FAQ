@@ -2720,6 +2720,204 @@ ${containerHtml}`;
       textarea.select();
     }
 
+    function copyTemplateIconIdentity(source, target) {
+      if (!source || !target) {
+        return;
+      }
+
+      ["id", "class", "style", "width", "height", "role", "aria-hidden", "data-ll-template-node"].forEach((name) => {
+        const value = source.getAttribute?.(name);
+        if (value && !target.getAttribute(name)) {
+          target.setAttribute(name, value);
+        }
+      });
+    }
+
+    function getTemplateIconMediaElement(element) {
+      if (!element) {
+        return null;
+      }
+
+      if (["IMG", "SVG"].includes(element.tagName)) {
+        return element;
+      }
+
+      return element.querySelector?.("img, svg") || null;
+    }
+
+    function openTemplateIconPopover(sourceEvent, element) {
+      const iconHost = element;
+      const iconMedia = getTemplateIconMediaElement(element);
+      if (!iconHost || !iconMedia) {
+        return;
+      }
+
+      closePreviewEditPopover();
+
+      const form = document.createElement("form");
+      form.className = "preview-edit-popover preview-edit-popover--svg";
+      form.setAttribute("role", "dialog");
+      form.setAttribute("aria-label", "Editar ícone");
+
+      const title = document.createElement("p");
+      title.className = "preview-edit-popover__title";
+      title.textContent = "Editar ícone";
+      form.appendChild(title);
+
+      const typeField = document.createElement("label");
+      typeField.className = "field";
+      typeField.innerHTML = "<span>Formato</span>";
+      const typeSelect = document.createElement("select");
+      typeSelect.innerHTML = `
+        <option value="image">Imagem ou URL</option>
+        <option value="svg">SVG</option>
+      `;
+      typeSelect.value = iconMedia.tagName === "SVG" ? "svg" : "image";
+      typeField.appendChild(typeSelect);
+      form.appendChild(typeField);
+
+      const createField = (label, control) => {
+        const field = document.createElement("label");
+        field.className = "field";
+        const text = document.createElement("span");
+        text.textContent = label;
+        field.append(text, control);
+        form.appendChild(field);
+        return field;
+      };
+
+      const imageUrl = document.createElement("input");
+      imageUrl.type = "text";
+      imageUrl.placeholder = "Cole uma URL hospedada ou caminho local";
+      imageUrl.value = iconMedia.tagName === "IMG" ? getTemplateMediaValue(iconMedia) : "";
+      const imageField = createField("URL da imagem", imageUrl);
+
+      const iconLabel = document.createElement("input");
+      iconLabel.type = "text";
+      iconLabel.value = iconMedia.tagName === "IMG"
+        ? (iconMedia.getAttribute("alt") || "")
+        : (iconMedia.getAttribute("aria-label") || iconMedia.getAttribute("title") || "");
+      createField("Rótulo acessível", iconLabel);
+
+      const svgMarkup = document.createElement("textarea");
+      svgMarkup.rows = 8;
+      svgMarkup.spellcheck = false;
+      svgMarkup.placeholder = '<svg viewBox="0 0 24 24" aria-label="Ícone">...</svg>';
+      svgMarkup.value = iconMedia.tagName === "SVG" ? iconMedia.outerHTML : "";
+      const svgField = createField("Código SVG", svgMarkup);
+
+      const note = document.createElement("p");
+      note.className = "muted-note";
+      note.textContent = "Use imagem para URL ou cole um SVG completo. Scripts e eventos inline são removidos antes de salvar.";
+      form.appendChild(note);
+
+      const actions = document.createElement("div");
+      actions.className = "preview-edit-popover__actions";
+      const closeButton = document.createElement("button");
+      closeButton.className = "button";
+      closeButton.type = "button";
+      closeButton.textContent = "Fechar";
+      actions.appendChild(closeButton);
+      form.appendChild(actions);
+
+      let currentElement = iconMedia;
+      let applyTimer = 0;
+      const setMode = () => {
+        const isSvg = typeSelect.value === "svg";
+        imageField.style.display = isSvg ? "none" : "";
+        svgField.style.display = isSvg ? "" : "none";
+      };
+
+      const applyImage = () => {
+        const value = normalizeAssetUrl(imageUrl.value);
+        imageUrl.value = value;
+        if (!value) {
+          return;
+        }
+
+        let nextElement = currentElement;
+        if (currentElement.tagName !== "IMG") {
+          nextElement = currentElement.ownerDocument.createElement("img");
+          copyTemplateIconIdentity(currentElement, nextElement);
+          currentElement.replaceWith(nextElement);
+        }
+        if (iconHost.classList?.contains("ll-carousel__dot-icon")) {
+          nextElement.classList.add("ll-carousel__dot-icon-img");
+        }
+        nextElement.setAttribute("src", value);
+        nextElement.setAttribute("alt", iconLabel.value);
+        nextElement.removeAttribute("srcset");
+        currentElement = nextElement;
+        attachTemplateIcon(currentElement);
+        syncTemplateHtmlFromPreview();
+      };
+
+      const applySvg = () => {
+        const nextElement = createSvgElementFromMarkup(currentElement.ownerDocument, svgMarkup.value);
+        if (!nextElement) {
+          return;
+        }
+
+        copyTemplateIconIdentity(currentElement, nextElement);
+        if (iconLabel.value.trim()) {
+          nextElement.setAttribute("aria-label", iconLabel.value.trim());
+          nextElement.setAttribute("role", "img");
+        }
+        currentElement.replaceWith(nextElement);
+        currentElement = nextElement;
+        attachTemplateIcon(currentElement);
+        syncTemplateHtmlFromPreview();
+      };
+
+      const applyCurrentMode = () => {
+        if (typeSelect.value === "svg") {
+          applySvg();
+        } else {
+          applyImage();
+        }
+      };
+
+      imageField.appendChild(createLocalAssetButton(imageUrl, applyImage, "image/*"));
+      typeSelect.addEventListener("change", setMode);
+      imageUrl.addEventListener("input", applyImage);
+      imageUrl.addEventListener("change", applyImage);
+      iconLabel.addEventListener("input", applyCurrentMode);
+      iconLabel.addEventListener("change", applyCurrentMode);
+      svgMarkup.addEventListener("input", () => {
+        window.clearTimeout(applyTimer);
+        applyTimer = window.setTimeout(applySvg, 260);
+      });
+      svgMarkup.addEventListener("change", applySvg);
+
+      form.addEventListener("submit", (event) => {
+        event.preventDefault();
+        applyCurrentMode();
+        closePreviewEditPopover();
+      });
+      closeButton.addEventListener("click", closePreviewEditPopover);
+
+      previewEditKeyHandler = (event) => {
+        if (event.key === "Escape") {
+          closePreviewEditPopover();
+        }
+      };
+      previewEditOutsideHandler = (event) => {
+        if (previewEditPopover && !previewEditPopover.contains(event.target)) {
+          closePreviewEditPopover();
+        }
+      };
+
+      document.body.appendChild(form);
+      previewEditPopover = form;
+      positionPreviewEditPopover(sourceEvent);
+      window.setTimeout(() => {
+        document.addEventListener("mousedown", previewEditOutsideHandler, true);
+        document.addEventListener("keydown", previewEditKeyHandler, true);
+      }, 0);
+      setMode();
+      (typeSelect.value === "svg" ? svgMarkup : imageUrl).focus();
+    }
+
     function updateTemplatePreviewEditValue(meta, rawValue, normalizedValue) {
       const element = getTemplatePreviewNode(meta);
       if (!element) {
@@ -3678,17 +3876,21 @@ ${containerHtml}`;
         element.insertAdjacentElement("afterend", overlay);
       };
 
-      const attachTemplateSvg = (element) => {
-        if (!element) {
+      const attachTemplateIcon = (element) => {
+        const iconMedia = getTemplateIconMediaElement(element);
+        if (!element || !iconMedia || element.dataset.llPreviewIcon === "true") {
           return;
         }
 
         element.dataset.llPreviewMedia = "true";
-        element.setAttribute("title", "Duplo clique para editar SVG.");
+        element.dataset.llPreviewIcon = "true";
+        iconMedia.dataset.llPreviewMedia = "true";
+        iconMedia.dataset.llPreviewIcon = "true";
+        element.setAttribute("title", "Dê dois cliques para editar o ícone.");
         element.addEventListener("dblclick", (event) => {
           event.preventDefault();
-          event.stopPropagation();
-          openTemplateSvgPopover(event, element);
+          event.stopImmediatePropagation();
+          openTemplateIconPopover(event, element);
         });
       };
 
@@ -4419,6 +4621,18 @@ ${containerHtml}`;
         return hasTemplateBackgroundImage(element);
       };
 
+      const isTemplateIconElement = (element) => {
+        if (!element || !["IMG", "SVG"].includes(element.tagName)) {
+          return false;
+        }
+
+        if (element.tagName === "SVG") {
+          return true;
+        }
+
+        return /(^|[\s_-])(icon|logo|avatar|badge|symbol|emblem|mark)([\s_-]|$)/i.test(getTemplateSignature(element));
+      };
+
       const ensureTemplateFaqStyle = (root) => {
         const styleId = "ll-template-faq-custom-style";
         let faqStyle = doc.getElementById(styleId);
@@ -4688,7 +4902,7 @@ ${containerHtml}`;
           const text = document.createElement("span");
           text.textContent = labelText;
           const row = document.createElement("div");
-          row.className = "preview-edit-popover__color-row preview-edit-popover__color-row--picker";
+          row.className = "preview-edit-popover__color-row";
           const color = document.createElement("input");
           color.className = "preview-edit-popover__color";
           color.type = "color";
@@ -5042,6 +5256,285 @@ ${containerHtml}`;
             openTemplateFaqStylePopover(event, faqRoot, summary);
           });
         });
+      };
+
+      const openCarouselNavStylePopover = (sourceEvent, carouselRoot) => {
+        if (!carouselRoot) {
+          return;
+        }
+
+        closePreviewEditPopover();
+
+        const getColor = (field, fallback) => normalizeHexColor(state.carousel[field] || fallback);
+        const getNumber = (field, fallback, min, max) => {
+          const value = Number(state.carousel[field]);
+          return Math.min(max, Math.max(min, Number.isFinite(value) ? value : fallback));
+        };
+        const form = document.createElement("form");
+        form.className = "preview-edit-popover preview-edit-popover--color preview-edit-popover--carousel-nav";
+        form.setAttribute("role", "dialog");
+        form.setAttribute("aria-label", "Estilo dos botões do carrossel");
+
+        const title = document.createElement("p");
+        title.className = "preview-edit-popover__title";
+        title.textContent = "Botões do carrossel";
+        form.appendChild(title);
+
+        const tabs = document.createElement("div");
+        tabs.className = "preview-edit-popover__tabs";
+        const colorsTab = document.createElement("button");
+        colorsTab.type = "button";
+        colorsTab.className = "is-active";
+        colorsTab.textContent = "Cores";
+        const shapeTab = document.createElement("button");
+        shapeTab.type = "button";
+        shapeTab.textContent = "Forma";
+        tabs.append(colorsTab, shapeTab);
+        form.appendChild(tabs);
+
+        const colorsPanel = document.createElement("div");
+        colorsPanel.className = "preview-edit-popover__panel";
+        const shapePanel = document.createElement("div");
+        shapePanel.className = "preview-edit-popover__panel";
+        shapePanel.hidden = true;
+
+        const makeColorField = (parent, labelText, value) => {
+          const label = document.createElement("label");
+          label.className = "preview-edit-popover__mini-field";
+          const labelTextElement = document.createElement("span");
+          labelTextElement.textContent = labelText;
+          const row = document.createElement("div");
+          row.className = "preview-edit-popover__color-row";
+          const picker = document.createElement("input");
+          picker.className = "preview-edit-popover__color";
+          picker.type = "color";
+          picker.value = value;
+          picker.style.setProperty("--preview-edit-color", value);
+          const hex = document.createElement("input");
+          hex.className = "preview-edit-popover__field";
+          hex.type = "text";
+          hex.value = value;
+          hex.placeholder = "#ffffff";
+          row.append(picker, hex);
+          label.append(labelTextElement, row);
+          parent.appendChild(label);
+          return { picker, hex };
+        };
+
+        const makeGroup = (titleText) => {
+          const group = document.createElement("div");
+          group.className = "preview-edit-popover__group";
+          const heading = document.createElement("p");
+          heading.className = "preview-edit-popover__note";
+          heading.textContent = titleText;
+          group.appendChild(heading);
+          const grid = document.createElement("div");
+          grid.className = "preview-edit-popover__grid";
+          group.appendChild(grid);
+          colorsPanel.appendChild(group);
+          return grid;
+        };
+
+        const normalGrid = makeGroup("Estado normal");
+        const normalBackground = makeColorField(normalGrid, "Fundo", getColor("dotBackgroundColor", "#ffffff"));
+        const normalText = makeColorField(normalGrid, "Texto", getColor("dotTextColor", "#14202b"));
+        const normalBorder = makeColorField(normalGrid, "Borda", getColor("dotBorderColor", "#d9e2ea"));
+        const normalIcon = makeColorField(normalGrid, "Ícone", getColor("dotIconColor", state.carousel.dotTextColor || "#14202b"));
+
+        const hoverGrid = makeGroup("Hover");
+        const hoverBackground = makeColorField(hoverGrid, "Fundo", getColor("dotHoverColor", "#fff9f2"));
+        const hoverText = makeColorField(hoverGrid, "Texto", getColor("dotHoverTextColor", state.carousel.dotTextColor || "#14202b"));
+        const hoverBorder = makeColorField(hoverGrid, "Borda", getColor("dotHoverBorderColor", state.carousel.dotActiveBorderColor || "#ee6911"));
+
+        const activeGrid = makeGroup("Botão selecionado");
+        const activeBackground = makeColorField(activeGrid, "Fundo", getColor("dotActiveColor", "#fff4e0"));
+        const activeText = makeColorField(activeGrid, "Texto", getColor("dotActiveTextColor", state.carousel.brandColor || "#ee6911"));
+        const activeBorder = makeColorField(activeGrid, "Borda", getColor("dotActiveBorderColor", "#ee6911"));
+        const activeIconBackground = makeColorField(activeGrid, "Fundo do ícone", getColor("dotIconActiveBackgroundColor", state.carousel.brandColor || "#ee6911"));
+        const activeIconColor = makeColorField(activeGrid, "Ícone", getColor("dotIconActiveColor", "#ffffff"));
+
+        const iconToggle = document.createElement("label");
+        iconToggle.className = "article-toggle";
+        const iconInput = document.createElement("input");
+        iconInput.type = "checkbox";
+        iconInput.checked = state.carousel.showNavIcons !== false;
+        const iconText = document.createElement("span");
+        iconText.textContent = "Mostrar ícones nos botões";
+        iconToggle.append(iconInput, iconText);
+        colorsPanel.appendChild(iconToggle);
+
+        const shapeGrid = document.createElement("div");
+        shapeGrid.className = "preview-edit-popover__grid";
+        shapePanel.appendChild(shapeGrid);
+        const makeNumberField = (labelText, value, min, max, step = 1) => {
+          const label = document.createElement("label");
+          label.className = "preview-edit-popover__mini-field";
+          const text = document.createElement("span");
+          text.textContent = labelText;
+          const input = document.createElement("input");
+          input.type = "number";
+          input.min = String(min);
+          input.max = String(max);
+          input.step = String(step);
+          input.value = String(value);
+          label.append(text, input);
+          shapeGrid.appendChild(label);
+          return input;
+        };
+        const radius = makeNumberField("Raio da borda (px)", getNumber("dotRadius", 12, 0, 48), 0, 48);
+        const borderWidth = makeNumberField("Espessura da borda (px)", getNumber("dotBorderWidth", 1, 0, 8), 0, 8);
+        const minHeight = makeNumberField("Altura mínima (px)", getNumber("dotMinHeight", 62, 36, 180), 36, 180);
+        const paddingX = makeNumberField("Respiro lateral (px)", getNumber("dotPaddingX", 16, 0, 64), 0, 64);
+        const hoverLift = makeNumberField("Elevação no hover (px)", getNumber("dotHoverLift", 4, 0, 20), 0, 20);
+        const shadowOpacity = makeNumberField("Opacidade da sombra", getNumber("dotShadowOpacity", 0, 0, 0.45), 0, 0.45, 0.01);
+        const formNote = document.createElement("p");
+        formNote.className = "preview-edit-popover__note";
+        formNote.textContent = "As alterações valem para todos os botões de navegação deste carrossel.";
+        shapePanel.appendChild(formNote);
+
+        form.append(colorsPanel, shapePanel);
+
+        const actions = document.createElement("div");
+        actions.className = "preview-edit-popover__actions";
+        const closeButton = document.createElement("button");
+        closeButton.className = "button";
+        closeButton.type = "button";
+        closeButton.textContent = "Fechar";
+        actions.appendChild(closeButton);
+        form.appendChild(actions);
+
+        const colorPairs = [
+          normalBackground, normalText, normalBorder, normalIcon,
+          hoverBackground, hoverText, hoverBorder,
+          activeBackground, activeText, activeBorder, activeIconBackground, activeIconColor
+        ];
+        const syncPair = (pair) => {
+          if (!isHexColor(pair.hex.value)) {
+            return false;
+          }
+          const color = normalizeHexColor(pair.hex.value);
+          pair.hex.value = color;
+          pair.picker.value = color;
+          pair.picker.style.setProperty("--preview-edit-color", color);
+          return true;
+        };
+        const numberValue = (input, fallback, min, max) => {
+          const value = Number(input.value);
+          const normalized = Math.min(max, Math.max(min, Number.isFinite(value) ? value : fallback));
+          input.value = String(normalized);
+          return normalized;
+        };
+        const applyStyle = () => {
+          colorPairs.forEach(syncPair);
+          const values = {
+            dotBackgroundColor: normalBackground.picker.value,
+            dotTextColor: normalText.picker.value,
+            dotBorderColor: normalBorder.picker.value,
+            dotIconColor: normalIcon.picker.value,
+            dotHoverColor: hoverBackground.picker.value,
+            dotHoverTextColor: hoverText.picker.value,
+            dotHoverBorderColor: hoverBorder.picker.value,
+            dotActiveColor: activeBackground.picker.value,
+            dotActiveTextColor: activeText.picker.value,
+            dotActiveBorderColor: activeBorder.picker.value,
+            dotIconActiveBackgroundColor: activeIconBackground.picker.value,
+            dotIconActiveColor: activeIconColor.picker.value,
+            dotRadius: numberValue(radius, 12, 0, 48),
+            dotBorderWidth: numberValue(borderWidth, 1, 0, 8),
+            dotMinHeight: numberValue(minHeight, 62, 36, 180),
+            dotPaddingX: numberValue(paddingX, 16, 0, 64),
+            dotHoverLift: numberValue(hoverLift, 4, 0, 20),
+            dotShadowOpacity: numberValue(shadowOpacity, 0, 0, 0.45),
+            showNavIcons: iconInput.checked
+          };
+          Object.assign(state.carousel, values);
+          const shadowColor = hexToRgba(values.dotBorderColor, values.dotShadowOpacity.toFixed(2));
+          const styleValues = {
+            "--ll-carousel-dot-bg": values.dotBackgroundColor,
+            "--ll-carousel-dot-color": values.dotTextColor,
+            "--ll-carousel-dot-border": values.dotBorderColor,
+            "--ll-carousel-dot-icon-color": values.dotIconColor,
+            "--ll-carousel-dot-hover": values.dotHoverColor,
+            "--ll-carousel-dot-hover-color": values.dotHoverTextColor,
+            "--ll-carousel-dot-hover-border": values.dotHoverBorderColor,
+            "--ll-carousel-dot-active": values.dotActiveColor,
+            "--ll-carousel-dot-active-color": values.dotActiveTextColor,
+            "--ll-carousel-dot-active-border": values.dotActiveBorderColor,
+            "--ll-carousel-dot-icon-active-bg": values.dotIconActiveBackgroundColor,
+            "--ll-carousel-dot-icon-active-color": values.dotIconActiveColor,
+            "--ll-carousel-dot-radius": `${values.dotRadius}px`,
+            "--ll-carousel-dot-border-width": `${values.dotBorderWidth}px`,
+            "--ll-carousel-dot-min-height": `${values.dotMinHeight}px`,
+            "--ll-carousel-dot-padding-x": `${values.dotPaddingX}px`,
+            "--ll-carousel-dot-hover-lift": `${values.dotHoverLift}px`,
+            "--ll-carousel-dot-shadow": `0 ${values.dotHoverLift}px ${values.dotHoverLift * 4}px ${shadowColor}`
+          };
+          Object.entries(styleValues).forEach(([name, value]) => carouselRoot.style.setProperty(name, value));
+          carouselRoot.querySelectorAll(".ll-carousel__dot-icon").forEach((icon) => {
+            icon.style.display = values.showNavIcons ? "" : "none";
+          });
+          generatedHtml.value = buildOutputHtml("html");
+          copyStatus.textContent = "";
+          copyStatus.classList.remove("is-warning", "is-visible");
+        };
+        const setPanel = (name) => {
+          colorsPanel.hidden = name !== "colors";
+          shapePanel.hidden = name !== "shape";
+          colorsTab.classList.toggle("is-active", name === "colors");
+          shapeTab.classList.toggle("is-active", name === "shape");
+        };
+        colorsTab.addEventListener("click", () => setPanel("colors"));
+        shapeTab.addEventListener("click", () => setPanel("shape"));
+        colorPairs.forEach((pair) => {
+          pair.picker.addEventListener("input", () => {
+            pair.hex.value = normalizeHexColor(pair.picker.value);
+            pair.picker.style.setProperty("--preview-edit-color", pair.hex.value);
+            applyStyle();
+          });
+          pair.hex.addEventListener("input", () => {
+            if (isHexColor(pair.hex.value)) {
+              applyStyle();
+            }
+          });
+          pair.hex.addEventListener("change", () => {
+            if (!syncPair(pair)) {
+              pair.hex.value = pair.picker.value;
+            }
+            applyStyle();
+          });
+        });
+        [radius, borderWidth, minHeight, paddingX, hoverLift, shadowOpacity].forEach((input) => {
+          input.addEventListener("input", applyStyle);
+          input.addEventListener("change", applyStyle);
+        });
+        iconInput.addEventListener("change", () => {
+          applyStyle();
+          if (iconInput.checked && !carouselRoot.querySelector(".ll-carousel__dot-icon")) {
+            updateOutput();
+          }
+        });
+        closeButton.addEventListener("click", closePreviewEditPopover);
+        form.addEventListener("submit", (event) => {
+          event.preventDefault();
+          closePreviewEditPopover();
+        });
+        previewEditKeyHandler = (event) => {
+          if (event.key === "Escape") {
+            closePreviewEditPopover();
+          }
+        };
+        previewEditOutsideHandler = (event) => {
+          if (previewEditPopover && !previewEditPopover.contains(event.target)) {
+            closePreviewEditPopover();
+          }
+        };
+        document.body.appendChild(form);
+        previewEditPopover = form;
+        positionPreviewEditPopover(sourceEvent);
+        window.setTimeout(() => {
+          document.addEventListener("mousedown", previewEditOutsideHandler, true);
+          document.addEventListener("keydown", previewEditKeyHandler, true);
+        }, 0);
       };
 
       const getTemplateTableRoot = (element, root) => {
@@ -5646,6 +6139,14 @@ ${containerHtml}`;
             return;
           }
 
+          const iconHost = event.target.closest?.(".ll-carousel__dot-icon, [class*='icon' i], [class*='logo' i], [class*='avatar' i], [class*='emblem' i]");
+          if (iconHost && root.contains(iconHost) && getTemplateIconMediaElement(iconHost)) {
+            event.preventDefault();
+            event.stopImmediatePropagation();
+            openTemplateIconPopover(event, iconHost);
+            return;
+          }
+
           const editableElement = findTemplateMediaAtPoint(event, root);
           if (!editableElement) {
             return;
@@ -5662,8 +6163,8 @@ ${containerHtml}`;
             value: getTemplateMediaValue(editableElement)
           };
 
-          if (editableElement.tagName === "SVG") {
-            openTemplateSvgPopover(event, editableElement);
+          if (isTemplateIconElement(editableElement)) {
+            openTemplateIconPopover(event, editableElement);
           } else if (editableElement.tagName === "IMG") {
             openTemplateImagePopover(event, editableElement, mediaMeta, "URL da imagem ou mídia");
           } else {
@@ -5745,6 +6246,12 @@ ${containerHtml}`;
           }
         });
 
+        root.querySelectorAll(".ll-carousel__dot-icon, [class*='icon' i], [class*='logo' i], [class*='avatar' i], [class*='emblem' i]").forEach((element) => {
+          if (getTemplateIconMediaElement(element)) {
+            attachTemplateIcon(element);
+          }
+        });
+
         setupTemplateFaqEditing(root);
         setupTemplateTableEditing(root);
 
@@ -5758,7 +6265,7 @@ ${containerHtml}`;
 
           if (element.tagName === "SVG") {
             markTemplateNode(element);
-            attachTemplateSvg(element);
+            attachTemplateIcon(element);
             return;
           }
 
@@ -5788,6 +6295,11 @@ ${containerHtml}`;
             };
 
             if (element.tagName === "IMG") {
+              if (isTemplateIconElement(element)) {
+                attachTemplateIcon(element);
+                return;
+              }
+
               element.setAttribute("title", "Dê dois cliques para trocar URL e alt text.");
               element.addEventListener("dblclick", (event) => {
                 event.preventDefault();
@@ -5925,6 +6437,12 @@ ${containerHtml}`;
               return;
             }
 
+            // Os cards de navegação aguardam o clique local para distinguir
+            // troca de slide de duplo clique no fundo para editar o estilo.
+            if (label.matches(".ll-carousel__dot")) {
+              return;
+            }
+
             const input = getControlledInput(label);
             if (!input || !input.matches?.('input[type="radio"]')) {
               return;
@@ -5984,13 +6502,19 @@ ${containerHtml}`;
             dotClickTimer = window.setTimeout(activateDot, 280);
           });
 
-          dot.addEventListener("dblclick", () => {
+          dot.addEventListener("dblclick", (event) => {
             window.clearTimeout(dotClickTimer);
+            if (event.target.closest("[data-ll-preview-text], .ll-carousel__dot-icon")) {
+              return;
+            }
+            event.preventDefault();
+            event.stopPropagation();
+            openCarouselNavStylePopover(event, carouselRoot);
           });
 
           attachText(dot.querySelector(".ll-carousel__dot-number"), { scope: "carousel", slideIndex, field: "navNumber" });
           attachText(dot.querySelector(".ll-carousel__dot-text"), { scope: "carousel", slideIndex, field: "navLabel" });
-          attachMedia(dot.querySelector(".ll-carousel__dot-icon"), { scope: "carousel", slideIndex, field: "navIconImage" }, "URL ou SVG do ícone", { triggerEvent: "dblclick" });
+          attachTemplateIcon(dot.querySelector(".ll-carousel__dot-icon"));
         });
 
         doc.querySelectorAll(".ll-carousel__panel").forEach((panel, slideIndex) => {

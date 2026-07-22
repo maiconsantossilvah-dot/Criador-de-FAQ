@@ -23,6 +23,7 @@ const SENKO_BRIDGE_SCRIPT_BATCH_SIZE = 8;
 function ensureSenkoBridgeState() {
   state.senkoBridge = {
     loading: false,
+    refreshing: false,
     loaded: false,
     error: "",
     status: "",
@@ -290,6 +291,37 @@ async function loadSenkoBridgeLibrary(force = false) {
     return;
   }
 
+  const fallbackData = getSenkoBridgeLocalData();
+  if (!force && fallbackData && !bridge.loaded) {
+    applySenkoBridgeData(fallbackData, "bundle local");
+    bridge.status = `${bridge.layouts.length} layouts carregados pelo bundle local. Atualizando SenkoLib em segundo plano...`;
+    bridge.refreshing = true;
+    bridge.loading = false;
+    if (typeof renderEditor === "function") {
+      renderEditor(true);
+    }
+
+    try {
+      const catalog = await loadSenkoBridgeJsonCatalog();
+      if (catalog) {
+        applySenkoBridgeData(catalog, "catalogo layouts.json");
+      } else {
+        const manifestData = await loadSenkoBridgeManifestScripts(false);
+        applySenkoBridgeData(manifestData, "SenkoLib remoto");
+      }
+    } catch (error) {
+      bridge.error = "";
+      bridge.status = `${bridge.layouts.length} layouts carregados pelo bundle local. SenkoLib remoto indisponivel agora.`;
+    } finally {
+      bridge.refreshing = false;
+      bridge.loading = false;
+      if (typeof renderEditor === "function") {
+        renderEditor(true);
+      }
+    }
+    return;
+  }
+
   bridge.loading = true;
   bridge.error = "";
   bridge.status = force ? "Atualizando pelo SenkoLib..." : "Carregando layouts do SenkoLib...";
@@ -306,7 +338,6 @@ async function loadSenkoBridgeLibrary(force = false) {
       applySenkoBridgeData(manifestData, "SenkoLib remoto");
     }
   } catch (error) {
-    const fallbackData = getSenkoBridgeLocalData();
     if (fallbackData) {
       applySenkoBridgeData(fallbackData, "fallback local");
       bridge.status = `${bridge.layouts.length} layouts carregados pelo fallback local.`;
@@ -894,7 +925,7 @@ function buildSenkoBridgeLayoutCardsHtml(layouts = getSenkoBridgeFilteredLayouts
 
 function refreshSenkoBridgeLayoutList() {
   const bridge = ensureSenkoBridgeState();
-  const listIsLoading = getSenkoBridgeActiveSource() === "senko" && bridge.loading;
+  const listIsLoading = getSenkoBridgeActiveSource() === "senko" && bridge.loading && !bridge.layouts.length;
   const list = document.querySelector("[data-senko-bridge-list]");
   if (!list) {
     return false;
@@ -921,7 +952,7 @@ function renderSenkoBridgeEditor() {
         <button class="senko-source-tabs__button${activeSource === "senko" ? " is-active" : ""}" type="button" role="tab" aria-selected="${activeSource === "senko"}" data-action="set-senko-source" data-senko-source="senko">SenkoLib</button>
         <button class="senko-source-tabs__button${activeSource === "lab" ? " is-active" : ""}" type="button" role="tab" aria-selected="${activeSource === "lab"}" data-action="set-senko-source" data-senko-source="lab">Layout Lab</button>
       </div>`;
-  const listIsLoading = activeSource === "senko" && bridge.loading;
+  const listIsLoading = activeSource === "senko" && bridge.loading && !bridge.layouts.length;
   const searchPlaceholder = activeSource === "lab" ? "FAQ, tabela, stories..." : "Header, carrossel, FAQ...";
 
   const stack = bridge.blocks.length ? bridge.blocks.map((block, index) => {

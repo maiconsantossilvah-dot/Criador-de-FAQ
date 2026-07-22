@@ -13,9 +13,21 @@
     --ll-carousel-panel: #ffffff;
     --ll-carousel-line: #d9e2ea;
     --ll-carousel-section-bg: var(--ll-carousel-soft);
+    --ll-carousel-dot-bg: var(--ll-carousel-panel);
+    --ll-carousel-dot-color: var(--ll-carousel-ink);
+    --ll-carousel-dot-border: var(--ll-carousel-line);
     --ll-carousel-dot-hover: #f0f3f5;
+    --ll-carousel-dot-hover-color: var(--ll-carousel-ink);
+    --ll-carousel-dot-hover-border: #c8d2da;
     --ll-carousel-dot-active: #e7ecef;
+    --ll-carousel-dot-active-color: var(--ll-carousel-brand);
     --ll-carousel-dot-active-border: #c8d2da;
+    --ll-carousel-dot-radius: 0.75rem;
+    --ll-carousel-dot-border-width: 1px;
+    --ll-carousel-dot-min-height: 3.9rem;
+    --ll-carousel-dot-padding-x: 1rem;
+    --ll-carousel-dot-hover-lift: 0.25rem;
+    --ll-carousel-dot-shadow: none;
     --ll-carousel-dot-icon-bg: #f0ede8;
     --ll-carousel-dot-icon-color: var(--ll-carousel-ink);
     --ll-carousel-dot-icon-active-bg: var(--ll-carousel-brand);
@@ -307,24 +319,26 @@
 
   .ll-carousel__dot {
     align-items: center;
-    background: var(--ll-carousel-panel);
-    border: 1px solid var(--ll-carousel-line);
-    border-radius: 0.75rem;
+    background: var(--ll-carousel-dot-bg);
+    border: var(--ll-carousel-dot-border-width) solid var(--ll-carousel-dot-border);
+    border-radius: var(--ll-carousel-dot-radius);
     box-sizing: border-box;
-    color: var(--ll-carousel-ink);
+    box-shadow: var(--ll-carousel-dot-shadow);
+    color: var(--ll-carousel-dot-color);
     cursor: pointer;
     display: flex;
     gap: 0.5rem;
     justify-content: space-between;
-    min-height: 3.9rem;
-    padding: 0.75rem 1rem;
-    transition: background 0.4s ease, border-color 0.4s ease, color 0.4s ease, transform 0.4s ease;
+    min-height: var(--ll-carousel-dot-min-height);
+    padding: 0.75rem var(--ll-carousel-dot-padding-x);
+    transition: background 0.25s ease, border-color 0.25s ease, color 0.25s ease, box-shadow 0.25s ease, transform 0.25s ease;
   }
 
   .ll-carousel__dot:hover {
     background: var(--ll-carousel-dot-hover);
-    border-color: var(--ll-carousel-dot-active-border);
-    transform: translateY(-0.25rem);
+    border-color: var(--ll-carousel-dot-hover-border);
+    color: var(--ll-carousel-dot-hover-color);
+    transform: translateY(calc(var(--ll-carousel-dot-hover-lift) * -1));
   }
 
   .ll-carousel__dot-copy {
@@ -335,7 +349,7 @@
   }
 
   .ll-carousel__dot-number {
-    color: var(--ll-carousel-brand);
+    color: inherit;
     font-size: clamp(0.75rem, 0.72rem + 0.16vw, 0.875rem);
     font-weight: 700;
     line-height: 1;
@@ -433,7 +447,7 @@
   .ll-carousel__control--4:checked ~ .ll-carousel__nav .ll-carousel__dot--4 {
     background: var(--ll-carousel-dot-active);
     border-color: var(--ll-carousel-dot-active-border);
-    color: var(--ll-carousel-ink);
+    color: var(--ll-carousel-dot-active-color);
   }
 
   .ll-carousel__control--1:checked ~ .ll-carousel__nav .ll-carousel__dot--1 .ll-carousel__dot-number,
@@ -444,7 +458,7 @@
   .ll-carousel__control--2:checked ~ .ll-carousel__nav .ll-carousel__dot--2 .ll-carousel__dot-text,
   .ll-carousel__control--3:checked ~ .ll-carousel__nav .ll-carousel__dot--3 .ll-carousel__dot-text,
   .ll-carousel__control--4:checked ~ .ll-carousel__nav .ll-carousel__dot--4 .ll-carousel__dot-text {
-    color: var(--ll-carousel-brand);
+    color: var(--ll-carousel-dot-active-color);
   }
 
   .ll-carousel__control--1:checked ~ .ll-carousel__nav .ll-carousel__dot--1 .ll-carousel__dot-icon,
@@ -708,7 +722,7 @@
     }
 
     .ll-carousel__dot {
-      border-radius: 0.55rem;
+      border-radius: var(--ll-carousel-dot-radius);
       gap: 0.45rem;
       justify-content: space-between;
       min-height: 3rem;
@@ -897,7 +911,7 @@
     }
 
     .ll-carousel__dot {
-      border-radius: 0.55rem;
+      border-radius: var(--ll-carousel-dot-radius);
       gap: 0;
       justify-items: center;
       min-height: 3rem;
@@ -935,10 +949,23 @@ __CAROUSEL_DYNAMIC_COLORS__
     --ll-carousel-brand: ${normalizeHexColor(state.carousel.brandColor)};
     --ll-carousel-soft: ${normalizeCssColorValue(state.carousel.softColor)};
     --ll-carousel-section-bg: ${sectionBackground};
+    --ll-carousel-dot-bg: ${normalizeHexColor(state.carousel.dotBackgroundColor || "#ffffff")};
+    --ll-carousel-dot-color: ${normalizeHexColor(state.carousel.dotTextColor || "#14202b")};
+    --ll-carousel-dot-border: ${normalizeHexColor(state.carousel.dotBorderColor || "#d9e2ea")};
     --ll-carousel-dot-hover: ${normalizeHexColor(state.carousel.dotHoverColor)};
+    --ll-carousel-dot-hover-color: ${normalizeHexColor(state.carousel.dotHoverTextColor || state.carousel.dotTextColor || "#14202b")};
+    --ll-carousel-dot-hover-border: ${normalizeHexColor(state.carousel.dotHoverBorderColor || state.carousel.dotActiveBorderColor || "#ee6911")};
     --ll-carousel-dot-active: ${normalizeHexColor(state.carousel.dotActiveColor)};
+    --ll-carousel-dot-active-color: ${normalizeHexColor(state.carousel.dotActiveTextColor || state.carousel.brandColor || "#ee6911")};
     --ll-carousel-dot-active-border: ${normalizeHexColor(state.carousel.dotActiveBorderColor)};
+    --ll-carousel-dot-radius: ${Math.min(48, Math.max(0, Number(state.carousel.dotRadius) || 12))}px;
+    --ll-carousel-dot-border-width: ${Math.min(8, Math.max(0, Number(state.carousel.dotBorderWidth) || 1))}px;
+    --ll-carousel-dot-min-height: ${Math.min(180, Math.max(36, Number(state.carousel.dotMinHeight) || 62))}px;
+    --ll-carousel-dot-padding-x: ${Math.min(64, Math.max(0, Number(state.carousel.dotPaddingX) || 16))}px;
+    --ll-carousel-dot-hover-lift: ${Math.min(20, Math.max(0, Number(state.carousel.dotHoverLift) || 4))}px;
+    --ll-carousel-dot-shadow: 0 ${Math.min(24, Math.max(0, Number(state.carousel.dotHoverLift) || 4))}px ${Math.min(48, Math.max(0, Number(state.carousel.dotHoverLift) || 4) * 4)}px ${hexToRgba(normalizeHexColor(state.carousel.dotBorderColor || "#14202b"), Math.min(0.45, Math.max(0, Number(state.carousel.dotShadowOpacity) || 0)).toFixed(2))};
     --ll-carousel-dot-icon-bg: ${normalizeHexColor(state.carousel.dotIconBackgroundColor || "#f0ede8")};
+    --ll-carousel-dot-icon-color: ${normalizeHexColor(state.carousel.dotIconColor || state.carousel.dotTextColor || "#14202b")};
     --ll-carousel-dot-icon-active-bg: ${normalizeHexColor(state.carousel.dotIconActiveBackgroundColor || state.carousel.brandColor)};
     --ll-carousel-dot-icon-active-color: ${normalizeHexColor(state.carousel.dotIconActiveColor || "#ffffff")};
     --ll-carousel-indicator-color: ${hexToRgba(normalizeHexColor(state.carousel.indicatorColor || "#ffffff"), "0.5")};
@@ -1050,6 +1077,10 @@ __CAROUSEL_DYNAMIC_COLORS__
     }
 
     function renderCarouselIcon(slide) {
+      if (state.carousel.showNavIcons === false) {
+        return "";
+      }
+
       const iconImage = String(slide.navIconImage || "").trim();
       if (iconImage) {
         if (isInlineSvgMarkup(iconImage)) {
@@ -1330,7 +1361,7 @@ ${dots}
               </label>
               <div class="article-editor__grid">
                 <label class="field">
-                  <span>Ângulo do degradê</span>
+                  <span>Angulo do degrade</span>
                   <input type="number" min="0" max="360" step="1" value="${normalizeCarouselGradientAngle(slide.gradientAngle)}" data-carousel-field="gradientAngle" data-carousel-slide="${slideIndex}">
                 </label>
               </div>
@@ -1509,6 +1540,10 @@ ${impactFields}
                     ${renderColorControl({ value: state.carousel.dotIconActiveColor || "#ffffff", label: "Texto do ícone ativo", scope: "carousel", field: "dotIconActiveColor" })}
                   </label>
                 </div>
+                <label class="article-toggle">
+                  <input type="checkbox" data-carousel-field="showNavIcons"${state.carousel.showNavIcons !== false ? " checked" : ""}>
+                  <span>Mostrar ícones nos botões</span>
+                </label>
                 <label class="article-toggle">
                   <input type="checkbox" data-carousel-field="showIndicators"${state.carousel.showIndicators !== false ? " checked" : ""}>
                   <span>Mostrar bolinhas dentro do slide</span>
