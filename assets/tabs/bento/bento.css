@@ -204,11 +204,47 @@
     .ll-bento__card--hero {
       min-height: 460px;
       color: #ffffff;
-      background:
-        linear-gradient(135deg, rgba(19, 35, 58, 0.9) 0%, rgba(19, 35, 58, 0.58) 46%, rgba(19, 35, 58, 0.18) 100%),
-        url("https://imgprd.martinsatacado.com.br/catalogoimg/catalogo/chinelo-havaianas-top-basic-cinza-praia-1225007-04.webp?ims=900x") center / cover no-repeat;
+      background: var(--ll-bento-deep);
       box-shadow: var(--ll-bento-shadow);
       cursor: zoom-in;
+    }
+
+    .ll-bento__hero-picture {
+      position: absolute;
+      inset: 0;
+      z-index: 0;
+      display: block;
+      overflow: hidden;
+      pointer-events: none;
+    }
+
+    .ll-bento__hero-picture::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(135deg, rgba(19, 35, 58, 0.9) 0%, rgba(19, 35, 58, 0.58) 46%, rgba(19, 35, 58, 0.18) 100%);
+    }
+
+    .ll-bento__hero-picture img {
+      display: block;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      object-position: center;
+    }
+
+    .ll-bento__card--hero > div,
+    .ll-bento__card--hero > .ll-bento__card-text {
+      position: relative;
+      z-index: 2;
+    }
+
+    .ll-bento__card--hero > .ll-bento__media-action {
+      z-index: 3;
+    }
+
+    .ll-bento__card--hero > .ll-bento__image-button {
+      z-index: 4;
     }
 
     .ll-bento__card--wide {
@@ -598,10 +634,12 @@
       outline-offset: -6px;
     }
 
-    .ll-bento__lightbox-toggle {
-      position: absolute;
-      top: 0;
-      left: 0;
+.ll-bento__lightbox-toggle {
+  /* Keep the checkbox outside the document flow: focusing it from a label
+     must never make the browser jump to its original grid position. */
+  position: fixed;
+  top: -9999px;
+  left: -9999px;
       width: 1px;
       height: 1px;
       overflow: hidden;
@@ -650,6 +688,11 @@
       border-radius: 26px;
       background: #ffffff;
       box-shadow: 0 34px 90px rgba(0, 0, 0, 0.34);
+    }
+
+    .ll-bento__lightbox-picture {
+      display: block;
+      width: 100%;
     }
 
     .ll-bento__lightbox-panel img {
@@ -1146,9 +1189,11 @@
 
       .ll-bento__card--hero {
         min-height: 235px;
-        background:
-          linear-gradient(135deg, rgba(19, 35, 58, 0.88) 0%, rgba(19, 35, 58, 0.55) 52%, rgba(19, 35, 58, 0.2) 100%),
-          url("https://imgprd.martinsatacado.com.br/catalogoimg/catalogo/chinelo-havaianas-top-basic-cinza-praia-1225007-04.webp?ims=700x") center / cover no-repeat;
+        background: var(--ll-bento-deep);
+      }
+
+      .ll-bento__hero-picture::after {
+        background: linear-gradient(135deg, rgba(19, 35, 58, 0.88) 0%, rgba(19, 35, 58, 0.55) 52%, rgba(19, 35, 58, 0.2) 100%);
       }
 
       .ll-bento__card--small {

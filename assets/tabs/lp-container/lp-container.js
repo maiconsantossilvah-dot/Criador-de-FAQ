@@ -6543,6 +6543,28 @@ ${containerHtml}`;
           return;
         }
 
+        // Os controles de ampliar usam labels ligados a checkboxes. Alguns
+        // navegadores focam o input oculto e reposicionam o iframe; guardar a
+        // rolagem antes e restaura-la depois impede esse salto visual.
+        const keepBentoPreviewScroll = () => {
+          const scrollRoot = doc.scrollingElement || doc.documentElement;
+          const top = scrollRoot.scrollTop;
+          const left = scrollRoot.scrollLeft;
+          doc.defaultView.requestAnimationFrame(() => {
+            scrollRoot.scrollTo({ top, left, behavior: "auto" });
+          });
+          doc.defaultView.setTimeout(() => {
+            scrollRoot.scrollTo({ top, left, behavior: "auto" });
+          }, 0);
+        };
+
+        root.querySelectorAll(".ll-bento__lightbox-toggle, .ll-bento__image-button, .ll-bento__lightbox-backdrop, .ll-bento__lightbox-clickzone, .ll-bento__lightbox-close").forEach((control) => {
+          control.addEventListener("pointerdown", keepBentoPreviewScroll, true);
+          control.addEventListener("click", keepBentoPreviewScroll, true);
+          control.addEventListener("change", keepBentoPreviewScroll, true);
+          control.addEventListener("focus", keepBentoPreviewScroll, true);
+        });
+
         const getBentoResizeBounds = (element, referenceRect) => {
           const grid = root.querySelector(".ll-bento__grid") || root;
           const gridRect = grid.getBoundingClientRect();
@@ -7022,15 +7044,16 @@ ${containerHtml}`;
           blocks.forEach((block, blockIndex) => {
             block.dataset.llBentoBlockIndex = String(blockIndex);
             block.classList.add("ll-bento__editor-reorderable");
-            const isImageBlock = block.matches(".ll-bento__expand--image-circle, .ll-bento__expand--image-square");
-            block.draggable = isImageBlock;
+            // A reorganizacao acontece pelo puxador. O drag nativo disputa
+            // eventos com a area clicavel da imagem circular e impede a troca.
+            block.draggable = false;
 
             let handle = block.querySelector(":scope > .ll-bento__editor-drag-handle");
             if (!handle) {
               handle = doc.createElement("button");
               handle.type = "button";
               handle.className = "ll-bento__editor-drag-handle";
-              handle.draggable = true;
+              handle.draggable = false;
               handle.setAttribute("aria-label", "Reorganizar bloco na grade");
               handle.title = "Arraste para reorganizar";
               handle.innerHTML = `<svg viewBox="0 0 24 24" width="16" height="16" fill="none" aria-hidden="true"><path d="M8 7h.01M12 7h.01M16 7h.01M8 12h.01M12 12h.01M16 12h.01M8 17h.01M12 17h.01M16 17h.01" stroke="currentColor" stroke-width="3" stroke-linecap="round"/></svg>`;
@@ -7038,7 +7061,61 @@ ${containerHtml}`;
             }
 
             handle.addEventListener("pointerdown", (event) => {
+              if (event.button !== 0) {
+                return;
+              }
+
+              event.preventDefault();
               event.stopPropagation();
+
+              const startX = event.clientX;
+              const startY = event.clientY;
+              let isDragging = false;
+
+              const clearPointerDrag = () => {
+                doc.defaultView.removeEventListener("pointermove", handlePointerMove, true);
+                doc.defaultView.removeEventListener("pointerup", finishPointerDrag, true);
+                doc.defaultView.removeEventListener("pointercancel", finishPointerDrag, true);
+                clearDropState();
+              };
+
+              const getDropTarget = (pointerEvent) => {
+                const target = doc.elementFromPoint(pointerEvent.clientX, pointerEvent.clientY);
+                return target?.closest?.(".ll-bento__editor-reorderable") || null;
+              };
+
+              const handlePointerMove = (pointerEvent) => {
+                const movedFarEnough = Math.abs(pointerEvent.clientX - startX) > 5 || Math.abs(pointerEvent.clientY - startY) > 5;
+                if (!movedFarEnough) {
+                  return;
+                }
+
+                isDragging = true;
+                block.classList.add("ll-bento__editor-dragging");
+                clearDropState();
+                block.classList.add("ll-bento__editor-dragging");
+                const target = getDropTarget(pointerEvent);
+                if (target && target !== block) {
+                  target.classList.add("ll-bento__editor-drop-target");
+                }
+              };
+
+              const finishPointerDrag = (pointerEvent) => {
+                const target = isDragging ? getDropTarget(pointerEvent) : null;
+                clearPointerDrag();
+                if (!target || target === block) {
+                  return;
+                }
+
+                moveBlockToTarget(Number(block.dataset.llBentoBlockIndex), Number(target.dataset.llBentoBlockIndex));
+              };
+
+              try {
+                handle.setPointerCapture(event.pointerId);
+              } catch (error) {}
+              doc.defaultView.addEventListener("pointermove", handlePointerMove, true);
+              doc.defaultView.addEventListener("pointerup", finishPointerDrag, true);
+              doc.defaultView.addEventListener("pointercancel", finishPointerDrag, true);
             }, true);
 
             handle.addEventListener("click", (event) => {

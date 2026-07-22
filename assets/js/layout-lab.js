@@ -2670,7 +2670,7 @@ ${buildResponsiveStyle("carousel", { includeDraft: true })}`;
       if (currentPage === "conteudo" && currentEditorTab === "bento") {
         return `${buildBentoSectionHtml()}
 
-${buildTabStyleWithClass("bento", buildBentoStyle)}
+${buildTabStyleWithClass("bento", buildBentoPreviewStyle)}
 
 ${buildResponsiveStyle("bento", { includeDraft: true })}`;
       }
@@ -3231,7 +3231,7 @@ ${buildFaqStylePackage({ includeResponsive: true, responsiveOptions: { includeDr
       }
       setupTemplateCodeEditors(editor);
       if (currentPage === "conteudo" && currentEditorTab !== "dashboard") {
-        const presetMarkup = currentEditorTab === "template" || currentEditorTab === "senko" || currentEditorTab === "labbridge" ? "" : renderPresetPanel();
+        const presetMarkup = currentEditorTab === "template" || currentEditorTab === "senko" || currentEditorTab === "labbridge" || currentEditorTab === "bento" ? "" : renderPresetPanel();
         if (presetMarkup) {
           editor.insertAdjacentHTML("afterbegin", presetMarkup);
         }
