@@ -1439,7 +1439,6 @@ ${trends}
         shadow: "0 18px 42px rgba(124, 58, 237, 0.14)"
       };
       const cards = getContentDashboardSections().map((section) => {
-        const badge = section.badge ? `<small class="ll-dashboard__badge" title="Em producao" aria-label="Em producao">${section.badge}</small>` : "";
         return `<button class="ll-dashboard__card" type="button" data-dashboard-preview-tab="${section.tab}" aria-label="Abrir ${escapeHtml(section.title)}">
           <span>${escapeHtml(section.icon)}</span>
           ${badge}
