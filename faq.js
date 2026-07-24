@@ -191,11 +191,11 @@
         }
       }
 
-      return `<section id="faq-section" aria-labelledby="faq-section">
+      return `<section id="faq-section" aria-labelledby="faq-section__title">
 <div id="faq-section__header">
 <h2 id="faq-section__title">Dúvidas Frequentes</h2>
 </div>
-<ul id="faq-section__list">
+<ul id="faq-section__list" role="list">
 ${items}
 </ul>
 </section>`;

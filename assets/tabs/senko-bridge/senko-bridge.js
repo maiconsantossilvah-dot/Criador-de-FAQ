@@ -612,6 +612,9 @@ function buildSenkoBridgeStackCss() {
 .senko-section-flow > .senko-section-stack {
   margin-top: 0 !important;
 }
+.lp-container > :not(style) + :not(style) {
+  margin-top: clamp(18px, 3vw, 34px) !important;
+}
 .senko-section-stack--section32 :is(.section-32, .section-32-container, .section-32__container, .section-32__groupimage-section, .c32-carousel, .c32-slides, .c32-slide) {
   box-sizing: border-box !important;
   width: 100% !important;
@@ -727,9 +730,7 @@ function buildSenkoBridgeHtmlBundle() {
 
   flushGroup();
   const html = parts.filter((part) => part.trim()).join("\n\n");
-  return bridge.blocks.length > 1 && html
-    ? `<div class="senko-section-flow">\n${html}\n</div>`
-    : html;
+  return html;
 }
 
 function buildSenkoBridgeOutputHtml(copyMode = "html") {

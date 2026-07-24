@@ -1531,6 +1531,7 @@ ${blocks}
               <h2>Bento grid</h2>
               <p>Monte a grade com blocos controlados: 1 HERO, ate 5 textos e ate 2 imagens quadradas.</p>
             </div>
+            <span class="bulk-status">${heroCount}/1 hero Â· ${textCount}/5 textos Â· ${imageCount}/2 imagens</span>
           </div>
 
           <details class="stories-guide article-image-guide">
