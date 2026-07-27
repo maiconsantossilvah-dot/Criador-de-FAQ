@@ -33,6 +33,23 @@ function normalizeLabBridgeHtml(html) {
   return String(html || "").trim();
 }
 
+function buildLabBridgeNativeSection(builder, fallback, isUsable) {
+  if (typeof builder !== "function") {
+    return fallback;
+  }
+
+  const html = normalizeLabBridgeHtml(builder());
+  return (!isUsable || isUsable(html)) ? html : fallback;
+}
+
+function buildLabBridgeNativeStyle(tab, builder) {
+  if (typeof buildTabStyleWithClass !== "function" || typeof builder !== "function") {
+    return "";
+  }
+
+  return buildTabStyleWithClass(tab, builder);
+}
+
 function buildLabBridgeDefaultFaqHtml() {
   const items = [
     [
@@ -61,7 +78,7 @@ function buildLabBridgeDefaultFaqHtml() {
         <li id="faq-section__item">
 <details id="faq-section__details">
 <summary id="faq-section__summary">
-<h3 id="faq-section__q-text"> ${labBridgeEscape(question)} </h3>
+<h2 id="faq-section__q-text"> ${labBridgeEscape(question)} </h2>
 <span id="faq-section__icon" aria-hidden="true"></span>
 </summary>
 <div id="faq-section__a-inner">
@@ -139,54 +156,100 @@ function buildLabBridgeIllustrativeNoteCss() {
 }
 
 function getLabBridgeLayouts() {
+  const faqHtml = buildLabBridgeNativeSection(
+    typeof buildFaqSectionHtml === "function" ? buildFaqSectionHtml : null,
+    buildLabBridgeDefaultFaqHtml(),
+    (html) => /faq-section__item/i.test(html)
+  );
+  const tableHtml = buildLabBridgeNativeSection(
+    typeof buildTableSectionHtml === "function" ? () => buildTableSectionHtml(true) : null,
+    buildLabBridgeDefaultTableHtml(),
+    (html) => {
+      if (typeof hasTableData === "function" && !hasTableData()) {
+        return false;
+      }
+      return /<td\b[^>]*>\s*[^<\s]/i.test(html);
+    }
+  );
+
   const definitions = [
     {
       id: "faq",
       name: "FAQ",
       summary: "Perguntas e respostas",
       tags: ["faq", "duvidas", "perguntas"],
-      html: buildLabBridgeDefaultFaqHtml(),
-      css: typeof buildTabStyleWithClass === "function" ? buildTabStyleWithClass("faq", buildFaqStyle) : ""
+      html: faqHtml,
+      css: buildLabBridgeNativeStyle(
+        "faq",
+        typeof buildFaqStyle === "function" ? buildFaqStyle : null
+      )
     },
     {
       id: "table",
       name: "Tabela",
       summary: "Produtos, SKUs e listas",
       tags: ["tabela", "sku", "produtos"],
-      html: buildLabBridgeDefaultTableHtml(),
-      css: typeof buildTabStyleWithClass === "function" ? buildTabStyleWithClass("table", buildTableStyle) : ""
+      html: tableHtml,
+      css: buildLabBridgeNativeStyle(
+        "table",
+        typeof buildTableStyle === "function" ? buildTableStyle : null
+      )
     },
     {
       id: "stories",
       name: "Stories",
       summary: "Containers e slides",
       tags: ["stories", "bolinhas", "slides"],
-      html: typeof buildStoriesSectionHtml === "function" ? buildStoriesSectionHtml() : "",
-      css: typeof buildTabStyleWithClass === "function" ? buildTabStyleWithClass("stories", buildStoriesStyle) : ""
+      html: buildLabBridgeNativeSection(
+        typeof buildStoriesSectionHtml === "function" ? buildStoriesSectionHtml : null,
+        ""
+      ),
+      css: buildLabBridgeNativeStyle(
+        "stories",
+        typeof buildStoriesStyle === "function" ? buildStoriesStyle : null
+      )
     },
     {
       id: "article",
       name: "Artigo",
       summary: "Blocos com abas",
       tags: ["artigo", "abas", "background"],
-      html: typeof buildArticleSectionHtml === "function" ? buildArticleSectionHtml() : "",
-      css: typeof buildTabStyleWithClass === "function" ? buildTabStyleWithClass("article", buildArticleStyle) : ""
+      html: buildLabBridgeNativeSection(
+        typeof buildArticleSectionHtml === "function" ? buildArticleSectionHtml : null,
+        ""
+      ),
+      css: buildLabBridgeNativeStyle(
+        "article",
+        typeof buildArticleStyle === "function" ? buildArticleStyle : null
+      )
     },
     {
       id: "carousel",
       name: "Carrossel",
       summary: "Slides de impacto",
       tags: ["carrossel", "slides", "impacto"],
-      html: typeof buildCarouselSectionHtml === "function" ? buildCarouselSectionHtml() : "",
-      css: typeof buildTabStyleWithClass === "function" ? buildTabStyleWithClass("carousel", buildCarouselStyle) : ""
+      html: buildLabBridgeNativeSection(
+        typeof buildCarouselSectionHtml === "function" ? buildCarouselSectionHtml : null,
+        ""
+      ),
+      css: buildLabBridgeNativeStyle(
+        "carousel",
+        typeof buildCarouselStyle === "function" ? buildCarouselStyle : null
+      )
     },
     {
       id: "bento",
       name: "Bento",
       summary: "Grade visual de cards",
       tags: ["bento", "grid", "cards"],
-      html: typeof buildBentoSectionHtml === "function" ? buildBentoSectionHtml() : "",
-      css: typeof buildTabStyleWithClass === "function" ? buildTabStyleWithClass("bento", buildBentoStyle) : ""
+      html: buildLabBridgeNativeSection(
+        typeof buildBentoSectionHtml === "function" ? buildBentoSectionHtml : null,
+        ""
+      ),
+      css: buildLabBridgeNativeStyle(
+        "bento",
+        typeof buildBentoStyle === "function" ? buildBentoStyle : null
+      )
     },
     {
       id: "illustrative-note",

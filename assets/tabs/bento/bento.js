@@ -1239,6 +1239,19 @@
 
     function buildBentoOutputPatch() {
       return `<style>
+.ll-bento__card--text,
+.ll-bento__expand--image,
+.ll-bento__expand--image-square,
+.ll-bento__expand--image-rectangle,
+.ll-bento__expand--image-circle {
+  resize: none !important;
+}
+
+.ll-bento__resize-handle,
+[data-ll-bento-resize-handle] {
+  display: none !important;
+}
+
 .ll-bento__card--hero {
   background: var(--ll-bento-deep) !important;
 }
@@ -1378,18 +1391,51 @@
 ${buildBentoOutputPatch()}`;
     }
 
-    // A previa usa exatamente a mesma base visual da saida, acrescida apenas
-    // das regras do editor. O tamanho e a proporcao continuam reais.
+    // A previa usa a base do Bento sem as regras de limpeza do output.
+    // Assim, os controles do editor continuam disponiveis apenas nela.
     function buildBentoPreviewStyle() {
-      return `${buildBentoStyle()}
+      return `${bentoStyle}
 ${buildBentoRuntimePatch()}`;
+    }
+
+    function cleanBentoOutputHtml(html) {
+      const source = String(html || "").trim();
+      if (!source || typeof DOMParser === "undefined") {
+        return source;
+      }
+
+      const documentClone = new DOMParser().parseFromString(source, "text/html");
+      documentClone.querySelectorAll("[data-ll-bento-resize-handle], .ll-bento__resize-handle").forEach((element) => element.remove());
+      documentClone.querySelectorAll("*").forEach((element) => {
+        [
+          "data-ll-bento-node",
+          "data-ll-preview-text",
+          "data-ll-preview-media",
+          "data-ll-preview-color",
+          "data-ll-preview-inline",
+          "data-ll-preview-position",
+          "data-ll-bento-resize-block",
+          "data-ll-bento-resize-ready"
+        ].forEach((attribute) => element.removeAttribute(attribute));
+
+        if (element.style) {
+          element.style.removeProperty("--ll-bento-resize-max-width");
+          element.style.removeProperty("--ll-bento-resize-max-height");
+          element.style.removeProperty("--ll-bento-circle-size");
+          if (!element.getAttribute("style")) {
+            element.removeAttribute("style");
+          }
+        }
+      });
+
+      return documentClone.body.innerHTML.trim();
     }
 
     function buildBentoSectionHtml() {
       ensureBentoState();
       const customHtml = state.bento && typeof state.bento.html === "string" ? state.bento.html.trim() : "";
       if (customHtml && state.bento.useCustomHtml) {
-        return customHtml;
+        return cleanBentoOutputHtml(customHtml);
       }
 
       const header = state.bento.header;
@@ -1498,7 +1544,6 @@ ${blocks}
 
     function renderBentoEditor() {
       ensureBentoState();
-      const status = state.bento && state.bento.status ? `<span class="bulk-status" aria-live="polite">${escapeHtml(state.bento.status)}</span>` : "";
       const heroCount = countBentoBlocks("hero");
       const textCount = countBentoBlocks("text");
       const imageCount = countBentoBlocks("image");
@@ -1531,7 +1576,6 @@ ${blocks}
               <h2>Bento grid</h2>
               <p>Monte a grade com blocos controlados: 1 HERO, ate 5 textos e ate 2 imagens quadradas.</p>
             </div>
-            <span class="bulk-status">${heroCount}/1 hero Â· ${textCount}/5 textos Â· ${imageCount}/2 imagens</span>
           </div>
 
           <details class="stories-guide article-image-guide">

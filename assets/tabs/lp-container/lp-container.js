@@ -1779,6 +1779,7 @@ ${containerHtml}`;
 
     function cleanBentoPreviewClone(container) {
       const clone = container.cloneNode(true);
+      clone.querySelectorAll("[data-ll-bento-resize-handle], .ll-bento__resize-handle").forEach((element) => element.remove());
       [clone, ...clone.querySelectorAll("*")].forEach((element) => {
         [
           "data-ll-bento-node",
@@ -1801,6 +1802,9 @@ ${containerHtml}`;
         if (element.style) {
           element.style.removeProperty("--ll-template-faq-summary-bg");
           element.style.removeProperty("--ll-template-faq-summary-hover-bg");
+          element.style.removeProperty("--ll-bento-resize-max-width");
+          element.style.removeProperty("--ll-bento-resize-max-height");
+          element.style.removeProperty("--ll-bento-circle-size");
           if (!element.getAttribute("style")) {
             element.removeAttribute("style");
           }
