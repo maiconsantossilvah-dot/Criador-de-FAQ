@@ -50,7 +50,6 @@
           icon: "BEN",
           title: "Bento",
           summary: "Grade visual de cards",
-          badge: "&#9881;",
           meta: state.bento && state.bento.html.trim() ? "HTML editado" : "Modelo padrão"
         }
       ].map((section) => section.tab === "stories" ? {
@@ -66,6 +65,17 @@
         title: "Modo LP container",
         summary: "Edite o HTML que vai dentro de Detalhes do produto, separado dos layouts.",
         meta: state.template.html.trim() ? "HTML carregado" : "Aguardando conteúdo"
+      };
+    }
+
+    function getSenkoBridgeDashboardSection() {
+      const blockCount = state.senkoBridge && state.senkoBridge.blocks ? state.senkoBridge.blocks.length : 0;
+      return {
+        tab: "senko",
+        icon: "SK",
+        title: "SenkoBridge",
+        summary: "Monte blocos do SenkoLib ou do Layout Lab e transfira a montagem para o modo LP.",
+        meta: blockCount ? `${blockCount} bloco${blockCount === 1 ? "" : "s"} montado${blockCount === 1 ? "" : "s"}` : "Biblioteca de layouts"
       };
     }
 
@@ -1417,8 +1427,8 @@ ${trends}
       } : {
         ink: "#21172d",
         muted: "#6b5b7b",
-        bg: "#fbf8ff",
-        bgEnd: "#fff8f1",
+        bg: "#ffffff",
+        bgEnd: "#ffffff",
         hero: "linear-gradient(135deg, rgba(124, 58, 237, 0.12), rgba(234, 91, 12, 0.09)), #fffefd",
         card: "#fffefd",
         cardHover: "#fff7ef",
@@ -1446,7 +1456,17 @@ ${trends}
     </div>
     <small>${escapeHtml(lpSection.meta)}</small>
   </button>`;
-
+      const senkoSection = getSenkoBridgeDashboardSection();
+      const senkoBadge = senkoSection.badge ? `<b class="ll-dashboard__beta-badge" title="Beta" aria-label="Beta">${senkoSection.badge}</b>` : "";
+      const senkoCard = `<button class="ll-dashboard__lp-card ll-dashboard__lp-card--senko" type="button" data-dashboard-preview-tab="${senkoSection.tab}" aria-label="Abrir ${escapeHtml(senkoSection.title)}">
+    <span>${escapeHtml(senkoSection.icon)}</span>
+    ${senkoBadge}
+    <div>
+      <strong>${escapeHtml(senkoSection.title)}</strong>
+      <em>${escapeHtml(senkoSection.summary)}</em>
+    </div>
+    <small>${escapeHtml(senkoSection.meta)}</small>
+  </button>`;
       return `<section class="ll-dashboard" aria-label="Dashboard do Layout Lab">
   <div class="ll-dashboard__hero">
     <h1>Central do Layout Lab</h1>
@@ -1459,20 +1479,29 @@ ${cards}
   <p class="ll-dashboard__section-label ll-dashboard__section-label--lp">LP e integração</p>
   <div class="ll-dashboard__lp">
 ${lpCard}
+${senkoCard}
   </div>
 </section>
 
 <style>
   html,
   body {
-    min-height: 100%;
+    height: 100%;
     margin: 0;
+    overflow: hidden;
     background: ${colors.bgEnd};
   }
 
+  *,
+  *::before,
+  *::after {
+    box-sizing: border-box;
+  }
+
   .ll-dashboard {
-    min-height: 100vh;
+    height: 100vh;
     padding: clamp(22px, 4vw, 46px);
+    overflow: hidden;
     color: ${colors.ink};
     background: linear-gradient(180deg, ${colors.bg}, ${colors.bgEnd});
     font-family: Inter, Arial, sans-serif;
@@ -1636,14 +1665,18 @@ ${lpCard}
 
   .ll-dashboard__lp {
     display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+    width: 100%;
   }
 
   .ll-dashboard__lp-card {
+    position: relative;
     display: grid;
     grid-template-columns: 46px minmax(0, 1fr) auto;
     gap: 16px;
     align-items: center;
-    min-height: 112px;
+    min-height: clamp(126px, 12vh, 154px);
     padding: 18px;
     border: 1px solid ${colors.line};
     border-radius: 8px;
@@ -1660,6 +1693,21 @@ ${lpCard}
     border-color: ${colors.warm};
     outline: none;
     transform: translateY(-2px);
+  }
+
+  .ll-dashboard__lp-card--senko {
+    background: linear-gradient(135deg, ${colors.card}, ${isDark ? "rgba(251, 146, 60, 0.14)" : "rgba(251, 146, 60, 0.10)"});
+  }
+
+  .ll-dashboard__lp-card--senko:hover,
+  .ll-dashboard__lp-card--senko:focus-visible {
+    border-color: ${colors.warm};
+    box-shadow: ${isDark ? "0 10px 22px rgba(251, 146, 60, 0.12)" : "0 10px 22px rgba(251, 146, 60, 0.16)"};
+  }
+
+  .ll-dashboard__lp-card--senko span {
+    color: #ffffff;
+    background: linear-gradient(135deg, ${colors.accent}, ${colors.warm});
   }
 
   .ll-dashboard__lp-card span {
@@ -1698,7 +1746,40 @@ ${lpCard}
     white-space: nowrap;
   }
 
+  .ll-dashboard__beta-badge {
+    position: absolute;
+    top: 18px;
+    right: 18px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 38px;
+    height: 38px;
+    border-radius: 8px;
+    color: #101010;
+    background: #ffeb00;
+    box-shadow: 0 8px 18px rgba(255, 235, 0, 0.2);
+    font-size: 19px;
+    font-weight: 900;
+    line-height: 1;
+  }
+
   @media (max-width: 720px) {
+    html,
+    body {
+      overflow: auto;
+    }
+
+    .ll-dashboard {
+      height: auto;
+      min-height: 100vh;
+      overflow: visible;
+    }
+
+    .ll-dashboard__lp {
+      grid-template-columns: 1fr;
+    }
+
     .ll-dashboard__lp-card {
       grid-template-columns: 46px minmax(0, 1fr);
     }
