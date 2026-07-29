@@ -1483,6 +1483,17 @@ ${optionMarkup}
       }
 
       return `<style>
+.ll-responsive-output,
+.ll-responsive-output > .ll-responsive-version {
+  box-sizing: border-box;
+  display: block;
+  inline-size: 100%;
+  width: 100%;
+  min-width: 0;
+  max-width: none;
+  margin: 0;
+}
+
 .ll-responsive-output > .ll-responsive-version--mobile,
 .ll-responsive-output > .ll-responsive-version--tablet,
 .ll-responsive-output > .ll-responsive-version--desktop {
@@ -2668,7 +2679,7 @@ ${buildResponsiveStyle("carousel", { includeDraft: true })}`;
       }
 
       if (currentPage === "conteudo" && currentEditorTab === "bento") {
-        return `${buildBentoSectionHtml()}
+        return `${buildBentoSectionHtml({ includeEditorSizing: true })}
 
 ${buildTabStyleWithClass("bento", buildBentoPreviewStyle)}
 
@@ -2824,9 +2835,220 @@ ${buildFaqStylePackage({ includeResponsive: true, responsiveOptions: { includeDr
       return faqHtml;
     }
 
+    function findCssOpeningBrace(source, startIndex = 0) {
+      let quote = "";
+      let inComment = false;
+
+      for (let index = startIndex; index < source.length; index += 1) {
+        const current = source[index];
+        const next = source[index + 1];
+
+        if (inComment) {
+          if (current === "*" && next === "/") {
+            inComment = false;
+            index += 1;
+          }
+          continue;
+        }
+
+        if (quote) {
+          if (current === "\\") {
+            index += 1;
+          } else if (current === quote) {
+            quote = "";
+          }
+          continue;
+        }
+
+        if (current === "/" && next === "*") {
+          inComment = true;
+          index += 1;
+        } else if (current === "\"" || current === "'") {
+          quote = current;
+        } else if (current === "{") {
+          return index;
+        }
+      }
+
+      return -1;
+    }
+
+    function findCssClosingBrace(source, openingIndex) {
+      let depth = 0;
+      let quote = "";
+      let inComment = false;
+
+      for (let index = openingIndex; index < source.length; index += 1) {
+        const current = source[index];
+        const next = source[index + 1];
+
+        if (inComment) {
+          if (current === "*" && next === "/") {
+            inComment = false;
+            index += 1;
+          }
+          continue;
+        }
+
+        if (quote) {
+          if (current === "\\") {
+            index += 1;
+          } else if (current === quote) {
+            quote = "";
+          }
+          continue;
+        }
+
+        if (current === "/" && next === "*") {
+          inComment = true;
+          index += 1;
+        } else if (current === "\"" || current === "'") {
+          quote = current;
+        } else if (current === "{") {
+          depth += 1;
+        } else if (current === "}") {
+          depth -= 1;
+          if (depth === 0) return index;
+        }
+      }
+
+      return -1;
+    }
+
+    function splitCssSelectors(selectorText) {
+      const selectors = [];
+      let start = 0;
+      let quote = "";
+      let parenthesisDepth = 0;
+      let bracketDepth = 0;
+
+      for (let index = 0; index < selectorText.length; index += 1) {
+        const current = selectorText[index];
+
+        if (quote) {
+          if (current === "\\") {
+            index += 1;
+          } else if (current === quote) {
+            quote = "";
+          }
+          continue;
+        }
+
+        if (current === "\"" || current === "'") {
+          quote = current;
+        } else if (current === "(") {
+          parenthesisDepth += 1;
+        } else if (current === ")") {
+          parenthesisDepth = Math.max(0, parenthesisDepth - 1);
+        } else if (current === "[") {
+          bracketDepth += 1;
+        } else if (current === "]") {
+          bracketDepth = Math.max(0, bracketDepth - 1);
+        } else if (current === "," && parenthesisDepth === 0 && bracketDepth === 0) {
+          selectors.push(selectorText.slice(start, index).trim());
+          start = index + 1;
+        }
+      }
+
+      const finalSelector = selectorText.slice(start).trim();
+      if (finalSelector) selectors.push(finalSelector);
+      return selectors;
+    }
+
+    function selectorCanMatchOutput(selector, outputRoot) {
+      const normalized = String(selector || "").replace(/\/\*[\s\S]*?\*\//g, "").trim();
+      if (!normalized || normalized.startsWith("@")) return true;
+
+      // Document-level and advanced selectors are intentionally retained. The
+      // exporter only removes rules it can prove have no target in the output.
+      if (/\b(?:html|body)\b|:root|:host|:slotted|:has\(/i.test(normalized)) {
+        return true;
+      }
+
+      const query = normalized
+        .replace(/::[\w-]+(?:\([^)]*\))?/g, "")
+        .replace(/:(?:hover|active|focus(?:-visible|-within)?|visited|checked|disabled|enabled|target|open|closed|playing|paused|valid|invalid|in-range|out-of-range|required|optional|read-only|read-write|placeholder-shown|autofill)\b(?:\([^)]*\))?/gi, "")
+        .trim();
+
+      if (!query || query === "*") return true;
+
+      try {
+        return Boolean(outputRoot.querySelector(query));
+      } catch (error) {
+        // A selector the browser cannot safely evaluate should never be lost.
+        return true;
+      }
+    }
+
+    function pruneUnusedCssRules(cssText, outputRoot) {
+      const source = String(cssText || "");
+      let cursor = 0;
+      let output = "";
+
+      while (cursor < source.length) {
+        const openingIndex = findCssOpeningBrace(source, cursor);
+        if (openingIndex < 0) break;
+
+        const closingIndex = findCssClosingBrace(source, openingIndex);
+        if (closingIndex < 0) return source;
+
+        const rawPrelude = source.slice(cursor, openingIndex);
+        const prelude = rawPrelude.replace(/\/\*[\s\S]*?\*\//g, "").trim();
+        const body = source.slice(openingIndex + 1, closingIndex);
+        const atRule = prelude.match(/^@([\w-]+)/);
+
+        if (atRule) {
+          const ruleName = atRule[1].toLowerCase();
+          if (["media", "supports", "container", "layer", "scope", "document"].includes(ruleName)) {
+            const cleanedBody = pruneUnusedCssRules(body, outputRoot);
+            if (cleanedBody.trim()) {
+              output += `${prelude} {${cleanedBody}}\n`;
+            }
+          } else {
+            output += `${prelude} {${body}}\n`;
+          }
+        } else {
+          const matchingSelectors = splitCssSelectors(prelude)
+            .filter((selector) => selectorCanMatchOutput(selector, outputRoot));
+
+          if (matchingSelectors.length) {
+            output += `${matchingSelectors.join(",\n")} {${body}}\n`;
+          }
+        }
+
+        cursor = closingIndex + 1;
+      }
+
+      return output;
+    }
+
+    function pruneUnusedOutputCss(value, htmlReference) {
+      const rawValue = String(value || "");
+      if (!rawValue || !/<style\b/i.test(rawValue) || typeof DOMParser === "undefined") {
+        return rawValue;
+      }
+
+      const parsedDocument = new DOMParser().parseFromString("<div data-ll-output-usage-root></div>", "text/html");
+      const outputRoot = parsedDocument.querySelector("[data-ll-output-usage-root]");
+      if (!outputRoot) return rawValue;
+
+      outputRoot.innerHTML = String(htmlReference || "").replace(/<style\b[^>]*>[\s\S]*?<\/style>/gi, "");
+
+      return rawValue.replace(/<style\b([^>]*)>([\s\S]*?)<\/style>/gi, (match, attributes, cssText) => {
+        const cleanedCss = pruneUnusedCssRules(cssText, outputRoot).trim();
+        return cleanedCss ? `<style${attributes}>\n${cleanedCss}\n</style>` : "";
+      });
+    }
+
     function buildOutputHtml(copyMode = "html") {
       const value = buildOutputHtmlRaw(copyMode);
-      return copyMode === "css" ? value : cleanPictureSourcesFromOutput(value);
+      const cleanedValue = copyMode === "css" ? value : cleanPictureSourcesFromOutput(value);
+      if (copyMode === "html") return cleanedValue;
+
+      const htmlReference = copyMode === "css"
+        ? cleanPictureSourcesFromOutput(buildOutputHtmlRaw("html"))
+        : cleanedValue;
+      return pruneUnusedOutputCss(cleanedValue, htmlReference);
     }
 
     function getPreviewTextStyle(meta) {

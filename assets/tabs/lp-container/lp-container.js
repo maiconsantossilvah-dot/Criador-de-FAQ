@@ -6547,6 +6547,8 @@ ${containerHtml}`;
           return;
         }
 
+        root.dataset.llBentoEditor = "true";
+
         // Os controles de ampliar usam labels ligados a checkboxes. Alguns
         // navegadores focam o input oculto e reposicionam o iframe; guardar a
         // rolagem antes e restaura-la depois impede esse salto visual.
@@ -6575,7 +6577,11 @@ ${containerHtml}`;
           const elementRect = referenceRect || element.getBoundingClientRect();
           const isCircle = element.classList.contains("ll-bento__expand--image-circle");
           const isImage = isCircle || element.classList.contains("ll-bento__expand--image-square");
-          const minWidth = isImage ? 150 : 170;
+          const isResponsiveGrid = doc.defaultView.matchMedia("(max-width: 900px)").matches;
+          const responsiveCellWidth = isResponsiveGrid
+            ? Math.max(112, Math.floor((gridRect.width - 14) / 2))
+            : Number.POSITIVE_INFINITY;
+          const minWidth = Math.min(isImage ? 150 : 170, responsiveCellWidth);
           const minHeight = 150;
           const minimumGap = Number.parseFloat(doc.defaultView.getComputedStyle(doc.documentElement).fontSize) || 16;
           const siblingRects = Array.from(grid.children)
@@ -6605,9 +6611,16 @@ ${containerHtml}`;
           let maxWidth = Math.max(minWidth, Math.floor(rightEdge - elementRect.left));
           let maxHeight = Math.max(minHeight, Math.floor(bottomEdge - elementRect.top));
 
+          // Em duas colunas a alca horizontal muda o card entre uma e duas
+          // colunas. O grid empacota os vizinhos; por isso o limite pode ser a
+          // largura inteira da area, sem deixar um elemento invadir outro.
+          if (isResponsiveGrid && !isCircle) {
+            maxWidth = Math.max(minWidth, Math.floor(gridRect.width));
+          }
+
           // A alca deve ajustar o card dentro da composicao existente. Sem esse
           // teto, um arrasto longo cria uma nova faixa vazia no grid e quebra o ritmo.
-          if (!isCircle) {
+          if (!isCircle && !isResponsiveGrid) {
             maxWidth = Math.min(maxWidth, Math.max(minWidth, Math.round(elementRect.width + 320)));
             maxHeight = Math.min(maxHeight, Math.max(minHeight, Math.round(elementRect.height + 240)));
           }
@@ -6619,6 +6632,61 @@ ${containerHtml}`;
           }
 
           return { minWidth, minHeight, maxWidth, maxHeight };
+        };
+
+        const applyBentoEditorSize = (element, width, height) => {
+          if (!element) {
+            return;
+          }
+
+          if (Number.isFinite(width) && width > 0) {
+            const value = `${Math.round(width)}px`;
+            element.style.width = value;
+            element.style.setProperty("--ll-bento-editor-width", value);
+          }
+
+          if (Number.isFinite(height) && height > 0) {
+            const value = `${Math.round(height)}px`;
+            element.style.height = value;
+            element.style.setProperty("--ll-bento-editor-height", value);
+          }
+        };
+
+        const applyBentoResponsiveSpan = (element, requestedWidth) => {
+          if (!element || element.matches(".ll-bento__expand--image-circle")) {
+            return 1;
+          }
+
+          const viewport = doc.defaultView;
+          if (!viewport.matchMedia("(max-width: 900px)").matches) {
+            return Number(element.style.getPropertyValue("--ll-bento-editor-span")) || 1;
+          }
+
+          const grid = root.querySelector(".ll-bento__grid") || root;
+          const gridRect = grid.getBoundingClientRect();
+          const gap = Number.parseFloat(viewport.getComputedStyle(grid).columnGap) || 14;
+          const cellWidth = Math.max(1, (gridRect.width - gap) / 2);
+          const span = Number(requestedWidth) > cellWidth * 1.38 ? 2 : 1;
+          const blockIndex = Number(element.dataset.llBentoResizeBlock);
+          const savedSpan = Number.isInteger(blockIndex) && state.bento?.blocks?.[blockIndex]
+            ? Number(state.bento.blocks[blockIndex].responsiveSpan) || 1
+            : 1;
+          const currentSpan = Number(element.style.getPropertyValue("--ll-bento-editor-span")) || savedSpan;
+
+          // A composicao padrao continua com areas nomeadas. So passamos para
+          // o fluxo livre quando a largura foi realmente modificada.
+          if (span !== currentSpan) {
+            root.dataset.llBentoFluidEditor = "true";
+          }
+
+          element.style.setProperty("--ll-bento-editor-span", String(span));
+          element.style.gridColumn = `span ${span}`;
+
+          if (Number.isInteger(blockIndex) && state.bento?.blocks?.[blockIndex]) {
+            state.bento.blocks[blockIndex].responsiveSpan = span;
+          }
+
+          return span;
         };
 
         const constrainBentoResize = (element) => {
@@ -6641,17 +6709,16 @@ ${containerHtml}`;
 
           if (isCircle) {
             const side = Math.max(minWidth, Math.min(currentWidth, maxWidth, maxHeight));
-            element.style.width = `${side}px`;
+            applyBentoEditorSize(element, side, side);
             element.style.setProperty("--ll-bento-circle-size", `${side}px`);
-            element.style.height = `${side}px`;
             return;
           }
 
           if (currentWidth > maxWidth) {
-            element.style.width = `${maxWidth}px`;
+            applyBentoEditorSize(element, maxWidth);
           }
           if (currentHeight > maxHeight) {
-            element.style.height = `${maxHeight}px`;
+            applyBentoEditorSize(element, undefined, maxHeight);
           }
         };
 
@@ -6674,13 +6741,16 @@ ${containerHtml}`;
           const widthChanged = Math.abs(width - (start.width || width)) > 2;
           const heightChanged = Math.abs(height - (start.height || height)) > 2;
           if (isCircle || widthChanged) {
-            element.style.width = `${size || width}px`;
+            applyBentoEditorSize(element, size || width, isCircle ? size : undefined);
           }
           if (isCircle) {
             element.style.setProperty("--ll-bento-circle-size", `${size}px`);
-            element.style.height = `${size}px`;
           } else if (heightChanged) {
-            element.style.height = `${height}px`;
+            applyBentoEditorSize(element, undefined, height);
+          }
+
+          if (!isCircle) {
+            applyBentoResponsiveSpan(element, width);
           }
 
           const blockIndex = Number(element.dataset.llBentoResizeBlock);
@@ -6692,6 +6762,9 @@ ${containerHtml}`;
               state.bento.blocks[blockIndex].resizeHeight = "";
             } else if (heightChanged) {
               state.bento.blocks[blockIndex].resizeHeight = height;
+            }
+            if (isCircle || widthChanged || heightChanged) {
+              state.bento.blocks[blockIndex].resizeEdited = true;
             }
           }
 
@@ -6745,12 +6818,19 @@ ${containerHtml}`;
             const blockIndex = resizableBlockIndexes[orderIndex];
             if (blockIndex !== undefined) {
               element.dataset.llBentoResizeBlock = String(blockIndex);
+              const block = state.bento.blocks[blockIndex];
+              const savedSpan = Number(block?.responsiveSpan) || 1;
+              if (block?.resizeEdited && savedSpan === 2) {
+                root.dataset.llBentoFluidEditor = "true";
+                element.style.setProperty("--ll-bento-editor-span", "2");
+                element.style.gridColumn = "span 2";
+              }
             }
 
             constrainBentoResize(element);
 
             const isCircle = element.matches(".ll-bento__expand--image-circle");
-            if ((element.matches(".ll-bento__card--text") || isCircle) && !element.querySelector("[data-ll-bento-resize-handle]")) {
+            if ((element.matches(".ll-bento__card--text, .ll-bento__expand--image-square") || isCircle) && !element.querySelector("[data-ll-bento-resize-handle]")) {
               const handleAxes = isCircle ? ["circle"] : ["vertical", "horizontal", "both"];
               handleAxes.forEach((axis) => {
                 const handle = doc.createElement("span");
@@ -6809,9 +6889,9 @@ ${containerHtml}`;
                 const startRect = element.getBoundingClientRect();
                 const startX = event.clientX;
                 const startY = event.clientY;
-                const minWidth = 170;
-                const minHeight = 150;
                 const resizeBounds = getBentoResizeBounds(element, startRect);
+                const minWidth = resizeBounds.minWidth;
+                const minHeight = resizeBounds.minHeight;
                 element.__llBentoResizeStart = {
                   width: Math.round(startRect.width),
                   height: Math.round(startRect.height)
@@ -6828,23 +6908,23 @@ ${containerHtml}`;
                   if (axis === "circle") {
                     const delta = Math.max(moveEvent.clientX - startX, moveEvent.clientY - startY);
                     const requestedSize = Math.round(startRect.width + delta);
-                    const safeSize = Math.min(
+                  const safeSize = Math.min(
                       resizeBounds.maxWidth,
                       resizeBounds.maxHeight,
                       Math.max(minWidth, requestedSize)
                     );
-                  element.style.width = `${safeSize}px`;
+                    applyBentoEditorSize(element, safeSize, safeSize);
                     element.style.setProperty("--ll-bento-circle-size", `${safeSize}px`);
-                    element.style.height = `${safeSize}px`;
                   } else if (axis !== "vertical") {
                     const requestedWidth = Math.round(startRect.width + moveEvent.clientX - startX);
                     const safeWidth = Math.min(resizeBounds.maxWidth, Math.max(minWidth, requestedWidth));
-                    element.style.width = `${safeWidth}px`;
+                    applyBentoEditorSize(element, safeWidth);
+                    applyBentoResponsiveSpan(element, safeWidth);
                   }
                   if (axis !== "horizontal" && axis !== "circle") {
                     const requestedHeight = Math.round(startRect.height + moveEvent.clientY - startY);
                     const safeHeight = Math.min(resizeBounds.maxHeight, Math.max(minHeight, requestedHeight));
-                    element.style.height = `${safeHeight}px`;
+                    applyBentoEditorSize(element, undefined, safeHeight);
                   }
                   constrainBentoResize(element);
                 };
@@ -7187,9 +7267,7 @@ ${containerHtml}`;
 
           // Um card redimensionado passa a definir a ocupacao final do Bento.
           // Nao oferecemos novas insercoes por cima dessa composicao manual.
-          const hasManuallySizedBlock = state.bento.blocks.some((block) => (
-            Number(block.resizeWidth) > 0 || Number(block.resizeHeight) > 0
-          ));
+          const hasManuallySizedBlock = state.bento.blocks.some((block) => block.resizeEdited);
           if (hasManuallySizedBlock) {
             return;
           }
