@@ -50,7 +50,6 @@
           icon: "BEN",
           title: "Bento",
           summary: "Grade visual de cards",
-          badge: "&#9881;",
           meta: state.bento && state.bento.html.trim() ? "HTML editado" : "Modelo padrão"
         }
       ].map((section) => section.tab === "stories" ? {
