@@ -16,22 +16,22 @@
 
     function buildTemplateLayoutPackage(tab = state.template.sourceLayout) {
       if (tab === "table") {
-        return buildResponsivePackage("table", () => buildTableSectionHtml(true), () => buildTabStyleWithClass("table", buildTableStyle));
+        return buildResponsivePackage("table", () => buildTableSectionHtml(true), buildTableStyle);
       }
 
       if (tab === "stories") {
-        return buildResponsivePackage("stories", () => buildStoriesSectionHtml(), () => buildTabStyleWithClass("stories", buildStoriesStyle));
+        return buildResponsivePackage("stories", () => buildStoriesSectionHtml(), buildStoriesStyle);
       }
 
       if (tab === "article") {
-        return buildResponsivePackage("article", () => buildArticleSectionHtml(), () => buildTabStyleWithClass("article", buildArticleStyle));
+        return buildResponsivePackage("article", () => buildArticleSectionHtml(), buildArticleStyle);
       }
 
       if (tab === "carousel") {
-        return buildResponsivePackage("carousel", () => buildCarouselSectionHtml(), () => buildTabStyleWithClass("carousel", buildCarouselStyle));
+        return buildResponsivePackage("carousel", () => buildCarouselSectionHtml(), buildCarouselStyle);
       }
 
-      return buildResponsivePackage("faq", () => buildFaqSectionHtml(), () => buildTabStyleWithClass("faq", buildFaqStyle));
+      return buildResponsivePackage("faq", () => buildFaqSectionHtml(), buildFaqStyle);
     }
 
     function extractLpContainerHtml(value) {
@@ -49,116 +49,19 @@
       return container ? container.innerHTML.trim() : rawValue;
     }
 
-    function extractTemplateEmbeddedCss(value = state.template.html) {
-      const rawValue = String(value || "").trim();
-      if (!rawValue || !/<style\b/i.test(rawValue)) {
-        return "";
-      }
-
-      const parsedDocument = new DOMParser().parseFromString(`<div data-ll-style-root>${rawValue}</div>`, "text/html");
-      const wrapper = parsedDocument.querySelector("[data-ll-style-root]");
-      if (!wrapper) {
-        return "";
-      }
-
-      return Array.from(wrapper.querySelectorAll("style"))
-        .map((element) => element.textContent || "")
-        .map((css) => css.trim())
-        .filter(Boolean)
-        .join("\n\n");
-    }
-
-    function stripTemplateEmbeddedStyles(value) {
-      const rawValue = String(value || "").trim();
-      if (!rawValue || !/<style\b/i.test(rawValue)) {
-        return rawValue;
-      }
-
-      const parsedDocument = new DOMParser().parseFromString(`<div data-ll-style-root>${rawValue}</div>`, "text/html");
-      const wrapper = parsedDocument.querySelector("[data-ll-style-root]");
-      if (!wrapper) {
-        return rawValue;
-      }
-
-      wrapper.querySelectorAll("style").forEach((element) => element.remove());
-      return wrapper.innerHTML.trim();
-    }
-
-    function buildTemplateEmbeddedStyle(value = state.template.html) {
-      const css = extractTemplateEmbeddedCss(value);
-      return css ? `<style>\n${css}\n</style>` : "";
-    }
-
-    function cleanTemplateEditorArtifacts(value, options = {}) {
-      const rawValue = String(value || "").trim();
-      if (!rawValue || !/<\/?[a-z][\s\S]*>/i.test(rawValue)) {
-        return rawValue;
-      }
-
-      const preservePreviewFaqState = options.preservePreviewFaqState === true;
-      const parsedDocument = new DOMParser().parseFromString(`<div data-ll-clean-root>${rawValue}</div>`, "text/html");
-      const wrapper = parsedDocument.querySelector("[data-ll-clean-root]");
-      if (!wrapper) {
-        return rawValue;
-      }
-
-      wrapper.querySelectorAll("#ll-template-faq-custom-style").forEach((element) => {
-        element.remove();
-      });
-
-      Array.from(wrapper.querySelectorAll("*")).forEach((element) => {
-        if (!preservePreviewFaqState && element.style) {
-          const normalBg = element.style.getPropertyValue("--ll-template-faq-summary-bg");
-          const questionColor = element.style.getPropertyValue("--ll-template-faq-question-color");
-          const answerColor = element.style.getPropertyValue("--ll-template-faq-answer-color");
-
-          if (isHexColor(normalBg)) {
-            const summaryTargets = element.matches?.("summary, #faq-section__summary, .ll-template-faq-summary")
-              ? [element]
-              : Array.from(element.querySelectorAll("summary, #faq-section__summary, .ll-template-faq-summary"));
-            summaryTargets.forEach((target) => {
-              target.style.background = normalizeHexColor(normalBg);
-            });
-          }
-
-          if (isHexColor(questionColor)) {
-            const questionTargets = element.matches?.("#faq-section__q-text, [id*='q-text'], [class*='question' i], [class*='pergunta' i]")
-              ? [element]
-              : Array.from(element.querySelectorAll("#faq-section__q-text, [id*='q-text'], [class*='question' i], [class*='pergunta' i]"));
-            questionTargets.forEach((target) => {
-              target.style.color = normalizeHexColor(questionColor);
-            });
-          }
-
-          if (isHexColor(answerColor)) {
-            const answerTargets = element.matches?.("#faq-section__a-text, [id*='a-text'], [class*='answer' i], [class*='resposta' i]")
-              ? [element]
-              : Array.from(element.querySelectorAll("#faq-section__a-text, [id*='a-text'], [class*='answer' i], [class*='resposta' i]"));
-            answerTargets.forEach((target) => {
-              target.style.color = normalizeHexColor(answerColor);
-            });
-          }
-        }
-
-        if (!preservePreviewFaqState && element.classList) {
-          element.classList.remove("ll-template-faq-summary", "ll-template-faq-custom-colors");
-          if (!element.getAttribute("class")) {
-            element.removeAttribute("class");
-          }
-        }
-
-        if (!preservePreviewFaqState && element.style) {
-          element.style.removeProperty("--ll-template-faq-summary-bg");
-          element.style.removeProperty("--ll-template-faq-summary-hover-bg");
-          element.style.removeProperty("--ll-template-faq-question-color");
-          element.style.removeProperty("--ll-template-faq-answer-color");
-          if (!element.getAttribute("style")) {
-            element.removeAttribute("style");
-          }
-        }
-      });
-
-      return wrapper.innerHTML.trim();
+    function getTemplateHeaderDefaults() {
+      return {
+        type: "none",
+        imageUrl: "https://imgprd.martinsatacado.com.br/catalogoimg/catalogo/header.jpg",
+        imageAlt: "",
+        videoUrl: "https://imgprd.martinsatacado.com.br/catalogoimg/catalogo/header-precon.webm",
+        posterUrl: "https://imgprd.martinsatacado.com.br/catalogoimg/catalogo/header_precon.webp",
+        logoUrl: "https://static1.efacil.com.br/wcsstore//AuroraStorefrontAssetStore/PDP/precon/logo-precon.png",
+        logoLabel: "Logo da marca dentro de um circulo laranja",
+        brand: "marca",
+        title: "Titulo curto do produto",
+        subtitle: "Descricao breve do produto, destacando os principais atributos de forma clara."
+      };
     }
 
     function getTemplateHeaderDefaults() {
@@ -248,6 +151,10 @@
       return `<section class="product-header"${managedAttribute} aria-label="Cabeçalho do produto">
   <header class="product-header__banner">
     <picture style="width:100%; height:100%; margin:0;">
+      <source media="(max-width: 430px)" srcset="${escapeHtml(withHeaderImageSize(cleanImageUrl, 430))}">
+      <source media="(max-width: 768px)" srcset="${escapeHtml(withHeaderImageSize(cleanImageUrl, 768))}">
+      <source media="(max-width: 1024px)" srcset="${escapeHtml(withHeaderImageSize(cleanImageUrl, 1024))}">
+      <source media="(max-width: 1200px)" srcset="${escapeHtml(withHeaderImageSize(cleanImageUrl, 1200))}">
       <img src="${escapeHtml(cleanImageUrl)}" alt="${escapeHtml(header.imageAlt)}" class="product-header__banner-img" loading="eager">
     </picture>${logoHtml}
   </header>
@@ -393,13 +300,13 @@ body {
 }
 
 body {
+  font-family: Arial, sans-serif;
   color: #111827;
 }
 ` : "";
 
       return `<style>
 ${frameCss}
-${includeFrame ? "" : `
 .lp-container,
 .lp_container {
   box-sizing: border-box;
@@ -427,80 +334,11 @@ ${includeFrame ? "" : `
 .lp_container iframe {
   max-width: 100%;
 }
-`}
 </style>`;
-    }
-
-    function buildTemplateFaqCustomStyle() {
-      const rawValue = String(state.template.html || "").trim();
-      if (!rawValue || !/<\/?[a-z][\s\S]*>/i.test(rawValue)) {
-        return "";
-      }
-
-      const parsedDocument = new DOMParser().parseFromString(`<div data-ll-faq-style-root>${extractLpContainerHtml(rawValue)}</div>`, "text/html");
-      const wrapper = parsedDocument.querySelector("[data-ll-faq-style-root]");
-      const faqRoot = wrapper?.querySelector(".ll-template-faq-custom-colors, [style*='--ll-template-faq-summary-bg'], [style*='--ll-template-faq-summary-hover-bg']");
-      if (!faqRoot) {
-        return "";
-      }
-
-      const normalRaw = faqRoot.style.getPropertyValue("--ll-template-faq-summary-bg") || "";
-      const hoverRaw = faqRoot.style.getPropertyValue("--ll-template-faq-summary-hover-bg") || "";
-      const questionColorRaw = faqRoot.style.getPropertyValue("--ll-template-faq-question-color")
-        || wrapper.querySelector("#faq-section__q-text, [id*='q-text']")?.style.color
-        || "";
-      const answerColorRaw = faqRoot.style.getPropertyValue("--ll-template-faq-answer-color")
-        || wrapper.querySelector("#faq-section__a-text, [id*='a-text']")?.style.color
-        || "";
-      const optionalColorToHex = (value) => {
-        const rawColor = String(value || "").trim();
-        if (isHexColor(rawColor)) {
-          return normalizeHexColor(rawColor);
-        }
-
-        return /^rgba?\(/i.test(rawColor) ? colorToHex(rawColor, "#000000") : "";
-      };
-      const normal = optionalColorToHex(normalRaw);
-      const hover = optionalColorToHex(hoverRaw);
-      const questionColor = optionalColorToHex(questionColorRaw);
-      const answerColor = optionalColorToHex(answerColorRaw);
-      const rules = [];
-
-      if (isHexColor(normal)) {
-        rules.push(`#faq-section__summary { background: ${normal} !important; }`);
-      }
-
-      if (isHexColor(hover)) {
-        rules.push(`#faq-section__summary:hover { background: ${hover} !important; }`);
-      }
-
-      if (isHexColor(questionColor)) {
-        rules.push(`#faq-section__q-text { color: ${normalizeHexColor(questionColor)} !important; }`);
-      }
-
-      if (isHexColor(answerColor)) {
-        rules.push(`#faq-section__a-text { color: ${normalizeHexColor(answerColor)} !important; }`);
-      }
-
-      if (!rules.length) {
-        return "";
-      }
-
-      return `<style>
-${rules.join("\n")}
-</style>`;
-    }
-
-    function buildTemplateStyle() {
-      return [buildTemplateHeaderStyle(), buildTemplateFaqCustomStyle()].filter(Boolean).join("\n\n");
     }
 
     function buildLpContainerHtml(value = state.template.html, options = {}) {
-      const extractedContent = extractLpContainerHtml(value);
-      const contentWithoutStyles = stripTemplateEmbeddedStyles(extractedContent);
-      const content = cleanTemplateEditorArtifacts(contentWithoutStyles, {
-        preservePreviewFaqState: options.includeLabAttrs === true
-      });
+      const content = extractLpContainerHtml(value);
       const innerHtml = content || "";
       return `<div class="lp-container">
 ${innerHtml}
@@ -508,18 +346,13 @@ ${innerHtml}
     }
 
     function buildTemplatePreviewHtml() {
-      const templateStyle = typeof buildTabStyleWithClass === "function"
-        ? buildTabStyleWithClass("template", buildTemplateStyle)
-        : buildTemplateStyle();
-
       return `<!doctype html>
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   ${buildLpContainerCss(true)}
-  ${buildTemplateEmbeddedStyle()}
-  ${templateStyle}
+  ${buildTemplateHeaderStyle()}
 </head>
 <body>
 ${buildLpContainerHtml(state.template.html, { includeLabAttrs: true })}
@@ -531,12 +364,7 @@ ${buildLpContainerHtml(state.template.html, { includeLabAttrs: true })}
       const containerHtml = buildLpContainerHtml();
 
       if (copyMode === "full") {
-        const templateStyle = typeof buildTabStyleWithClass === "function"
-          ? buildTabStyleWithClass("template", buildTemplateStyle)
-          : buildTemplateStyle();
-        const embeddedStyle = buildTemplateEmbeddedStyle();
-
-        return `${[embeddedStyle, templateStyle].filter(Boolean).join("\n\n")}
+        return `${buildTemplateHeaderStyle()}
 
 <!-- HTML DO LAYOUT -->
 
@@ -643,14 +471,12 @@ ${containerHtml}`;
       const isColor = kind === "color";
       const isTextStyle = kind === "text-style";
       const colorAllowsGradient = isColor && canUseGradientColor(meta, options);
-      const sourceElement = options.sourceElement || sourceEvent?.currentTarget || sourceEvent?.target || document.body;
-      const classCandidates = (isColor || isTextStyle) ? getPreviewClassCandidates(sourceElement) : [];
       const currentValue = isColor
         ? normalizeCssColorValue(readPreviewEditValue(meta))
         : String(readPreviewEditValue(meta) || "");
       const currentTextStyle = isTextStyle
         ? {
-            ...getComputedPreviewTextStyle(sourceElement),
+            ...getComputedPreviewTextStyle(options.sourceElement || sourceEvent?.target || document.body),
             ...getPreviewTextStyle(meta)
           }
         : {};
@@ -672,10 +498,6 @@ ${containerHtml}`;
       let colorOpacityInput = null;
       let styleInputs = null;
       let localAssetButton = null;
-      let editMode = "element";
-      let classSelect = null;
-      let classPropertySelect = null;
-      let resetClassButton = null;
 
       if (isColor) {
         const parsedGradient = parseCssGradient(currentValue);
@@ -714,9 +536,6 @@ ${containerHtml}`;
             valueInput.value = normalizeHexColor(valueInput.value);
             colorInput.value = valueInput.value;
             colorInput.style.setProperty("--preview-edit-color", valueInput.value);
-            if (colorGradientInputs?.toggle?.checked) {
-              colorGradientInputs.start.value = valueInput.value;
-            }
             applyLiveValue();
           }
         });
@@ -724,9 +543,6 @@ ${containerHtml}`;
         colorInput.addEventListener("input", () => {
           valueInput.value = normalizeHexColor(colorInput.value);
           colorInput.style.setProperty("--preview-edit-color", valueInput.value);
-          if (colorGradientInputs?.toggle?.checked) {
-            colorGradientInputs.start.value = valueInput.value;
-          }
           applyLiveValue();
         });
 
@@ -742,9 +558,6 @@ ${containerHtml}`;
               valueInput.value = normalizeHexColor(result.sRGBHex);
               colorInput.value = valueInput.value;
               colorInput.style.setProperty("--preview-edit-color", valueInput.value);
-              if (colorGradientInputs?.toggle?.checked) {
-                colorGradientInputs.start.value = valueInput.value;
-              }
               applyLiveValue();
             }
           } catch (error) {}
@@ -874,44 +687,27 @@ ${containerHtml}`;
         const createInlineHexControl = (initialValue) => {
           const wrapper = document.createElement("div");
           wrapper.className = "preview-edit-popover__mini-color";
-          const color = document.createElement("input");
-          color.type = "color";
-          color.className = "preview-edit-popover__color preview-edit-popover__inline-swatch";
-          color.setAttribute("aria-label", "Abrir seletor de cor");
-          color.setAttribute("title", "Abrir seletor de cor");
+          const swatch = document.createElement("span");
+          swatch.className = "preview-edit-popover__inline-swatch";
           const input = document.createElement("input");
           input.type = "text";
           input.value = colorToHex(initialValue);
-          color.value = input.value;
           input.placeholder = "#111827";
-          color.style.setProperty("--preview-edit-color", input.value);
+          swatch.style.setProperty("--preview-edit-color", input.value);
           input.addEventListener("input", () => {
             if (isHexColor(input.value)) {
               input.value = normalizeHexColor(input.value);
-              color.value = input.value;
-              color.style.setProperty("--preview-edit-color", input.value);
+              swatch.style.setProperty("--preview-edit-color", input.value);
               applyLiveValue({ multiline: options.multiline });
             }
           });
-          color.addEventListener("input", () => {
-            input.value = normalizeHexColor(color.value);
-            color.style.setProperty("--preview-edit-color", input.value);
-            applyLiveValue({ multiline: options.multiline });
-          });
-          wrapper.append(color, input);
+          wrapper.append(swatch, input);
           wrapper.__llColorInput = input;
           return wrapper;
         };
 
         const textColorControl = createInlineHexControl(currentTextStyle.color);
         const textColorInput = textColorControl.__llColorInput;
-        const backgroundColorControl = options.backgroundElement
-          ? createInlineHexControl(colorToHex(
-              sourceElement.ownerDocument.defaultView.getComputedStyle(sourceElement).backgroundColor || "#0ea5e9",
-              "#0ea5e9"
-            ))
-          : null;
-        const backgroundColorInput = backgroundColorControl?.__llColorInput || null;
 
         const fontSizeInput = document.createElement("input");
         fontSizeInput.type = "number";
@@ -971,9 +767,6 @@ ${containerHtml}`;
         lineHeightInput.value = String(currentTextStyle.lineHeight || 1.35);
 
         createMiniField("Cor", textColorControl);
-        if (backgroundColorControl) {
-          createMiniField("Fundo", backgroundColorControl);
-        }
         createMiniField("Tamanho", fontSizeInput);
         createMiniField("Peso", fontWeightSelect);
         createMiniField("Alinhamento", textAlignSelect);
@@ -983,7 +776,6 @@ ${containerHtml}`;
 
         styleInputs = {
           color: textColorInput,
-          backgroundColor: backgroundColorInput,
           fontSize: fontSizeInput,
           fontWeight: fontWeightSelect,
           textAlign: textAlignSelect,
@@ -1020,98 +812,6 @@ ${containerHtml}`;
         }
       }
 
-      if ((isColor || isTextStyle) && classCandidates.length) {
-        const controlNodes = Array.from(form.children).filter((node) => node !== title);
-        const tabs = document.createElement("div");
-        tabs.className = "preview-edit-popover__tabs";
-
-        const elementTab = document.createElement("button");
-        elementTab.type = "button";
-        elementTab.textContent = "Elemento";
-        elementTab.className = "is-active";
-
-        const classTab = document.createElement("button");
-        classTab.type = "button";
-        classTab.textContent = "Classe/ID";
-
-        tabs.append(elementTab, classTab);
-
-        const elementPanel = document.createElement("div");
-        elementPanel.className = "preview-edit-popover__panel";
-        controlNodes.forEach((node) => elementPanel.appendChild(node));
-
-        const classPanel = document.createElement("div");
-        classPanel.className = "preview-edit-popover__panel preview-edit-popover__panel--class";
-        classPanel.hidden = true;
-
-        const classField = document.createElement("label");
-        classField.className = "preview-edit-popover__mini-field";
-        const classLabel = document.createElement("span");
-        classLabel.textContent = "Classe ou ID alvo";
-        classSelect = document.createElement("select");
-        classCandidates.forEach((candidate) => {
-          const option = document.createElement("option");
-          option.value = candidate.className;
-          option.textContent = candidate.label;
-          classSelect.appendChild(option);
-        });
-        classField.append(classLabel, classSelect);
-        classPanel.appendChild(classField);
-
-        if (isColor) {
-          const propertyField = document.createElement("label");
-          propertyField.className = "preview-edit-popover__mini-field";
-          const propertyLabel = document.createElement("span");
-          propertyLabel.textContent = "Aplicar em";
-          classPropertySelect = document.createElement("select");
-          [
-            ["background", "Fundo"],
-            ["color", "Texto"],
-            ["border-color", "Borda"],
-            ["outline-color", "Contorno"]
-          ].forEach(([value, label]) => {
-            const option = document.createElement("option");
-            option.value = value;
-            option.textContent = label;
-            option.selected = inferPreviewClassColorProperty(meta, options) === value;
-            classPropertySelect.appendChild(option);
-          });
-          propertyField.append(propertyLabel, classPropertySelect);
-          classPanel.appendChild(propertyField);
-        }
-
-        const note = document.createElement("p");
-        note.className = "preview-edit-popover__note";
-        note.textContent = isTextStyle
-          ? "Nesta aba, os controles de estilo afetam todos os elementos com a classe ou ID escolhido. O texto continua individual."
-          : "Nesta aba, a cor selecionada afeta todos os elementos com a classe ou ID escolhido.";
-        classPanel.appendChild(note);
-
-        resetClassButton = document.createElement("button");
-        resetClassButton.type = "button";
-        resetClassButton.className = "button button--soft";
-        resetClassButton.textContent = "Limpar classe";
-        classPanel.appendChild(resetClassButton);
-
-        form.append(tabs, classPanel, elementPanel);
-
-        const setEditMode = (mode) => {
-          editMode = mode;
-          classPanel.hidden = mode !== "class";
-          if (isTextStyle && valueInput) {
-            valueInput.hidden = mode === "class";
-          }
-          elementTab.classList.toggle("is-active", mode === "element");
-          classTab.classList.toggle("is-active", mode === "class");
-        };
-
-        elementTab.addEventListener("click", () => setEditMode("element"));
-        classTab.addEventListener("click", () => setEditMode("class"));
-        classSelect.addEventListener("change", () => applyLiveValue({ multiline: options.multiline }));
-        classPropertySelect?.addEventListener("change", () => applyLiveValue({ multiline: options.multiline }));
-        resetClassButton.addEventListener("click", () => clearPreviewClassStyle(meta, classSelect.value));
-      }
-
       const actions = document.createElement("div");
       actions.className = "preview-edit-popover__actions";
 
@@ -1131,7 +831,7 @@ ${containerHtml}`;
       actions.appendChild(closeButton);
       form.appendChild(actions);
 
-      const applyLiveValue = (applyOptions = {}) => {
+      const applyLiveValue = (options = {}) => {
         let nextValue = String(valueInput.value || "").trim();
         if (isColor) {
           if (options.opacityField && colorOpacityInput && meta.scope === "carousel" && meta.slideIndex !== undefined) {
@@ -1153,19 +853,12 @@ ${containerHtml}`;
             colorInput.value = normalizeHexColor(nextValue);
           }
           colorInput?.style?.setProperty("--preview-edit-color", isHexColor(nextValue) ? normalizeHexColor(nextValue) : nextValue);
-
-          if (editMode === "class" && classSelect) {
-            const property = classPropertySelect?.value || inferPreviewClassColorProperty(meta, options);
-            setPreviewClassStyle(meta, classSelect.value, { [property]: nextValue });
-            return;
-          }
         }
 
         if (isTextStyle) {
-          const nextText = normalizePreviewText(nextValue, Boolean(applyOptions.multiline));
-          const nextStyle = applyOptions.clearStyle ? {} : {
+          const nextText = normalizePreviewText(nextValue, Boolean(options.multiline));
+          const nextStyle = options.clearStyle ? {} : {
             color: styleInputs.color.value,
-            ...(styleInputs.backgroundColor ? { backgroundColor: styleInputs.backgroundColor.value } : {}),
             fontSize: styleInputs.fontSize.value,
             fontWeight: styleInputs.fontWeight.value,
             textAlign: styleInputs.textAlign.value,
@@ -1173,16 +866,7 @@ ${containerHtml}`;
             lineHeight: styleInputs.lineHeight.value
           };
 
-          if (editMode === "class" && classSelect) {
-            if (applyOptions.clearStyle) {
-              clearPreviewClassStyle(meta, classSelect.value);
-            } else {
-              setPreviewClassStyle(meta, classSelect.value, nextStyle);
-            }
-            return;
-          }
-
-          updatePreviewEditValue({ ...meta, type: "textStyle", multiline: applyOptions.multiline, allowBackgroundStyle: Boolean(styleInputs.backgroundColor) }, {
+          updatePreviewEditValue({ ...meta, type: "textStyle", multiline: options.multiline }, {
             text: nextText,
             style: nextStyle
           });
@@ -1212,7 +896,7 @@ ${containerHtml}`;
       closeButton.addEventListener("click", closePreviewEditPopover);
 
       if (isTextStyle && styleInputs) {
-        Object.values(styleInputs).filter(Boolean).forEach((input) => {
+        Object.values(styleInputs).forEach((input) => {
           input.addEventListener("input", () => applyLiveValue({ multiline: options.multiline }));
           input.addEventListener("change", () => applyLiveValue({ multiline: options.multiline }));
         });
@@ -1299,7 +983,7 @@ ${containerHtml}`;
     }
 
     function normalizeTextStyleNumber(value, fallback, min, max, decimals = 0) {
-    const numericValue = Number(String(value || "").replace(",", "."));
+      const numericValue = Number(String(value ?? "").replace(",", "."));
       if (!Number.isFinite(numericValue)) {
         return fallback;
       }
@@ -1372,10 +1056,6 @@ ${containerHtml}`;
         normalized.color = colorToHex(style.color);
       }
 
-      if (style.backgroundColor) {
-        normalized.backgroundColor = colorToHex(style.backgroundColor, "#0ea5e9");
-      }
-
       if (style.fontSize !== undefined && style.fontSize !== "") {
         normalized.fontSize = normalizeTextStyleNumber(style.fontSize, 16, 8, 96);
       }
@@ -1422,10 +1102,6 @@ ${containerHtml}`;
         declarations.push(`color: ${style.color}`);
       }
 
-      if (style.backgroundColor) {
-        declarations.push(`background-color: ${style.backgroundColor}`);
-      }
-
       if (style.fontSize) {
         declarations.push(`font-size: ${style.fontSize}px`);
       }
@@ -1454,219 +1130,6 @@ ${containerHtml}`;
       return style ? ` style="${escapeHtml(style)}"` : "";
     }
 
-    function getPreviewClassStyleTab(meta = {}) {
-      return ["table", "stories", "article", "carousel", "bento", "template"].includes(meta.scope) ? meta.scope : "faq";
-    }
-
-    function escapeCssClassName(value) {
-      const className = String(value || "").trim();
-      if (!className) {
-        return "";
-      }
-
-      if (window.CSS && typeof window.CSS.escape === "function") {
-        return window.CSS.escape(className);
-      }
-
-      return className.replace(/[^a-zA-Z0-9_-]/g, "\\$&");
-    }
-
-    function isUsefulPreviewClass(className) {
-      const value = String(className || "").trim();
-      if (!value) {
-        return false;
-      }
-
-      return !/^(is-|has-|js-|sr-only|button$|field$|icon-button$|theme-toggle|preview-edit-popover|ll-template-|ql-|cm-)/.test(value);
-    }
-
-    function getPreviewClassCandidates(element) {
-      const doc = element?.ownerDocument || document;
-      const stopSelectors = ".preview-frame, .preview-shell, body, html";
-      const candidates = [];
-      const seen = new Set();
-      let current = element?.nodeType === 1 ? element : element?.parentElement;
-
-      while (current && current.nodeType === 1 && !current.matches?.(stopSelectors)) {
-        Array.from(current.classList || []).forEach((className) => {
-          if (!isUsefulPreviewClass(className) || seen.has(className)) {
-            return;
-          }
-
-          const selector = `.${escapeCssClassName(className)}`;
-          let count = 1;
-          try {
-            count = doc.querySelectorAll(selector).length || 1;
-          } catch (error) {}
-
-          seen.add(className);
-          candidates.push({
-            className,
-            selector,
-            count,
-            label: `.${className}${count > 1 ? ` (${count})` : ""}`
-          });
-        });
-
-        const elementId = String(current.id || "").trim();
-        if (elementId && !seen.has(`#${elementId}`) && !/^ll-template-|^preview-|^codex-/i.test(elementId)) {
-          const selector = `#${escapeCssClassName(elementId)}`;
-          let count = 1;
-          try {
-            count = doc.querySelectorAll(selector).length || 1;
-          } catch (error) {}
-
-          seen.add(`#${elementId}`);
-          candidates.push({
-            className: `#${elementId}`,
-            selector,
-            count,
-            label: `#${elementId}${count > 1 ? ` (${count})` : ""}`
-          });
-        }
-
-        if (current.matches?.(".ll-carousel, .ll-bento, .lp-container, .lp_container, .table-container-custom, #faq-section, .faq-section")) {
-          break;
-        }
-
-        current = current.parentElement;
-      }
-
-      return candidates;
-    }
-
-    function inferPreviewClassColorProperty(meta = {}, options = {}) {
-      const field = String(meta.field || "").toLowerCase();
-      const label = String(options.label || "").toLowerCase();
-
-      if (field.includes("text") || field.includes("question") || field.includes("answer") || label.includes("texto")) {
-        return "color";
-      }
-
-      if (field.includes("border") || field.includes("ring") || field.includes("outline") || label.includes("borda")) {
-        return "border-color";
-      }
-
-      return "background";
-    }
-
-    function normalizePreviewClassDeclarations(style = {}) {
-      const declarations = {};
-
-      Object.entries(style || {}).forEach(([property, value]) => {
-    const rawValue = String(value || "").trim();
-        if (!rawValue) {
-          return;
-        }
-
-        if (property === "fontSize") {
-          declarations["font-size"] = `${normalizeTextStyleNumber(rawValue, 16, 8, 96)}px`;
-          return;
-        }
-
-        if (property === "fontWeight") {
-          declarations["font-weight"] = normalizePreviewFontWeight(rawValue);
-          return;
-        }
-
-        if (property === "fontStyle" && rawValue === "italic") {
-          declarations["font-style"] = "italic";
-          return;
-        }
-
-        if (property === "textAlign") {
-          declarations["text-align"] = normalizePreviewTextAlign(rawValue);
-          return;
-        }
-
-        if (property === "lineHeight") {
-          declarations["line-height"] = String(normalizeTextStyleNumber(rawValue, 1.35, 0.8, 2.6, 2));
-          return;
-        }
-
-        if (["background", "background-color", "color", "border-color", "outline-color"].includes(property)) {
-          declarations[property] = /^linear-gradient\(/i.test(rawValue) ? rawValue : normalizeCssColorValue(rawValue);
-        }
-      });
-
-      return declarations;
-    }
-
-    function normalizePreviewSelectorValue(value) {
-      const rawValue = String(value || "").trim();
-      if (!rawValue) {
-        return null;
-      }
-
-      if (rawValue.startsWith(".") || rawValue.startsWith("#")) {
-        return { key: rawValue, selector: rawValue };
-      }
-
-      return { key: rawValue, selector: `.${escapeCssClassName(rawValue)}` };
-    }
-
-    function setPreviewClassStyle(meta, className, declarations = {}) {
-      const normalizedSelector = normalizePreviewSelectorValue(className);
-      if (!normalizedSelector) {
-        return;
-      }
-
-      const tab = getPreviewClassStyleTab(meta);
-      const normalized = normalizePreviewClassDeclarations(declarations);
-      if (!Object.keys(normalized).length) {
-        return;
-      }
-
-      state.classStyles = state.classStyles || {};
-      state.classStyles[tab] = state.classStyles[tab] || {};
-      state.classStyles[tab][normalizedSelector.key] = {
-        className: normalizedSelector.key,
-        selector: normalizedSelector.selector,
-        declarations: {
-          ...((state.classStyles[tab][normalizedSelector.key] && state.classStyles[tab][normalizedSelector.key].declarations) || {}),
-          ...normalized
-        }
-      };
-
-      if (currentPage === "conteudo") {
-        markResponsiveDirty();
-      }
-
-      renderEditor(true);
-    }
-
-    function clearPreviewClassStyle(meta, className) {
-      const normalizedSelector = normalizePreviewSelectorValue(className);
-      const tab = getPreviewClassStyleTab(meta);
-      if (!normalizedSelector || !state.classStyles?.[tab]?.[normalizedSelector.key]) {
-        return;
-      }
-
-      delete state.classStyles[tab][normalizedSelector.key];
-      if (currentPage === "conteudo") {
-        markResponsiveDirty();
-      }
-      renderEditor(true);
-    }
-
-    function buildPreviewClassStyle(tab) {
-      const styles = state.classStyles?.[tab] || {};
-      const rules = Object.values(styles).map((entry) => {
-        const selector = entry?.selector || (entry?.className ? `.${escapeCssClassName(entry.className)}` : "");
-        const declarations = Object.entries(entry?.declarations || {})
-          .filter(([, value]) => String(value || "").trim())
-          .map(([property, value]) => `  ${property}: ${value} !important;`);
-
-        return selector && declarations.length ? `${selector} {\n${declarations.join("\n")}\n}` : "";
-      }).filter(Boolean);
-
-      if (!rules.length) {
-        return "";
-      }
-
-      return `<style>\n/* Ajustes por classe feitos no preview */\n${rules.join("\n\n")}\n</style>`;
-    }
-
     function getTemplatePreviewNode(meta) {
       const doc = previewFrame.contentDocument;
       if (!doc || !meta.templateNodeId) {
@@ -1683,30 +1146,6 @@ ${containerHtml}`;
 
     function cleanTemplatePreviewClone(container) {
       const clone = container.cloneNode(true);
-      clone.querySelectorAll("#ll-template-faq-custom-style").forEach((element) => {
-        element.remove();
-      });
-      clone.querySelectorAll("[data-ll-template-faq-title-text]").forEach((element) => {
-        const parent = element.parentNode;
-        if (!parent) {
-          return;
-        }
-
-        if (parent.nodeType === 1 && element.getAttribute("style")) {
-          Array.from(element.style).forEach((property) => {
-            parent.style.setProperty(
-              property,
-              element.style.getPropertyValue(property),
-              element.style.getPropertyPriority(property)
-            );
-          });
-        }
-
-        while (element.firstChild) {
-          parent.insertBefore(element.firstChild, element);
-        }
-        element.remove();
-      });
       [clone, ...clone.querySelectorAll("*")].forEach((element) => {
         [
           "data-ll-template-node",
@@ -1719,15 +1158,12 @@ ${containerHtml}`;
           "data-ll-preview-overlay-vertical",
           "data-ll-preview-overlay-width",
           "data-ll-preview-manual-story",
-          "data-ll-preview-story-panel",
           "data-ll-preview-story-active",
           "data-ll-preview-story-hidden",
           "data-ll-preview-story-current",
           "data-ll-template-iframe-parent",
-          "data-ll-table-edit-root",
           "data-ll-preview-header-editor",
-          "data-ll-preview-header-banner",
-          "data-ll-template-faq-title-ready"
+          "data-ll-preview-header-banner"
         ].forEach((attribute) => element.removeAttribute(attribute));
         element.removeAttribute("contenteditable");
         element.removeAttribute("spellcheck");
@@ -1786,25 +1222,10 @@ ${containerHtml}`;
           "data-ll-preview-media",
           "data-ll-preview-color",
           "data-ll-preview-inline",
-          "data-ll-preview-position",
-          "data-ll-bento-resize-block",
-          "data-ll-bento-resize-ready"
+          "data-ll-preview-position"
         ].forEach((attribute) => element.removeAttribute(attribute));
         element.removeAttribute("contenteditable");
         element.removeAttribute("spellcheck");
-        if (element.classList) {
-          element.classList.remove("ll-template-faq-summary", "ll-template-faq-custom-colors");
-          if (!element.getAttribute("class")) {
-            element.removeAttribute("class");
-          }
-        }
-        if (element.style) {
-          element.style.removeProperty("--ll-template-faq-summary-bg");
-          element.style.removeProperty("--ll-template-faq-summary-hover-bg");
-          if (!element.getAttribute("style")) {
-            element.removeAttribute("style");
-          }
-        }
 
         const title = element.getAttribute("title") || "";
         if (/^Clique para editar|^Clique para trocar|^Duplo clique para editar|^D[eê] dois cliques para trocar/i.test(title)) {
@@ -1865,12 +1286,7 @@ ${containerHtml}`;
       const tagName = element.tagName;
 
       if (tagName === "SOURCE") {
-        if (element.closest("picture")) {
-          element.remove();
-        } else {
-          element.setAttribute("src", normalizedValue);
-          element.removeAttribute("srcset");
-        }
+        element.setAttribute("srcset", normalizedValue);
         return;
       }
 
@@ -1879,7 +1295,7 @@ ${containerHtml}`;
         const picture = element.closest("picture");
         if (picture) {
           picture.querySelectorAll("source").forEach((source) => {
-            source.remove();
+            source.setAttribute("srcset", normalizedValue);
           });
         }
         return;
@@ -1926,14 +1342,8 @@ ${containerHtml}`;
         setBentoMediaValue(element, normalizedValue);
       } else if (meta.type === "color") {
         if (/gradient\(/i.test(normalizedValue)) {
-          element.style.backgroundImage = normalizedValue;
-          element.style.backgroundColor = "";
+          element.style.background = normalizedValue;
         } else {
-          const view = element.ownerDocument.defaultView;
-          const backgroundImage = element.style.backgroundImage || view.getComputedStyle(element).backgroundImage || "";
-          if (backgroundImage && backgroundImage !== "none" && !/url\(/i.test(backgroundImage)) {
-            element.style.backgroundImage = "none";
-          }
           element.style.backgroundColor = normalizedValue;
         }
       }
@@ -2020,7 +1430,7 @@ ${containerHtml}`;
         const picture = element.closest("picture");
         if (picture) {
           picture.querySelectorAll("source").forEach((source) => {
-            source.remove();
+            source.setAttribute("srcset", normalizedValue);
           });
         } else {
           element.removeAttribute("srcset");
@@ -2174,36 +1584,6 @@ ${containerHtml}`;
       return Boolean(banner && target && (target === banner || banner.contains(target)));
     }
 
-    function getTemplateHeaderBadgeElement(headerElement) {
-      if (!headerElement) {
-        return null;
-      }
-
-      return headerElement.querySelector(".product-header__badge, .video-header__badge, [class*='badge' i], [class*='logo' i]");
-    }
-
-    function getTemplateHeaderLogoElement(headerElement) {
-      if (!headerElement) {
-        return null;
-      }
-
-      const badge = getTemplateHeaderBadgeElement(headerElement);
-      return headerElement.querySelector(".product-header__badge-img, .video-header__badge-img")
-        || badge?.querySelector?.("img, svg")
-        || null;
-    }
-
-    function isTemplateHeaderLogoTarget(target, headerElement) {
-      if (!target || !headerElement) {
-        return false;
-      }
-
-      const logo = getTemplateHeaderLogoElement(headerElement);
-      const badge = getTemplateHeaderBadgeElement(headerElement);
-      return Boolean((logo && (target === logo || logo.contains?.(target)))
-        || (badge && (target === badge || badge.contains?.(target))));
-    }
-
     function getTemplateHeaderBannerImage(headerElement) {
       const banner = getTemplateHeaderBannerElement(headerElement);
       if (!banner) {
@@ -2231,8 +1611,9 @@ ${containerHtml}`;
       }
 
       const sources = banner.querySelectorAll("picture source");
-      sources.forEach((source) => {
-        source.remove();
+      const sizes = [430, 768, 1024, 1200];
+      sources.forEach((source, index) => {
+        source.setAttribute("srcset", withHeaderImageSize(cleanUrl, sizes[index] || 1200));
       });
     }
 
@@ -2312,6 +1693,10 @@ ${containerHtml}`;
         const cleanImageUrl = stripHeaderImageVariant(data.imageUrl);
         wrapper.innerHTML = `<header class="product-header__banner">
     <picture style="width:100%; height:100%; margin:0;">
+      <source media="(max-width: 430px)" srcset="${escapeHtml(withHeaderImageSize(cleanImageUrl, 430))}">
+      <source media="(max-width: 768px)" srcset="${escapeHtml(withHeaderImageSize(cleanImageUrl, 768))}">
+      <source media="(max-width: 1024px)" srcset="${escapeHtml(withHeaderImageSize(cleanImageUrl, 1024))}">
+      <source media="(max-width: 1200px)" srcset="${escapeHtml(withHeaderImageSize(cleanImageUrl, 1200))}">
       <img src="${escapeHtml(cleanImageUrl)}" alt="${escapeHtml(data.imageAlt || "")}" class="product-header__banner-img" loading="eager">
     </picture>
   </header>`;
@@ -2356,10 +1741,6 @@ ${containerHtml}`;
         banner.style.cursor = "pointer";
         banner.setAttribute("title", "Clique para editar o banner.");
         banner.addEventListener("click", (event) => {
-          if (isTemplateHeaderLogoTarget(event.target, element)) {
-            return;
-          }
-
           event.preventDefault();
           event.stopPropagation();
           openTemplateHeaderPopover(event, element);
@@ -2527,8 +1908,7 @@ ${containerHtml}`;
     function openTemplateImagePopover(sourceEvent, element, meta, label) {
       const root = element?.ownerDocument?.querySelector(".lp-container, .lp_container");
       const header = root ? findTemplateHeaderRoot(element, root) : null;
-      const isHeaderLogo = header && isTemplateHeaderLogoTarget(sourceEvent?.target || element, header);
-      if (header && isTemplateHeaderBannerTarget(sourceEvent?.target || element, header) && !isHeaderLogo) {
+      if (header && isTemplateHeaderBannerTarget(sourceEvent?.target || element, header)) {
         openTemplateHeaderPopover(sourceEvent, header);
         return;
       }
@@ -2557,8 +1937,7 @@ ${containerHtml}`;
 
       const altInput = document.createElement("input");
       altInput.type = "text";
-      const headerBadge = isHeaderLogo ? getTemplateHeaderBadgeElement(header) : null;
-      altInput.value = headerBadge?.getAttribute("aria-label") || element.getAttribute("alt") || "";
+      altInput.value = element.getAttribute("alt") || "";
       createField("Alt text", altInput);
 
       const actions = document.createElement("div");
@@ -2574,12 +1953,7 @@ ${containerHtml}`;
         const normalizedUrl = normalizeAssetUrl(urlInput.value);
         urlInput.value = normalizedUrl;
         setTemplateMediaValue(element, normalizedUrl);
-        if (headerBadge) {
-          headerBadge.setAttribute("aria-label", altInput.value);
-          element.setAttribute("alt", "");
-        } else {
-          element.setAttribute("alt", altInput.value);
-        }
+        element.setAttribute("alt", altInput.value);
         syncTemplateHtmlFromPreview();
       };
 
@@ -2720,204 +2094,6 @@ ${containerHtml}`;
       textarea.select();
     }
 
-    function copyTemplateIconIdentity(source, target) {
-      if (!source || !target) {
-        return;
-      }
-
-      ["id", "class", "style", "width", "height", "role", "aria-hidden", "data-ll-template-node"].forEach((name) => {
-        const value = source.getAttribute?.(name);
-        if (value && !target.getAttribute(name)) {
-          target.setAttribute(name, value);
-        }
-      });
-    }
-
-    function getTemplateIconMediaElement(element) {
-      if (!element) {
-        return null;
-      }
-
-      if (["IMG", "SVG"].includes(element.tagName)) {
-        return element;
-      }
-
-      return element.querySelector?.("img, svg") || null;
-    }
-
-    function openTemplateIconPopover(sourceEvent, element) {
-      const iconHost = element;
-      const iconMedia = getTemplateIconMediaElement(element);
-      if (!iconHost || !iconMedia) {
-        return;
-      }
-
-      closePreviewEditPopover();
-
-      const form = document.createElement("form");
-      form.className = "preview-edit-popover preview-edit-popover--svg";
-      form.setAttribute("role", "dialog");
-      form.setAttribute("aria-label", "Editar ícone");
-
-      const title = document.createElement("p");
-      title.className = "preview-edit-popover__title";
-      title.textContent = "Editar ícone";
-      form.appendChild(title);
-
-      const typeField = document.createElement("label");
-      typeField.className = "field";
-      typeField.innerHTML = "<span>Formato</span>";
-      const typeSelect = document.createElement("select");
-      typeSelect.innerHTML = `
-        <option value="image">Imagem ou URL</option>
-        <option value="svg">SVG</option>
-      `;
-      typeSelect.value = iconMedia.tagName === "SVG" ? "svg" : "image";
-      typeField.appendChild(typeSelect);
-      form.appendChild(typeField);
-
-      const createField = (label, control) => {
-        const field = document.createElement("label");
-        field.className = "field";
-        const text = document.createElement("span");
-        text.textContent = label;
-        field.append(text, control);
-        form.appendChild(field);
-        return field;
-      };
-
-      const imageUrl = document.createElement("input");
-      imageUrl.type = "text";
-      imageUrl.placeholder = "Cole uma URL hospedada ou caminho local";
-      imageUrl.value = iconMedia.tagName === "IMG" ? getTemplateMediaValue(iconMedia) : "";
-      const imageField = createField("URL da imagem", imageUrl);
-
-      const iconLabel = document.createElement("input");
-      iconLabel.type = "text";
-      iconLabel.value = iconMedia.tagName === "IMG"
-        ? (iconMedia.getAttribute("alt") || "")
-        : (iconMedia.getAttribute("aria-label") || iconMedia.getAttribute("title") || "");
-      createField("Rótulo acessível", iconLabel);
-
-      const svgMarkup = document.createElement("textarea");
-      svgMarkup.rows = 8;
-      svgMarkup.spellcheck = false;
-      svgMarkup.placeholder = '<svg viewBox="0 0 24 24" aria-label="Ícone">...</svg>';
-      svgMarkup.value = iconMedia.tagName === "SVG" ? iconMedia.outerHTML : "";
-      const svgField = createField("Código SVG", svgMarkup);
-
-      const note = document.createElement("p");
-      note.className = "muted-note";
-      note.textContent = "Use imagem para URL ou cole um SVG completo. Scripts e eventos inline são removidos antes de salvar.";
-      form.appendChild(note);
-
-      const actions = document.createElement("div");
-      actions.className = "preview-edit-popover__actions";
-      const closeButton = document.createElement("button");
-      closeButton.className = "button";
-      closeButton.type = "button";
-      closeButton.textContent = "Fechar";
-      actions.appendChild(closeButton);
-      form.appendChild(actions);
-
-      let currentElement = iconMedia;
-      let applyTimer = 0;
-      const setMode = () => {
-        const isSvg = typeSelect.value === "svg";
-        imageField.style.display = isSvg ? "none" : "";
-        svgField.style.display = isSvg ? "" : "none";
-      };
-
-      const applyImage = () => {
-        const value = normalizeAssetUrl(imageUrl.value);
-        imageUrl.value = value;
-        if (!value) {
-          return;
-        }
-
-        let nextElement = currentElement;
-        if (currentElement.tagName !== "IMG") {
-          nextElement = currentElement.ownerDocument.createElement("img");
-          copyTemplateIconIdentity(currentElement, nextElement);
-          currentElement.replaceWith(nextElement);
-        }
-        if (iconHost.classList?.contains("ll-carousel__dot-icon")) {
-          nextElement.classList.add("ll-carousel__dot-icon-img");
-        }
-        nextElement.setAttribute("src", value);
-        nextElement.setAttribute("alt", iconLabel.value);
-        nextElement.removeAttribute("srcset");
-        currentElement = nextElement;
-        attachTemplateIcon(currentElement);
-        syncTemplateHtmlFromPreview();
-      };
-
-      const applySvg = () => {
-        const nextElement = createSvgElementFromMarkup(currentElement.ownerDocument, svgMarkup.value);
-        if (!nextElement) {
-          return;
-        }
-
-        copyTemplateIconIdentity(currentElement, nextElement);
-        if (iconLabel.value.trim()) {
-          nextElement.setAttribute("aria-label", iconLabel.value.trim());
-          nextElement.setAttribute("role", "img");
-        }
-        currentElement.replaceWith(nextElement);
-        currentElement = nextElement;
-        attachTemplateIcon(currentElement);
-        syncTemplateHtmlFromPreview();
-      };
-
-      const applyCurrentMode = () => {
-        if (typeSelect.value === "svg") {
-          applySvg();
-        } else {
-          applyImage();
-        }
-      };
-
-      imageField.appendChild(createLocalAssetButton(imageUrl, applyImage, "image/*"));
-      typeSelect.addEventListener("change", setMode);
-      imageUrl.addEventListener("input", applyImage);
-      imageUrl.addEventListener("change", applyImage);
-      iconLabel.addEventListener("input", applyCurrentMode);
-      iconLabel.addEventListener("change", applyCurrentMode);
-      svgMarkup.addEventListener("input", () => {
-        window.clearTimeout(applyTimer);
-        applyTimer = window.setTimeout(applySvg, 260);
-      });
-      svgMarkup.addEventListener("change", applySvg);
-
-      form.addEventListener("submit", (event) => {
-        event.preventDefault();
-        applyCurrentMode();
-        closePreviewEditPopover();
-      });
-      closeButton.addEventListener("click", closePreviewEditPopover);
-
-      previewEditKeyHandler = (event) => {
-        if (event.key === "Escape") {
-          closePreviewEditPopover();
-        }
-      };
-      previewEditOutsideHandler = (event) => {
-        if (previewEditPopover && !previewEditPopover.contains(event.target)) {
-          closePreviewEditPopover();
-        }
-      };
-
-      document.body.appendChild(form);
-      previewEditPopover = form;
-      positionPreviewEditPopover(sourceEvent);
-      window.setTimeout(() => {
-        document.addEventListener("mousedown", previewEditOutsideHandler, true);
-        document.addEventListener("keydown", previewEditKeyHandler, true);
-      }, 0);
-      setMode();
-      (typeSelect.value === "svg" ? svgMarkup : imageUrl).focus();
-    }
-
     function updateTemplatePreviewEditValue(meta, rawValue, normalizedValue) {
       const element = getTemplatePreviewNode(meta);
       if (!element) {
@@ -2932,11 +2108,7 @@ ${containerHtml}`;
         ["color", "fontSize", "fontWeight", "fontStyle", "textAlign", "lineHeight"].forEach((property) => {
           element.style[property] = "";
         });
-        if (meta.allowBackgroundStyle || style.backgroundColor) {
-          element.style.backgroundColor = "";
-        }
         if (style.color) element.style.color = style.color;
-        if (style.backgroundColor) element.style.backgroundColor = style.backgroundColor;
         if (style.fontSize) element.style.fontSize = `${style.fontSize}px`;
         if (style.fontWeight) element.style.fontWeight = style.fontWeight;
         if (style.fontStyle) element.style.fontStyle = style.fontStyle;
@@ -2947,15 +2119,10 @@ ${containerHtml}`;
       } else if (meta.type === "color") {
         const computed = element.ownerDocument.defaultView.getComputedStyle(element);
         const backgroundImage = computed.backgroundImage || "";
-        if (/gradient\(/i.test(normalizedValue)) {
-          element.style.backgroundImage = normalizedValue;
-          element.style.backgroundColor = "";
-        } else {
-          if (backgroundImage && backgroundImage !== "none" && !/url\(/i.test(backgroundImage)) {
-            element.style.backgroundImage = "none";
-          }
-          element.style.backgroundColor = normalizedValue;
+        if (backgroundImage && backgroundImage !== "none" && !/url\(/i.test(backgroundImage)) {
+          element.style.backgroundImage = "none";
         }
+        element.style.backgroundColor = normalizedValue;
       }
 
       syncTemplateHtmlFromPreview();
@@ -3063,28 +2230,6 @@ ${containerHtml}`;
 
     function readPreviewEditValue(meta) {
       if (meta.scope === "template") {
-        if (meta.type === "textStyle") {
-          const element = getTemplatePreviewNode(meta);
-          if (element) {
-            return element.innerText || element.textContent || meta.value || "";
-          }
-        }
-
-        if (meta.type === "color") {
-          const element = getTemplatePreviewNode(meta);
-          if (element) {
-            const computed = element.ownerDocument.defaultView.getComputedStyle(element);
-            const backgroundImage = element.style.backgroundImage || computed.backgroundImage || "";
-            if (backgroundImage && backgroundImage !== "none" && !/url\(/i.test(backgroundImage)) {
-              return backgroundImage;
-            }
-
-            if (!isTransparentColor(computed.backgroundColor)) {
-              return colorToHex(computed.backgroundColor || "#ffffff", "#ffffff");
-            }
-          }
-        }
-
         return meta.value || "";
       }
 
@@ -3100,10 +2245,6 @@ ${containerHtml}`;
 
         if (meta.type === "color") {
           const computed = element.ownerDocument.defaultView.getComputedStyle(element);
-          const backgroundImage = element.style.backgroundImage || computed.backgroundImage || "";
-          if (backgroundImage && backgroundImage !== "none" && !/url\(/i.test(backgroundImage)) {
-            return backgroundImage;
-          }
           return colorToHex(computed.backgroundColor || "#ffffff", "#ffffff");
         }
 
@@ -3170,14 +2311,6 @@ ${containerHtml}`;
 
       if (meta.scope === "carousel") {
         if (meta.slideIndex === undefined) {
-          if (meta.field === "softColor" && state.carousel.sectionGradientEnabled !== false) {
-            return buildCssGradient(
-              state.carousel.sectionGradientStart || "#ffffff",
-              state.carousel.sectionGradientEnd || state.carousel.softColor || "#f3f6fb",
-              180
-            );
-          }
-
           return state.carousel[meta.field] || "";
         }
 
@@ -3188,14 +2321,6 @@ ${containerHtml}`;
 
         if (meta.field === "navNumber") {
           return slide.navNumber || String(Number(meta.slideIndex) + 1).padStart(2, "0");
-        }
-
-        if (meta.field === "backgroundColor" && normalizeCarouselType(slide.type) === "impact" && slide.gradientEnabled !== false && !parseCssGradient(slide.backgroundColor)) {
-          return buildCssGradient(
-            slide.backgroundColor || "#f16425",
-            slide.gradientEndColor || slide.backgroundColor || "#ff8a4f",
-            normalizeCarouselGradientAngle(slide.gradientAngle)
-          );
         }
 
         return slide[meta.field] || "";
@@ -3300,21 +2425,10 @@ ${containerHtml}`;
       if (meta.scope === "carousel") {
         if (meta.slideIndex === undefined) {
           state.carousel[meta.field] = value;
-          if (meta.field === "softColor") {
-            state.carousel.sectionGradientEnabled = false;
-          }
         } else {
           const slide = state.carousel.slides[meta.slideIndex];
           if (slide) {
             slide[meta.field] = value;
-            if (meta.field === "backgroundColor" && normalizeCarouselType(slide.type) === "impact") {
-              const gradient = parseCssGradient(value);
-              slide.gradientEnabled = Boolean(gradient);
-              if (gradient) {
-                slide.gradientEndColor = gradient.end;
-                slide.gradientAngle = gradient.angle;
-              }
-            }
             state.carousel.openSlideIndex = meta.slideIndex;
             setCarouselPreviewSlide(meta.slideIndex);
           }
@@ -3366,15 +2480,6 @@ ${containerHtml}`;
         *::-webkit-scrollbar-corner {
           background: transparent;
         }
-      `;
-      doc.head.appendChild(style);
-
-      if (currentPage !== "conteudo") {
-        return;
-      }
-
-      const editStyle = doc.createElement("style");
-      editStyle.textContent = `
         [data-ll-preview-text],
         [data-ll-preview-media],
         [data-ll-preview-color],
@@ -3439,7 +2544,7 @@ ${containerHtml}`;
         }
         .lp-stories__nav {
           z-index: 38 !important;
-          pointer-events: auto !important;
+          pointer-events: none !important;
         }
         .lp-stories__arrow {
           pointer-events: auto !important;
@@ -3456,10 +2561,12 @@ ${containerHtml}`;
         .lp-stories[data-ll-preview-manual-story] .lp-stories__panel[data-ll-preview-story-active] {
           display: block !important;
         }
-        [data-ll-preview-manual-story] [data-ll-preview-story-panel] {
+        [data-ll-preview-manual-story] [class*="story" i][class*="panel" i],
+        [data-ll-preview-manual-story] [class*="stories" i][class*="panel" i] {
           display: none !important;
         }
-        [data-ll-preview-manual-story] [data-ll-preview-story-panel][data-ll-preview-story-active] {
+        [data-ll-preview-manual-story] [class*="story" i][class*="panel" i][data-ll-preview-story-active],
+        [data-ll-preview-manual-story] [class*="stories" i][class*="panel" i][data-ll-preview-story-active] {
           display: block !important;
         }
         .lp-stories [data-ll-preview-story-current] .lp-stories__ring,
@@ -3473,48 +2580,6 @@ ${containerHtml}`;
         }
         .ll-bento__image-button {
           pointer-events: none !important;
-        }
-        [data-ll-table-edit-root] {
-          position: relative !important;
-        }
-        [data-ll-table-helper-button] {
-          position: absolute;
-          z-index: 2147482600;
-          width: 26px;
-          height: 26px;
-          border: 1px solid rgba(255, 255, 255, 0.82);
-          border-radius: 8px;
-          display: inline-flex;
-          align-items: center;
-          justify-content: center;
-          padding: 0;
-          background: rgba(234, 91, 12, 0.92);
-          color: #fff;
-          font: 800 17px/1 Arial, sans-serif;
-          cursor: pointer;
-          opacity: 0;
-          pointer-events: none;
-          transform: scale(0.92);
-          box-shadow: 0 10px 20px rgba(15, 23, 42, 0.18);
-          transition: opacity 0.14s ease, transform 0.14s ease, background 0.14s ease;
-        }
-        [data-ll-table-edit-root]:hover > [data-ll-table-helper-button],
-        [data-ll-table-edit-root]:focus-within > [data-ll-table-helper-button] {
-          opacity: 1;
-          pointer-events: auto;
-          transform: scale(1);
-        }
-        [data-ll-table-helper-button]:hover {
-          background: #f97316;
-          transform: scale(1.08);
-        }
-        [data-ll-table-add-column] {
-          top: 8px;
-          right: 8px;
-        }
-        [data-ll-table-add-row] {
-          left: 8px;
-          bottom: 8px;
         }
         [data-ll-template-iframe-parent] {
           position: relative !important;
@@ -3534,7 +2599,7 @@ ${containerHtml}`;
           box-shadow: 0 0 0 4px rgba(14, 165, 233, 0.12);
         }
       `;
-      doc.head.appendChild(editStyle);
+      doc.head.appendChild(style);
       doc.addEventListener("mousedown", (event) => {
         if (!event.target.closest("[data-ll-preview-text], [data-ll-preview-media], [data-ll-preview-color], [data-ll-preview-position]")) {
           closePreviewEditPopover();
@@ -3621,20 +2686,6 @@ ${containerHtml}`;
         };
 
         element.addEventListener("click", (event) => {
-          if (options.triggerEvent === "dblclick") {
-            if (element.isContentEditable) {
-              event.stopPropagation();
-            }
-            return;
-          }
-
-          if (options.disableSingleClickPopover) {
-            if (element.isContentEditable) {
-              event.stopPropagation();
-            }
-            return;
-          }
-
           if (element.isContentEditable) {
             event.stopPropagation();
             return;
@@ -3644,6 +2695,11 @@ ${containerHtml}`;
           event.stopPropagation();
           window.clearTimeout(singleClickTimer);
           singleClickTimer = window.setTimeout(() => {
+            if (options.faqColorTarget?.faqRoot && options.faqColorTarget?.summary) {
+              openTemplateFaqStylePopover(event, options.faqColorTarget.faqRoot, options.faqColorTarget.summary);
+              return;
+            }
+
             openPreviewEditPopover(event, { ...meta, type: "textStyle" }, {
               kind: "text-style",
               label: "Editar texto",
@@ -3823,14 +2879,14 @@ ${containerHtml}`;
         return Boolean(isTemplateStoryLike(element) && element.matches?.(".lp-stories__name, .lp-stories__title, .lp-stories__caption, [class*='story' i] [class*='name' i], [class*='story' i] [class*='title' i], [class*='story' i] [class*='caption' i], [class*='stories' i] [class*='name' i], [class*='stories' i] [class*='title' i], [class*='stories' i] [class*='caption' i]"));
       };
 
-      const attachMedia = (element, meta, label = "URL da mídia", options = {}) => {
+      const attachMedia = (element, meta, label = "URL da mídia") => {
         if (!element) {
           return;
         }
 
         element.dataset.llPreviewMedia = "true";
         const shouldPreserveClick = meta.scope === "template" && isTemplateInteractiveControl(element);
-        const triggerEvent = options.triggerEvent || (shouldPreserveClick ? "dblclick" : "click");
+        const triggerEvent = shouldPreserveClick ? "dblclick" : "click";
         element.setAttribute("title", triggerEvent === "dblclick" ? `Dê dois cliques para trocar ${label}.` : `Clique para trocar ${label}.`);
         element.addEventListener(triggerEvent, (event) => {
           if (element.dataset.llPreviewColor) {
@@ -3876,21 +2932,17 @@ ${containerHtml}`;
         element.insertAdjacentElement("afterend", overlay);
       };
 
-      const attachTemplateIcon = (element) => {
-        const iconMedia = getTemplateIconMediaElement(element);
-        if (!element || !iconMedia || element.dataset.llPreviewIcon === "true") {
+      const attachTemplateSvg = (element) => {
+        if (!element) {
           return;
         }
 
         element.dataset.llPreviewMedia = "true";
-        element.dataset.llPreviewIcon = "true";
-        iconMedia.dataset.llPreviewMedia = "true";
-        iconMedia.dataset.llPreviewIcon = "true";
-        element.setAttribute("title", "Dê dois cliques para editar o ícone.");
+        element.setAttribute("title", "Duplo clique para editar SVG.");
         element.addEventListener("dblclick", (event) => {
           event.preventDefault();
-          event.stopImmediatePropagation();
-          openTemplateIconPopover(event, element);
+          event.stopPropagation();
+          openTemplateSvgPopover(event, element);
         });
       };
 
@@ -3903,11 +2955,6 @@ ${containerHtml}`;
         element.dataset.llPreviewColor = "true";
         element.setAttribute("title", triggerEvent === "click" ? `Clique para editar ${label}.` : `Duplo clique para editar ${label}.`);
         element.addEventListener(triggerEvent, (event) => {
-          const interactiveTarget = event.target.closest('a[href], button, label[for], input, textarea, select, summary, [role="button"], [role="tab"], [role="link"], .ll-carousel__nav');
-          if (interactiveTarget && interactiveTarget !== element) {
-            return;
-          }
-
           const allowColorOnMedia = Boolean(options.allowOnMedia);
           if (element.dataset.llPreviewMedia && !allowColorOnMedia) {
             return;
@@ -4621,25 +3668,13 @@ ${containerHtml}`;
         return hasTemplateBackgroundImage(element);
       };
 
-      const isTemplateIconElement = (element) => {
-        if (!element || !["IMG", "SVG"].includes(element.tagName)) {
-          return false;
-        }
-
-        if (element.tagName === "SVG") {
-          return true;
-        }
-
-        return /(^|[\s_-])(icon|logo|avatar|badge|symbol|emblem|mark)([\s_-]|$)/i.test(getTemplateSignature(element));
-      };
-
       const ensureTemplateFaqStyle = (root) => {
         const styleId = "ll-template-faq-custom-style";
-        let faqStyle = doc.getElementById(styleId);
+        let faqStyle = root.querySelector(`#${styleId}`);
         if (!faqStyle) {
           faqStyle = doc.createElement("style");
           faqStyle.id = styleId;
-          (doc.head || doc.documentElement).appendChild(faqStyle);
+          root.insertBefore(faqStyle, root.firstChild);
         }
 
         faqStyle.textContent = `
@@ -4725,126 +3760,11 @@ ${containerHtml}`;
         }) || null;
       };
 
-      const getTemplateFaqTextTargets = (faqRoot) => {
-        const detailsList = Array.from(faqRoot.querySelectorAll("details")).filter((details) => {
-          return isTemplateFaqDetails(details, faqRoot);
-        });
-
-        return detailsList.reduce((targets, details) => {
-          const question = findTemplateFaqQuestion(details);
-          const answer = findTemplateFaqAnswer(details);
-
-          if (question && !targets.questions.includes(question)) {
-            targets.questions.push(question);
-          }
-
-          if (answer && !targets.answers.includes(answer)) {
-            targets.answers.push(answer);
-          }
-
-          return targets;
-        }, { questions: [], answers: [] });
-      };
-
-      const findTemplateFaqTitle = (faqRoot, fallbackRoot = null) => {
-        if (!faqRoot) {
-          return null;
-        }
-
-        const titleSelectors = [
-          "#faq-section__title",
-          "#faq-section-title",
-          "[id*='faq' i][id*='title' i]",
-          "[class*='faq' i][class*='title' i]",
-          "h1",
-          "h2"
-        ].join(", ");
-
-        const searchRoots = [faqRoot];
-        if (fallbackRoot && fallbackRoot !== faqRoot) {
-          searchRoots.push(fallbackRoot);
-        }
-
-        const titleCandidates = searchRoots.flatMap((searchRoot) => {
-          const matches = Array.from(searchRoot.querySelectorAll(titleSelectors));
-          return searchRoot.matches?.(titleSelectors) ? [searchRoot, ...matches] : matches;
-        });
-
-        return titleCandidates.find((element) => {
-          return !element.closest("details")
-            && (element.innerText || element.textContent || "").trim();
-        }) || null;
-      };
-
-      const ensureTemplateFaqTitleTextElement = (titleElement) => {
-        const existing = titleElement.querySelector(":scope > [data-ll-template-faq-title-text]");
-        if (existing) {
-          return existing;
-        }
-
-        const docRef = titleElement.ownerDocument;
-        const span = docRef.createElement("span");
-        span.dataset.llTemplateFaqTitleText = "true";
-
-        const directTextNodes = Array.from(titleElement.childNodes).filter((node) => {
-          return node.nodeType === Node.TEXT_NODE && node.textContent.trim();
-        });
-
-        if (directTextNodes.length) {
-          titleElement.insertBefore(span, directTextNodes[0]);
-          directTextNodes.forEach((node) => {
-            span.appendChild(node);
-          });
-          return span;
-        }
-
-        return Array.from(titleElement.children).find((child) => {
-          const tagName = String(child.tagName || "").toLowerCase();
-          return !["svg", "img", "picture", "video", "source", "iframe"].includes(tagName)
-            && (child.innerText || child.textContent || "").trim();
-        }) || titleElement;
-      };
-
-      const attachTemplateFaqTitleEditor = (titleElement) => {
-        if (!titleElement || titleElement.dataset.llTemplateFaqTitleReady === "true") {
-          return;
-        }
-
-        titleElement.dataset.llTemplateFaqTitleReady = "true";
-        const titleNodeId = markTemplateNode(titleElement);
-        attachColor(titleElement, {
-          scope: "template",
-          field: "backgroundColor",
-          templateNodeId: titleNodeId,
-          value: colorToHex(
-            titleElement.ownerDocument.defaultView.getComputedStyle(titleElement).backgroundColor || "#0ea5e9",
-            "#0ea5e9"
-          )
-        }, "cor de fundo do título do FAQ", { triggerEvent: "click" });
-
-        const textTarget = ensureTemplateFaqTitleTextElement(titleElement);
-        attachText(textTarget, {
-          scope: "template",
-          field: "text",
-          templateNodeId: markTemplateNode(textTarget),
-          value: textTarget.innerText || textTarget.textContent || ""
-        }, { multiline: false });
-      };
-
       const openTemplateFaqStylePopover = (sourceEvent, faqRoot, summary) => {
         closePreviewEditPopover();
         ensureTemplateFaqStyle(faqRoot);
 
         const computed = summary.ownerDocument.defaultView.getComputedStyle(summary);
-        const faqTextTargets = getTemplateFaqTextTargets(faqRoot);
-        const firstQuestion = faqTextTargets.questions[0] || findTemplateFaqQuestion(summary.closest("details")) || summary;
-        const firstAnswer = faqTextTargets.answers[0] || null;
-        const questionComputed = firstQuestion
-          ? firstQuestion.ownerDocument.defaultView.getComputedStyle(firstQuestion)
-          : computed;
-        const answerComputed = firstAnswer
-          ? firstAnswer.ownerDocument.defaultView.getComputedStyle(firstAnswer)
-          : computed;
         const initialNormal = colorToHex(
           faqRoot.style.getPropertyValue("--ll-template-faq-summary-bg") || computed.backgroundColor || "#ffffff",
           "#ffffff"
@@ -4853,56 +3773,24 @@ ${containerHtml}`;
           faqRoot.style.getPropertyValue("--ll-template-faq-summary-hover-bg") || "#f9f9f9",
           "#f9f9f9"
         );
-        const initialQuestionColor = colorToHex(
-          faqRoot.style.getPropertyValue("--ll-template-faq-question-color") || questionComputed.color || "#111827",
-          "#111827"
-        );
-        const initialAnswerColor = colorToHex(
-          faqRoot.style.getPropertyValue("--ll-template-faq-answer-color") || answerComputed.color || "#333333",
-          "#333333"
-        );
 
         const form = document.createElement("form");
-        form.className = "preview-edit-popover preview-edit-popover--color preview-edit-popover--faq";
+        form.className = "preview-edit-popover preview-edit-popover--color";
         form.setAttribute("role", "dialog");
-        form.setAttribute("aria-label", "Editar FAQ");
+        form.setAttribute("aria-label", "Editar cores do FAQ");
 
         const title = document.createElement("p");
         title.className = "preview-edit-popover__title";
-        title.textContent = "Editar FAQ";
+        title.textContent = "Cores do FAQ";
         form.appendChild(title);
 
-        const tabs = document.createElement("div");
-        tabs.className = "preview-edit-popover__tabs";
-        const summaryTab = document.createElement("button");
-        summaryTab.type = "button";
-        summaryTab.textContent = "Summary";
-        summaryTab.className = "is-active";
-        const textTab = document.createElement("button");
-        textTab.type = "button";
-        textTab.textContent = "Texto";
-        const classTab = document.createElement("button");
-        classTab.type = "button";
-        classTab.textContent = "Classe/ID";
-        tabs.append(summaryTab, textTab, classTab);
-        form.appendChild(tabs);
-
-        const summaryPanel = document.createElement("div");
-        summaryPanel.className = "preview-edit-popover__panel";
-        const textPanel = document.createElement("div");
-        textPanel.className = "preview-edit-popover__panel";
-        textPanel.hidden = true;
-        const classPanel = document.createElement("div");
-        classPanel.className = "preview-edit-popover__panel preview-edit-popover__panel--class";
-        classPanel.hidden = true;
-
-        const makeColorField = (parent, labelText, initialValue) => {
+        const makeColorField = (labelText, initialValue) => {
           const label = document.createElement("label");
           label.className = "preview-edit-popover__mini-field";
           const text = document.createElement("span");
           text.textContent = labelText;
           const row = document.createElement("div");
-          row.className = "preview-edit-popover__color-row";
+          row.className = "preview-edit-popover__color-row preview-edit-popover__color-row--picker";
           const color = document.createElement("input");
           color.className = "preview-edit-popover__color";
           color.type = "color";
@@ -4915,172 +3803,12 @@ ${containerHtml}`;
           hex.placeholder = "#ffffff";
           row.append(color, hex);
           label.append(text, row);
-          parent.appendChild(label);
+          form.appendChild(label);
           return { color, hex };
         };
 
-        const makeSelect = (options, value) => {
-          const select = document.createElement("select");
-          options.forEach((option) => {
-            const item = document.createElement("option");
-            item.value = option.value;
-            item.textContent = option.label;
-            item.selected = option.value === value;
-            select.appendChild(item);
-          });
-          return select;
-        };
-
-        const makeMiniField = (parent, labelText, input) => {
-          const label = document.createElement("label");
-          label.className = "preview-edit-popover__mini-field";
-          const text = document.createElement("span");
-          text.textContent = labelText;
-          label.append(text, input);
-          parent.appendChild(label);
-          return input;
-        };
-
-        const normal = makeColorField(summaryPanel, "Fundo normal do summary", initialNormal);
-        const hover = makeColorField(summaryPanel, "Fundo hover do summary", initialHover);
-
-        const createTextStyleFields = (parent, labelText, target, fallbackColor) => {
-          const group = document.createElement("div");
-          group.className = "preview-edit-popover__group";
-          const groupTitle = document.createElement("p");
-          groupTitle.className = "preview-edit-popover__note";
-          groupTitle.textContent = labelText;
-          group.appendChild(groupTitle);
-
-          const targetComputed = target?.ownerDocument.defaultView.getComputedStyle(target) || computed;
-          const color = makeColorField(group, "Cor", colorToHex(targetComputed.color || fallbackColor, fallbackColor));
-          const grid = document.createElement("div");
-          grid.className = "preview-edit-popover__grid";
-
-          const fontSize = document.createElement("input");
-          fontSize.type = "number";
-          fontSize.min = "8";
-          fontSize.max = "96";
-          fontSize.step = "1";
-          fontSize.value = String(normalizeTextStyleNumber(targetComputed.fontSize, 16, 8, 96));
-
-          const fontWeight = makeSelect([
-            { value: "300", label: "Leve" },
-            { value: "400", label: "Normal" },
-            { value: "500", label: "Medio" },
-            { value: "600", label: "Semibold" },
-            { value: "700", label: "Bold" },
-            { value: "800", label: "Extra bold" },
-            { value: "900", label: "Black" }
-          ], normalizePreviewFontWeight(targetComputed.fontWeight));
-
-          const textAlign = makeSelect([
-            { value: "left", label: "Esquerda" },
-            { value: "center", label: "Centro" },
-            { value: "right", label: "Direita" },
-            { value: "justify", label: "Justificado" }
-          ], normalizePreviewTextAlign(targetComputed.textAlign));
-
-          const lineHeight = document.createElement("input");
-          lineHeight.type = "number";
-          lineHeight.min = "0.8";
-          lineHeight.max = "2.6";
-          lineHeight.step = "0.05";
-          lineHeight.value = String(normalizeTextStyleNumber(targetComputed.lineHeight, 1.35, 0.8, 2.6, 2));
-
-          makeMiniField(grid, "Tamanho", fontSize);
-          makeMiniField(grid, "Peso", fontWeight);
-          makeMiniField(grid, "Alinhamento", textAlign);
-          makeMiniField(grid, "Altura da linha", lineHeight);
-          group.appendChild(grid);
-          parent.appendChild(group);
-
-          return { color, fontSize, fontWeight, textAlign, lineHeight };
-        };
-
-        const questionStyle = createTextStyleFields(textPanel, "Perguntas", firstQuestion, initialQuestionColor);
-        const answerStyle = createTextStyleFields(textPanel, "Respostas", firstAnswer || firstQuestion, initialAnswerColor);
-
-        const classCandidates = [
-          ...getPreviewClassCandidates(summary),
-          ...getPreviewClassCandidates(firstQuestion),
-          ...getPreviewClassCandidates(firstAnswer),
-          ...getPreviewClassCandidates(faqRoot)
-        ].reduce((items, candidate) => {
-          if (!candidate || items.some((item) => item.value === candidate.selector)) {
-            return items;
-          }
-          items.push({ value: candidate.selector, label: candidate.label });
-          return items;
-        }, []);
-
-        if (classCandidates.length) {
-          const classSelect = makeSelect(classCandidates, classCandidates[0].value);
-          makeMiniField(classPanel, "Classe ou ID alvo", classSelect);
-          const classApply = makeSelect([
-            { value: "summary-bg", label: "Fundo normal do summary" },
-            { value: "summary-hover", label: "Fundo hover do summary" },
-            { value: "text", label: "Texto" },
-            { value: "border", label: "Borda" },
-            { value: "outline", label: "Contorno" }
-          ], "summary-bg");
-          makeMiniField(classPanel, "Aplicar em", classApply);
-          const classColor = makeColorField(classPanel, "Cor da classe", initialNormal);
-          const classNote = document.createElement("p");
-          classNote.className = "preview-edit-popover__note";
-          classNote.textContent = "Use esta aba para afetar todos os elementos com a mesma classe ou ID.";
-          classPanel.appendChild(classNote);
-          const resetClassButton = document.createElement("button");
-          resetClassButton.type = "button";
-          resetClassButton.className = "button button--soft";
-          resetClassButton.textContent = "Limpar classe";
-          classPanel.appendChild(resetClassButton);
-
-          const applyClassStyle = () => {
-            syncPair(classColor);
-            const targetSelector = classApply.value === "summary-hover"
-              ? `${classSelect.value}:hover`
-              : classSelect.value;
-            const property = {
-              "summary-bg": "background",
-              "summary-hover": "background",
-              text: "color",
-              border: "border-color",
-              outline: "outline-color"
-            }[classApply.value] || "background";
-            setPreviewClassStyle({ scope: "template", field: "faqClass" }, targetSelector, { [property]: classColor.color.value });
-          };
-
-          classColor.color.addEventListener("input", () => {
-            classColor.hex.value = normalizeHexColor(classColor.color.value);
-            classColor.color.style.setProperty("--preview-edit-color", classColor.hex.value);
-            applyClassStyle();
-          });
-          classColor.hex.addEventListener("input", () => {
-            if (isHexColor(classColor.hex.value)) {
-              applyClassStyle();
-            }
-          });
-          classColor.hex.addEventListener("change", () => {
-            classColor.hex.value = isHexColor(classColor.hex.value) ? normalizeHexColor(classColor.hex.value) : classColor.color.value;
-            applyClassStyle();
-          });
-          classSelect.addEventListener("change", applyClassStyle);
-          classApply.addEventListener("change", applyClassStyle);
-          resetClassButton.addEventListener("click", () => {
-            const targetSelector = classApply.value === "summary-hover"
-              ? `${classSelect.value}:hover`
-              : classSelect.value;
-            clearPreviewClassStyle({ scope: "template", field: "faqClass" }, targetSelector);
-          });
-        } else {
-          const emptyClassNote = document.createElement("p");
-          emptyClassNote.className = "preview-edit-popover__note";
-          emptyClassNote.textContent = "Nenhuma classe ou ID util foi encontrado neste FAQ.";
-          classPanel.appendChild(emptyClassNote);
-        }
-
-        form.append(summaryPanel, textPanel, classPanel);
+        const normal = makeColorField("Cor normal", initialNormal);
+        const hover = makeColorField("Cor hover", initialHover);
 
         const actions = document.createElement("div");
         actions.className = "preview-edit-popover__actions";
@@ -5102,30 +3830,13 @@ ${containerHtml}`;
         const applyFaqStyle = () => {
           syncPair(normal);
           syncPair(hover);
-          syncPair(questionStyle.color);
-          syncPair(answerStyle.color);
           faqRoot.classList.add("ll-template-faq-custom-colors");
           faqRoot.style.setProperty("--ll-template-faq-summary-bg", normal.color.value);
           faqRoot.style.setProperty("--ll-template-faq-summary-hover-bg", hover.color.value);
-          faqRoot.style.setProperty("--ll-template-faq-question-color", questionStyle.color.color.value);
-          faqRoot.style.setProperty("--ll-template-faq-answer-color", answerStyle.color.color.value);
-          const applyTextStyle = (element, fields) => {
-            element.style.color = fields.color.color.value;
-            element.style.fontSize = `${normalizeTextStyleNumber(fields.fontSize.value, 16, 8, 96)}px`;
-            element.style.fontWeight = normalizePreviewFontWeight(fields.fontWeight.value);
-            element.style.textAlign = normalizePreviewTextAlign(fields.textAlign.value);
-            element.style.lineHeight = String(normalizeTextStyleNumber(fields.lineHeight.value, 1.35, 0.8, 2.6, 2));
-          };
-          getTemplateFaqTextTargets(faqRoot).questions.forEach((element) => {
-            applyTextStyle(element, questionStyle);
-          });
-          getTemplateFaqTextTargets(faqRoot).answers.forEach((element) => {
-            applyTextStyle(element, answerStyle);
-          });
           syncTemplateHtmlFromPreview();
         };
 
-        [normal, hover, questionStyle.color, answerStyle.color].forEach((pair) => {
+        [normal, hover].forEach((pair) => {
           pair.color.addEventListener("input", () => {
             pair.hex.value = normalizeHexColor(pair.color.value);
             pair.color.style.setProperty("--preview-edit-color", pair.hex.value);
@@ -5141,25 +3852,6 @@ ${containerHtml}`;
             applyFaqStyle();
           });
         });
-
-        [questionStyle, answerStyle].forEach((fields) => {
-          [fields.fontSize, fields.fontWeight, fields.textAlign, fields.lineHeight].forEach((input) => {
-            input.addEventListener("input", applyFaqStyle);
-            input.addEventListener("change", applyFaqStyle);
-          });
-        });
-
-        const setFaqPanel = (panelName) => {
-          summaryPanel.hidden = panelName !== "summary";
-          textPanel.hidden = panelName !== "text";
-          classPanel.hidden = panelName !== "class";
-          summaryTab.classList.toggle("is-active", panelName === "summary");
-          textTab.classList.toggle("is-active", panelName === "text");
-          classTab.classList.toggle("is-active", panelName === "class");
-        };
-        summaryTab.addEventListener("click", () => setFaqPanel("summary"));
-        textTab.addEventListener("click", () => setFaqPanel("text"));
-        classTab.addEventListener("click", () => setFaqPanel("class"));
 
         closeButton.addEventListener("click", closePreviewEditPopover);
         form.addEventListener("submit", (event) => {
@@ -5197,8 +3889,6 @@ ${containerHtml}`;
 
         const firstFaqRoot = getTemplateFaqRoot(detailsList[0], root);
         ensureTemplateFaqStyle(firstFaqRoot);
-        const faqTitle = findTemplateFaqTitle(firstFaqRoot, root);
-        attachTemplateFaqTitleEditor(faqTitle);
 
         detailsList.forEach((details, index) => {
           const summary = details.querySelector("summary");
@@ -5209,7 +3899,7 @@ ${containerHtml}`;
           const faqRoot = getTemplateFaqRoot(details, root);
           ensureTemplateFaqStyle(faqRoot);
           summary.classList.add("ll-template-faq-summary");
-          summary.setAttribute("title", "Clique para abrir o FAQ. Dê dois cliques no fundo para mudar as cores do FAQ.");
+          summary.setAttribute("title", "Clique para abrir o FAQ. Dê dois cliques no fundo para mudar cor normal e hover.");
 
           const question = findTemplateFaqQuestion(details);
           const answer = findTemplateFaqAnswer(details);
@@ -5220,7 +3910,7 @@ ${containerHtml}`;
               field: "text",
               templateNodeId: markTemplateNode(question),
               value: question.innerText || question.textContent || ""
-            }, { disableSingleClickPopover: true });
+            }, { faqColorTarget: { faqRoot, summary } });
           }
 
           if (answer) {
@@ -5229,7 +3919,7 @@ ${containerHtml}`;
               field: "text",
               templateNodeId: markTemplateNode(answer),
               value: answer.innerText || answer.textContent || ""
-            }, { multiline: true, disableSingleClickPopover: true });
+            }, { multiline: true });
           }
 
           details.addEventListener("toggle", () => {
@@ -5237,12 +3927,11 @@ ${containerHtml}`;
           });
 
           summary.addEventListener("click", (event) => {
-            if (event.detail > 1 || event.target.closest("[data-ll-preview-inline]")) {
+            if (event.target.closest("[data-ll-preview-text]")) {
               return;
             }
 
-            event.stopImmediatePropagation();
-            openTemplateFaqStylePopover(event, faqRoot, summary);
+            closePreviewEditPopover();
             window.setTimeout(syncTemplateHtmlFromPreview, 0);
           }, true);
 
@@ -5256,667 +3945,6 @@ ${containerHtml}`;
             openTemplateFaqStylePopover(event, faqRoot, summary);
           });
         });
-      };
-
-      const openCarouselNavStylePopover = (sourceEvent, carouselRoot) => {
-        if (!carouselRoot) {
-          return;
-        }
-
-        closePreviewEditPopover();
-
-        const getColor = (field, fallback) => normalizeHexColor(state.carousel[field] || fallback);
-        const getNumber = (field, fallback, min, max) => {
-          const value = Number(state.carousel[field]);
-          return Math.min(max, Math.max(min, Number.isFinite(value) ? value : fallback));
-        };
-        const form = document.createElement("form");
-        form.className = "preview-edit-popover preview-edit-popover--color preview-edit-popover--carousel-nav";
-        form.setAttribute("role", "dialog");
-        form.setAttribute("aria-label", "Estilo dos botões do carrossel");
-
-        const title = document.createElement("p");
-        title.className = "preview-edit-popover__title";
-        title.textContent = "Botões do carrossel";
-        form.appendChild(title);
-
-        const tabs = document.createElement("div");
-        tabs.className = "preview-edit-popover__tabs";
-        const colorsTab = document.createElement("button");
-        colorsTab.type = "button";
-        colorsTab.className = "is-active";
-        colorsTab.textContent = "Cores";
-        const shapeTab = document.createElement("button");
-        shapeTab.type = "button";
-        shapeTab.textContent = "Forma";
-        tabs.append(colorsTab, shapeTab);
-        form.appendChild(tabs);
-
-        const colorsPanel = document.createElement("div");
-        colorsPanel.className = "preview-edit-popover__panel";
-        const shapePanel = document.createElement("div");
-        shapePanel.className = "preview-edit-popover__panel";
-        shapePanel.hidden = true;
-
-        const makeColorField = (parent, labelText, value) => {
-          const label = document.createElement("label");
-          label.className = "preview-edit-popover__mini-field";
-          const labelTextElement = document.createElement("span");
-          labelTextElement.textContent = labelText;
-          const row = document.createElement("div");
-          row.className = "preview-edit-popover__color-row";
-          const picker = document.createElement("input");
-          picker.className = "preview-edit-popover__color";
-          picker.type = "color";
-          picker.value = value;
-          picker.style.setProperty("--preview-edit-color", value);
-          const hex = document.createElement("input");
-          hex.className = "preview-edit-popover__field";
-          hex.type = "text";
-          hex.value = value;
-          hex.placeholder = "#ffffff";
-          row.append(picker, hex);
-          label.append(labelTextElement, row);
-          parent.appendChild(label);
-          return { picker, hex };
-        };
-
-        const makeGroup = (titleText) => {
-          const group = document.createElement("div");
-          group.className = "preview-edit-popover__group";
-          const heading = document.createElement("p");
-          heading.className = "preview-edit-popover__note";
-          heading.textContent = titleText;
-          group.appendChild(heading);
-          const grid = document.createElement("div");
-          grid.className = "preview-edit-popover__grid";
-          group.appendChild(grid);
-          colorsPanel.appendChild(group);
-          return grid;
-        };
-
-        const normalGrid = makeGroup("Estado normal");
-        const normalBackground = makeColorField(normalGrid, "Fundo", getColor("dotBackgroundColor", "#ffffff"));
-        const normalText = makeColorField(normalGrid, "Texto", getColor("dotTextColor", "#14202b"));
-        const normalBorder = makeColorField(normalGrid, "Borda", getColor("dotBorderColor", "#d9e2ea"));
-        const normalIcon = makeColorField(normalGrid, "Ícone", getColor("dotIconColor", state.carousel.dotTextColor || "#14202b"));
-
-        const hoverGrid = makeGroup("Hover");
-        const hoverBackground = makeColorField(hoverGrid, "Fundo", getColor("dotHoverColor", "#fff9f2"));
-        const hoverText = makeColorField(hoverGrid, "Texto", getColor("dotHoverTextColor", state.carousel.dotTextColor || "#14202b"));
-        const hoverBorder = makeColorField(hoverGrid, "Borda", getColor("dotHoverBorderColor", state.carousel.dotActiveBorderColor || "#ee6911"));
-
-        const activeGrid = makeGroup("Botão selecionado");
-        const activeBackground = makeColorField(activeGrid, "Fundo", getColor("dotActiveColor", "#fff4e0"));
-        const activeText = makeColorField(activeGrid, "Texto", getColor("dotActiveTextColor", state.carousel.brandColor || "#ee6911"));
-        const activeBorder = makeColorField(activeGrid, "Borda", getColor("dotActiveBorderColor", "#ee6911"));
-        const activeIconBackground = makeColorField(activeGrid, "Fundo do ícone", getColor("dotIconActiveBackgroundColor", state.carousel.brandColor || "#ee6911"));
-        const activeIconColor = makeColorField(activeGrid, "Ícone", getColor("dotIconActiveColor", "#ffffff"));
-
-        const iconToggle = document.createElement("label");
-        iconToggle.className = "article-toggle";
-        const iconInput = document.createElement("input");
-        iconInput.type = "checkbox";
-        iconInput.checked = state.carousel.showNavIcons !== false;
-        const iconText = document.createElement("span");
-        iconText.textContent = "Mostrar ícones nos botões";
-        iconToggle.append(iconInput, iconText);
-        colorsPanel.appendChild(iconToggle);
-
-        const shapeGrid = document.createElement("div");
-        shapeGrid.className = "preview-edit-popover__grid";
-        shapePanel.appendChild(shapeGrid);
-        const makeNumberField = (labelText, value, min, max, step = 1) => {
-          const label = document.createElement("label");
-          label.className = "preview-edit-popover__mini-field";
-          const text = document.createElement("span");
-          text.textContent = labelText;
-          const input = document.createElement("input");
-          input.type = "number";
-          input.min = String(min);
-          input.max = String(max);
-          input.step = String(step);
-          input.value = String(value);
-          label.append(text, input);
-          shapeGrid.appendChild(label);
-          return input;
-        };
-        const radius = makeNumberField("Raio da borda (px)", getNumber("dotRadius", 12, 0, 48), 0, 48);
-        const borderWidth = makeNumberField("Espessura da borda (px)", getNumber("dotBorderWidth", 1, 0, 8), 0, 8);
-        const minHeight = makeNumberField("Altura mínima (px)", getNumber("dotMinHeight", 62, 36, 180), 36, 180);
-        const paddingX = makeNumberField("Respiro lateral (px)", getNumber("dotPaddingX", 16, 0, 64), 0, 64);
-        const hoverLift = makeNumberField("Elevação no hover (px)", getNumber("dotHoverLift", 4, 0, 20), 0, 20);
-        const shadowOpacity = makeNumberField("Opacidade da sombra", getNumber("dotShadowOpacity", 0, 0, 0.45), 0, 0.45, 0.01);
-        const formNote = document.createElement("p");
-        formNote.className = "preview-edit-popover__note";
-        formNote.textContent = "As alterações valem para todos os botões de navegação deste carrossel.";
-        shapePanel.appendChild(formNote);
-
-        form.append(colorsPanel, shapePanel);
-
-        const actions = document.createElement("div");
-        actions.className = "preview-edit-popover__actions";
-        const closeButton = document.createElement("button");
-        closeButton.className = "button";
-        closeButton.type = "button";
-        closeButton.textContent = "Fechar";
-        actions.appendChild(closeButton);
-        form.appendChild(actions);
-
-        const colorPairs = [
-          normalBackground, normalText, normalBorder, normalIcon,
-          hoverBackground, hoverText, hoverBorder,
-          activeBackground, activeText, activeBorder, activeIconBackground, activeIconColor
-        ];
-        const syncPair = (pair) => {
-          if (!isHexColor(pair.hex.value)) {
-            return false;
-          }
-          const color = normalizeHexColor(pair.hex.value);
-          pair.hex.value = color;
-          pair.picker.value = color;
-          pair.picker.style.setProperty("--preview-edit-color", color);
-          return true;
-        };
-        const numberValue = (input, fallback, min, max) => {
-          const value = Number(input.value);
-          const normalized = Math.min(max, Math.max(min, Number.isFinite(value) ? value : fallback));
-          input.value = String(normalized);
-          return normalized;
-        };
-        const applyStyle = () => {
-          colorPairs.forEach(syncPair);
-          const values = {
-            dotBackgroundColor: normalBackground.picker.value,
-            dotTextColor: normalText.picker.value,
-            dotBorderColor: normalBorder.picker.value,
-            dotIconColor: normalIcon.picker.value,
-            dotHoverColor: hoverBackground.picker.value,
-            dotHoverTextColor: hoverText.picker.value,
-            dotHoverBorderColor: hoverBorder.picker.value,
-            dotActiveColor: activeBackground.picker.value,
-            dotActiveTextColor: activeText.picker.value,
-            dotActiveBorderColor: activeBorder.picker.value,
-            dotIconActiveBackgroundColor: activeIconBackground.picker.value,
-            dotIconActiveColor: activeIconColor.picker.value,
-            dotRadius: numberValue(radius, 12, 0, 48),
-            dotBorderWidth: numberValue(borderWidth, 1, 0, 8),
-            dotMinHeight: numberValue(minHeight, 62, 36, 180),
-            dotPaddingX: numberValue(paddingX, 16, 0, 64),
-            dotHoverLift: numberValue(hoverLift, 4, 0, 20),
-            dotShadowOpacity: numberValue(shadowOpacity, 0, 0, 0.45),
-            showNavIcons: iconInput.checked
-          };
-          Object.assign(state.carousel, values);
-          const shadowColor = hexToRgba(values.dotBorderColor, values.dotShadowOpacity.toFixed(2));
-          const styleValues = {
-            "--ll-carousel-dot-bg": values.dotBackgroundColor,
-            "--ll-carousel-dot-color": values.dotTextColor,
-            "--ll-carousel-dot-border": values.dotBorderColor,
-            "--ll-carousel-dot-icon-color": values.dotIconColor,
-            "--ll-carousel-dot-hover": values.dotHoverColor,
-            "--ll-carousel-dot-hover-color": values.dotHoverTextColor,
-            "--ll-carousel-dot-hover-border": values.dotHoverBorderColor,
-            "--ll-carousel-dot-active": values.dotActiveColor,
-            "--ll-carousel-dot-active-color": values.dotActiveTextColor,
-            "--ll-carousel-dot-active-border": values.dotActiveBorderColor,
-            "--ll-carousel-dot-icon-active-bg": values.dotIconActiveBackgroundColor,
-            "--ll-carousel-dot-icon-active-color": values.dotIconActiveColor,
-            "--ll-carousel-dot-radius": `${values.dotRadius}px`,
-            "--ll-carousel-dot-border-width": `${values.dotBorderWidth}px`,
-            "--ll-carousel-dot-min-height": `${values.dotMinHeight}px`,
-            "--ll-carousel-dot-padding-x": `${values.dotPaddingX}px`,
-            "--ll-carousel-dot-hover-lift": `${values.dotHoverLift}px`,
-            "--ll-carousel-dot-shadow": `0 ${values.dotHoverLift}px ${values.dotHoverLift * 4}px ${shadowColor}`
-          };
-          Object.entries(styleValues).forEach(([name, value]) => carouselRoot.style.setProperty(name, value));
-          carouselRoot.querySelectorAll(".ll-carousel__dot-icon").forEach((icon) => {
-            icon.style.display = values.showNavIcons ? "" : "none";
-          });
-          generatedHtml.value = buildOutputHtml("html");
-          copyStatus.textContent = "";
-          copyStatus.classList.remove("is-warning", "is-visible");
-        };
-        const setPanel = (name) => {
-          colorsPanel.hidden = name !== "colors";
-          shapePanel.hidden = name !== "shape";
-          colorsTab.classList.toggle("is-active", name === "colors");
-          shapeTab.classList.toggle("is-active", name === "shape");
-        };
-        colorsTab.addEventListener("click", () => setPanel("colors"));
-        shapeTab.addEventListener("click", () => setPanel("shape"));
-        colorPairs.forEach((pair) => {
-          pair.picker.addEventListener("input", () => {
-            pair.hex.value = normalizeHexColor(pair.picker.value);
-            pair.picker.style.setProperty("--preview-edit-color", pair.hex.value);
-            applyStyle();
-          });
-          pair.hex.addEventListener("input", () => {
-            if (isHexColor(pair.hex.value)) {
-              applyStyle();
-            }
-          });
-          pair.hex.addEventListener("change", () => {
-            if (!syncPair(pair)) {
-              pair.hex.value = pair.picker.value;
-            }
-            applyStyle();
-          });
-        });
-        [radius, borderWidth, minHeight, paddingX, hoverLift, shadowOpacity].forEach((input) => {
-          input.addEventListener("input", applyStyle);
-          input.addEventListener("change", applyStyle);
-        });
-        iconInput.addEventListener("change", () => {
-          applyStyle();
-          if (iconInput.checked && !carouselRoot.querySelector(".ll-carousel__dot-icon")) {
-            updateOutput();
-          }
-        });
-        closeButton.addEventListener("click", closePreviewEditPopover);
-        form.addEventListener("submit", (event) => {
-          event.preventDefault();
-          closePreviewEditPopover();
-        });
-        previewEditKeyHandler = (event) => {
-          if (event.key === "Escape") {
-            closePreviewEditPopover();
-          }
-        };
-        previewEditOutsideHandler = (event) => {
-          if (previewEditPopover && !previewEditPopover.contains(event.target)) {
-            closePreviewEditPopover();
-          }
-        };
-        document.body.appendChild(form);
-        previewEditPopover = form;
-        positionPreviewEditPopover(sourceEvent);
-        window.setTimeout(() => {
-          document.addEventListener("mousedown", previewEditOutsideHandler, true);
-          document.addEventListener("keydown", previewEditKeyHandler, true);
-        }, 0);
-      };
-
-      const getTemplateTableRoot = (element, root) => {
-        const table = element.closest?.(".table-container-custom, .ll-bento__card--table, table, .table-design-custom");
-        if (!table) {
-          return null;
-        }
-
-        return table.closest?.(".table-container-custom, .ll-bento__card--table")
-          || (table.tagName === "TABLE" ? table : table.querySelector?.("table"))
-          || table
-          || root;
-      };
-
-      const isTemplateTableElement = (element, root) => {
-        return Boolean(element?.closest?.(".table-container-custom, .table-design-custom, .table-text-custom, table, th, td")
-          && root.contains(element));
-      };
-
-      const openTemplateTableStylePopover = (sourceEvent, tableRoot) => {
-        if (!tableRoot) {
-          return;
-        }
-
-        closePreviewEditPopover();
-
-        const table = tableRoot.tagName === "TABLE" ? tableRoot : tableRoot.querySelector("table") || tableRoot;
-        const headerCells = Array.from(tableRoot.querySelectorAll("th, .table-th-custom"));
-        const bodyCells = Array.from(tableRoot.querySelectorAll("td, .table-td-custom, .table-td-custom-title, .table-td-custom-sub"));
-        const sampleHeader = headerCells[0] || table;
-        const sampleBody = bodyCells[0] || sampleHeader;
-        const headerComputed = sampleHeader.ownerDocument.defaultView.getComputedStyle(sampleHeader);
-        const bodyComputed = sampleBody.ownerDocument.defaultView.getComputedStyle(sampleBody);
-        const initialHeaderBg = colorToHex(headerComputed.backgroundColor || "#ea5b0c", "#ea5b0c");
-        const initialHeaderColor = colorToHex(headerComputed.color || "#ffffff", "#ffffff");
-        const initialBodyColor = colorToHex(bodyComputed.color || "#111827", "#111827");
-        const initialBorderColor = colorToHex(bodyComputed.borderBottomColor || headerComputed.borderBottomColor || "#d5dbe7", "#d5dbe7");
-
-        const form = document.createElement("form");
-        form.className = "preview-edit-popover preview-edit-popover--color";
-        form.setAttribute("role", "dialog");
-        form.setAttribute("aria-label", "Editar tabela");
-
-        const title = document.createElement("p");
-        title.className = "preview-edit-popover__title";
-        title.textContent = "Tabela";
-        form.appendChild(title);
-
-        const makeColorField = (labelText, initialValue) => {
-          const label = document.createElement("label");
-          label.className = "preview-edit-popover__mini-field";
-          const text = document.createElement("span");
-          text.textContent = labelText;
-          const row = document.createElement("div");
-          row.className = "preview-edit-popover__color-row preview-edit-popover__color-row--picker";
-          const color = document.createElement("input");
-          color.className = "preview-edit-popover__color";
-          color.type = "color";
-          color.value = initialValue;
-          color.style.setProperty("--preview-edit-color", initialValue);
-          const hex = document.createElement("input");
-          hex.className = "preview-edit-popover__field";
-          hex.type = "text";
-          hex.value = initialValue;
-          hex.placeholder = "#ea5b0c";
-          row.append(color, hex);
-          label.append(text, row);
-          form.appendChild(label);
-          return { color, hex };
-        };
-
-        const headerBg = makeColorField("Fundo do cabecalho", initialHeaderBg);
-        const headerText = makeColorField("Texto do cabecalho", initialHeaderColor);
-        const bodyText = makeColorField("Texto das linhas", initialBodyColor);
-        const border = makeColorField("Bordas", initialBorderColor);
-
-        const actions = document.createElement("div");
-        actions.className = "preview-edit-popover__actions";
-        const closeButton = document.createElement("button");
-        closeButton.className = "button";
-        closeButton.type = "button";
-        closeButton.textContent = "Fechar";
-        actions.appendChild(closeButton);
-        form.appendChild(actions);
-
-        const syncPair = (pair) => {
-          if (isHexColor(pair.hex.value)) {
-            pair.hex.value = normalizeHexColor(pair.hex.value);
-            pair.color.value = pair.hex.value;
-            pair.color.style.setProperty("--preview-edit-color", pair.hex.value);
-          }
-        };
-
-        const applyTableStyle = () => {
-          [headerBg, headerText, bodyText, border].forEach(syncPair);
-          headerCells.forEach((cell) => {
-            cell.style.backgroundColor = headerBg.color.value;
-            cell.style.color = headerText.color.value;
-            cell.style.borderColor = border.color.value;
-          });
-          bodyCells.forEach((cell) => {
-            cell.style.color = bodyText.color.value;
-            cell.style.borderColor = border.color.value;
-          });
-          tableRoot.querySelectorAll(".table-text-custom, th, td").forEach((cell) => {
-            cell.style.borderBottomColor = border.color.value;
-          });
-          syncTemplateHtmlFromPreview();
-        };
-
-        [headerBg, headerText, bodyText, border].forEach((pair) => {
-          pair.color.addEventListener("input", () => {
-            pair.hex.value = normalizeHexColor(pair.color.value);
-            pair.color.style.setProperty("--preview-edit-color", pair.hex.value);
-            applyTableStyle();
-          });
-          pair.hex.addEventListener("input", () => {
-            if (isHexColor(pair.hex.value)) {
-              applyTableStyle();
-            }
-          });
-          pair.hex.addEventListener("change", () => {
-            pair.hex.value = isHexColor(pair.hex.value) ? normalizeHexColor(pair.hex.value) : pair.color.value;
-            applyTableStyle();
-          });
-        });
-
-        closeButton.addEventListener("click", closePreviewEditPopover);
-        form.addEventListener("submit", (event) => {
-          event.preventDefault();
-          closePreviewEditPopover();
-        });
-        previewEditKeyHandler = (event) => {
-          if (event.key === "Escape") {
-            closePreviewEditPopover();
-          }
-        };
-        previewEditOutsideHandler = (event) => {
-          if (previewEditPopover && !previewEditPopover.contains(event.target)) {
-            closePreviewEditPopover();
-          }
-        };
-
-        document.body.appendChild(form);
-        previewEditPopover = form;
-        positionPreviewEditPopover(sourceEvent);
-        window.setTimeout(() => {
-          document.addEventListener("mousedown", previewEditOutsideHandler, true);
-          document.addEventListener("keydown", previewEditKeyHandler, true);
-        }, 0);
-      };
-
-      const getTemplateTableElement = (tableRoot) => {
-        if (!tableRoot) {
-          return null;
-        }
-
-        return tableRoot.tagName === "TABLE" ? tableRoot : tableRoot.querySelector("table");
-      };
-
-      const getTemplateTableToolHost = (tableRoot) => {
-        if (!tableRoot) {
-          return null;
-        }
-
-        return tableRoot.tagName === "TABLE" ? tableRoot.parentElement : tableRoot;
-      };
-
-      const clearTemplateTablePreviewAttrs = (element) => {
-        if (!element?.attributes) {
-          return element;
-        }
-
-        Array.from(element.attributes).forEach((attribute) => {
-          if (attribute.name.startsWith("data-ll-")) {
-            element.removeAttribute(attribute.name);
-          }
-        });
-        element.removeAttribute("contenteditable");
-        element.removeAttribute("spellcheck");
-        element.removeAttribute("title");
-        return element;
-      };
-
-      const getTemplateTableColumnCount = (table) => {
-        const rows = Array.from(table?.rows || []);
-        return rows.reduce((max, row) => Math.max(max, row.cells.length), 0);
-      };
-
-      const normalizeTemplateTableHeaderCorners = (table) => {
-        const headerRows = Array.from(table?.tHead?.rows || table?.querySelectorAll("thead tr") || []);
-        headerRows.forEach((row) => {
-          const cells = Array.from(row.cells || []);
-          cells.forEach((cell, index) => {
-            if (cells.length === 1) {
-              cell.style.borderRadius = "10px 10px 0 0";
-            } else if (index === 0) {
-              cell.style.borderRadius = "10px 0 0 0";
-            } else if (index === cells.length - 1) {
-              cell.style.borderRadius = "0 10px 0 0";
-            } else {
-              cell.style.borderRadius = "0";
-            }
-          });
-        });
-      };
-
-      const makeTemplateTableCell = (docRef, sourceCell, tagName, text) => {
-        const cell = sourceCell ? sourceCell.cloneNode(false) : docRef.createElement(tagName);
-        clearTemplateTablePreviewAttrs(cell);
-        cell.textContent = text;
-        return cell;
-      };
-
-      const attachTemplateTableCellText = (cell) => {
-        if (!cell || !["TD", "TH"].includes(cell.tagName)) {
-          return;
-        }
-
-        const id = markTemplateNode(cell);
-        attachText(cell, {
-          scope: "template",
-          field: "text",
-          templateNodeId: id,
-          value: cell.innerText || cell.textContent || ""
-        }, {
-          multiline: true
-        });
-      };
-
-      const addTemplateTableColumn = (tableRoot) => {
-        const table = getTemplateTableElement(tableRoot);
-        if (!table) {
-          return;
-        }
-
-        const docRef = table.ownerDocument;
-        const headerRows = Array.from(table.tHead?.rows || table.querySelectorAll("thead tr") || []);
-        headerRows.forEach((row) => {
-          const source = row.cells[row.cells.length - 1] || null;
-          const cell = makeTemplateTableCell(docRef, source, "th", "COLUNA");
-          row.appendChild(cell);
-          attachTemplateTableCellText(cell);
-        });
-
-        const body = table.tBodies?.[0] || table.createTBody();
-        const bodyRows = Array.from(body.rows || []);
-        if (!bodyRows.length) {
-          const row = body.insertRow();
-          const count = Math.max(1, getTemplateTableColumnCount(table));
-          for (let index = 0; index < count; index += 1) {
-            const cell = makeTemplateTableCell(docRef, null, "td", index === count - 1 ? "Novo item" : "");
-            row.appendChild(cell);
-            attachTemplateTableCellText(cell);
-          }
-        } else {
-          bodyRows.forEach((row) => {
-            const source = row.cells[row.cells.length - 1] || null;
-            const cell = makeTemplateTableCell(docRef, source, "td", "Novo item");
-            row.appendChild(cell);
-            attachTemplateTableCellText(cell);
-          });
-        }
-
-        normalizeTemplateTableHeaderCorners(table);
-        syncTemplateHtmlFromPreview();
-      };
-
-      const addTemplateTableRow = (tableRoot) => {
-        const table = getTemplateTableElement(tableRoot);
-        if (!table) {
-          return;
-        }
-
-        const docRef = table.ownerDocument;
-        const body = table.tBodies?.[0] || table.createTBody();
-        const sourceRow = body.rows?.[body.rows.length - 1] || null;
-        const nextRow = sourceRow ? sourceRow.cloneNode(false) : docRef.createElement("tr");
-        clearTemplateTablePreviewAttrs(nextRow);
-        const columnCount = Math.max(1, getTemplateTableColumnCount(table));
-
-        for (let index = 0; index < columnCount; index += 1) {
-          const sourceCell = sourceRow?.cells?.[index] || sourceRow?.cells?.[sourceRow.cells.length - 1] || null;
-          const cell = makeTemplateTableCell(docRef, sourceCell, "td", "Novo item");
-          nextRow.appendChild(cell);
-          attachTemplateTableCellText(cell);
-        }
-
-        body.appendChild(nextRow);
-        syncTemplateHtmlFromPreview();
-      };
-
-      const ensureTemplateTableTools = (tableRoot, root) => {
-        const table = getTemplateTableElement(tableRoot);
-        const host = getTemplateTableToolHost(tableRoot);
-        if (!table || !host || !root.contains(host)) {
-          return;
-        }
-
-        host.dataset.llTableEditRoot = "true";
-        if (host.querySelector(":scope > [data-ll-table-helper-button]")) {
-          return;
-        }
-
-        const makeButton = (kind, title) => {
-          const button = host.ownerDocument.createElement("button");
-          button.type = "button";
-          button.textContent = "+";
-          button.title = title;
-          button.setAttribute("aria-label", title);
-          button.dataset.llTemplateHelper = "true";
-          button.dataset.llTableHelperButton = "true";
-          if (kind === "column") {
-            button.dataset.llTableAddColumn = "true";
-          } else {
-            button.dataset.llTableAddRow = "true";
-          }
-          button.addEventListener("click", (event) => {
-            event.preventDefault();
-            event.stopPropagation();
-            event.stopImmediatePropagation();
-            if (kind === "column") {
-              addTemplateTableColumn(tableRoot);
-            } else {
-              addTemplateTableRow(tableRoot);
-            }
-          });
-          return button;
-        };
-
-        host.append(
-          makeButton("column", "Adicionar coluna"),
-          makeButton("row", "Adicionar linha")
-        );
-      };
-
-      const setupTemplateTableTools = (root) => {
-        const tableRoots = new Set();
-        root.querySelectorAll(".table-container-custom, .ll-bento__card--table, .table-design-custom, table").forEach((element) => {
-          const tableRoot = getTemplateTableRoot(element, root);
-          if (tableRoot) {
-            tableRoots.add(tableRoot);
-          }
-        });
-        tableRoots.forEach((tableRoot) => ensureTemplateTableTools(tableRoot, root));
-      };
-
-      const setupTemplateTableEditing = (root) => {
-        setupTemplateTableTools(root);
-
-        if (root.dataset.llTemplateTableEditing === "true") {
-          return;
-        }
-
-        root.dataset.llTemplateTableEditing = "true";
-        root.addEventListener("click", (event) => {
-          if (event.target.closest("[data-ll-table-helper-button]")) {
-            return;
-          }
-
-          if (event.detail > 1 || event.target.closest("[data-ll-preview-inline]")) {
-            return;
-          }
-
-          if (event.target.closest("[data-ll-preview-text]")) {
-            return;
-          }
-
-          const target = event.target.closest(".table-container-custom, .table-design-custom, .table-text-custom, table, th, td");
-          if (!target || !root.contains(target)) {
-            return;
-          }
-
-          const tableRoot = getTemplateTableRoot(target, root);
-          if (!tableRoot) {
-            return;
-          }
-
-          event.preventDefault();
-          event.stopImmediatePropagation();
-          openTemplateTableStylePopover(event, tableRoot);
-        }, true);
       };
 
       const resolveTemplateMediaNode = (element) => {
@@ -5994,7 +4022,6 @@ ${containerHtml}`;
         const escapeSelector = doc.defaultView.CSS?.escape || ((value) => String(value).replace(/["\\#.;,[\]()>+~*^$|=:\s]/g, "\\$&"));
         const targetId = target.id || "";
         const ariaControls = label?.getAttribute?.("aria-controls") || target.getAttribute?.("aria-controls") || "";
-        const panels = getTemplateStoryPanels(storyRoot);
         if (ariaControls) {
           const controlledPanel = doc.getElementById(ariaControls);
           if (controlledPanel && storyRoot.contains(controlledPanel)) {
@@ -6023,44 +4050,9 @@ ${containerHtml}`;
           ? `input[type="${target.type}"][name="${escapeSelector(target.name)}"]`
           : `input[type="${target.type}"]`;
         const inputs = Array.from(storyRoot.querySelectorAll(groupSelector));
+        const panels = Array.from(storyRoot.querySelectorAll(".lp-stories__panel, [class*='story' i][class*='panel' i], [class*='stories' i][class*='panel' i]"));
         const index = inputs.indexOf(target);
         return index >= 0 ? panels[index] || null : null;
-      };
-
-      const getTemplateStoryPanels = (storyRoot) => {
-        if (!storyRoot) {
-          return [];
-        }
-
-        const candidates = Array.from(storyRoot.querySelectorAll(".lp-stories__panel, [class*='story' i][class*='panel' i], [class*='stories' i][class*='panel' i]"));
-        return candidates.filter((element) => {
-          if (!element || element === storyRoot) {
-            return false;
-          }
-
-          const className = typeof element.className === "string" ? element.className.toLowerCase() : "";
-          if (/(^|\s)(lp-)?stories?(__|-)?panels(\s|$)/i.test(className) || className.includes("__panels")) {
-            return false;
-          }
-
-          return element.matches?.(".lp-stories__panel")
-            || !Array.from(element.children || []).some((child) => {
-              return child.matches?.(".lp-stories__panel, [class*='story' i][class*='panel' i], [class*='stories' i][class*='panel' i]");
-            });
-        });
-      };
-
-      const getTemplateStoryInputs = (storyRoot, target) => {
-        if (!storyRoot) {
-          return [];
-        }
-
-        const escapeSelector = doc.defaultView.CSS?.escape || ((value) => String(value).replace(/["\\#.;,[\]()>+~*^$|=:\s]/g, "\\$&"));
-        if (target?.name && target?.type) {
-          return Array.from(storyRoot.querySelectorAll(`input[type="${target.type}"][name="${escapeSelector(target.name)}"]`));
-        }
-
-        return Array.from(storyRoot.querySelectorAll('input[type="radio"], input[type="checkbox"]'));
       };
 
       const applyTemplateStorySelection = (label, target, root) => {
@@ -6075,14 +4067,8 @@ ${containerHtml}`;
         }
 
         storyRoot.dataset.llPreviewManualStory = "true";
-        getTemplateStoryInputs(storyRoot, target).forEach((input) => {
-          input.checked = input === target;
-          input.toggleAttribute("checked", input === target);
-        });
-
-        getTemplateStoryPanels(storyRoot).forEach((item) => {
+        storyRoot.querySelectorAll(".lp-stories__panel, [class*='story' i][class*='panel' i], [class*='stories' i][class*='panel' i]").forEach((item) => {
           const isActive = item === panel;
-          item.dataset.llPreviewStoryPanel = "true";
           item.toggleAttribute("data-ll-preview-story-active", isActive);
           item.toggleAttribute("data-ll-preview-story-hidden", !isActive);
         });
@@ -6091,8 +4077,6 @@ ${containerHtml}`;
           const current = getControlledInput(item);
           item.toggleAttribute("data-ll-preview-story-current", current === target);
         });
-
-        syncTemplateHtmlFromPreview();
       };
 
       const setupTemplatePreviewEditing = () => {
@@ -6112,16 +4096,10 @@ ${containerHtml}`;
             return;
           }
 
-          const storyRoot = findTemplateStoryRoot(label, root) || findTemplateStoryRoot(target, root);
-          if (!storyRoot) {
-            return;
-          }
-
-          event.preventDefault();
-          event.stopPropagation();
-
           const syncStorySelection = () => {
-            target.checked = true;
+            if (target.type === "radio") {
+              target.checked = true;
+            }
             target.dispatchEvent(new doc.defaultView.Event("input", { bubbles: true }));
             target.dispatchEvent(new doc.defaultView.Event("change", { bubbles: true }));
             applyTemplateStorySelection(label, target, root);
@@ -6136,14 +4114,6 @@ ${containerHtml}`;
 
         root.addEventListener("dblclick", (event) => {
           if (event.target.closest("[data-ll-preview-text]")) {
-            return;
-          }
-
-          const iconHost = event.target.closest?.(".ll-carousel__dot-icon, [class*='icon' i], [class*='logo' i], [class*='avatar' i], [class*='emblem' i]");
-          if (iconHost && root.contains(iconHost) && getTemplateIconMediaElement(iconHost)) {
-            event.preventDefault();
-            event.stopImmediatePropagation();
-            openTemplateIconPopover(event, iconHost);
             return;
           }
 
@@ -6163,8 +4133,8 @@ ${containerHtml}`;
             value: getTemplateMediaValue(editableElement)
           };
 
-          if (isTemplateIconElement(editableElement)) {
-            openTemplateIconPopover(event, editableElement);
+          if (editableElement.tagName === "SVG") {
+            openTemplateSvgPopover(event, editableElement);
           } else if (editableElement.tagName === "IMG") {
             openTemplateImagePopover(event, editableElement, mediaMeta, "URL da imagem ou mídia");
           } else {
@@ -6195,14 +4165,14 @@ ${containerHtml}`;
             }
 
             const target = targetId ? doc.getElementById(targetId) : null;
+            try {
+              doc.defaultView.history.replaceState(null, "", rawHref);
+            } catch (_) {}
+
             if (target) {
               if (target.matches?.('input[type="radio"], input[type="checkbox"]')) {
-                const storyRoot = findTemplateStoryRoot(anchor, root) || findTemplateStoryRoot(target, root);
                 target.checked = true;
                 target.dispatchEvent(new doc.defaultView.Event("change", { bubbles: true }));
-                if (storyRoot) {
-                  applyTemplateStorySelection(anchor, target, root);
-                }
               } else {
                 target.scrollIntoView({ block: "nearest", inline: "nearest" });
               }
@@ -6231,10 +4201,6 @@ ${containerHtml}`;
             return;
           }
 
-          if (isTemplateHeaderLogoTarget(event.target, header)) {
-            return;
-          }
-
           event.preventDefault();
           event.stopPropagation();
           openTemplateHeaderPopover(event, header);
@@ -6246,18 +4212,11 @@ ${containerHtml}`;
           }
         });
 
-        root.querySelectorAll(".ll-carousel__dot-icon, [class*='icon' i], [class*='logo' i], [class*='avatar' i], [class*='emblem' i]").forEach((element) => {
-          if (getTemplateIconMediaElement(element)) {
-            attachTemplateIcon(element);
-          }
-        });
-
         setupTemplateFaqEditing(root);
-        setupTemplateTableEditing(root);
 
         [root, ...root.querySelectorAll("*")].forEach((element) => {
           const header = findTemplateHeaderRoot(element, root);
-          if (header && isTemplateHeaderBannerTarget(element, header) && !isTemplateHeaderLogoTarget(element, header)) {
+          if (header && isTemplateHeaderBannerTarget(element, header)) {
             return;
           }
 
@@ -6265,15 +4224,11 @@ ${containerHtml}`;
 
           if (element.tagName === "SVG") {
             markTemplateNode(element);
-            attachTemplateIcon(element);
+            attachTemplateSvg(element);
             return;
           }
 
           if (!isOverlayElement && isTemplateTextCandidate(element)) {
-            if (element.dataset.llTemplateFaqTitleReady === "true") {
-              return;
-            }
-
             const id = markTemplateNode(element);
             const shouldUseDblClick = isRadioToggleLabel(element) || isStoryLabelText(element);
             attachText(element, {
@@ -6295,11 +4250,6 @@ ${containerHtml}`;
             };
 
             if (element.tagName === "IMG") {
-              if (isTemplateIconElement(element)) {
-                attachTemplateIcon(element);
-                return;
-              }
-
               element.setAttribute("title", "Dê dois cliques para trocar URL e alt text.");
               element.addEventListener("dblclick", (event) => {
                 event.preventDefault();
@@ -6316,12 +4266,7 @@ ${containerHtml}`;
           if (!isOverlayElement && isTemplateColorCandidate(element, root)) {
             const id = markTemplateNode(element);
             const computed = element.ownerDocument.defaultView.getComputedStyle(element);
-            const backgroundImage = computed.backgroundImage || "";
-            const backgroundColor = backgroundImage && backgroundImage !== "none" && !/url\(/i.test(backgroundImage)
-              ? backgroundImage
-              : isTransparentColor(computed.backgroundColor)
-                ? "#ffffff"
-                : colorToHex(computed.backgroundColor || "#ffffff", "#ffffff");
+            const backgroundColor = isTransparentColor(computed.backgroundColor) ? "#ffffff" : colorToHex(computed.backgroundColor || "#ffffff", "#ffffff");
             attachColor(element, {
               scope: "template",
               field: "backgroundColor",
@@ -6346,7 +4291,7 @@ ${containerHtml}`;
           button.addEventListener("click", (event) => {
             event.preventDefault();
             const nextDashboardTab = button.dataset.dashboardPreviewTab;
-            if (["faq", "table", "stories", "article", "carousel", "bento", "senko", "template"].includes(nextDashboardTab)) {
+            if (["faq", "table", "stories", "article", "carousel", "bento", "template"].includes(nextDashboardTab)) {
               currentEditorTab = nextDashboardTab;
               state.dashboard.view = "layouts";
               renderEditor();
@@ -6421,54 +4366,6 @@ ${containerHtml}`;
       }
 
       if (tab === "carousel") {
-        const carouselRoot = doc.querySelector(".ll-carousel");
-        if (carouselRoot) {
-          carouselRoot.addEventListener("click", (event) => {
-            if (event.target.closest('[contenteditable="true"]')) {
-              return;
-            }
-
-            if (event.target.closest("[data-ll-preview-text], [data-ll-preview-media], [data-ll-preview-color], [data-ll-preview-position]")) {
-              return;
-            }
-
-            const label = event.target.closest(".ll-carousel__dot[for], .ll-carousel__side-hint[for]");
-            if (!label || !carouselRoot.contains(label)) {
-              return;
-            }
-
-            // Os cards de navegação aguardam o clique local para distinguir
-            // troca de slide de duplo clique no fundo para editar o estilo.
-            if (label.matches(".ll-carousel__dot")) {
-              return;
-            }
-
-            const input = getControlledInput(label);
-            if (!input || !input.matches?.('input[type="radio"]')) {
-              return;
-            }
-
-            event.preventDefault();
-            event.stopPropagation();
-
-            input.checked = true;
-            input.dispatchEvent(new doc.defaultView.Event("input", { bubbles: true }));
-            input.dispatchEvent(new doc.defaultView.Event("change", { bubbles: true }));
-
-            const slideMatch = String(input.id || label.getAttribute("for") || "").match(/(\d+)$/);
-            const slideIndex = slideMatch
-              ? Math.max(0, Number(slideMatch[1]) - 1)
-              : Array.from(carouselRoot.querySelectorAll(".ll-carousel__dot")).indexOf(label);
-
-            if (slideIndex >= 0) {
-              state.carousel.openSlideIndex = slideIndex;
-              setCarouselPreviewSlide(slideIndex);
-            }
-
-            updateOutput();
-          }, true);
-        }
-
         attachText(doc.querySelector(".ll-carousel__intro .ll-carousel__eyebrow"), { scope: "carousel", field: "eyebrow" });
         attachText(doc.querySelector(".ll-carousel__intro .ll-carousel__title"), { scope: "carousel", field: "title" });
         attachText(doc.querySelector(".ll-carousel__intro .ll-carousel__lead"), { scope: "carousel", field: "lead" }, { multiline: true });
@@ -6476,45 +4373,9 @@ ${containerHtml}`;
         attachColor(doc.querySelector(".ll-carousel__eyebrow"), { scope: "carousel", field: "brandColor" }, "cor de destaque");
 
         doc.querySelectorAll(".ll-carousel__dot").forEach((dot, slideIndex) => {
-          let dotClickTimer = 0;
-          const activateDot = () => {
-            const targetId = dot.getAttribute("for");
-            const input = targetId ? doc.getElementById(targetId) : null;
-            if (input) {
-              input.checked = true;
-            }
-            state.carousel.openSlideIndex = slideIndex;
-            setCarouselPreviewSlide(slideIndex);
-            updateOutput();
-          };
-
-          dot.addEventListener("click", (event) => {
-            if (event.target?.isContentEditable || event.target.closest("[data-ll-preview-text], [data-ll-preview-media]")) {
-              return;
-            }
-
-            event.preventDefault();
-            event.stopPropagation();
-            window.clearTimeout(dotClickTimer);
-            if (event.detail > 1) {
-              return;
-            }
-            dotClickTimer = window.setTimeout(activateDot, 280);
-          });
-
-          dot.addEventListener("dblclick", (event) => {
-            window.clearTimeout(dotClickTimer);
-            if (event.target.closest("[data-ll-preview-text], .ll-carousel__dot-icon")) {
-              return;
-            }
-            event.preventDefault();
-            event.stopPropagation();
-            openCarouselNavStylePopover(event, carouselRoot);
-          });
-
           attachText(dot.querySelector(".ll-carousel__dot-number"), { scope: "carousel", slideIndex, field: "navNumber" });
           attachText(dot.querySelector(".ll-carousel__dot-text"), { scope: "carousel", slideIndex, field: "navLabel" });
-          attachTemplateIcon(dot.querySelector(".ll-carousel__dot-icon"));
+          attachMedia(dot.querySelector(".ll-carousel__dot-icon"), { scope: "carousel", slideIndex, field: "navIconImage" }, "URL ou SVG do ícone");
         });
 
         doc.querySelectorAll(".ll-carousel__panel").forEach((panel, slideIndex) => {
@@ -6542,110 +4403,6 @@ ${containerHtml}`;
         if (!root) {
           return;
         }
-
-        const persistBentoResize = (element) => {
-          if (!element || !element.isConnected) {
-            return;
-          }
-
-          const rect = element.getBoundingClientRect();
-          const width = Math.round(rect.width);
-          const height = Math.round(rect.height);
-          if (!Number.isFinite(width) || !Number.isFinite(height) || width <= 0 || height <= 0) {
-            return;
-          }
-
-          element.style.width = `${width}px`;
-          element.style.height = `${height}px`;
-
-          const blockIndex = Number(element.dataset.llBentoResizeBlock);
-          if (Number.isInteger(blockIndex) && state.bento?.blocks?.[blockIndex]) {
-            state.bento.blocks[blockIndex].resizeWidth = width;
-            state.bento.blocks[blockIndex].resizeHeight = height;
-          }
-
-          if (currentPage === "conteudo") {
-            markResponsiveDirty();
-          }
-
-          if (state.bento?.useCustomHtml) {
-            syncBentoHtmlFromPreview();
-          } else {
-            state.bento.status = "Tamanho salvo pela previa.";
-            generatedHtml.value = buildOutputHtml("html");
-            copyStatus.textContent = "";
-            copyStatus.classList.remove("is-warning", "is-visible");
-          }
-        };
-
-        const setupBentoResizePersistence = () => {
-          const textBlockIndexes = state.bento.blocks
-            .map((block, index) => block.type === "text" ? index : -1)
-            .filter((index) => index >= 0);
-          const resizeCards = Array.from(root.querySelectorAll(".ll-bento__card--text"));
-          const ResizeObserverCtor = doc.defaultView.ResizeObserver;
-          const resizeObserver = ResizeObserverCtor
-            ? new ResizeObserverCtor((entries) => {
-              entries.forEach((entry) => {
-                const element = entry.target;
-                if (!element.__llBentoResizeActive) {
-                  return;
-                }
-
-                const start = element.__llBentoResizeStart || {};
-                const width = Math.round(entry.contentRect.width);
-                const height = Math.round(entry.contentRect.height);
-                const changed = Math.abs(width - (start.width || width)) > 2
-                  || Math.abs(height - (start.height || height)) > 2;
-                if (!changed) {
-                  return;
-                }
-
-                window.clearTimeout(element.__llBentoResizeTimer);
-                element.__llBentoResizeTimer = window.setTimeout(() => persistBentoResize(element), 120);
-              });
-            })
-            : null;
-
-          resizeCards.forEach((element, orderIndex) => {
-            element.dataset.llBentoResizeReady = "true";
-            const blockIndex = textBlockIndexes[orderIndex];
-            if (blockIndex !== undefined) {
-              element.dataset.llBentoResizeBlock = String(blockIndex);
-            }
-
-            element.addEventListener("pointerdown", () => {
-              const rect = element.getBoundingClientRect();
-              element.__llBentoResizeStart = {
-                width: Math.round(rect.width),
-                height: Math.round(rect.height)
-              };
-              element.__llBentoResizeActive = true;
-            });
-
-            resizeObserver?.observe(element);
-          });
-
-          doc.addEventListener("pointerup", () => {
-            resizeCards.forEach((element) => {
-              if (!element.__llBentoResizeActive) {
-                return;
-              }
-
-              element.__llBentoResizeActive = false;
-              const rect = element.getBoundingClientRect();
-              const start = element.__llBentoResizeStart || {};
-              const changed = Math.abs(Math.round(rect.width) - (start.width || rect.width)) > 2
-                || Math.abs(Math.round(rect.height) - (start.height || rect.height)) > 2;
-              window.clearTimeout(element.__llBentoResizeTimer);
-              if (changed) {
-                persistBentoResize(element);
-              }
-            });
-          }, true);
-        };
-
-        setupBentoResizePersistence();
 
         [
           ".ll-bento__eyebrow",

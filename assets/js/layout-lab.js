@@ -2777,17 +2777,27 @@ ${buildFaqStylePackage({ includeResponsive: true, responsiveOptions: { includeDr
       }
 
       if (currentEditorTab === "bento") {
-        const bentoHtml = buildBentoSectionHtml();
+        // The export deliberately strips editor-only sizing, then emits the
+        // structural guard after class styling. This keeps the pasted Bento
+        // stable even when the product page has its own grid rules.
+        const buildBentoMarkup = () => cleanBentoOutputHtml(buildBentoSectionHtml(), {
+          stripEditorSizing: true
+        });
+        const buildBentoExportPackage = () => [
+          buildBentoExportStyle(),
+          typeof buildPreviewClassStyle === "function" ? buildPreviewClassStyle("bento") : "",
+          buildBentoExportLayoutGuard()
+        ].filter((part) => String(part || "").trim()).join("\n\n");
 
         if (copyMode === "css") {
-          return buildTabStyleWithClass("bento", buildBentoStyle);
+          return buildBentoExportPackage();
         }
 
         if (copyMode === "full") {
-          return buildResponsivePackage("bento", () => buildBentoSectionHtml(), () => buildTabStyleWithClass("bento", buildBentoStyle));
+          return buildResponsivePackage("bento", buildBentoMarkup, buildBentoExportPackage);
         }
 
-        return bentoHtml;
+        return buildBentoMarkup();
       }
 
       if (currentEditorTab === "senko") {
@@ -3044,6 +3054,14 @@ ${buildFaqStylePackage({ includeResponsive: true, responsiveOptions: { includeDr
       const value = buildOutputHtmlRaw(copyMode);
       const cleanedValue = copyMode === "css" ? value : cleanPictureSourcesFromOutput(value);
       if (copyMode === "html") return cleanedValue;
+
+      // Bento uses named grid areas, responsive variants and interaction states
+      // that cannot be inferred reliably from a static DOM snapshot. Pruning its
+      // stylesheet drops structural rules and collapses cards when pasted into a
+      // host page, so its already-scoped stylesheet must travel intact.
+      if (currentEditorTab === "bento") {
+        return cleanedValue;
+      }
 
       const htmlReference = copyMode === "css"
         ? cleanPictureSourcesFromOutput(buildOutputHtmlRaw("html"))

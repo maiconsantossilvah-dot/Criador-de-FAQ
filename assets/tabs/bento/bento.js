@@ -335,18 +335,37 @@
       return Number(block?.responsiveSpan) === 2 ? "ll-bento__responsive-span-2" : "";
     }
 
+    function getBentoResizeMinimumWidth(block) {
+      if (block?.type === "image" && block?.shape === "circle") return 120;
+      if (block?.type === "image") return 160;
+      return 180;
+    }
+
+    function hasUsableBentoResizeWidth(block) {
+      const width = normalizeBentoResizeValue(block?.resizeWidth);
+      return Boolean(block?.resizeEdited && width && width >= getBentoResizeMinimumWidth(block));
+    }
+
+    function hasUsableBentoResizeHeight(block) {
+      const height = normalizeBentoResizeValue(block?.resizeHeight);
+      return Boolean(block?.resizeEdited && height && height >= 110);
+    }
+
     function hasDefaultBentoComposition(blocks) {
-      if (!Array.isArray(blocks) || blocks.length !== 6 || blocks.some((block) => block?.resizeEdited)) {
+      // The six-card starter composition is a named-grid preset. Keeping it
+      // independent of legacy editor dimensions prevents stale inline widths
+      // from collapsing the entire layout into narrow columns.
+      if (!Array.isArray(blocks) || blocks.length !== 6) {
         return false;
       }
 
       const [hero, summary, rectangle, use, circle, detail] = blocks;
       return hero?.type === "hero"
-        && summary?.type === "text" && summary?.variant === "wide"
-        && rectangle?.type === "image" && rectangle?.shape !== "circle"
-        && use?.type === "text" && use?.variant !== "small-center"
-        && circle?.type === "image" && circle?.shape === "circle"
-        && detail?.type === "text" && detail?.variant === "small-center";
+        && summary?.type === "text"
+        && rectangle?.type === "image"
+        && use?.type === "text"
+        && circle?.type === "image"
+        && detail?.type === "text";
     }
 
     function normalizeBentoResizeValue(value) {
@@ -365,7 +384,7 @@
       const height = normalizeBentoResizeValue(block.resizeHeight);
       const styles = [];
 
-      if (width) {
+      if (width && hasUsableBentoResizeWidth(block)) {
         styles.push(`width: ${width}px`);
         styles.push(`--ll-bento-editor-width: ${width}px`);
         if (block.type === "image" && block.shape === "circle") {
@@ -373,7 +392,7 @@
         }
       }
 
-      if (height && (block.type !== "image" || block.shape !== "circle")) {
+      if (height && hasUsableBentoResizeHeight(block) && (block.type !== "image" || block.shape !== "circle")) {
         styles.push(`height: ${height}px`);
         styles.push(`--ll-bento-editor-height: ${height}px`);
       }
@@ -1318,29 +1337,38 @@
     "hero hero hero hero hero hero hero rectangle rectangle rectangle rectangle rectangle"
     "use use use circle circle circle detail detail detail detail detail detail";
   grid-template-columns: repeat(12, minmax(0, 1fr));
-  grid-auto-rows: minmax(0, auto);
+  /* The three named rows are intentionally capped. The circle must never
+     make the final text row taller than the rest of the composition. */
+  grid-template-rows: 230px 230px 175px;
+  grid-auto-rows: auto;
 }
 
 .ll-bento[data-ll-bento-default-layout="true"] .ll-bento__grid > .ll-bento__expand--hero {
   grid-area: hero !important;
   grid-column: auto !important;
   grid-row: auto !important;
+  width: 100% !important;
   min-height: 460px;
+  align-self: stretch !important;
+  justify-self: stretch !important;
 }
 
 .ll-bento[data-ll-bento-default-layout="true"] .ll-bento__grid > .ll-bento__card--wide {
   grid-area: summary !important;
   grid-column: auto !important;
   grid-row: auto !important;
+  width: 100% !important;
   min-height: 0;
-  height: 100%;
+  height: 100% !important;
+  align-self: stretch !important;
+  justify-self: stretch !important;
 }
 
 .ll-bento[data-ll-bento-default-layout="true"] .ll-bento__grid > .ll-bento__expand--image-rectangle {
   grid-area: rectangle !important;
   grid-column: auto !important;
   grid-row: auto !important;
-  width: 100%;
+  width: 100% !important;
   min-height: 0;
   align-self: stretch;
   justify-self: stretch;
@@ -1350,26 +1378,45 @@
   grid-area: use !important;
   grid-column: auto !important;
   grid-row: auto !important;
+  width: 100% !important;
   min-height: 0;
-  height: 100%;
+  height: 100% !important;
+  align-self: stretch !important;
+  justify-self: stretch !important;
 }
 
 .ll-bento[data-ll-bento-default-layout="true"] .ll-bento__grid > .ll-bento__expand--image-circle {
   grid-area: circle !important;
   grid-column: auto !important;
   grid-row: auto !important;
-  width: 100%;
+  width: min(100%, 165px) !important;
+  max-width: 165px !important;
+  height: auto !important;
   min-height: 0;
-  align-self: stretch;
-  justify-self: stretch;
+  align-self: center;
+  justify-self: center;
 }
 
 .ll-bento[data-ll-bento-default-layout="true"] .ll-bento__grid > .ll-bento__card--detail {
   grid-area: detail !important;
   grid-column: auto !important;
   grid-row: auto !important;
+  width: 100% !important;
   min-height: 0;
-  height: 100%;
+  height: 100% !important;
+  align-self: stretch !important;
+  justify-self: stretch !important;
+}
+
+/* Keep the compact final row compact even if a browser restores old inline
+   resize data from a previous editing session. */
+@media (min-width: 901px) {
+  .ll-bento[data-ll-bento-default-layout="true"] .ll-bento__grid > .ll-bento__card--use,
+  .ll-bento[data-ll-bento-default-layout="true"] .ll-bento__grid > .ll-bento__card--detail {
+    height: 175px !important;
+    max-height: 175px !important;
+    overflow: hidden;
+  }
 }
 
 .ll-bento__card--text,
@@ -1511,6 +1558,7 @@
       "use circle"
       "detail detail" !important;
     grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-rows: minmax(260px, 380px) 170px 170px 170px;
   }
 
   .ll-bento[data-ll-bento-default-layout="true"] .ll-bento__grid > .ll-bento__expand--hero {
@@ -1589,6 +1637,857 @@
     height: auto !important;
   }
 }
+
+/* A classe permanece no HTML copiado mesmo quando algum editor remove data-*.
+   Ela fecha a composicao-base sem depender dos controles da previa. */
+.ll-bento.ll-bento--default-layout .ll-bento__grid {
+  display: grid !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  grid-auto-flow: row !important;
+  grid-template-columns: repeat(12, minmax(0, 1fr)) !important;
+  grid-template-areas: none !important;
+  grid-template-rows: 230px 230px 175px !important;
+  gap: 14px !important;
+  align-items: stretch !important;
+}
+
+.ll-bento.ll-bento--default-layout .ll-bento__grid > .ll-bento__expand--hero {
+  grid-area: hero !important;
+  grid-column: auto !important;
+  grid-row: auto !important;
+  min-height: 460px !important;
+  height: 100% !important;
+  width: 100% !important;
+}
+
+.ll-bento.ll-bento--default-layout .ll-bento__grid > .ll-bento__card--wide {
+  grid-area: summary !important;
+}
+
+.ll-bento.ll-bento--default-layout .ll-bento__grid > .ll-bento__expand--image-rectangle {
+  grid-area: rectangle !important;
+  grid-column: auto !important;
+  grid-row: auto !important;
+  width: 100% !important;
+  height: 100% !important;
+  min-height: 0 !important;
+  aspect-ratio: auto !important;
+}
+
+.ll-bento.ll-bento--default-layout .ll-bento__grid > .ll-bento__card--use {
+  grid-area: use !important;
+}
+
+.ll-bento.ll-bento--default-layout .ll-bento__grid > .ll-bento__expand--image-circle {
+  grid-area: circle !important;
+  grid-column: auto !important;
+  grid-row: auto !important;
+  width: min(100%, 165px) !important;
+  max-width: 165px !important;
+  height: auto !important;
+  min-height: 0 !important;
+  aspect-ratio: 1 / 1 !important;
+  align-self: center !important;
+  justify-self: center !important;
+}
+
+.ll-bento.ll-bento--default-layout .ll-bento__grid > .ll-bento__card--detail {
+  grid-area: detail !important;
+}
+
+.ll-bento.ll-bento--default-layout .ll-bento__grid > .ll-bento__card--wide,
+.ll-bento.ll-bento--default-layout .ll-bento__grid > .ll-bento__card--use,
+.ll-bento.ll-bento--default-layout .ll-bento__grid > .ll-bento__card--detail {
+  grid-column: auto !important;
+  grid-row: auto !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  height: 100% !important;
+  min-height: 0 !important;
+  max-height: none !important;
+  align-self: stretch !important;
+  justify-self: stretch !important;
+}
+
+@media (min-width: 901px) {
+  .ll-bento.ll-bento--default-layout .ll-bento__grid > .ll-bento__card--use,
+  .ll-bento.ll-bento--default-layout .ll-bento__grid > .ll-bento__card--detail {
+    height: 175px !important;
+    max-height: 175px !important;
+    overflow: hidden !important;
+  }
+}
+
+@media (max-width: 900px) {
+  .ll-bento.ll-bento--default-layout .ll-bento__grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    grid-template-areas:
+      "hero hero"
+      "summary rectangle"
+      "use circle"
+      "detail detail" !important;
+    grid-template-rows: minmax(260px, 380px) 170px 170px 170px !important;
+  }
+
+  .ll-bento.ll-bento--default-layout .ll-bento__grid > .ll-bento__expand--hero {
+    grid-column: 1 / -1 !important;
+    min-height: clamp(260px, 48vw, 380px) !important;
+  }
+}
+</style>`;
+    }
+
+    function buildBentoExportStyle() {
+      return `<style>
+/* Layout Lab Bento: estilos de saida isolados do editor. */
+.ll-bento,
+.ll-bento *,
+.ll-bento *::before,
+.ll-bento *::after {
+  box-sizing: border-box;
+}
+
+.ll-bento {
+  --ll-bento-bg: #f5f7fb;
+  --ll-bento-ink: #101828;
+  --ll-bento-muted: #5f6c7b;
+  --ll-bento-card: #ffffff;
+  --ll-bento-line: #d9e2ec;
+  --ll-bento-accent: #ea5b0c;
+  --ll-bento-accent-soft: #fff1e8;
+  --ll-bento-deep: #13233a;
+  --ll-bento-radius: 22px;
+  display: block !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: none !important;
+  margin: 0 !important;
+  padding: clamp(18px, 3vw, 32px) !important;
+  overflow: hidden;
+  border-radius: 32px;
+  color: var(--ll-bento-ink);
+  background: var(--ll-bento-bg);
+  font-family: Arial, Helvetica, sans-serif;
+  line-height: 1.35;
+}
+
+.ll-bento__header {
+  display: grid;
+  gap: 8px;
+  width: 100%;
+  max-width: 760px;
+  margin: 0 0 18px;
+}
+
+.ll-bento__eyebrow,
+.ll-bento__title,
+.ll-bento__lead,
+.ll-bento__card-title,
+.ll-bento__card-text,
+.ll-bento__footer-note {
+  margin: 0;
+}
+
+.ll-bento__eyebrow {
+  color: var(--ll-bento-accent);
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.ll-bento__title {
+  color: var(--ll-bento-ink);
+  font-size: clamp(1.8rem, 3.4vw, 3.8rem);
+  font-weight: 900;
+  line-height: 0.95;
+}
+
+.ll-bento__lead {
+  max-width: 60ch;
+  color: var(--ll-bento-muted);
+  font-size: clamp(0.95rem, 1.2vw, 1.08rem);
+  line-height: 1.55;
+}
+
+.ll-bento__grid {
+  display: grid !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: none !important;
+  grid-template-columns: repeat(12, minmax(0, 1fr)) !important;
+  grid-template-rows: 230px 230px 175px !important;
+  grid-template-areas: none !important;
+  grid-auto-flow: row !important;
+  gap: 14px !important;
+  align-items: stretch !important;
+  justify-items: stretch !important;
+}
+
+.ll-bento__grid > * {
+  min-width: 0 !important;
+  min-height: 0 !important;
+  max-width: none !important;
+  margin: 0 !important;
+  transform: none !important;
+}
+
+.ll-bento__grid > .ll-bento__expand--hero {
+  grid-area: auto !important;
+  grid-column: 1 / 8 !important;
+  grid-row: 1 / 3 !important;
+  width: 100% !important;
+  height: 100% !important;
+  min-height: 0 !important;
+}
+
+.ll-bento__grid > .ll-bento__card--wide {
+  grid-area: auto !important;
+  grid-column: 8 / 13 !important;
+  grid-row: 1 / 2 !important;
+}
+
+.ll-bento__grid > .ll-bento__expand--image-rectangle {
+  grid-area: auto !important;
+  grid-column: 8 / 13 !important;
+  grid-row: 2 / 3 !important;
+}
+
+.ll-bento__grid > .ll-bento__card--use {
+  grid-area: auto !important;
+  grid-column: 1 / 4 !important;
+  grid-row: 3 / 4 !important;
+}
+
+.ll-bento__grid > .ll-bento__expand--image-circle {
+  grid-area: auto !important;
+  grid-column: 4 / 7 !important;
+  grid-row: 3 / 4 !important;
+  width: min(100%, 165px) !important;
+  height: auto !important;
+  aspect-ratio: 1 / 1 !important;
+  align-self: center !important;
+  justify-self: center !important;
+}
+
+.ll-bento__grid > .ll-bento__card--detail {
+  grid-area: auto !important;
+  grid-column: 7 / 13 !important;
+  grid-row: 3 / 4 !important;
+}
+
+.ll-bento__grid > .ll-bento__card--wide,
+.ll-bento__grid > .ll-bento__expand--image-rectangle,
+.ll-bento__grid > .ll-bento__card--use,
+.ll-bento__grid > .ll-bento__card--detail {
+  width: 100% !important;
+  height: 100% !important;
+  min-height: 0 !important;
+  align-self: stretch !important;
+  justify-self: stretch !important;
+}
+
+.ll-bento__expand {
+  position: relative;
+  overflow: hidden;
+  border-radius: var(--ll-bento-radius);
+}
+
+/* A imagem circular precisa carregar a mascara no proprio output. O CSS da
+   pagina hospedeira costuma sobrescrever apenas o raio do card interno. */
+.ll-bento__grid > .ll-bento__expand--image-circle,
+.ll-bento__grid > .ll-bento__expand--image-circle .ll-bento__card--image,
+.ll-bento__grid > .ll-bento__expand--image-circle picture,
+.ll-bento__grid > .ll-bento__expand--image-circle .ll-bento__card-media {
+  overflow: hidden !important;
+  border-radius: 999px !important;
+  -webkit-clip-path: circle(50% at 50% 50%) !important;
+  clip-path: circle(50% at 50% 50%) !important;
+}
+
+.ll-bento__grid > .ll-bento__expand--image-circle picture,
+.ll-bento__grid > .ll-bento__expand--image-circle .ll-bento__card-media {
+  display: block !important;
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+}
+
+.ll-bento__card {
+  position: relative;
+  display: flex;
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+  padding: clamp(18px, 2vw, 26px);
+  overflow: hidden;
+  border: 1px solid var(--ll-bento-line);
+  border-radius: var(--ll-bento-radius);
+  background: var(--ll-bento-card);
+  box-shadow: 0 3px 10px rgba(16, 24, 40, 0.035);
+}
+
+.ll-bento__card--hero,
+.ll-bento__card--wide,
+.ll-bento__card--dark {
+  color: #ffffff;
+  background: var(--ll-bento-deep);
+}
+
+.ll-bento__card--hero {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  isolation: isolate;
+}
+
+.ll-bento__hero-picture,
+.ll-bento__hero-picture picture {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  display: block;
+  overflow: hidden;
+}
+
+.ll-bento__hero-picture::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(19, 35, 58, 0.9) 0%, rgba(19, 35, 58, 0.58) 46%, rgba(19, 35, 58, 0.18) 100%);
+}
+
+.ll-bento__card--hero > :not(.ll-bento__hero-picture) {
+  position: relative;
+  z-index: 1;
+}
+
+.ll-bento__card--wide,
+.ll-bento__card--use,
+.ll-bento__card--detail,
+.ll-bento__card--accent,
+.ll-bento__card--dark {
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.ll-bento__card--detail {
+  justify-content: center;
+  text-align: center;
+  background: #fff8f2;
+  border-color: rgba(234, 91, 12, 0.22);
+}
+
+.ll-bento__card--image {
+  display: block;
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  overflow: hidden;
+  border: 0;
+  border-radius: inherit;
+  background: #dbeafe;
+}
+
+.ll-bento__card--image picture,
+.ll-bento__card--image picture img,
+.ll-bento__hero-picture img,
+.ll-bento__lightbox-picture,
+.ll-bento__lightbox-picture img {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.ll-bento__card--image picture,
+.ll-bento__hero-picture picture {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.ll-bento__card-media,
+.ll-bento__hero-picture img {
+  object-fit: cover;
+  object-position: center;
+}
+
+.ll-bento__chip {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  color: var(--ll-bento-accent);
+  background: rgba(234, 91, 12, 0.12);
+  font-size: 0.76rem;
+  font-weight: 900;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.ll-bento__card--hero .ll-bento__chip,
+.ll-bento__card--wide .ll-bento__chip,
+.ll-bento__card--dark .ll-bento__chip {
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.ll-bento__card-title {
+  max-width: 13ch;
+  margin: 16px 0 8px;
+  color: inherit;
+  font-size: clamp(1.25rem, 2vw, 2.5rem);
+  font-weight: 900;
+  line-height: 0.98;
+}
+
+.ll-bento__card--hero .ll-bento__card-title {
+  max-width: 10ch;
+  font-size: clamp(2.4rem, 5vw, 5.4rem);
+}
+
+.ll-bento__card-text {
+  max-width: 46ch;
+  color: var(--ll-bento-muted);
+  font-size: 0.95rem;
+  line-height: 1.55;
+}
+
+.ll-bento__card--hero .ll-bento__card-text,
+.ll-bento__card--wide .ll-bento__card-text,
+.ll-bento__card--dark .ll-bento__card-text {
+  color: rgba(255, 255, 255, 0.86);
+}
+
+.ll-bento__stat {
+  display: block;
+  margin: 12px 0 4px;
+  font-size: clamp(2.2rem, 4vw, 4rem);
+  font-weight: 950;
+  line-height: 0.9;
+}
+
+.ll-bento__media-action {
+  position: absolute !important;
+  right: 14px !important;
+  bottom: 14px !important;
+  z-index: 2 !important;
+  display: inline-flex !important;
+  flex: 0 0 auto !important;
+  align-self: flex-start !important;
+  width: auto !important;
+  max-width: calc(100% - 28px) !important;
+  min-height: 34px;
+  padding: 8px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.46);
+  border-radius: 999px;
+  color: #ffffff;
+  background: rgba(19, 35, 58, 0.58);
+  font-size: 0.78rem;
+  font-weight: 800;
+  line-height: 1 !important;
+  white-space: nowrap;
+}
+
+.ll-bento__card--image .ll-bento__media-action {
+  right: auto !important;
+  left: 50% !important;
+  transform: translateX(-50%) !important;
+  inline-size: max-content !important;
+  min-inline-size: 0 !important;
+}
+
+.ll-bento__image-button {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  display: block;
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  border-radius: inherit;
+  background: transparent;
+  cursor: zoom-in;
+}
+
+/* The label is only a click target. Keep host-page label styles from
+   turning it into a visible control over the image. */
+.ll-bento .ll-bento__image-button {
+  display: block !important;
+  width: 100% !important;
+  height: 100% !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  outline: 0 !important;
+  appearance: none !important;
+  -webkit-appearance: none !important;
+  color: transparent !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  font-size: 0 !important;
+  line-height: 0 !important;
+}
+
+/* O card inteiro continua clicavel. A etiqueta de ampliar nao pode herdar
+   o esticamento de um card flex vertical da pagina hospedeira. */
+.ll-bento__card--hero > .ll-bento__media-action {
+  align-self: flex-start !important;
+}
+
+.ll-bento__card--image > .ll-bento__media-action {
+  align-self: center !important;
+}
+
+.ll-bento__card--wide .ll-bento__card-text {
+  display: -webkit-box;
+  min-height: 0 !important;
+  max-height: 5.6em !important;
+  margin: 10px 0 0 !important;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 4;
+}
+.ll-bento__card--wide {
+  min-height: 0 !important;
+  overflow: hidden !important;
+}
+
+.ll-bento__lightbox-toggle {
+  position: fixed;
+  top: -9999px;
+  left: -9999px;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+}
+
+.ll-bento__lightbox {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: grid;
+  place-items: center;
+  padding: clamp(18px, 4vw, 56px);
+  opacity: 0;
+  pointer-events: none;
+}
+
+.ll-bento__lightbox-toggle:checked ~ .ll-bento__lightbox {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.ll-bento__lightbox-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.74);
+}
+
+.ll-bento__lightbox-panel {
+  position: relative;
+  z-index: 1;
+  width: min(980px, 100%);
+  max-height: min(82vh, 760px);
+  overflow: hidden;
+  border-radius: 26px;
+  background: #ffffff;
+}
+
+.ll-bento__lightbox-panel img {
+  width: 100%;
+  height: auto;
+  max-height: min(72vh, 680px);
+  object-fit: cover;
+}
+
+.ll-bento__lightbox-clickzone {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+}
+
+.ll-bento__lightbox-close {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  z-index: 4;
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 999px;
+  color: #ffffff;
+  background: rgba(19, 35, 58, 0.78);
+  font-size: 1.4rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+@media (max-width: 900px) {
+  .ll-bento {
+    padding: 16px !important;
+  }
+
+  .ll-bento__grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    grid-template-rows: minmax(260px, 380px) 170px 170px 170px !important;
+    grid-template-areas: none !important;
+    gap: 12px !important;
+  }
+
+  .ll-bento__grid > .ll-bento__expand--hero {
+    grid-column: 1 / 3 !important;
+    grid-row: 1 / 2 !important;
+    min-height: 0 !important;
+  }
+
+  .ll-bento__grid > .ll-bento__card--wide {
+    grid-column: 1 / 2 !important;
+    grid-row: 2 / 3 !important;
+  }
+
+  .ll-bento__grid > .ll-bento__expand--image-rectangle {
+    grid-column: 2 / 3 !important;
+    grid-row: 2 / 3 !important;
+  }
+
+  .ll-bento__grid > .ll-bento__card--use {
+    grid-column: 1 / 2 !important;
+    grid-row: 3 / 4 !important;
+  }
+
+  .ll-bento__grid > .ll-bento__expand--image-circle {
+    grid-column: 2 / 3 !important;
+    grid-row: 3 / 4 !important;
+  }
+
+  .ll-bento__grid > .ll-bento__card--detail {
+    grid-column: 1 / 3 !important;
+    grid-row: 4 / 5 !important;
+  }
+}
+
+@media (max-width: 560px) {
+  .ll-bento {
+    padding: 10px !important;
+    border-radius: 28px;
+  }
+
+  .ll-bento__header {
+    gap: 4px;
+    margin-bottom: 8px;
+    padding: 4px 2px 0;
+  }
+
+  .ll-bento__eyebrow {
+    font-size: 0.62rem;
+  }
+
+  .ll-bento__title {
+    font-size: clamp(1.28rem, 7vw, 1.9rem);
+    line-height: 1;
+  }
+
+  .ll-bento__lead {
+    font-size: 0.72rem;
+    line-height: 1.35;
+  }
+
+  .ll-bento__grid {
+    grid-template-rows: 235px 128px 128px 128px !important;
+    gap: 7px !important;
+  }
+
+  .ll-bento__card {
+    padding: 10px;
+    border-radius: 16px;
+  }
+
+  .ll-bento__grid > .ll-bento__expand--image-circle {
+    width: min(100%, 132px) !important;
+  }
+
+  .ll-bento__card-title {
+    margin: 8px 0 4px;
+    font-size: clamp(0.95rem, 4.8vw, 1.32rem);
+    line-height: 1;
+  }
+
+  .ll-bento__card--hero .ll-bento__card-title {
+    font-size: clamp(2.25rem, 16vw, 4.5rem);
+  }
+
+  .ll-bento__card-text {
+    display: -webkit-box;
+    overflow: hidden;
+    font-size: 0.7rem;
+    line-height: 1.25;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+  }
+
+  .ll-bento__stat {
+    margin: 6px 0 2px;
+    font-size: 1.72rem;
+  }
+
+  .ll-bento__media-action {
+    right: 8px;
+    bottom: 8px;
+    min-height: 28px;
+    padding: 6px 9px;
+    font-size: 0.66rem;
+  }
+}
+</style>`;
+    }
+
+    // This guard is intentionally emitted after user class styles. The editor
+    // may store visual adjustments per class, but they must never redefine the
+    // structural grid of the default Bento when it is pasted into a host page.
+    function buildBentoExportLayoutGuard() {
+      return `<style>
+/* Layout Lab Bento: grade final independente do CSS hospedeiro. */
+.ll-bento.ll-bento--default-layout .ll-bento__grid {
+  display: grid !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: none !important;
+  grid-template-columns: repeat(12, minmax(0, 1fr)) !important;
+  grid-template-rows: 230px 230px 175px !important;
+  grid-template-areas: none !important;
+  grid-auto-flow: row !important;
+  gap: 14px !important;
+  align-items: stretch !important;
+  justify-items: stretch !important;
+}
+
+.ll-bento.ll-bento--default-layout .ll-bento__grid > * {
+  grid-area: auto !important;
+  grid-column: auto !important;
+  grid-row: auto !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  max-width: none !important;
+  max-height: none !important;
+  margin: 0 !important;
+  transform: none !important;
+}
+
+.ll-bento.ll-bento--default-layout .ll-bento__grid > .ll-bento__expand--hero {
+  grid-column: 1 / 8 !important;
+  grid-row: 1 / 3 !important;
+  width: 100% !important;
+  height: 100% !important;
+  min-height: 0 !important;
+  align-self: stretch !important;
+  justify-self: stretch !important;
+}
+
+.ll-bento.ll-bento--default-layout .ll-bento__grid > .ll-bento__card--wide {
+  grid-column: 8 / 13 !important;
+  grid-row: 1 / 2 !important;
+}
+
+.ll-bento.ll-bento--default-layout .ll-bento__grid > .ll-bento__expand--image-rectangle {
+  grid-column: 8 / 13 !important;
+  grid-row: 2 / 3 !important;
+}
+
+.ll-bento.ll-bento--default-layout .ll-bento__grid > .ll-bento__card--use {
+  grid-column: 1 / 4 !important;
+  grid-row: 3 / 4 !important;
+}
+
+.ll-bento.ll-bento--default-layout .ll-bento__grid > .ll-bento__expand--image-circle {
+  grid-column: 4 / 7 !important;
+  grid-row: 3 / 4 !important;
+  width: min(100%, 165px) !important;
+  height: min(100%, 165px) !important;
+  aspect-ratio: 1 / 1 !important;
+  align-self: center !important;
+  justify-self: center !important;
+  overflow: hidden !important;
+  border-radius: 50% !important;
+  clip-path: circle(50%) !important;
+}
+
+.ll-bento.ll-bento--default-layout .ll-bento__grid > .ll-bento__expand--image-circle .ll-bento__card--image,
+.ll-bento.ll-bento--default-layout .ll-bento__grid > .ll-bento__expand--image-circle picture,
+.ll-bento.ll-bento--default-layout .ll-bento__grid > .ll-bento__expand--image-circle .ll-bento__card-media {
+  width: 100% !important;
+  height: 100% !important;
+  overflow: hidden !important;
+  border-radius: 50% !important;
+  clip-path: circle(50%) !important;
+  object-fit: cover !important;
+}
+
+.ll-bento.ll-bento--default-layout .ll-bento__grid > .ll-bento__card--detail {
+  grid-column: 7 / 13 !important;
+  grid-row: 3 / 4 !important;
+}
+
+.ll-bento.ll-bento--default-layout .ll-bento__grid > .ll-bento__card--wide,
+.ll-bento.ll-bento--default-layout .ll-bento__grid > .ll-bento__expand--image-rectangle,
+.ll-bento.ll-bento--default-layout .ll-bento__grid > .ll-bento__card--use,
+.ll-bento.ll-bento--default-layout .ll-bento__grid > .ll-bento__card--detail {
+  width: 100% !important;
+  height: 100% !important;
+  min-height: 0 !important;
+  align-self: stretch !important;
+  justify-self: stretch !important;
+}
+
+@media (max-width: 900px) {
+  .ll-bento.ll-bento--default-layout .ll-bento__grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    grid-template-rows: minmax(260px, 380px) 170px 170px 170px !important;
+    gap: 12px !important;
+  }
+
+  .ll-bento.ll-bento--default-layout .ll-bento__grid > .ll-bento__expand--hero {
+    grid-column: 1 / 3 !important;
+    grid-row: 1 / 2 !important;
+  }
+
+  .ll-bento.ll-bento--default-layout .ll-bento__grid > .ll-bento__card--wide {
+    grid-column: 1 / 2 !important;
+    grid-row: 2 / 3 !important;
+  }
+
+  .ll-bento.ll-bento--default-layout .ll-bento__grid > .ll-bento__expand--image-rectangle {
+    grid-column: 2 / 3 !important;
+    grid-row: 2 / 3 !important;
+  }
+
+  .ll-bento.ll-bento--default-layout .ll-bento__grid > .ll-bento__card--use {
+    grid-column: 1 / 2 !important;
+    grid-row: 3 / 4 !important;
+  }
+
+  .ll-bento.ll-bento--default-layout .ll-bento__grid > .ll-bento__expand--image-circle {
+    grid-column: 2 / 3 !important;
+    grid-row: 3 / 4 !important;
+  }
+
+  .ll-bento.ll-bento--default-layout .ll-bento__grid > .ll-bento__card--detail {
+    grid-column: 1 / 3 !important;
+    grid-row: 4 / 5 !important;
+  }
+}
+
+@media (max-width: 560px) {
+  .ll-bento.ll-bento--default-layout .ll-bento__grid {
+    grid-template-rows: 235px 128px 128px 128px !important;
+    gap: 7px !important;
+  }
+}
 </style>`;
     }
 
@@ -1607,7 +2506,82 @@ ${buildBentoOutputPatch()}`;
   display: block !important;
 }
 </style>
-${buildBentoRuntimePatch()}`;
+${buildBentoRuntimePatch()}
+<style>
+/* This comes after the editor runtime so the starter Bento never inherits
+   a stale resize rule while its named-grid composition is active. */
+.ll-bento[data-ll-bento-default-layout="true"] .ll-bento__grid {
+  display: grid !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  grid-template-columns: repeat(12, minmax(0, 1fr)) !important;
+  grid-template-areas:
+    "hero hero hero hero hero hero hero summary summary summary summary summary"
+    "hero hero hero hero hero hero hero rectangle rectangle rectangle rectangle rectangle"
+    "use use use circle circle circle detail detail detail detail detail detail" !important;
+  grid-template-rows: 230px 230px 175px !important;
+  gap: 14px !important;
+  align-items: stretch !important;
+}
+
+.ll-bento[data-ll-bento-default-layout="true"] .ll-bento__grid > .ll-bento__expand--hero,
+.ll-bento[data-ll-bento-default-layout="true"] .ll-bento__grid > .ll-bento__card--wide,
+.ll-bento[data-ll-bento-default-layout="true"] .ll-bento__grid > .ll-bento__expand--image-rectangle,
+.ll-bento[data-ll-bento-default-layout="true"] .ll-bento__grid > .ll-bento__card--use,
+.ll-bento[data-ll-bento-default-layout="true"] .ll-bento__grid > .ll-bento__expand--image-circle,
+.ll-bento[data-ll-bento-default-layout="true"] .ll-bento__grid > .ll-bento__card--detail {
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: none !important;
+  height: auto !important;
+  min-height: 0 !important;
+  max-height: none !important;
+  align-self: stretch !important;
+  justify-self: stretch !important;
+  resize: none !important;
+}
+
+.ll-bento[data-ll-bento-default-layout="true"] .ll-bento__grid > .ll-bento__expand--hero { grid-area: hero !important; min-height: 460px !important; }
+.ll-bento[data-ll-bento-default-layout="true"] .ll-bento__grid > .ll-bento__card--wide { grid-area: summary !important; }
+.ll-bento[data-ll-bento-default-layout="true"] .ll-bento__grid > .ll-bento__expand--image-rectangle { grid-area: rectangle !important; aspect-ratio: auto !important; }
+.ll-bento[data-ll-bento-default-layout="true"] .ll-bento__grid > .ll-bento__card--use { grid-area: use !important; }
+.ll-bento[data-ll-bento-default-layout="true"] .ll-bento__grid > .ll-bento__expand--image-circle {
+  grid-area: circle !important;
+  width: min(100%, 165px) !important;
+  max-width: 165px !important;
+  height: auto !important;
+  aspect-ratio: 1 / 1 !important;
+  align-self: center !important;
+  justify-self: center !important;
+}
+.ll-bento[data-ll-bento-default-layout="true"] .ll-bento__grid > .ll-bento__card--detail { grid-area: detail !important; }
+
+@media (min-width: 901px) {
+  .ll-bento[data-ll-bento-default-layout="true"] .ll-bento__grid > .ll-bento__card--use,
+  .ll-bento[data-ll-bento-default-layout="true"] .ll-bento__grid > .ll-bento__card--detail {
+    height: 175px !important;
+    max-height: 175px !important;
+    overflow: hidden !important;
+  }
+}
+
+@media (max-width: 900px) {
+  .ll-bento[data-ll-bento-default-layout="true"] .ll-bento__grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    grid-template-areas:
+      "hero hero"
+      "summary rectangle"
+      "use circle"
+      "detail detail" !important;
+    grid-template-rows: minmax(260px, 380px) 170px 170px 170px !important;
+  }
+
+  .ll-bento[data-ll-bento-default-layout="true"] .ll-bento__grid > .ll-bento__expand--hero {
+    grid-column: 1 / -1 !important;
+    min-height: clamp(260px, 48vw, 380px) !important;
+  }
+}
+</style>`;
     }
 
     function cleanBentoOutputHtml(html, options = {}) {
@@ -1693,15 +2667,19 @@ ${buildBentoRuntimePatch()}`;
       }
 
       const header = state.bento.header;
+      const defaultLayout = hasDefaultBentoComposition(state.bento.blocks);
       const blocks = state.bento.blocks
-        .map((block, index) => renderBentoBlockHtml(block, index, includeEditorSizing))
+        .map((block, index) => renderBentoBlockHtml(block, index, includeEditorSizing && !defaultLayout))
         .join("\n");
-      const fluidOutput = state.bento.blocks.some((block) => block?.resizeEdited);
+      // Apenas larguras validas trocam a composicao-base pelo fluxo livre.
+      // Valores antigos ou pequenos demais nao podem esmagar a grade.
+      const fluidOutput = !defaultLayout && state.bento.blocks.some(hasUsableBentoResizeWidth);
       const fluidAttribute = fluidOutput ? " data-ll-bento-fluid-output=\"true\"" : "";
-      const defaultLayoutAttribute = hasDefaultBentoComposition(state.bento.blocks)
+      const defaultLayoutClass = defaultLayout ? " ll-bento--default-layout" : "";
+      const defaultLayoutAttribute = defaultLayout
         ? " data-ll-bento-default-layout=\"true\""
         : "";
-      return `<section class="ll-bento"${fluidAttribute}${defaultLayoutAttribute} aria-labelledby="ll-bento-title">
+      return `<section class="ll-bento${defaultLayoutClass}"${fluidAttribute}${defaultLayoutAttribute} aria-labelledby="ll-bento-title">
         <header class="ll-bento__header">
           <p class="ll-bento__eyebrow">${escapeHtml(header.eyebrow)}</p>
           <h2 class="ll-bento__title" id="ll-bento-title">${escapeHtml(header.title)}</h2>

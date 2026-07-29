@@ -319,24 +319,10 @@
         sectionGradientEnabled: true,
         sectionGradientStart: "#ffffff",
         sectionGradientEnd: "#fff0f6",
-        dotBackgroundColor: "#ffffff",
-        dotTextColor: "#14202b",
-        dotBorderColor: "#d9e2ea",
         dotHoverColor: "#fff9f2",
-        dotHoverTextColor: "#14202b",
-        dotHoverBorderColor: "#ee6911",
         dotActiveColor: "#fff4e0",
-        dotActiveTextColor: "#ee6911",
         dotActiveBorderColor: "#ee6911",
-        dotRadius: 12,
-        dotBorderWidth: 1,
-        dotMinHeight: 62,
-        dotPaddingX: 16,
-        dotHoverLift: 4,
-        dotShadowOpacity: 0,
-        showNavIcons: true,
         dotIconBackgroundColor: "#f0ede8",
-        dotIconColor: "#14202b",
         dotIconActiveBackgroundColor: "#ee6911",
         dotIconActiveColor: "#ffffff",
         showIndicators: true,
@@ -1261,9 +1247,157 @@ ${optionMarkup}
         return -1;
       };
 
-      const findNextRuleBrace = (source, startIndex) => {
+      const splitTopLevelSelectors = (selectorText) => {
+        const selectors = [];
+        let start = 0;
+        let parenthesesDepth = 0;
+        let bracketsDepth = 0;
         let quote = "";
         let inComment = false;
+
+        for (let index = 0; index < selectorText.length; index += 1) {
+          const char = selectorText[index];
+          const nextChar = selectorText[index + 1];
+
+          if (inComment) {
+            if (char === "*" && nextChar === "/") {
+              inComment = false;
+              index += 1;
+            }
+            continue;
+          }
+
+          if (quote) {
+            if (char === "\\") {
+              index += 1;
+              continue;
+            }
+
+            if (char === quote) {
+              quote = "";
+            }
+            continue;
+          }
+
+          if (char === "/" && nextChar === "*") {
+            inComment = true;
+            index += 1;
+            continue;
+          }
+
+          if (char === "\"" || char === "'") {
+            quote = char;
+            continue;
+          }
+
+          if (char === "(") {
+            parenthesesDepth += 1;
+            continue;
+          }
+
+          if (char === ")") {
+            parenthesesDepth = Math.max(0, parenthesesDepth - 1);
+            continue;
+          }
+
+          if (char === "[") {
+            bracketsDepth += 1;
+            continue;
+          }
+
+          if (char === "]") {
+            bracketsDepth = Math.max(0, bracketsDepth - 1);
+            continue;
+          }
+
+          if (
+            char === "," &&
+            parenthesesDepth === 0 &&
+            bracketsDepth === 0
+          ) {
+            selectors.push(selectorText.slice(start, index));
+            start = index + 1;
+          }
+        }
+
+        selectors.push(selectorText.slice(start));
+        return selectors;
+      };
+
+      const scopeSingleSelector = (selector) => {
+        const trimmedSelector = selector.trim();
+
+        if (!trimmedSelector) {
+          return "";
+        }
+
+        const alreadyScoped =
+          trimmedSelector === scope ||
+          trimmedSelector.startsWith(`${scope} `) ||
+          trimmedSelector.startsWith(`${scope}.`) ||
+          trimmedSelector.startsWith(`${scope}#`) ||
+          trimmedSelector.startsWith(`${scope}[`) ||
+          trimmedSelector.startsWith(`${scope}:`) ||
+          trimmedSelector.startsWith(`${scope}>`) ||
+          trimmedSelector.startsWith(`${scope}+`) ||
+          trimmedSelector.startsWith(`${scope}~`);
+
+        if (alreadyScoped) {
+          return trimmedSelector;
+        }
+
+        if (/^(?::root|html|body)(?:\s+body)?$/i.test(trimmedSelector)) {
+          return scope;
+        }
+
+        const documentPrefixMatch = trimmedSelector.match(
+          /^((?::root|html|body)(?:[#.:[\]\w="'-]+)*)(\s+)([\s\S]+)$/i
+        );
+
+        if (documentPrefixMatch) {
+          const [, documentPrefix, gap, remainder] = documentPrefixMatch;
+
+          if (/^body(?:[#.:[\]\w="'-]+)*(?:\s|$)/i.test(remainder)) {
+            const bodyMatch = remainder.match(
+              /^(body(?:[#.:[\]\w="'-]+)*)(?:\s+([\s\S]+))?$/i
+            );
+
+            if (bodyMatch) {
+              const bodyPrefix = bodyMatch[1];
+              const bodyRemainder = bodyMatch[2];
+
+              return bodyRemainder
+                ? `${documentPrefix}${gap}${bodyPrefix} ${scope} ${bodyRemainder}`
+                : `${documentPrefix}${gap}${bodyPrefix} ${scope}`;
+            }
+          }
+
+          return `${documentPrefix}${gap}${scope} ${remainder}`;
+        }
+
+        const documentConditionOnly = trimmedSelector.match(
+          /^((?::root|html|body)(?:[#.:[\]\w="'-]+)+)$/i
+        );
+
+        if (documentConditionOnly) {
+          return `${documentConditionOnly[1]} ${scope}`;
+        }
+
+        return `${scope} ${trimmedSelector}`;
+      };
+
+      const scopeSelectorList = (selectorText) => [
+        ...new Set(
+          splitTopLevelSelectors(selectorText)
+            .map(scopeSingleSelector)
+            .filter(Boolean)
+        )
+      ].join(", ");
+
+      const findStatementEnd = (source, startIndex) => {
+        let quote = "";
+        let inComment = false;
+        let parenthesesDepth = 0;
 
         for (let index = startIndex; index < source.length; index += 1) {
           const char = source[index];
@@ -1300,7 +1434,21 @@ ${optionMarkup}
             continue;
           }
 
-          if (char === "{") {
+          if (char === "(") {
+            parenthesesDepth += 1;
+            continue;
+          }
+
+          if (char === ")") {
+            parenthesesDepth = Math.max(0, parenthesesDepth - 1);
+            continue;
+          }
+
+          if (char === "{" && parenthesesDepth === 0) {
+            return -1;
+          }
+
+          if (char === ";" && parenthesesDepth === 0) {
             return index;
           }
         }
@@ -1308,109 +1456,47 @@ ${optionMarkup}
         return -1;
       };
 
-      const splitSelectorList = (selectorText) => {
-        const selectors = [];
-        let current = "";
-        let quote = "";
-        let depth = 0;
-
-        for (let index = 0; index < selectorText.length; index += 1) {
-          const char = selectorText[index];
-
-          if (quote) {
-            current += char;
-            if (char === "\\") {
-              index += 1;
-              current += selectorText[index] || "";
-              continue;
-            }
-            if (char === quote) {
-              quote = "";
-            }
-            continue;
-          }
-
-          if (char === "\"" || char === "'") {
-            quote = char;
-            current += char;
-            continue;
-          }
-
-          if (char === "(" || char === "[" || char === "{") {
-            depth += 1;
-            current += char;
-            continue;
-          }
-
-          if (char === ")" || char === "]" || char === "}") {
-            depth = Math.max(0, depth - 1);
-            current += char;
-            continue;
-          }
-
-          if (char === "," && depth === 0) {
-            selectors.push(current.trim());
-            current = "";
-            continue;
-          }
-
-          current += char;
-        }
-
-        if (current.trim()) {
-          selectors.push(current.trim());
-        }
-
-        return selectors.filter(Boolean);
-      };
-
-      const scopeSelectorList = (selectorText) => splitSelectorList(selectorText)
-        .map((selector) => selector.startsWith(scope) ? selector : `${scope} ${selector}`)
-        .join(", ");
-
-      const splitRulePrelude = (rawPrelude) => {
-        let prefix = "";
-        let rest = rawPrelude;
-
-        while (rest) {
-          const whitespace = rest.match(/^\s*/)?.[0] || "";
-          if (whitespace) {
-            prefix += whitespace;
-            rest = rest.slice(whitespace.length);
-          }
-
-          if (rest.startsWith("/*")) {
-            const commentEnd = rest.indexOf("*/");
-            if (commentEnd === -1) {
-              break;
-            }
-            prefix += rest.slice(0, commentEnd + 2);
-            rest = rest.slice(commentEnd + 2);
-            continue;
-          }
-
-          const nonBlockAtRule = rest.match(/^@(charset|import|namespace)\b[\s\S]*?;\s*/i);
-          if (nonBlockAtRule) {
-            prefix += nonBlockAtRule[0];
-            rest = rest.slice(nonBlockAtRule[0].length);
-            continue;
-          }
-
-          break;
-        }
-
-        return {
-          prefix,
-          prelude: rest.trim()
-        };
-      };
-
       const scopeBlock = (source) => {
         let output = "";
         let cursor = 0;
 
         while (cursor < source.length) {
-          const openIndex = findNextRuleBrace(source, cursor);
+          let contentStart = cursor;
+
+          while (contentStart < source.length) {
+            const whitespace = source.slice(contentStart).match(/^\s+/)?.[0] || "";
+            if (whitespace) {
+              contentStart += whitespace.length;
+              continue;
+            }
+
+            if (source[contentStart] === "/" && source[contentStart + 1] === "*") {
+              const commentEnd = source.indexOf("*/", contentStart + 2);
+              contentStart = commentEnd === -1 ? source.length : commentEnd + 2;
+              continue;
+            }
+
+            break;
+          }
+
+          output += source.slice(cursor, contentStart);
+          cursor = contentStart;
+
+          if (cursor >= source.length) {
+            break;
+          }
+
+          if (source[cursor] === "@") {
+            const statementEnd = findStatementEnd(source, cursor);
+
+            if (statementEnd !== -1) {
+              output += source.slice(cursor, statementEnd + 1);
+              cursor = statementEnd + 1;
+              continue;
+            }
+          }
+
+          const openIndex = source.indexOf("{", cursor);
 
           if (openIndex === -1) {
             output += source.slice(cursor);
@@ -1418,7 +1504,7 @@ ${optionMarkup}
           }
 
           const rawPrelude = source.slice(cursor, openIndex);
-          const { prefix, prelude } = splitRulePrelude(rawPrelude);
+          const prelude = rawPrelude.trim();
           const closeIndex = findMatchingBrace(source, openIndex);
 
           if (!prelude || closeIndex === -1) {
@@ -1426,13 +1512,18 @@ ${optionMarkup}
             break;
           }
 
+          const leadingWhitespace = rawPrelude.match(/^\s*/)?.[0] || "";
           const body = source.slice(openIndex + 1, closeIndex);
 
           if (prelude.startsWith("@")) {
-            const shouldScopeNestedRules = /^@(media|supports|container|layer)\b/i.test(prelude);
-            output += `${prefix}${prelude} {${shouldScopeNestedRules ? scopeBlock(body) : body}}`;
+            const shouldScopeNestedRules =
+              /^@(media|supports|container|layer|scope|starting-style)\b/i.test(prelude);
+
+            output += `${leadingWhitespace}${prelude} {${
+              shouldScopeNestedRules ? scopeBlock(body) : body
+            }}`;
           } else {
-            output += `${prefix}${scopeSelectorList(prelude)} {${body}}`;
+            output += `${leadingWhitespace}${scopeSelectorList(prelude)} {${body}}`;
           }
 
           cursor = closeIndex + 1;
@@ -1445,25 +1536,10 @@ ${optionMarkup}
     }
 
     function scopeResponsiveStyle(value, scope) {
-      const styleOutput = String(value || "");
-
-      if (!styleOutput.trim()) {
-        return "";
-      }
-
-      if (!/<style\b/i.test(styleOutput)) {
-        return `<style>\n${scopeResponsiveCss(styleOutput, scope)}\n</style>`;
-      }
-
-      return styleOutput.replace(/<style\b[^>]*>([\s\S]*?)<\/style>/gi, (match, css) => {
-        return `<style>\n${scopeResponsiveCss(css, scope)}\n</style>`;
+      return String(value || "").replace(/<style\b[^>]*>([\s\S]*?)<\/style>/gi, (match, css) => {
+        const openingTag = match.match(/^<style\b[^>]*>/i)?.[0] || "<style>";
+        return `${openingTag}\n${scopeResponsiveCss(css, scope)}\n</style>`;
       });
-    }
-
-    function repairResponsiveCssOutput(value) {
-      return String(value || "")
-        .replace(/(^|\n)([ \t]*)\.ll-responsive-version--(?:base|mobile|tablet|desktop)\s+(\/\*[\s\S]*?\*\/\s*@(?:media|supports|container|layer)\b)/gi, "$1$2$3")
-        .replace(/(^|\n)([ \t]*)\.ll-responsive-version--(?:base|mobile|tablet|desktop)\s+(@(?:media|supports|container|layer|keyframes|font-face|property|page|-[\w-]+-keyframes)\b)/gi, "$1$2$3");
     }
 
     function buildWithSnapshot(tab, snapshot, builder) {
@@ -1507,11 +1583,11 @@ ${optionMarkup}
       if (!versionDevices.length) {
         const css = buildWithSnapshot(tab, baseSnapshot, styleBuilder);
         const markedCss = tab === "faq" ? wrapFaqCssMarkers(css) : css;
-        return cleanPictureSourcesFromOutput(repairResponsiveCssOutput(`${markedCss}
+        return `${markedCss}
 
 <!-- HTML DO LAYOUT -->
 
-${buildWithSnapshot(tab, baseSnapshot, htmlBuilder)}`));
+${buildWithSnapshot(tab, baseSnapshot, htmlBuilder)}`;
       }
 
       const baseHtml = buildWithSnapshot(tab, baseSnapshot, htmlBuilder);
@@ -1541,7 +1617,7 @@ ${versionBlocks.map((block) => block.css).join("\n\n")}
 ${buildResponsiveSwitchStyle(versionDevices)}`;
       const markedCssPackage = tab === "faq" ? wrapFaqCssMarkers(cssPackage) : cssPackage;
 
-      return cleanPictureSourcesFromOutput(repairResponsiveCssOutput(`${markedCssPackage}
+      return `${markedCssPackage}
 
 <!-- HTML DO LAYOUT -->
 
@@ -1552,66 +1628,7 @@ ${baseHtml}
 ${versionBlocks.map((block) => `  <div class="ll-responsive-version ll-responsive-version--${block.device}">
 ${block.html}
   </div>`).join("\n")}
-</div>`));
-    }
-
-    function stripOutputImageSizeVariant(value) {
-      const rawValue = String(value || "").trim();
-      if (!rawValue) {
-        return "";
-      }
-
-      const hashIndex = rawValue.indexOf("#");
-      const hash = hashIndex >= 0 ? rawValue.slice(hashIndex) : "";
-      const withoutHash = hashIndex >= 0 ? rawValue.slice(0, hashIndex) : rawValue;
-      const queryIndex = withoutHash.indexOf("?");
-      if (queryIndex === -1) {
-        return rawValue;
-      }
-
-      const path = withoutHash.slice(0, queryIndex);
-      const query = withoutHash.slice(queryIndex + 1)
-        .split("&")
-        .filter((param) => param && !/^ims=/i.test(param))
-        .join("&");
-
-      return `${path}${query ? `?${query}` : ""}${hash}`;
-    }
-
-    function cleanPictureSourcesFromOutput(value) {
-      const rawValue = String(value || "");
-      if (!rawValue || (!/<picture[\s>]/i.test(rawValue) && !/\ssrcset\s*=/i.test(rawValue))) {
-        return rawValue;
-      }
-
-      if (typeof DOMParser === "undefined") {
-        return rawValue
-          .replace(/<source\b[^>]*\ssrcset=(["'])[\s\S]*?\1[^>]*>/gi, "")
-          .replace(/\s+srcset=(["'])[\s\S]*?\1/gi, "");
-      }
-
-      const parsedDocument = new DOMParser().parseFromString(`<div data-ll-output-picture-cleaner>${rawValue}</div>`, "text/html");
-      const wrapper = parsedDocument.querySelector("[data-ll-output-picture-cleaner]");
-      if (!wrapper) {
-        return rawValue;
-      }
-
-      wrapper.querySelectorAll("picture").forEach((picture) => {
-        picture.querySelectorAll("source[srcset]").forEach((source) => {
-          source.remove();
-        });
-
-        const image = picture.querySelector("img[src]");
-        if (image) {
-          image.setAttribute("src", stripOutputImageSizeVariant(image.getAttribute("src")));
-        }
-      });
-
-      wrapper.querySelectorAll("[srcset]").forEach((element) => {
-        element.removeAttribute("srcset");
-      });
-
-      return wrapper.innerHTML;
+</div>`;
     }
 
     function renderResponsiveEditor() {
@@ -2693,7 +2710,7 @@ ${buildFaqStylePackage({ includeResponsive: true, responsiveOptions: { includeDr
       return buildFullHtml(false);
     }
 
-    function buildOutputHtmlRaw(copyMode = "html") {
+    function buildOutputHtml(copyMode = "html") {
       if (currentPage === "home") {
         return "";
       }
@@ -2793,19 +2810,41 @@ ${buildFaqStylePackage({ includeResponsive: true, responsiveOptions: { includeDr
       }
 
       if (currentEditorTab === "template") {
+        const buildTemplateCssPackage = () => {
+          const containerStyle = typeof buildLpContainerCss === "function"
+            ? buildLpContainerCss(false)
+            : "";
+          const embeddedStyle = typeof buildTemplateEmbeddedStyle === "function"
+            ? buildTemplateEmbeddedStyle()
+            : "";
+          const templateStyle = buildTabStyleWithClass("template", buildTemplateStyle);
+
+          return [containerStyle, embeddedStyle, templateStyle]
+            .filter(Boolean)
+            .join("\n\n");
+        };
+
         if (copyMode === "css") {
-          const embeddedStyle = typeof buildTemplateEmbeddedStyle === "function" ? buildTemplateEmbeddedStyle() : "";
-          return [embeddedStyle, buildTabStyleWithClass("template", buildTemplateStyle)].filter(Boolean).join("\n\n");
+          return buildTemplateCssPackage();
         }
 
-        if (copyMode === "full" && getResponsiveVersionList("template").length) {
-          return buildResponsivePackage("template", () => buildTemplateOutputHtml("html"), () => {
-            const embeddedStyle = typeof buildTemplateEmbeddedStyle === "function" ? buildTemplateEmbeddedStyle() : "";
-            return [embeddedStyle, buildTabStyleWithClass("template", buildTemplateStyle)].filter(Boolean).join("\n\n");
-          });
+        if (copyMode === "full") {
+          if (getResponsiveVersionList("template").length) {
+            return buildResponsivePackage(
+              "template",
+              () => buildTemplateOutputHtml("html"),
+              buildTemplateCssPackage
+            );
+          }
+
+          return `${buildTemplateCssPackage()}
+
+<!-- HTML DO LAYOUT -->
+
+${buildTemplateOutputHtml("html")}`;
         }
 
-        return buildTemplateOutputHtml(copyMode);
+        return buildTemplateOutputHtml("html");
       }
 
       const faqHtml = buildFaqSectionHtml();
@@ -2819,11 +2858,6 @@ ${buildFaqStylePackage({ includeResponsive: true, responsiveOptions: { includeDr
       }
 
       return faqHtml;
-    }
-
-    function buildOutputHtml(copyMode = "html") {
-      const value = buildOutputHtmlRaw(copyMode);
-      return copyMode === "css" ? value : cleanPictureSourcesFromOutput(value);
     }
 
     function getPreviewTextStyle(meta) {
@@ -3320,8 +3354,7 @@ ${buildFaqStylePackage({ includeResponsive: true, responsiveOptions: { includeDr
         }
       }
 
-      const rawValue = buildOutputHtml(copyMode);
-      const value = copyMode === "full" || copyMode === "css" ? repairResponsiveCssOutput(rawValue) : rawValue;
+      const value = buildOutputHtml(copyMode);
       const warnings = copyMode === "css" ? [] : collectLayoutWarnings();
       const blockerPrefix = copyMode === "full" ? "HTML/CSS" : copyMode === "css" ? "CSS" : "HTML";
       const blockers = collectHtmlLocalAssetBlockers(value, blockerPrefix);
@@ -3620,9 +3653,7 @@ ${buildFaqStylePackage({ includeResponsive: true, responsiveOptions: { includeDr
             state.carousel.sectionGradientEnabled = event.target.checked;
           } else if (carouselField === "showIndicators") {
             state.carousel.showIndicators = event.target.checked;
-          } else if (carouselField === "showNavIcons") {
-            state.carousel.showNavIcons = event.target.checked;
-          } else if (["brandColor", "softColor", "sectionGradientStart", "sectionGradientEnd", "dotBackgroundColor", "dotTextColor", "dotBorderColor", "dotHoverColor", "dotHoverTextColor", "dotHoverBorderColor", "dotActiveColor", "dotActiveTextColor", "dotActiveBorderColor", "dotIconBackgroundColor", "dotIconColor", "dotIconActiveBackgroundColor", "dotIconActiveColor", "indicatorColor", "indicatorActiveColor"].includes(carouselField)) {
+          } else if (["brandColor", "softColor", "sectionGradientStart", "sectionGradientEnd", "dotHoverColor", "dotActiveColor", "dotActiveBorderColor", "dotIconBackgroundColor", "dotIconActiveBackgroundColor", "dotIconActiveColor", "indicatorColor", "indicatorActiveColor"].includes(carouselField)) {
             state.carousel[carouselField] = normalizeHexColor(event.target.value);
           } else {
             state.carousel[carouselField] = event.target.value;
@@ -3763,7 +3794,7 @@ ${buildFaqStylePackage({ includeResponsive: true, responsiveOptions: { includeDr
         return;
       }
 
-      if (event.target.matches("select") || event.target.matches('[data-article-field="shellBackgroundEnabled"], [data-article-field="overlayEnabled"], [data-article-field="tabsProtectionEnabled"], [data-carousel-field="showIntro"], [data-carousel-field="sectionGradientEnabled"], [data-carousel-field="showNavIcons"], [data-carousel-field="showIndicators"], [data-carousel-field="reverse"], [data-carousel-field="gradientEnabled"]')) {
+      if (event.target.matches("select") || event.target.matches('[data-article-field="shellBackgroundEnabled"], [data-article-field="overlayEnabled"], [data-article-field="tabsProtectionEnabled"], [data-carousel-field="showIntro"], [data-carousel-field="sectionGradientEnabled"], [data-carousel-field="showIndicators"], [data-carousel-field="reverse"], [data-carousel-field="gradientEnabled"]')) {
         event.target.dispatchEvent(new Event("input", { bubbles: true }));
       }
     });

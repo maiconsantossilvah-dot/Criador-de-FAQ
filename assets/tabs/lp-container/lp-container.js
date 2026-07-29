@@ -6548,6 +6548,89 @@ ${containerHtml}`;
         }
 
         root.dataset.llBentoEditor = "true";
+        const grid = root.querySelector(":scope > .ll-bento__grid");
+        const gridBlocks = grid ? Array.from(grid.children) : [];
+        const isStarterBentoDom = gridBlocks.length === 6
+          && gridBlocks[0]?.matches(".ll-bento__expand--hero")
+          && gridBlocks[1]?.matches(".ll-bento__card--text")
+          && gridBlocks[2]?.matches(".ll-bento__expand--image")
+          && gridBlocks[3]?.matches(".ll-bento__card--text")
+          && gridBlocks[4]?.matches(".ll-bento__expand--image")
+          && gridBlocks[5]?.matches(".ll-bento__card--text");
+        const isDefaultBentoLayout = root.dataset.llBentoDefaultLayout === "true" || isStarterBentoDom;
+
+        if (isDefaultBentoLayout && grid) {
+          // The starter Bento is a fixed composition. Apply its grid directly
+          // in the preview so stale widths from a previous resize cannot turn
+          // the six cards into thin columns before CSS settles.
+          root.dataset.llBentoDefaultLayout = "true";
+          delete root.dataset.llBentoFluidEditor;
+          const isCompactViewport = doc.defaultView.matchMedia("(max-width: 900px)").matches;
+          const desktopAreas = [
+            "hero hero hero hero hero hero hero summary summary summary summary summary",
+            "hero hero hero hero hero hero hero rectangle rectangle rectangle rectangle rectangle",
+            "use use use circle circle circle detail detail detail detail detail detail"
+          ].map((row) => `\"${row}\"`).join(" ");
+          const compactAreas = [
+            "hero hero",
+            "summary rectangle",
+            "use circle",
+            "detail detail"
+          ].map((row) => `\"${row}\"`).join(" ");
+          grid.style.setProperty("display", "grid", "important");
+          grid.style.setProperty("width", "100%", "important");
+          grid.style.setProperty("min-width", "0", "important");
+          grid.style.setProperty("grid-template-columns", isCompactViewport ? "repeat(2, minmax(0, 1fr))" : "repeat(12, minmax(0, 1fr))", "important");
+          grid.style.setProperty("grid-template-areas", isCompactViewport ? compactAreas : desktopAreas, "important");
+          grid.style.setProperty(
+            "grid-template-rows",
+            isCompactViewport
+              ? "minmax(260px, 380px) 170px 170px 170px"
+              : "230px 230px 175px",
+            "important"
+          );
+          grid.style.setProperty("grid-auto-flow", "row", "important");
+          grid.style.setProperty("grid-auto-rows", "auto", "important");
+          grid.style.setProperty("gap", "14px", "important");
+          grid.style.setProperty("align-items", "stretch", "important");
+
+          const areas = ["hero", "summary", "rectangle", "use", "circle", "detail"];
+          gridBlocks.forEach((block, index) => {
+            [
+              "width", "height", "min-width", "min-height", "max-width", "max-height",
+              "grid-column", "grid-row", "align-self", "justify-self", "resize",
+              "--ll-bento-editor-width", "--ll-bento-editor-height", "--ll-bento-editor-span",
+              "--ll-bento-circle-size", "--ll-bento-resize-max-width", "--ll-bento-resize-max-height"
+            ].forEach((property) => block.style.removeProperty(property));
+            block.style.setProperty("grid-area", areas[index], "important");
+            block.style.setProperty("width", "100%", "important");
+            block.style.setProperty("min-width", "0", "important");
+            block.style.setProperty("max-width", "none", "important");
+            block.style.setProperty("height", "auto", "important");
+            block.style.setProperty("max-height", "none", "important");
+            block.style.setProperty("align-self", "stretch", "important");
+            block.style.setProperty("justify-self", "stretch", "important");
+            block.style.setProperty("resize", "none", "important");
+          });
+
+          gridBlocks[0].style.setProperty("min-height", isCompactViewport ? "clamp(260px, 48vw, 380px)" : "460px", "important");
+          gridBlocks[1].style.setProperty("min-height", isCompactViewport ? "150px" : "220px", "important");
+          gridBlocks[2].style.setProperty("min-height", isCompactViewport ? "150px" : "220px", "important");
+          gridBlocks[3].style.setProperty("height", isCompactViewport ? "100%" : "175px", "important");
+          gridBlocks[3].style.setProperty("max-height", isCompactViewport ? "none" : "175px", "important");
+          gridBlocks[3].style.setProperty("min-height", "0", "important");
+          gridBlocks[5].style.setProperty("height", isCompactViewport ? "100%" : "175px", "important");
+          gridBlocks[5].style.setProperty("max-height", isCompactViewport ? "none" : "175px", "important");
+          gridBlocks[5].style.setProperty("min-height", "0", "important");
+          // O bloco circular precisa conservar 1:1. Esticar o item na linha
+          // faz a imagem virar uma elipse alta e infla toda a ultima faixa.
+          gridBlocks[4].style.setProperty("align-self", "center", "important");
+          gridBlocks[4].style.setProperty("justify-self", "center", "important");
+          gridBlocks[4].style.setProperty("height", "auto", "important");
+          gridBlocks[4].style.setProperty("width", "min(100%, 165px)", "important");
+          gridBlocks[4].style.setProperty("max-width", "165px", "important");
+          gridBlocks[4].style.setProperty("aspect-ratio", "1 / 1", "important");
+        }
 
         // Os controles de ampliar usam labels ligados a checkboxes. Alguns
         // navegadores focam o input oculto e reposicionam o iframe; guardar a
@@ -6783,6 +6866,13 @@ ${containerHtml}`;
         };
 
         const setupBentoResizePersistence = () => {
+          // O modelo inicial usa uma grade nomeada fixa. Os controles de
+          // resize so entram numa composicao alterada, evitando que medidas
+          // residuais do editor comprimam os seis blocos de referencia.
+          if (isDefaultBentoLayout) {
+            return;
+          }
+
           const resizableBlockIndexes = state.bento.blocks
             .map((block, index) => ["text", "image"].includes(block.type) ? index : -1)
             .filter((index) => index >= 0);
@@ -6820,7 +6910,34 @@ ${containerHtml}`;
               element.dataset.llBentoResizeBlock = String(blockIndex);
               const block = state.bento.blocks[blockIndex];
               const savedSpan = Number(block?.responsiveSpan) || 1;
-              if (block?.resizeEdited && savedSpan === 2) {
+              if (isDefaultBentoLayout) {
+                // The standard six-block Bento has a fixed named-grid. Old
+                // editor dimensions must not be replayed over that baseline.
+                [
+                  "width",
+                  "height",
+                  "min-width",
+                  "min-height",
+                  "max-width",
+                  "max-height",
+                  "grid-column",
+                  "grid-row",
+                  "align-self",
+                  "justify-self"
+                ].forEach((property) => element.style.removeProperty(property));
+                [
+                  "--ll-bento-editor-width",
+                  "--ll-bento-editor-height",
+                  "--ll-bento-editor-span",
+                  "--ll-bento-circle-size"
+                ].forEach((property) => element.style.removeProperty(property));
+                if (block) {
+                  delete block.resizeWidth;
+                  delete block.resizeHeight;
+                  delete block.responsiveSpan;
+                  block.resizeEdited = false;
+                }
+              } else if (block?.resizeEdited && savedSpan === 2) {
                 root.dataset.llBentoFluidEditor = "true";
                 element.style.setProperty("--ll-bento-editor-span", "2");
                 element.style.gridColumn = "span 2";
