@@ -31,7 +31,9 @@
         return buildResponsivePackage("carousel", () => buildCarouselSectionHtml(), () => buildTabStyleWithClass("carousel", buildCarouselStyle));
       }
 
-      return buildResponsivePackage("faq", () => buildFaqSectionHtml(), () => buildTabStyleWithClass("faq", buildFaqStyle));
+      return typeof buildFaqOutputPackage === "function"
+        ? buildFaqOutputPackage()
+        : `<link rel="stylesheet" href="https://imgprd.martinsatacado.com.br/catalogoimg/catalogo/style-faq-padrao.css">\n\n${buildFaqSectionHtml()}`;
     }
 
     function extractLpContainerHtml(value) {

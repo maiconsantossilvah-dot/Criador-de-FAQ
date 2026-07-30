@@ -17,6 +17,13 @@
       template: "lp-container/lp-container"
     };
 
+    // Each tab asset is fetched separately for the editable preview. Keep a
+    // revision for Bento so a GitHub Pages cache cannot combine an older CSS
+    // grid with the current named-grid renderer.
+    const tabAssetRevisions = {
+      bento: "20260729-bento-preview-grid-1"
+    };
+
     const tabAssets = {};
 
     function normalizeStyleBlock(cssOrStyle = "") {
@@ -65,8 +72,9 @@
 
       const entries = Object.entries(tabAssetManifest);
       await Promise.all(entries.map(async ([tab, basePath]) => {
-        const htmlPath = `assets/tabs/${basePath}.html`;
-        const cssPath = `assets/tabs/${basePath}.css`;
+        const revision = tabAssetRevisions[tab] ? `?v=${tabAssetRevisions[tab]}` : "";
+        const htmlPath = `assets/tabs/${basePath}.html${revision}`;
+        const cssPath = `assets/tabs/${basePath}.css${revision}`;
         const result = {};
 
         await Promise.all([
@@ -2606,13 +2614,27 @@ ${cleanCss}
       return [baseStyle, classStyle].filter((part) => String(part || "").trim()).join("\n\n");
     }
 
-    function buildFaqStylePackage(options = {}) {
+    const faqExternalStylesheetLink = '<link rel="stylesheet" href="https://imgprd.martinsatacado.com.br/catalogoimg/catalogo/style-faq-padrao.css">';
+
+    function buildFaqPreviewStylePackage(options = {}) {
       const parts = [buildTabStyleWithClass("faq", buildFaqStyle)];
       if (options.includeResponsive) {
         parts.push(buildResponsiveStyle("faq", options.responsiveOptions || {}));
       }
 
-      return wrapFaqCssMarkers(parts.filter((part) => String(part || "").trim()).join("\n\n"));
+      return parts.filter((part) => String(part || "").trim()).join("\n\n");
+    }
+
+    function buildFaqStylePackage() {
+      return faqExternalStylesheetLink;
+    }
+
+    function buildFaqOutputPackage() {
+      return `${buildFaqStylePackage()}
+
+<!-- HTML DO LAYOUT -->
+
+${buildFaqSectionHtml()}`;
     }
 
     function buildFullHtml(includeTable) {
@@ -2701,7 +2723,7 @@ ${buildResponsiveStyle("bento", { includeDraft: true })}`;
       if (currentPage === "conteudo") {
         return `${buildFaqSectionHtml()}
 
-${buildFaqStylePackage({ includeResponsive: true, responsiveOptions: { includeDraft: true } })}`;
+${buildFaqPreviewStylePackage({ includeResponsive: true, responsiveOptions: { includeDraft: true } })}`;
       }
 
       return buildFullHtml(false);
@@ -2839,7 +2861,7 @@ ${buildFaqStylePackage({ includeResponsive: true, responsiveOptions: { includeDr
       }
 
       if (copyMode === "full") {
-        return buildResponsivePackage("faq", () => buildFaqSectionHtml(), () => buildTabStyleWithClass("faq", buildFaqStyle));
+        return buildFaqOutputPackage();
       }
 
       return faqHtml;
