@@ -2614,7 +2614,49 @@ ${cleanCss}
       return [baseStyle, classStyle].filter((part) => String(part || "").trim()).join("\n\n");
     }
 
-    const faqExternalStylesheetLink = '<link rel="stylesheet" href="https://imgprd.martinsatacado.com.br/catalogoimg/catalogo/style-faq-padrao.css">';
+    function buildTabOutputStyleWithClass(tab, dynamicStyleBuilder) {
+      const dynamicStyle = typeof dynamicStyleBuilder === "function" ? dynamicStyleBuilder() : "";
+      const classStyle = typeof buildPreviewClassStyle === "function" ? buildPreviewClassStyle(tab) : "";
+      return [dynamicStyle, classStyle].filter((part) => String(part || "").trim()).join("\n\n");
+    }
+
+    const structuralStylesheetBaseUrl = "https://imgprd.martinsatacado.com.br/catalogoimg/catalogo";
+    const structuralStylesheetFiles = {
+      faq: "faq.css",
+      table: "tabela.css",
+      stories: "stories.css",
+      article: "artigo.css",
+      carousel: "carrossel.css",
+      bento: "bento.css"
+    };
+
+    function getCurrentOutputLayoutKey() {
+      if (currentPage === "tecnica") {
+        return "faq";
+      }
+
+      return structuralStylesheetFiles[currentEditorTab] ? currentEditorTab : "";
+    }
+
+    function buildStructuralStylesheetLink(tab = getCurrentOutputLayoutKey()) {
+      const fileName = structuralStylesheetFiles[tab];
+      return fileName
+        ? `<link rel="stylesheet" href="${structuralStylesheetBaseUrl}/${fileName}">`
+        : "";
+    }
+
+    function prependStructuralStylesheet(output, tab = getCurrentOutputLayoutKey()) {
+      const link = buildStructuralStylesheetLink(tab);
+      const value = String(output || "").trim();
+
+      if (!link || !value || value.includes(link)) {
+        return value;
+      }
+
+      return `${link}\n\n${value}`;
+    }
+
+    const faqExternalStylesheetLink = buildStructuralStylesheetLink("faq");
 
     function buildFaqPreviewStylePackage(options = {}) {
       const parts = [buildTabStyleWithClass("faq", buildFaqStyle)];
@@ -2746,11 +2788,11 @@ ${buildFaqPreviewStylePackage({ includeResponsive: true, responsiveOptions: { in
         const tableHtml = buildTableSectionHtml(true);
 
         if (copyMode === "css") {
-          return buildTabStyleWithClass("table", buildTableStyle);
+          return buildTabOutputStyleWithClass("table", buildTableDynamicStyle);
         }
 
         if (copyMode === "full") {
-          return buildResponsivePackage("table", () => buildTableSectionHtml(true), () => buildTabStyleWithClass("table", buildTableStyle));
+          return buildResponsivePackage("table", () => buildTableSectionHtml(true), () => buildTabOutputStyleWithClass("table", buildTableDynamicStyle));
         }
 
         return tableHtml;
@@ -2760,11 +2802,11 @@ ${buildFaqPreviewStylePackage({ includeResponsive: true, responsiveOptions: { in
         const storiesHtml = buildStoriesSectionHtml();
 
         if (copyMode === "css") {
-          return buildTabStyleWithClass("stories", buildStoriesStyle);
+          return buildTabOutputStyleWithClass("stories", buildStoriesDynamicStyle);
         }
 
         if (copyMode === "full") {
-          return buildResponsivePackage("stories", () => buildStoriesSectionHtml(), () => buildTabStyleWithClass("stories", buildStoriesStyle));
+          return buildResponsivePackage("stories", () => buildStoriesSectionHtml(), () => buildTabOutputStyleWithClass("stories", buildStoriesDynamicStyle));
         }
 
         return storiesHtml;
@@ -2774,11 +2816,11 @@ ${buildFaqPreviewStylePackage({ includeResponsive: true, responsiveOptions: { in
         const articleHtml = buildArticleSectionHtml();
 
         if (copyMode === "css") {
-          return buildTabStyleWithClass("article", buildArticleStyle);
+          return buildTabOutputStyleWithClass("article", buildArticleDynamicStyle);
         }
 
         if (copyMode === "full") {
-          return buildResponsivePackage("article", () => buildArticleSectionHtml(), () => buildTabStyleWithClass("article", buildArticleStyle));
+          return buildResponsivePackage("article", () => buildArticleSectionHtml(), () => buildTabOutputStyleWithClass("article", buildArticleDynamicStyle));
         }
 
         return articleHtml;
@@ -2788,28 +2830,23 @@ ${buildFaqPreviewStylePackage({ includeResponsive: true, responsiveOptions: { in
         const carouselHtml = buildCarouselSectionHtml();
 
         if (copyMode === "css") {
-          return buildTabStyleWithClass("carousel", buildCarouselStyle);
+          return buildTabOutputStyleWithClass("carousel", buildCarouselDynamicStyle);
         }
 
         if (copyMode === "full") {
-          return buildResponsivePackage("carousel", () => buildCarouselSectionHtml(), () => buildTabStyleWithClass("carousel", buildCarouselStyle));
+          return buildResponsivePackage("carousel", () => buildCarouselSectionHtml(), () => buildTabOutputStyleWithClass("carousel", buildCarouselDynamicStyle));
         }
 
         return carouselHtml;
       }
 
       if (currentEditorTab === "bento") {
-        // The export deliberately strips editor-only sizing, then emits the
-        // structural guard after class styling. This keeps the pasted Bento
-        // stable even when the product page has its own grid rules.
+        // Structural Bento rules live in the hosted bento.css file. The
+        // exported block carries only styles changed through the editor.
         const buildBentoMarkup = () => cleanBentoOutputHtml(buildBentoSectionHtml(), {
           stripEditorSizing: true
         });
-        const buildBentoExportPackage = () => [
-          buildBentoExportStyle(),
-          typeof buildPreviewClassStyle === "function" ? buildPreviewClassStyle("bento") : "",
-          buildBentoExportLayoutGuard()
-        ].filter((part) => String(part || "").trim()).join("\n\n");
+        const buildBentoExportPackage = () => buildTabOutputStyleWithClass("bento");
 
         if (copyMode === "css") {
           return buildBentoExportPackage();
@@ -3074,16 +3111,11 @@ ${buildFaqPreviewStylePackage({ includeResponsive: true, responsiveOptions: { in
 
     function buildOutputHtml(copyMode = "html") {
       const value = buildOutputHtmlRaw(copyMode);
-      const cleanedValue = copyMode === "css" ? value : cleanPictureSourcesFromOutput(value);
+      const outputWithStructuralStylesheet = prependStructuralStylesheet(value);
+      const cleanedValue = copyMode === "css"
+        ? outputWithStructuralStylesheet
+        : cleanPictureSourcesFromOutput(outputWithStructuralStylesheet);
       if (copyMode === "html") return cleanedValue;
-
-      // Bento uses named grid areas, responsive variants and interaction states
-      // that cannot be inferred reliably from a static DOM snapshot. Pruning its
-      // stylesheet drops structural rules and collapses cards when pasted into a
-      // host page, so its already-scoped stylesheet must travel intact.
-      if (currentEditorTab === "bento") {
-        return cleanedValue;
-      }
 
       const htmlReference = copyMode === "css"
         ? cleanPictureSourcesFromOutput(buildOutputHtmlRaw("html"))

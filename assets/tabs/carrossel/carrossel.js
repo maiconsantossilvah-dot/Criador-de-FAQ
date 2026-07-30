@@ -939,12 +939,12 @@
 __CAROUSEL_DYNAMIC_COLORS__
 </style>`;
 
-    function buildCarouselStyle() {
+    function buildCarouselDynamicCss() {
       const sectionBackground = state.carousel.sectionGradientEnabled !== false
         ? `linear-gradient(180deg, ${normalizeHexColor(state.carousel.sectionGradientStart || "#ffffff")}, ${normalizeHexColor(state.carousel.sectionGradientEnd || state.carousel.softColor)})`
         : normalizeCssColorValue(state.carousel.softColor);
 
-      return injectTabDynamicStyle(getTabStyleAsset("carousel", carouselStyle), "__CAROUSEL_DYNAMIC_COLORS__", `
+      return `
   .ll-carousel {
     --ll-carousel-brand: ${normalizeHexColor(state.carousel.brandColor)};
     --ll-carousel-soft: ${normalizeCssColorValue(state.carousel.softColor)};
@@ -970,7 +970,20 @@ __CAROUSEL_DYNAMIC_COLORS__
     --ll-carousel-dot-icon-active-color: ${normalizeHexColor(state.carousel.dotIconActiveColor || "#ffffff")};
     --ll-carousel-indicator-color: ${hexToRgba(normalizeHexColor(state.carousel.indicatorColor || "#ffffff"), "0.5")};
     --ll-carousel-indicator-active-color: ${normalizeHexColor(state.carousel.indicatorActiveColor || "#ffffff")};
-  }`);
+  }`;
+    }
+
+    function buildCarouselDynamicStyle() {
+      const dynamicCss = buildCarouselDynamicCss();
+      return dynamicCss.trim() ? `<style>\n${dynamicCss}\n</style>` : "";
+    }
+
+    function buildCarouselStyle() {
+      return injectTabDynamicStyle(
+        getTabStyleAsset("carousel", carouselStyle),
+        "__CAROUSEL_DYNAMIC_COLORS__",
+        buildCarouselDynamicCss()
+      );
     }
 
     function normalizeCarouselType(type) {

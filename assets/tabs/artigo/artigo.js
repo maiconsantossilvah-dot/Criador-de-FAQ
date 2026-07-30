@@ -397,7 +397,7 @@
 __ARTICLE_DYNAMIC_COLORS__
 </style>`;
 
-    function buildArticleStyle() {
+    function buildArticleDynamicCss() {
       const shellBackgroundOpacity = normalizeArticleOverlayOpacity(state.article.shellBackgroundOpacity);
       const shellBackground = state.article.shellBackgroundEnabled !== false
         ? hexToRgba(state.article.shellBackgroundColor, shellBackgroundOpacity.toFixed(2))
@@ -412,14 +412,27 @@ __ARTICLE_DYNAMIC_COLORS__
         ? hexToRgba(state.article.tabsProtectionColor, tabsProtectionOpacity.toFixed(2))
         : "rgba(0, 0, 0, 0)";
 
-      return injectTabDynamicStyle(getTabStyleAsset("article", articleStyle), "__ARTICLE_DYNAMIC_COLORS__", `
+      return `
   .ll-article {
     --ll-article-shell-bg: ${shellBackground};
     --ll-article-tabs-panel: ${tabsPanel};
     --ll-article-overlay-strong: ${strong};
     --ll-article-overlay-medium: ${medium};
     --ll-article-overlay-soft: ${soft};
-  }`);
+  }`;
+    }
+
+    function buildArticleDynamicStyle() {
+      const dynamicCss = buildArticleDynamicCss();
+      return dynamicCss.trim() ? `<style>\n${dynamicCss}\n</style>` : "";
+    }
+
+    function buildArticleStyle() {
+      return injectTabDynamicStyle(
+        getTabStyleAsset("article", articleStyle),
+        "__ARTICLE_DYNAMIC_COLORS__",
+        buildArticleDynamicCss()
+      );
     }
 
     function escapeCssUrl(value) {

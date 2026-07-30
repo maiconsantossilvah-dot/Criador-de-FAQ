@@ -462,7 +462,7 @@
 __STORIES_DYNAMIC_COLORS__
 </style>`;
 
-    function buildStoriesStyle() {
+    function buildStoriesDynamicCss() {
       const ringBackground = getStoryRingBackground();
       const captionGradient = parseCssGradient(state.stories.captionBackgroundColor);
       const captionBgStart = captionGradient ? captionGradient.start : hexToRgba(state.stories.captionBackgroundColor, 0.72);
@@ -471,13 +471,26 @@ __STORIES_DYNAMIC_COLORS__
         ? buildCssGradient(captionGradient.start, captionGradient.end, captionGradient.angle)
         : `linear-gradient(90deg, ${captionBgStart}, ${captionBgEnd})`;
 
-      return injectTabDynamicStyle(getTabStyleAsset("stories", storiesStyle), "__STORIES_DYNAMIC_COLORS__", `
+      return `
   .lp-stories {
     --story-ring-bg: ${ringBackground};
     --story-caption-bg-start: ${captionBgStart};
     --story-caption-bg-end: ${captionBgEnd};
     --story-caption-bg: ${captionBg};
-  }`);
+  }`;
+    }
+
+    function buildStoriesDynamicStyle() {
+      const dynamicCss = buildStoriesDynamicCss();
+      return dynamicCss.trim() ? `<style>\n${dynamicCss}\n</style>` : "";
+    }
+
+    function buildStoriesStyle() {
+      return injectTabDynamicStyle(
+        getTabStyleAsset("stories", storiesStyle),
+        "__STORIES_DYNAMIC_COLORS__",
+        buildStoriesDynamicCss()
+      );
     }
 
     function getStoryId(group, slideIndex) {

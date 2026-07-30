@@ -84,7 +84,7 @@
 __TABLE_HEADER_COLORS__
 </style>`;
 
-    function buildTableStyle() {
+    function buildTableHeaderColorRules() {
       const columnRules = getTableColumns().map((column, index) => {
         return `
   .table-th-custom--col-${index + 1} {
@@ -92,10 +92,19 @@ __TABLE_HEADER_COLORS__
   }`;
       }).join("");
 
+      return columnRules;
+    }
+
+    function buildTableDynamicStyle() {
+      const columnRules = buildTableHeaderColorRules();
+      return columnRules.trim() ? `<style>\n${columnRules}\n</style>` : "";
+    }
+
+    function buildTableStyle() {
       return injectTabDynamicStyle(
         getTabStyleAsset("table", tableStyle),
         "__TABLE_HEADER_COLORS__",
-        columnRules
+        buildTableHeaderColorRules()
       );
     }
 
