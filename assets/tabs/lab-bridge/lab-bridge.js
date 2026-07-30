@@ -42,12 +42,19 @@ function buildLabBridgeNativeSection(builder, fallback, isUsable) {
   return (!isUsable || isUsable(html)) ? html : fallback;
 }
 
-function buildLabBridgeNativeStyle(tab, builder) {
-  if (typeof buildTabStyleWithClass !== "function" || typeof builder !== "function") {
+function buildLabBridgeNativeStyle(tab) {
+  if (typeof buildTabOutputStyleWithClass !== "function") {
     return "";
   }
 
-  return buildTabStyleWithClass(tab, builder);
+  const dynamicStyleBuilders = {
+    table: typeof buildTableDynamicStyle === "function" ? buildTableDynamicStyle : null,
+    stories: typeof buildStoriesDynamicStyle === "function" ? buildStoriesDynamicStyle : null,
+    article: typeof buildArticleDynamicStyle === "function" ? buildArticleDynamicStyle : null,
+    carousel: typeof buildCarouselDynamicStyle === "function" ? buildCarouselDynamicStyle : null
+  };
+
+  return buildTabOutputStyleWithClass(tab, dynamicStyleBuilders[tab] || null);
 }
 
 function buildLabBridgeDefaultFaqHtml() {

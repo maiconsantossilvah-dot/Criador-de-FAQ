@@ -42,7 +42,7 @@
     container-name: ll-carousel-container;
     container-type: inline-size;
     margin-inline: auto;
-    padding: 1rem;
+    padding: 0 1rem;
     width: 100%;
   }
 
@@ -50,21 +50,6 @@
     display: none;
   }
 
-  .ll-carousel__intro {
-    display: grid;
-    gap: 1rem;
-    justify-items: center;
-    margin-block-end: 1.5rem;
-    text-align: center;
-  }
-
-  .ll-carousel--hide-intro .ll-carousel__intro {
-    display: none;
-  }
-
-  .ll-carousel__eyebrow,
-  .ll-carousel__title,
-  .ll-carousel__lead,
   .ll-carousel__dot-number,
   .ll-carousel__dot-text,
   .ll-carousel__layout-eyebrow,
@@ -72,29 +57,6 @@
   .ll-carousel__layout-text {
     letter-spacing: 0;
     overflow-wrap: anywhere;
-  }
-
-  .ll-carousel__eyebrow {
-    color: var(--ll-carousel-brand);
-    font-size: clamp(0.75rem, 0.72rem + 0.16vw, 0.875rem);
-    font-weight: 700;
-    line-height: 1.4;
-    margin: 0;
-    text-transform: uppercase;
-  }
-
-  .ll-carousel__title {
-    font-size: clamp(1.75rem, 1.34rem + 1.76vw, 3rem);
-    line-height: 1.08;
-    margin: 0;
-  }
-
-  .ll-carousel__lead {
-    color: var(--ll-carousel-muted);
-    font-size: clamp(0.9375rem, 0.9rem + 0.16vw, 1.0625rem);
-    line-height: 1.6;
-    margin: 0;
-    max-width: 54rem;
   }
 
   .ll-carousel__viewport {
@@ -552,21 +514,7 @@
 
   @media (max-width: 760px) {
     .ll-carousel__container {
-      padding: 1rem 0.75rem;
-    }
-
-    .ll-carousel__intro {
-      gap: 0.65rem;
-      margin-block-end: 1rem;
-    }
-
-    .ll-carousel__title {
-      font-size: clamp(1.45rem, 7vw, 2rem);
-    }
-
-    .ll-carousel__lead {
-      font-size: 0.9rem;
-      line-height: 1.45;
+      padding: 0 0.75rem;
     }
 
     .ll-carousel__viewport {

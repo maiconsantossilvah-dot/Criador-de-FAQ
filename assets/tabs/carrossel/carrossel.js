@@ -46,7 +46,7 @@
     container-name: ll-carousel-container;
     container-type: inline-size;
     margin-inline: auto;
-    padding: 1rem;
+    padding: 0 1rem;
     width: 100%;
   }
 
@@ -54,21 +54,6 @@
     display: none;
   }
 
-  .ll-carousel__intro {
-    display: grid;
-    gap: 1rem;
-    justify-items: center;
-    margin-block-end: 1.5rem;
-    text-align: center;
-  }
-
-  .ll-carousel--hide-intro .ll-carousel__intro {
-    display: none;
-  }
-
-  .ll-carousel__eyebrow,
-  .ll-carousel__title,
-  .ll-carousel__lead,
   .ll-carousel__dot-number,
   .ll-carousel__dot-text,
   .ll-carousel__layout-eyebrow,
@@ -76,29 +61,6 @@
   .ll-carousel__layout-text {
     letter-spacing: 0;
     overflow-wrap: anywhere;
-  }
-
-  .ll-carousel__eyebrow {
-    color: var(--ll-carousel-brand);
-    font-size: clamp(0.75rem, 0.72rem + 0.16vw, 0.875rem);
-    font-weight: 700;
-    line-height: 1.4;
-    margin: 0;
-    text-transform: uppercase;
-  }
-
-  .ll-carousel__title {
-    font-size: clamp(1.75rem, 1.34rem + 1.76vw, 3rem);
-    line-height: 1.08;
-    margin: 0;
-  }
-
-  .ll-carousel__lead {
-    color: var(--ll-carousel-muted);
-    font-size: clamp(0.9375rem, 0.9rem + 0.16vw, 1.0625rem);
-    line-height: 1.6;
-    margin: 0;
-    max-width: 54rem;
   }
 
   .ll-carousel__viewport {
@@ -556,21 +518,7 @@
 
   @media (max-width: 760px) {
     .ll-carousel__container {
-      padding: 1rem 0.75rem;
-    }
-
-    .ll-carousel__intro {
-      gap: 0.65rem;
-      margin-block-end: 1rem;
-    }
-
-    .ll-carousel__title {
-      font-size: clamp(1.45rem, 7vw, 2rem);
-    }
-
-    .ll-carousel__lead {
-      font-size: 0.9rem;
-      line-height: 1.45;
+      padding: 0 0.75rem;
     }
 
     .ll-carousel__viewport {
@@ -1294,7 +1242,6 @@ __CAROUSEL_DYNAMIC_COLORS__
 
     function buildCarouselSectionHtml(activeIndex = 0) {
       const slides = getCarouselSlides();
-      const hideIntroClass = state.carousel.showIntro === false ? " ll-carousel--hide-intro" : "";
       const hideIndicatorsClass = state.carousel.showIndicators === false ? " ll-carousel--hide-indicators" : "";
       const activeSlideIndex = Math.min(Math.max(Number(activeIndex) || 0, 0), Math.max(0, slides.length - 1));
       const inputs = slides.map((slide, index) => {
@@ -1321,14 +1268,8 @@ __CAROUSEL_DYNAMIC_COLORS__
     </label>`;
       }).join("\n");
 
-      return `<section class="ll-carousel${hideIntroClass}${hideIndicatorsClass}" aria-label="${escapeHtml(state.carousel.ariaLabel || "Carrossel de layouts")}">
+      return `<section class="ll-carousel${hideIndicatorsClass}" aria-label="${escapeHtml(state.carousel.ariaLabel || "Carrossel de layouts")}">
   <div class="ll-carousel__container">
-    <div class="ll-carousel__intro">
-      <p class="ll-carousel__eyebrow"${previewTextStyleAttr({ scope: "carousel", field: "eyebrow" })}>${escapeHtml(state.carousel.eyebrow || "")}</p>
-      <h2 class="ll-carousel__title"${previewTextStyleAttr({ scope: "carousel", field: "title" })}>${escapeHtml(state.carousel.title || "")}</h2>
-      <p class="ll-carousel__lead"${previewTextStyleAttr({ scope: "carousel", field: "lead" })}>${escapeHtml(state.carousel.lead || "")}</p>
-    </div>
-
 ${inputs}
 
     <div class="ll-carousel__viewport">
@@ -1491,19 +1432,15 @@ ${impactFields}
           <details class="article-tab-editor article-base-editor" data-carousel-base-panel${baseOpen}>
             <summary class="article-tab-editor__summary">
               <strong>Base</strong>
-              <span class="article-tab-editor__meta">Introdução + cores</span>
+              <span class="article-tab-editor__meta">Cores e navegação</span>
               <span class="article-tab-editor__chevron" aria-hidden="true">&rsaquo;</span>
             </summary>
             <div class="article-editor__body">
-              <label class="article-toggle">
-                <input type="checkbox" data-carousel-field="showIntro"${state.carousel.showIntro !== false ? " checked" : ""}>
-                <span>Mostrar texto introdutório</span>
-              </label>
               <label class="field">
                 <span>Aria-label da seção</span>
                 <input type="text" value="${escapeHtml(state.carousel.ariaLabel || "")}" data-carousel-field="ariaLabel" autocomplete="off">
               </label>
-              <p class="muted-note">Título, texto de apoio e cor de destaque da introdução podem ser editados no preview.</p>
+              <p class="muted-note">Ajuste a identificação, as cores e a navegação do carrossel.</p>
               <div class="article-elements article-protection">
                 <span class="article-elements__title">Cores gerais</span>
                 <label class="article-toggle">

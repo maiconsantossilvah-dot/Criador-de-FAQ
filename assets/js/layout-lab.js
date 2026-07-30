@@ -318,7 +318,6 @@
       },
       carousel: {
         ariaLabel: "Diferenciais do Difusor de Aromas Glade Frutas e Flores Vibrantes 100ml",
-        showIntro: true,
         eyebrow: "",
         title: "",
         lead: "",
@@ -952,7 +951,7 @@
       }
 
       if (tab === "carousel") {
-        rules.push(`.ll-carousel__container { padding: ${scaledRem(2, spacingScale)} ${scaledRem(1, spacingScale)}; }`);
+        rules.push(`.ll-carousel__container { padding: 0 ${scaledRem(1, spacingScale)}; }`);
         rules.push(`.ll-carousel__viewport, .ll-carousel__dot, .ll-carousel__caption, .ll-carousel__media-card { border-radius: ${scaledRem(1, radiusScale)}; }`);
         rules.push(`.ll-carousel__title { font-size: clamp(${scaledRem(1.75, titleScale)}, ${scaledRem(2.35, titleScale)}, ${scaledRem(3, titleScale)}); }`);
         rules.push(`.ll-carousel__layout-title { font-size: clamp(${scaledRem(2, titleScale)}, ${scaledRem(3, titleScale)}, ${scaledRem(4, titleScale)}); }`);
@@ -3943,9 +3942,7 @@ ${buildFaqPreviewStylePackage({ includeResponsive: true, responsiveOptions: { in
         const slideIndex = event.target.dataset.carouselSlide;
 
         if (slideIndex === undefined) {
-          if (carouselField === "showIntro") {
-            state.carousel.showIntro = event.target.checked;
-          } else if (carouselField === "sectionGradientEnabled") {
+          if (carouselField === "sectionGradientEnabled") {
             state.carousel.sectionGradientEnabled = event.target.checked;
           } else if (carouselField === "showIndicators") {
             state.carousel.showIndicators = event.target.checked;
@@ -4092,7 +4089,7 @@ ${buildFaqPreviewStylePackage({ includeResponsive: true, responsiveOptions: { in
         return;
       }
 
-      if (event.target.matches("select") || event.target.matches('[data-article-field="shellBackgroundEnabled"], [data-article-field="overlayEnabled"], [data-article-field="tabsProtectionEnabled"], [data-carousel-field="showIntro"], [data-carousel-field="sectionGradientEnabled"], [data-carousel-field="showNavIcons"], [data-carousel-field="showIndicators"], [data-carousel-field="reverse"], [data-carousel-field="gradientEnabled"]')) {
+      if (event.target.matches("select") || event.target.matches('[data-article-field="shellBackgroundEnabled"], [data-article-field="overlayEnabled"], [data-article-field="tabsProtectionEnabled"], [data-carousel-field="sectionGradientEnabled"], [data-carousel-field="showNavIcons"], [data-carousel-field="showIndicators"], [data-carousel-field="reverse"], [data-carousel-field="gradientEnabled"]')) {
         event.target.dispatchEvent(new Event("input", { bubbles: true }));
       }
     });

@@ -19,6 +19,15 @@ const SENKO_BRIDGE_SCRIPT_TIMEOUT_MS = 8000;
 const SENKO_BRIDGE_FETCH_TIMEOUT_MS = 3500;
 const SENKO_BRIDGE_REMOTE_TIMEOUT_MS = 18000;
 const SENKO_BRIDGE_SCRIPT_BATCH_SIZE = 8;
+const SENKO_BRIDGE_LAB_STYLESHEET_BASE_URL = "https://imgprd.martinsatacado.com.br/catalogoimg/catalogo";
+const SENKO_BRIDGE_LAB_STYLESHEET_FILES = {
+  faq: "faq.css",
+  table: "tabela.css",
+  stories: "stories.css",
+  article: "artigo.css",
+  carousel: "carrossel.css",
+  bento: "bento.css"
+};
 
 function ensureSenkoBridgeState() {
   state.senkoBridge = {
@@ -384,6 +393,26 @@ function normalizeSenkoBridgeBlockHtml(block) {
   return block?.bridgeSource === "lab" ? html : fixSenkoRelativeUrls(html);
 }
 
+function getSenkoBridgeLabLayoutKey(block) {
+  const sourceId = String(block?.sourceId || "");
+  if (sourceId.startsWith("lab:")) {
+    return sourceId.slice(4);
+  }
+
+  return String(block?.id || "");
+}
+
+function buildSenkoBridgeLabStylesheetLinks(blocks = []) {
+  const seen = new Set();
+
+  return blocks
+    .filter((block) => block?.bridgeSource === "lab")
+    .map((block) => getSenkoBridgeLabLayoutKey(block))
+    .filter((key) => SENKO_BRIDGE_LAB_STYLESHEET_FILES[key] && !seen.has(key) && seen.add(key))
+    .map((key) => `<link rel="stylesheet" href="${SENKO_BRIDGE_LAB_STYLESHEET_BASE_URL}/${SENKO_BRIDGE_LAB_STYLESHEET_FILES[key]}">`)
+    .join("\n");
+}
+
 function senkoBridgeEscape(value) {
   return String(value || "")
     .replace(/&/g, "&amp;")
@@ -688,7 +717,7 @@ function buildSenkoBridgeCssBundle() {
   const bridge = ensureSenkoBridgeState();
   const cssParts = bridge.blocks
     .map((block) => `/* ${block.name} - ${block.variantName} */\n${normalizeSenkoBridgeBlockCss(block)}`)
-    .filter((part) => part.trim())
+    .filter((part) => part.trim());
   if (bridge.blocks.length > 1 || hasSenkoBridgeStackGroup(bridge.blocks)) {
     cssParts.push(buildSenkoBridgeStackCss());
   }
@@ -736,22 +765,30 @@ function buildSenkoBridgeHtmlBundle() {
 function buildSenkoBridgeOutputHtml(copyMode = "html") {
   const css = buildSenkoBridgeCssBundle();
   const html = buildSenkoBridgeHtmlBundle();
+  const links = buildSenkoBridgeLabStylesheetLinks(ensureSenkoBridgeState().blocks);
 
   if (copyMode === "css") {
-    return css;
+    return [links, css].filter((part) => String(part || "").trim()).join("\n\n");
   }
 
   if (copyMode === "full") {
-    return `<style>\n${css}\n</style>\n\n<div class="lp-container">\n${html}\n</div>`;
+    return [
+      links,
+      css ? `<style>\n${css}\n</style>` : "",
+      `<div class="lp-container">\n${html}\n</div>`
+    ].filter((part) => String(part || "").trim()).join("\n\n");
   }
 
-  return `<div class="lp-container">\n${html}\n</div>`;
+  return [links, `<div class="lp-container">\n${html}\n</div>`].filter(Boolean).join("\n\n");
 }
 
 function buildSenkoBridgeTransferHtml() {
   const css = buildSenkoBridgeCssBundle();
   const html = buildSenkoBridgeHtmlBundle();
-  return `<style>\n${css}\n</style>\n\n${html}`.trim();
+  const links = buildSenkoBridgeLabStylesheetLinks(ensureSenkoBridgeState().blocks);
+  return [links, css ? `<style>\n${css}\n</style>` : "", html]
+    .filter((part) => String(part || "").trim())
+    .join("\n\n");
 }
 
 function buildSenkoBridgePreviewBlocksHtml() {
@@ -806,6 +843,7 @@ ${normalizeSenkoBridgeBlockHtml(block)}
 function buildSenkoBridgePreviewHtml() {
   const css = buildSenkoBridgeCssBundle();
   const html = buildSenkoBridgePreviewBlocksHtml();
+  const links = buildSenkoBridgeLabStylesheetLinks(ensureSenkoBridgeState().blocks);
   const content = html
     ? `<div class="lp-container">${html}</div>`
     : '<div class="senko-empty-preview"><strong>Quadro vazio.</strong><br>Adicione layouts pela coluna da esquerda.</div>';
@@ -815,6 +853,7 @@ function buildSenkoBridgePreviewHtml() {
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  ${links}
   <style>
 ${buildSenkoBridgeBaseCss()}
 ${css}
@@ -841,11 +880,13 @@ document.addEventListener("click", function(event) {
 function buildSenkoBridgeMiniSrcdoc(entry) {
   const css = entry?.bridgeSource === "lab" ? normalizeSenkoCss(entry.css) : fixSenkoRelativeUrls(normalizeSenkoCss(entry.css));
   const html = entry?.bridgeSource === "lab" ? normalizeSenkoHtml(entry.html) : fixSenkoRelativeUrls(normalizeSenkoHtml(entry.html));
+  const links = buildSenkoBridgeLabStylesheetLinks(entry ? [entry] : []);
   return `<!doctype html>
 <html lang="pt-BR">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  ${links}
   <style>
 html, body { margin: 0; background: #fff; overflow: hidden; font-family: Arial, sans-serif; }
 body { width: 760px; min-height: 430px; transform-origin: top left; }
