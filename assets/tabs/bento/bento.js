@@ -47,6 +47,63 @@
       ];
     }
 
+    const fixedBentoSlots = [
+      { key: "hero", label: "Hero", type: "hero" },
+      { key: "summary", label: "Resumo", type: "text", variant: "wide" },
+      { key: "rectangle", label: "Imagem", type: "image", shape: "rectangle" },
+      { key: "use", label: "Uso", type: "text", variant: "small" },
+      { key: "circle", label: "Imagem circular", type: "image", shape: "circle" },
+      { key: "detail", label: "Detalhe", type: "text", variant: "small-center" }
+    ];
+
+    function getFixedBentoBlocks(blocks = []) {
+      const defaults = getDefaultBentoBlocks();
+      const currentBlocks = Array.isArray(blocks) ? blocks.filter(Boolean) : [];
+
+      // Preserva a edicao existente quando ela ja veio do modelo padrao.
+      if (hasDefaultBentoComposition(currentBlocks)) {
+        return defaults.map((fallback, index) => {
+          const current = currentBlocks[index] || {};
+          return normalizeBentoBlock({
+            ...fallback,
+            ...current,
+            type: fallback.type,
+            ...(fallback.type === "image" ? { shape: fallback.shape } : { variant: fallback.variant })
+          });
+        });
+      }
+
+      const available = [...currentBlocks];
+      const take = (predicate) => {
+        const index = available.findIndex(predicate);
+        return index >= 0 ? available.splice(index, 1)[0] : null;
+      };
+
+      return defaults.map((fallback, index) => {
+        const slot = fixedBentoSlots[index];
+        let current = null;
+
+        if (slot.type === "hero") {
+          current = take((block) => block.type === "hero");
+        } else if (slot.type === "image") {
+          current = take((block) => block.type === "image" && (slot.shape === "circle" ? block.shape === "circle" : block.shape !== "circle"));
+        } else if (slot.variant === "wide") {
+          current = take((block) => block.type === "text" && block.variant === "wide");
+        } else if (slot.variant === "small-center") {
+          current = take((block) => block.type === "text" && block.variant === "small-center");
+        } else {
+          current = take((block) => block.type === "text" && block.variant !== "wide" && block.variant !== "small-center");
+        }
+
+        return normalizeBentoBlock({
+          ...fallback,
+          ...(current || {}),
+          type: fallback.type,
+          ...(fallback.type === "image" ? { shape: fallback.shape } : { variant: fallback.variant })
+        });
+      });
+    }
+
     function ensureBentoState() {
       state.bento = state.bento || {};
       state.bento.header = state.bento.header || {
@@ -68,9 +125,7 @@
         .filter((block) => block?.type !== "table")
         .map(normalizeBentoBlock);
 
-      if (!state.bento.blocks.length) {
-        state.bento.blocks = getDefaultBentoBlocks();
-      }
+      state.bento.blocks = getFixedBentoBlocks(state.bento.blocks);
     }
 
     function createBentoBlock(type = "text") {
@@ -205,36 +260,13 @@
 
     function addBentoBlock(type, options = {}) {
       ensureBentoState();
-      if (!canUseBentoBlockType(type)) {
-        setBentoStatus(getBentoLimitMessage(type));
-        renderEditor(true);
-        return;
-      }
-
-      const insertIndex = findBentoInsertIndex(type);
-      const block = createBentoBlock(type);
-      if (type === "image" && ["rectangle", "circle"].includes(options.shape)) {
-        block.shape = options.shape;
-      }
-      recordBentoUndo();
-      state.bento.blocks.splice(insertIndex, 0, block);
-      resetBentoCustomHtml();
-      setBentoStatus("");
+      setBentoStatus("A estrutura do Bento e fixa: edite os seis blocos existentes.");
       renderEditor(true);
     }
 
     function removeBentoBlock(index) {
       ensureBentoState();
-      if (state.bento.blocks.length <= 1) {
-        setBentoStatus("O Bento precisa manter pelo menos um bloco.");
-        renderEditor(true);
-        return;
-      }
-
-      recordBentoUndo();
-      state.bento.blocks.splice(index, 1);
-      resetBentoCustomHtml();
-      setBentoStatus("");
+      setBentoStatus("A estrutura do Bento e fixa: nenhum dos seis blocos pode ser removido.");
       renderEditor(true);
     }
 
@@ -252,16 +284,7 @@
 
     function changeBentoBlockType(index, type) {
       ensureBentoState();
-      if (!canUseBentoBlockType(type, index)) {
-        setBentoStatus(getBentoLimitMessage(type));
-        renderEditor(true);
-        return;
-      }
-
-      recordBentoUndo();
-      state.bento.blocks[index] = createBentoBlock(type);
-      resetBentoCustomHtml();
-      setBentoStatus("");
+      setBentoStatus("O tipo de cada bloco faz parte da estrutura fixa do Bento.");
       renderEditor(true);
     }
 
@@ -2191,18 +2214,29 @@
 .ll-bento__lightbox-panel {
   position: relative;
   z-index: 1;
-  width: min(980px, 100%);
-  max-height: min(82vh, 760px);
+  display: inline-block;
+  width: fit-content;
+  max-width: min(94vw, 1100px);
+  max-height: calc(88vh - 2px);
   overflow: hidden;
-  border-radius: 26px;
-  background: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.92);
+  border-radius: 18px;
+  background: transparent;
+  box-shadow: 0 18px 56px rgba(0, 0, 0, 0.32);
 }
 
-.ll-bento__lightbox-panel img {
-  width: 100%;
+.ll-bento__lightbox-panel .ll-bento__lightbox-picture,
+.ll-bento__lightbox-panel .ll-bento__lightbox-picture img {
+  display: block;
+  width: auto;
   height: auto;
-  max-height: min(72vh, 680px);
-  object-fit: cover;
+  max-width: min(94vw, 1100px);
+  max-height: calc(88vh - 2px);
+  object-fit: contain;
+}
+
+.ll-bento__lightbox-overlay {
+  display: none;
 }
 
 .ll-bento__lightbox-clickzone {
@@ -2213,16 +2247,17 @@
 
 .ll-bento__lightbox-close {
   position: absolute;
-  top: 14px;
-  right: 14px;
+  top: 10px;
+  right: 10px;
   z-index: 4;
   display: grid;
   place-items: center;
-  width: 38px;
-  height: 38px;
+  width: 34px;
+  height: 34px;
   border-radius: 999px;
   color: #ffffff;
   background: rgba(19, 35, 58, 0.78);
+  border: 1px solid rgba(255, 255, 255, 0.58);
   font-size: 1.4rem;
   font-weight: 800;
   cursor: pointer;
@@ -2692,29 +2727,15 @@ ${blocks}
     }
 
     function renderBentoBlockEditor(block, index) {
-      const typeOptions = [
-        ["hero", "HERO"],
-        ["text", "Texto"],
-        ["image", "Imagem"]
-      ].map(([value, label]) => `<option value="${value}" ${block.type === value ? "selected" : ""}>${label}</option>`).join("");
+      const slot = fixedBentoSlots[index] || { label: `Bloco ${index + 1}` };
 
       return `<details class="article-tab-editor">
         <summary class="article-tab-editor__summary">
-          <strong>Bloco ${index + 1}: ${escapeHtml(block.type)}</strong>
+          <strong>${escapeHtml(slot.label)}</strong>
           <span class="article-tab-editor__meta">${escapeHtml(block.label || block.title || "Bento")}</span>
           <span class="article-tab-editor__chevron" aria-hidden="true">&rsaquo;</span>
         </summary>
         <div class="article-editor__body">
-          <div class="field-grid field-grid--two">
-            <label class="field">
-              <span>Tipo</span>
-              <select data-bento-field="type" data-bento-block="${index}">${typeOptions}</select>
-            </label>
-            <div class="field field--button">
-              <span>&nbsp;</span>
-              <button class="button button--danger icon-button" type="button" data-action="remove-bento-block" data-bento-block="${index}" aria-label="Remover bloco" title="Remover bloco">${trashIcon()}</button>
-            </div>
-          </div>
           ${renderBentoBlockFields(block, index)}
         </div>
       </details>`;
@@ -2734,14 +2755,9 @@ ${blocks}
       }
 
       if (block.type === "image") {
+        const imageFormat = block.shape === "circle" ? "Imagem circular proporcional" : "Imagem retangular redimensionavel";
         return `
-          <label class="field">
-            <span>Formato da imagem</span>
-            <select data-bento-field="shape" data-bento-block="${index}">
-              <option value="rectangle" ${block.shape !== "circle" ? "selected" : ""}>Retangulo redimensionavel</option>
-              <option value="circle" ${block.shape === "circle" ? "selected" : ""}>Circulo proporcional</option>
-            </select>
-          </label>
+          <p class="article-editor__hint">Formato fixo: ${imageFormat}.</p>
           ${renderBentoInput(index, "image", "URL da imagem", block.image)}
           ${renderBentoInput(index, "alt", "Alt text", block.alt)}
         `;
@@ -2754,16 +2770,6 @@ ${blocks}
         </div>
         ${renderBentoInput(index, "title", "Titulo", block.title)}
         ${renderBentoTextarea(index, "text", "Texto", block.text)}
-        <label class="field">
-          <span>Formato do card</span>
-          <select data-bento-field="variant" data-bento-block="${index}">
-            <option value="small" ${block.variant === "small" ? "selected" : ""}>Quadrado texto</option>
-            <option value="small-center" ${block.variant === "small-center" ? "selected" : ""}>Quadrado centralizado</option>
-            <option value="wide" ${block.variant === "wide" ? "selected" : ""}>Retangular largo</option>
-            <option value="accent" ${block.variant === "accent" ? "selected" : ""}>Destaque claro</option>
-            <option value="dark" ${block.variant === "dark" ? "selected" : ""}>Destaque escuro</option>
-          </select>
-        </label>
       `;
     }
 
@@ -2783,37 +2789,13 @@ ${blocks}
 
     function renderBentoEditor() {
       ensureBentoState();
-      const heroCount = countBentoBlocks("hero");
-      const textCount = countBentoBlocks("text");
-      const imageCount = countBentoBlocks("image");
-      const addIcons = {
-        hero: `<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"></rect><path d="m5.5 17 4.5-4.5 3.3 3.2 2.2-2.2 3 3.2"></path><circle cx="8" cy="8.5" r="1.3"></circle></svg>`,
-        text: `<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 5h14"></path><path d="M12 5v14"></path><path d="M8 19h8"></path></svg>`,
-        image: `<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"></rect><path d="m5.5 17 4.5-4.5 3.3 3.2 2.2-2.2 3 3.2"></path><circle cx="8" cy="8.5" r="1.3"></circle></svg>`,
-        imageCircle: `<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="m5.8 16.4 4.3-4.2 3 2.8 2.1-2.1 3 3.1"></path><circle cx="9" cy="9" r="1.1"></circle></svg>`
-      };
-      const addOptions = [
-        { type: "hero", title: "Hero", note: `${heroCount}/1`, disabled: !canUseBentoBlockType("hero") },
-        { type: "text", title: "Texto", note: `${textCount}/5`, disabled: !canUseBentoBlockType("text") },
-        { type: "image", shape: "rectangle", title: "Imagem", note: `${imageCount}/2`, disabled: !canUseBentoBlockType("image") },
-        { type: "image", shape: "circle", title: "Circular", note: `${imageCount}/2`, disabled: !canUseBentoBlockType("image"), icon: "imageCircle" }
-      ].map((option) => `
-        <button class="bento-add-tile bento-add-tile--${option.type}${option.shape ? ` bento-add-tile--${option.shape}` : ""}" type="button" data-action="add-bento-block" data-bento-type="${option.type}" ${option.shape ? `data-bento-shape="${option.shape}"` : ""} ${option.disabled ? "disabled" : ""} aria-label="Adicionar bloco ${escapeHtml(option.title)}" title="Adicionar bloco ${escapeHtml(option.title)}">
-          <span class="bento-add-tile__icon" aria-hidden="true">${addIcons[option.icon || option.type]}</span>
-          <span class="bento-add-tile__plus" aria-hidden="true">+</span>
-          <span class="bento-add-tile__copy">
-            <strong>${option.title}</strong>
-            <small>${option.note}</small>
-          </span>
-        </button>
-      `).join("");
 
       return `
         <section class="article-editor bento-editor" aria-label="Editor Bento grid">
           <div class="editor-section-title">
             <div>
               <h2>Bento grid</h2>
-              <p>Monte a grade com blocos controlados: 1 HERO, ate 5 textos e ate 2 imagens quadradas.</p>
+              <p>Estrutura fixa: hero, resumo, imagem, uso, imagem circular e detalhe.</p>
             </div>
           </div>
 
@@ -2823,9 +2805,9 @@ ${blocks}
               <span aria-hidden="true">&rsaquo;</span>
             </summary>
             <div class="stories-guide__body">
-              <p><strong>Hero:</strong> apenas um por secao. Use imagem horizontal forte entre 1200x800 e 1600x1000.</p>
-              <p><strong>Texto:</strong> ate 5 cards. Use titulos curtos para manter a grade escaneavel.</p>
-              <p><strong>Imagem:</strong> ate 2 imagens quadradas. Arraste o canto para ampliar dentro da grade.</p>
+              <p><strong>Hero:</strong> use imagem horizontal forte entre 1200x800 e 1600x1000.</p>
+              <p><strong>Cards:</strong> mantenha titulos curtos para a grade continuar escaneavel.</p>
+              <p><strong>Imagens:</strong> a primeira e retangular; a segunda e circular proporcional.</p>
             </div>
           </details>
 
@@ -2853,15 +2835,6 @@ ${blocks}
             </div>
           </details>
 
-          <div class="bento-add-panel">
-            <div class="bento-add-panel__head">
-              <strong>Adicionar bloco</strong>
-              <span>Clique em um tipo para adicionar.</span>
-            </div>
-            <div class="bento-add-grid">
-              ${addOptions}
-            </div>
-          </div>
           ${status}
 
           <div class="bento-block-list">
