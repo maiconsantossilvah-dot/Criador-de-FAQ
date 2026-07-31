@@ -21,7 +21,7 @@ const SENKO_BRIDGE_REMOTE_TIMEOUT_MS = 18000;
 const SENKO_BRIDGE_SCRIPT_BATCH_SIZE = 8;
 const SENKO_BRIDGE_LAB_STYLESHEET_BASE_URL = "https://imgprd.martinsatacado.com.br/catalogoimg/catalogo";
 const SENKO_BRIDGE_LAB_STYLESHEET_FILES = {
-  faq: "faq.css",
+  faq: "style-faq-padrao.css",
   table: "tabela.css",
   stories: "stories.css",
   article: "artigo.css",
