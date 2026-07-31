@@ -2621,7 +2621,7 @@ ${cleanCss}
 
     const structuralStylesheetBaseUrl = "https://imgprd.martinsatacado.com.br/catalogoimg/catalogo";
     const structuralStylesheetFiles = {
-      faq: "faq.css",
+      faq: "style-faq-padrao.css",
       table: "tabela.css",
       stories: "stories.css",
       article: "artigo.css",
