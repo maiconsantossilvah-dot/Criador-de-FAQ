@@ -1651,6 +1651,10 @@ ${block.html}
       const editorAction = /(?:editar|trocar|url|m[i\u00ed]dia|m\u00c3\u00addia|media|texto|estilo|cor|fundo|alt)/i;
 
       Array.from(wrapper.querySelectorAll("*")).forEach((element) => {
+        const hasLabAttributes = Array.from(element.attributes).some((attribute) => attribute.name.startsWith("data-ll-"));
+        const title = element.getAttribute("title") || "";
+        const hasLabTooltip = editorInstruction.test(title) && editorAction.test(title);
+
         Array.from(element.attributes).forEach((attribute) => {
           if (attribute.name.startsWith("data-ll-")) {
             element.removeAttribute(attribute.name);
@@ -1660,9 +1664,12 @@ ${block.html}
         element.removeAttribute("contenteditable");
         element.removeAttribute("spellcheck");
 
-        const title = element.getAttribute("title") || "";
-        if (editorInstruction.test(title) && editorAction.test(title)) {
+        if (hasLabTooltip) {
           element.removeAttribute("title");
+        }
+
+        if ((hasLabAttributes || hasLabTooltip) && element.style) {
+          element.style.removeProperty("cursor");
         }
       });
 

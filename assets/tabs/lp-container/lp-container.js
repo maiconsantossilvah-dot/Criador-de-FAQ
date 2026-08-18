@@ -103,6 +103,9 @@
         return;
       }
 
+      const hasLabAttributes = Array.from(element.attributes).some((attribute) => attribute.name.startsWith("data-ll-"));
+      const hasLabTooltip = isLabEditorTooltip(element.getAttribute("title"));
+
       Array.from(element.attributes).forEach((attribute) => {
         if (attribute.name.startsWith("data-ll-")) {
           element.removeAttribute(attribute.name);
@@ -112,8 +115,14 @@
       element.removeAttribute("contenteditable");
       element.removeAttribute("spellcheck");
 
-      if (isLabEditorTooltip(element.getAttribute("title"))) {
+      if (hasLabTooltip) {
         element.removeAttribute("title");
+      }
+
+      // The header editor sets an inline pointer cursor in the preview. It is
+      // not part of the published layout, so remove it along with editor data.
+      if ((hasLabAttributes || hasLabTooltip) && element.style) {
+        element.style.removeProperty("cursor");
       }
     }
 
