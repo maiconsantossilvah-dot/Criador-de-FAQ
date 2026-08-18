@@ -1635,6 +1635,40 @@ ${block.html}
       return wrapper.innerHTML;
     }
 
+    function cleanLabEditorArtifactsFromOutput(value) {
+      const rawValue = String(value || "");
+      if (!rawValue || !/<\/?[a-z][\s\S]*>/i.test(rawValue) || typeof DOMParser === "undefined") {
+        return rawValue;
+      }
+
+      const parsedDocument = new DOMParser().parseFromString(`<div data-ll-output-clean-root>${rawValue}</div>`, "text/html");
+      const wrapper = parsedDocument.querySelector("[data-ll-output-clean-root]");
+      if (!wrapper) {
+        return rawValue;
+      }
+
+      const editorInstruction = /^(?:Clique|Duplo clique|D(?:\u00ea|\u00c3\u00aa) dois cliques)/i;
+      const editorAction = /(?:editar|trocar|url|m[i\u00ed]dia|m\u00c3\u00addia|media|texto|estilo|cor|fundo|alt)/i;
+
+      Array.from(wrapper.querySelectorAll("*")).forEach((element) => {
+        Array.from(element.attributes).forEach((attribute) => {
+          if (attribute.name.startsWith("data-ll-")) {
+            element.removeAttribute(attribute.name);
+          }
+        });
+
+        element.removeAttribute("contenteditable");
+        element.removeAttribute("spellcheck");
+
+        const title = element.getAttribute("title") || "";
+        if (editorInstruction.test(title) && editorAction.test(title)) {
+          element.removeAttribute("title");
+        }
+      });
+
+      return wrapper.innerHTML;
+    }
+
     function renderResponsiveEditor() {
       if (currentPage !== "conteudo") {
         return "";
@@ -3110,7 +3144,8 @@ ${buildFaqPreviewStylePackage({ includeResponsive: true, responsiveOptions: { in
 
     function buildOutputHtml(copyMode = "html") {
       const value = buildOutputHtmlRaw(copyMode);
-      const outputWithStructuralStylesheet = prependStructuralStylesheet(value);
+      const outputWithoutEditorArtifacts = cleanLabEditorArtifactsFromOutput(value);
+      const outputWithStructuralStylesheet = prependStructuralStylesheet(outputWithoutEditorArtifacts);
       const cleanedValue = copyMode === "css"
         ? outputWithStructuralStylesheet
         : cleanPictureSourcesFromOutput(outputWithStructuralStylesheet);

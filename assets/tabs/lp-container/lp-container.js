@@ -91,6 +91,32 @@
       return css ? `<style>\n${css}\n</style>` : "";
     }
 
+    function isLabEditorTooltip(value) {
+      const tooltip = String(value || "").trim();
+      const editorInstruction = /^(?:Clique|Duplo clique|D(?:\u00ea|\u00c3\u00aa) dois cliques)/i;
+      const editorAction = /(?:editar|trocar|url|m[i\u00ed]dia|m\u00c3\u00addia|media|texto|estilo|cor|fundo|alt)/i;
+      return editorInstruction.test(tooltip) && editorAction.test(tooltip);
+    }
+
+    function stripLabEditorArtifacts(element) {
+      if (!element || !element.attributes) {
+        return;
+      }
+
+      Array.from(element.attributes).forEach((attribute) => {
+        if (attribute.name.startsWith("data-ll-")) {
+          element.removeAttribute(attribute.name);
+        }
+      });
+
+      element.removeAttribute("contenteditable");
+      element.removeAttribute("spellcheck");
+
+      if (isLabEditorTooltip(element.getAttribute("title"))) {
+        element.removeAttribute("title");
+      }
+    }
+
     function cleanTemplateEditorArtifacts(value, options = {}) {
       const rawValue = String(value || "").trim();
       if (!rawValue || !/<\/?[a-z][\s\S]*>/i.test(rawValue)) {
@@ -109,6 +135,10 @@
       });
 
       Array.from(wrapper.querySelectorAll("*")).forEach((element) => {
+        if (!preservePreviewFaqState) {
+          stripLabEditorArtifacts(element);
+        }
+
         if (!preservePreviewFaqState && element.style) {
           const normalBg = element.style.getPropertyValue("--ll-template-faq-summary-bg");
           const questionColor = element.style.getPropertyValue("--ll-template-faq-question-color");
@@ -1710,34 +1740,7 @@ ${containerHtml}`;
         element.remove();
       });
       [clone, ...clone.querySelectorAll("*")].forEach((element) => {
-        [
-          "data-ll-template-node",
-          "data-ll-preview-text",
-          "data-ll-preview-media",
-          "data-ll-preview-color",
-          "data-ll-preview-inline",
-          "data-ll-preview-position",
-          "data-ll-preview-overlay-horizontal",
-          "data-ll-preview-overlay-vertical",
-          "data-ll-preview-overlay-width",
-          "data-ll-preview-manual-story",
-          "data-ll-preview-story-panel",
-          "data-ll-preview-story-active",
-          "data-ll-preview-story-hidden",
-          "data-ll-preview-story-current",
-          "data-ll-template-iframe-parent",
-          "data-ll-table-edit-root",
-          "data-ll-preview-header-editor",
-          "data-ll-preview-header-banner",
-          "data-ll-template-faq-title-ready"
-        ].forEach((attribute) => element.removeAttribute(attribute));
-        element.removeAttribute("contenteditable");
-        element.removeAttribute("spellcheck");
-
-        const title = element.getAttribute("title") || "";
-        if (/^Clique para editar|^Clique para trocar|^Duplo clique para editar/i.test(title)) {
-          element.removeAttribute("title");
-        }
+        stripLabEditorArtifacts(element);
       });
 
       clone.querySelectorAll("[data-ll-template-helper]").forEach((element) => {
@@ -1783,18 +1786,7 @@ ${containerHtml}`;
       const clone = container.cloneNode(true);
       clone.querySelectorAll("[data-ll-bento-resize-handle], .ll-bento__resize-handle").forEach((element) => element.remove());
       [clone, ...clone.querySelectorAll("*")].forEach((element) => {
-        [
-          "data-ll-bento-node",
-          "data-ll-preview-text",
-          "data-ll-preview-media",
-          "data-ll-preview-color",
-          "data-ll-preview-inline",
-          "data-ll-preview-position",
-          "data-ll-bento-resize-block",
-          "data-ll-bento-resize-ready"
-        ].forEach((attribute) => element.removeAttribute(attribute));
-        element.removeAttribute("contenteditable");
-        element.removeAttribute("spellcheck");
+        stripLabEditorArtifacts(element);
         if (element.classList) {
           element.classList.remove("ll-template-faq-summary", "ll-template-faq-custom-colors");
           if (!element.getAttribute("class")) {
