@@ -718,9 +718,9 @@
   width: 100%;
   height: var(--ll-bento-circle-size, auto) !important;
   aspect-ratio: 1 / 1;
-  border-radius: 100%;
+  border-radius: 0;
   resize: none;
-  overflow: hidden;
+  overflow: visible;
   min-width: min(100%, 150px);
   min-height: 0;
   max-width: var(--ll-bento-resize-max-width, 100%);
@@ -732,21 +732,28 @@
   z-index: 6;
 }
 
-.ll-bento__expand--image-circle .ll-bento__card--image {
+.ll-bento__expand--image-circle > .ll-bento__card--image {
   width: 100%;
   height: 100%;
   min-height: 0;
   padding: 0;
   aspect-ratio: auto;
-  border-radius: inherit;
+  overflow: hidden;
+  border-radius: 50%;
+  -webkit-clip-path: circle(50% at 50% 50%);
+  clip-path: circle(50% at 50% 50%);
 }
 
-.ll-bento__expand--image-circle picture,
-.ll-bento__expand--image-circle .ll-bento__card-media {
+.ll-bento__expand--image-circle > .ll-bento__card--image > picture,
+.ll-bento__expand--image-circle > .ll-bento__card--image .ll-bento__card-media {
   width: 100%;
   height: 100%;
   aspect-ratio: 1 / 1;
-  border-radius: inherit;
+  overflow: hidden;
+  border-radius: 50%;
+  -webkit-clip-path: circle(50% at 50% 50%);
+  clip-path: circle(50% at 50% 50%);
+  object-fit: cover;
 }
 
 .ll-bento__expand--image-circle .ll-bento__image-button {
@@ -1551,12 +1558,12 @@
   justify-self: stretch;
   width: 100%;
   aspect-ratio: 1 / 1;
-  overflow: hidden;
-  border-radius: 100%;
+  overflow: visible;
+  border-radius: 0;
 }
 
 .ll-bento__expand--image-square .ll-bento__card--image,
-.ll-bento__expand--image-circle .ll-bento__card--image {
+.ll-bento__expand--image-circle > .ll-bento__card--image {
   width: 100%;
   height: 100%;
   min-height: 0;
@@ -1566,11 +1573,21 @@
 }
 
 .ll-bento__expand--image-square picture,
-.ll-bento__expand--image-circle picture,
+.ll-bento__expand--image-circle > .ll-bento__card--image > picture,
 .ll-bento__expand--image-square .ll-bento__card-media,
-.ll-bento__expand--image-circle .ll-bento__card-media {
+.ll-bento__expand--image-circle > .ll-bento__card--image .ll-bento__card-media {
   width: 100%;
   height: 100%;
+}
+
+.ll-bento__expand--image-circle > .ll-bento__card--image,
+.ll-bento__expand--image-circle > .ll-bento__card--image > picture,
+.ll-bento__expand--image-circle > .ll-bento__card--image .ll-bento__card-media {
+  overflow: hidden;
+  border-radius: 50%;
+  -webkit-clip-path: circle(50% at 50% 50%);
+  clip-path: circle(50% at 50% 50%);
+  object-fit: cover;
 }
 
 @media (max-width: 900px) {
@@ -1917,20 +1934,26 @@
   border-radius: var(--ll-bento-radius);
 }
 
-/* A imagem circular precisa carregar a mascara no proprio output. O CSS da
-   pagina hospedeira costuma sobrescrever apenas o raio do card interno. */
-.ll-bento__grid > .ll-bento__expand--image-circle,
-.ll-bento__grid > .ll-bento__expand--image-circle .ll-bento__card--image,
-.ll-bento__grid > .ll-bento__expand--image-circle picture,
-.ll-bento__grid > .ll-bento__expand--image-circle .ll-bento__card-media {
+/* A mascara pertence apenas a miniatura. O modal e seu picture sao irmaos
+   do card e precisam manter a imagem inteira ao ampliar. */
+.ll-bento__grid > .ll-bento__expand--image-circle {
+  overflow: visible !important;
+  border-radius: 0 !important;
+  -webkit-clip-path: none !important;
+  clip-path: none !important;
+}
+
+.ll-bento__grid > .ll-bento__expand--image-circle > .ll-bento__card--image,
+.ll-bento__grid > .ll-bento__expand--image-circle > .ll-bento__card--image > picture,
+.ll-bento__grid > .ll-bento__expand--image-circle > .ll-bento__card--image .ll-bento__card-media {
   overflow: hidden !important;
   border-radius: 999px !important;
   -webkit-clip-path: circle(50% at 50% 50%) !important;
   clip-path: circle(50% at 50% 50%) !important;
 }
 
-.ll-bento__grid > .ll-bento__expand--image-circle picture,
-.ll-bento__grid > .ll-bento__expand--image-circle .ll-bento__card-media {
+.ll-bento__grid > .ll-bento__expand--image-circle > .ll-bento__card--image > picture,
+.ll-bento__grid > .ll-bento__expand--image-circle > .ll-bento__card--image .ll-bento__card-media {
   display: block !important;
   width: 100% !important;
   height: 100% !important;
@@ -2232,6 +2255,10 @@
   height: auto;
   max-width: min(94vw, 1100px);
   max-height: calc(88vh - 2px);
+  overflow: visible !important;
+  border-radius: 0 !important;
+  -webkit-clip-path: none !important;
+  clip-path: none !important;
   object-fit: contain;
 }
 
@@ -2447,14 +2474,14 @@
   aspect-ratio: 1 / 1 !important;
   align-self: center !important;
   justify-self: center !important;
-  overflow: hidden !important;
-  border-radius: 50% !important;
-  clip-path: circle(50%) !important;
+  overflow: visible !important;
+  border-radius: 0 !important;
+  clip-path: none !important;
 }
 
-.ll-bento.ll-bento--default-layout .ll-bento__grid > .ll-bento__expand--image-circle .ll-bento__card--image,
-.ll-bento.ll-bento--default-layout .ll-bento__grid > .ll-bento__expand--image-circle picture,
-.ll-bento.ll-bento--default-layout .ll-bento__grid > .ll-bento__expand--image-circle .ll-bento__card-media {
+.ll-bento.ll-bento--default-layout .ll-bento__grid > .ll-bento__expand--image-circle > .ll-bento__card--image,
+.ll-bento.ll-bento--default-layout .ll-bento__grid > .ll-bento__expand--image-circle > .ll-bento__card--image > picture,
+.ll-bento.ll-bento--default-layout .ll-bento__grid > .ll-bento__expand--image-circle > .ll-bento__card--image .ll-bento__card-media {
   width: 100% !important;
   height: 100% !important;
   overflow: hidden !important;

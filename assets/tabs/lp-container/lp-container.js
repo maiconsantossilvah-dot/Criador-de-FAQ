@@ -143,6 +143,12 @@
         element.remove();
       });
 
+      // Preview helpers are injected only so an iframe can be edited inside
+      // the Lab. They must never become part of the saved LP markup.
+      wrapper.querySelectorAll("[data-ll-template-helper], .ll-template-iframe-edit, .ll-bento__resize-handle").forEach((element) => {
+        element.remove();
+      });
+
       Array.from(wrapper.querySelectorAll("*")).forEach((element) => {
         if (!preservePreviewFaqState) {
           stripLabEditorArtifacts(element);
@@ -1727,6 +1733,9 @@ ${containerHtml}`;
       clone.querySelectorAll("#ll-template-faq-custom-style").forEach((element) => {
         element.remove();
       });
+      clone.querySelectorAll("[data-ll-template-helper], .ll-template-iframe-edit, .ll-bento__resize-handle").forEach((element) => {
+        element.remove();
+      });
       clone.querySelectorAll("[data-ll-template-faq-title-text]").forEach((element) => {
         const parent = element.parentNode;
         if (!parent) {
@@ -1750,10 +1759,6 @@ ${containerHtml}`;
       });
       [clone, ...clone.querySelectorAll("*")].forEach((element) => {
         stripLabEditorArtifacts(element);
-      });
-
-      clone.querySelectorAll("[data-ll-template-helper]").forEach((element) => {
-        element.remove();
       });
 
       return clone;

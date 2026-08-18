@@ -1650,6 +1650,10 @@ ${block.html}
       const editorInstruction = /^(?:Clique|Duplo clique|D(?:\u00ea|\u00c3\u00aa) dois cliques)/i;
       const editorAction = /(?:editar|trocar|url|m[i\u00ed]dia|m\u00c3\u00addia|media|texto|estilo|cor|fundo|alt)/i;
 
+      wrapper.querySelectorAll("[data-ll-template-helper], .ll-template-iframe-edit, .ll-bento__resize-handle").forEach((element) => {
+        element.remove();
+      });
+
       Array.from(wrapper.querySelectorAll("*")).forEach((element) => {
         const hasLabAttributes = Array.from(element.attributes).some((attribute) => attribute.name.startsWith("data-ll-"));
         const title = element.getAttribute("title") || "";
