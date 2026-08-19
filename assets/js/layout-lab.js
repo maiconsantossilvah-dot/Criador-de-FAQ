@@ -21,7 +21,7 @@
     // revision for Bento so a GitHub Pages cache cannot combine an older CSS
     // grid with the current named-grid renderer.
     const tabAssetRevisions = {
-      bento: "20260819-bento-mobile-output-3"
+      bento: "20260819-bento-container-responsive-1"
     };
 
     const tabAssets = {};
@@ -2674,7 +2674,7 @@ ${cleanCss}
       stories: "stories.css",
       article: "artigo.css",
       carousel: "carrossel.css",
-      bento: "bento.css?v=20260819-bento-mobile-output-3"
+      bento: "bento.css?v=20260819-bento-responsive-type-4"
     };
 
     function getCurrentOutputLayoutKey() {

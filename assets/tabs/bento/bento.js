@@ -2605,9 +2605,294 @@
 </style>`;
     }
 
+    function buildBentoCanonicalResponsiveCss() {
+      return `<style>
+/* Canonical Bento sizing. This must remain last: it keeps the editor and export
+   on the same grid while scaling from the section width instead of the viewport. */
+.ll-bento:is(.ll-bento--default-layout, [data-ll-bento-default-layout="true"]) {
+  container-type: inline-size !important;
+  container-name: ll-bento !important;
+}
+
+.ll-bento:is(.ll-bento--default-layout, [data-ll-bento-default-layout="true"]) .ll-bento__grid {
+  display: grid !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  grid-template-columns: repeat(12, minmax(0, 1fr)) !important;
+  grid-template-areas:
+    "hero hero hero hero hero hero hero summary summary summary summary summary"
+    "hero hero hero hero hero hero hero rectangle rectangle rectangle rectangle rectangle"
+    "use use use circle circle circle detail detail detail detail detail detail" !important;
+  grid-template-rows: 230px 230px 175px !important;
+  gap: clamp(10px, 1.2cqw, 16px) !important;
+  align-items: stretch !important;
+}
+
+.ll-bento:is(.ll-bento--default-layout, [data-ll-bento-default-layout="true"]) .ll-bento__grid > * {
+  min-width: 0 !important;
+  min-height: 0 !important;
+  max-width: none !important;
+  max-height: none !important;
+  overflow: hidden !important;
+  box-sizing: border-box !important;
+}
+
+.ll-bento:is(.ll-bento--default-layout, [data-ll-bento-default-layout="true"]) .ll-bento__grid > .ll-bento__expand--hero { grid-area: hero !important; height: 100% !important; }
+.ll-bento:is(.ll-bento--default-layout, [data-ll-bento-default-layout="true"]) .ll-bento__grid > .ll-bento__card--wide { grid-area: summary !important; height: 100% !important; }
+.ll-bento:is(.ll-bento--default-layout, [data-ll-bento-default-layout="true"]) .ll-bento__grid > .ll-bento__expand--image-rectangle { grid-area: rectangle !important; height: 100% !important; aspect-ratio: auto !important; }
+.ll-bento:is(.ll-bento--default-layout, [data-ll-bento-default-layout="true"]) .ll-bento__grid > .ll-bento__card--use { grid-area: use !important; height: 100% !important; }
+.ll-bento:is(.ll-bento--default-layout, [data-ll-bento-default-layout="true"]) .ll-bento__grid > .ll-bento__card--detail { grid-area: detail !important; height: 100% !important; }
+.ll-bento:is(.ll-bento--default-layout, [data-ll-bento-default-layout="true"]) .ll-bento__grid > .ll-bento__expand--image-circle {
+  grid-area: circle !important;
+  width: min(100%, 165px) !important;
+  height: auto !important;
+  aspect-ratio: 1 / 1 !important;
+  align-self: center !important;
+  justify-self: center !important;
+}
+
+.ll-bento:is(.ll-bento--default-layout, [data-ll-bento-default-layout="true"]) .ll-bento__card-title,
+.ll-bento:is(.ll-bento--default-layout, [data-ll-bento-default-layout="true"]) .ll-bento__stat,
+.ll-bento:is(.ll-bento--default-layout, [data-ll-bento-default-layout="true"]) .ll-bento__card-text {
+  overflow-wrap: normal !important;
+  word-break: normal !important;
+  hyphens: none !important;
+}
+
+.ll-bento:is(.ll-bento--default-layout, [data-ll-bento-default-layout="true"]) .ll-bento__card--hero .ll-bento__card-title {
+  max-width: 10ch !important;
+  font-size: clamp(2.1rem, 4.25cqw, 3.45rem) !important;
+  line-height: 0.92 !important;
+}
+.ll-bento:is(.ll-bento--default-layout, [data-ll-bento-default-layout="true"]) .ll-bento__card--wide .ll-bento__stat {
+  font-size: clamp(2rem, 3.6cqw, 3rem) !important;
+  line-height: 0.9 !important;
+}
+.ll-bento:is(.ll-bento--default-layout, [data-ll-bento-default-layout="true"]) .ll-bento__card--wide .ll-bento__card-title,
+.ll-bento:is(.ll-bento--default-layout, [data-ll-bento-default-layout="true"]) .ll-bento__card--use .ll-bento__card-title,
+.ll-bento:is(.ll-bento--default-layout, [data-ll-bento-default-layout="true"]) .ll-bento__card--detail .ll-bento__card-title {
+  max-width: 14ch !important;
+  font-size: clamp(1.1rem, 1.95cqw, 1.65rem) !important;
+  line-height: 0.98 !important;
+}
+.ll-bento:is(.ll-bento--default-layout, [data-ll-bento-default-layout="true"]) .ll-bento__card-text {
+  display: -webkit-box !important;
+  overflow: hidden !important;
+  font-size: clamp(0.75rem, 1.2cqw, 0.98rem) !important;
+  line-height: 1.3 !important;
+  -webkit-box-orient: vertical !important;
+  -webkit-line-clamp: 3 !important;
+}
+.ll-bento:is(.ll-bento--default-layout, [data-ll-bento-default-layout="true"]) .ll-bento__media-action {
+  display: inline-flex !important;
+  width: auto !important;
+  min-height: 26px !important;
+  padding: 5px 9px !important;
+  line-height: 1 !important;
+  white-space: nowrap !important;
+}
+
+@container ll-bento (max-width: 920px) {
+  .ll-bento:is(.ll-bento--default-layout, [data-ll-bento-default-layout="true"]) .ll-bento__grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    grid-template-areas:
+      "hero hero"
+      "summary rectangle"
+      "use circle"
+      "detail detail" !important;
+    grid-template-rows:
+      minmax(220px, min(43cqw, 360px))
+      minmax(126px, min(24cqw, 180px))
+      minmax(122px, min(23cqw, 174px))
+      minmax(134px, min(22cqw, 180px)) !important;
+  }
+  .ll-bento:is(.ll-bento--default-layout, [data-ll-bento-default-layout="true"]) .ll-bento__grid > .ll-bento__expand--image-circle {
+    width: min(100%, 150px) !important;
+  }
+}
+
+@container ll-bento (max-width: 560px) {
+  .ll-bento:is(.ll-bento--default-layout, [data-ll-bento-default-layout="true"]) {
+    padding: 12px !important;
+  }
+  .ll-bento:is(.ll-bento--default-layout, [data-ll-bento-default-layout="true"]) .ll-bento__grid {
+    gap: 8px !important;
+    grid-template-rows:
+      minmax(204px, min(61cqw, 278px))
+      minmax(108px, min(32cqw, 144px))
+      minmax(108px, min(32cqw, 144px))
+      minmax(126px, min(37cqw, 174px)) !important;
+  }
+  .ll-bento:is(.ll-bento--default-layout, [data-ll-bento-default-layout="true"]) .ll-bento__card--hero { padding: 13px !important; }
+  .ll-bento:is(.ll-bento--default-layout, [data-ll-bento-default-layout="true"]) .ll-bento__card--hero .ll-bento__card-title {
+    max-width: 12ch !important;
+    font-size: clamp(1.45rem, 8cqw, 2.1rem) !important;
+    line-height: 0.94 !important;
+  }
+  .ll-bento:is(.ll-bento--default-layout, [data-ll-bento-default-layout="true"]) .ll-bento__card--wide,
+  .ll-bento:is(.ll-bento--default-layout, [data-ll-bento-default-layout="true"]) .ll-bento__card--use,
+  .ll-bento:is(.ll-bento--default-layout, [data-ll-bento-default-layout="true"]) .ll-bento__card--detail { padding: 11px !important; }
+  .ll-bento:is(.ll-bento--default-layout, [data-ll-bento-default-layout="true"]) .ll-bento__card--wide .ll-bento__stat {
+    font-size: clamp(1.38rem, 6.8cqw, 1.9rem) !important;
+  }
+  .ll-bento:is(.ll-bento--default-layout, [data-ll-bento-default-layout="true"]) .ll-bento__card--wide .ll-bento__card-title,
+  .ll-bento:is(.ll-bento--default-layout, [data-ll-bento-default-layout="true"]) .ll-bento__card--use .ll-bento__card-title,
+  .ll-bento:is(.ll-bento--default-layout, [data-ll-bento-default-layout="true"]) .ll-bento__card--detail .ll-bento__card-title {
+    max-width: 13ch !important;
+    font-size: clamp(0.88rem, 4.15cqw, 1.08rem) !important;
+    line-height: 0.98 !important;
+  }
+  .ll-bento:is(.ll-bento--default-layout, [data-ll-bento-default-layout="true"]) .ll-bento__card-text {
+    font-size: clamp(0.63rem, 2.7cqw, 0.77rem) !important;
+    line-height: 1.22 !important;
+    -webkit-line-clamp: 2 !important;
+  }
+  .ll-bento:is(.ll-bento--default-layout, [data-ll-bento-default-layout="true"]) .ll-bento__grid > .ll-bento__expand--image-circle {
+    width: min(100%, 128px) !important;
+  }
+}
+
+@container ll-bento (max-width: 410px) {
+  .ll-bento:is(.ll-bento--default-layout, [data-ll-bento-default-layout="true"]) .ll-bento__card--hero .ll-bento__card-title {
+    font-size: clamp(1.35rem, 7.7cqw, 1.82rem) !important;
+  }
+  .ll-bento:is(.ll-bento--default-layout, [data-ll-bento-default-layout="true"]) .ll-bento__card--wide .ll-bento__card-title,
+  .ll-bento:is(.ll-bento--default-layout, [data-ll-bento-default-layout="true"]) .ll-bento__card--use .ll-bento__card-title,
+  .ll-bento:is(.ll-bento--default-layout, [data-ll-bento-default-layout="true"]) .ll-bento__card--detail .ll-bento__card-title {
+    font-size: 0.86rem !important;
+  }
+}
+
+/* Last responsive authority: type follows the Bento container, not the page. */
+.ll-bento:is(.ll-bento--default-layout, [data-ll-bento-default-layout="true"]) :is(.ll-bento__card-title, .ll-bento__stat, .ll-bento__card-text) {
+  min-inline-size: 0 !important;
+  max-inline-size: 100% !important;
+  white-space: normal !important;
+  overflow-wrap: normal !important;
+  word-break: normal !important;
+  hyphens: none !important;
+}
+
+@container ll-bento (max-width: 560px) {
+  .ll-bento:is(.ll-bento--default-layout, [data-ll-bento-default-layout="true"]) .ll-bento__grid {
+    grid-template-rows:
+      minmax(186px, min(57cqw, 248px))
+      minmax(102px, min(30cqw, 132px))
+      minmax(102px, min(30cqw, 132px))
+      minmax(116px, min(34cqw, 154px)) !important;
+  }
+  .ll-bento:is(.ll-bento--default-layout, [data-ll-bento-default-layout="true"]) .ll-bento__card--hero .ll-bento__card-title {
+    max-width: 12ch !important;
+    font-size: clamp(1.25rem, 6.4cqw, 1.72rem) !important;
+    line-height: .96 !important;
+    text-wrap: balance !important;
+  }
+  .ll-bento:is(.ll-bento--default-layout, [data-ll-bento-default-layout="true"]) .ll-bento__card--wide .ll-bento__stat {
+    font-size: clamp(1.25rem, 5.7cqw, 1.6rem) !important;
+    line-height: .92 !important;
+  }
+  .ll-bento:is(.ll-bento--default-layout, [data-ll-bento-default-layout="true"]) .ll-bento__card--wide .ll-bento__card-title,
+  .ll-bento:is(.ll-bento--default-layout, [data-ll-bento-default-layout="true"]) .ll-bento__card--use .ll-bento__card-title,
+  .ll-bento:is(.ll-bento--default-layout, [data-ll-bento-default-layout="true"]) .ll-bento__card--detail .ll-bento__card-title {
+    max-width: 12ch !important;
+    font-size: clamp(.8rem, 3.25cqw, .98rem) !important;
+    line-height: 1.02 !important;
+    text-wrap: balance !important;
+  }
+  .ll-bento:is(.ll-bento--default-layout, [data-ll-bento-default-layout="true"]) .ll-bento__card-text {
+    font-size: clamp(.58rem, 2.15cqw, .7rem) !important;
+    line-height: 1.22 !important;
+    -webkit-line-clamp: 2 !important;
+  }
+  .ll-bento:is(.ll-bento--default-layout, [data-ll-bento-default-layout="true"]) .ll-bento__grid > .ll-bento__expand--image-circle {
+    width: min(100%, 116px) !important;
+  }
+}
+
+@container ll-bento (max-width: 410px) {
+  .ll-bento:is(.ll-bento--default-layout, [data-ll-bento-default-layout="true"]) .ll-bento__card--hero .ll-bento__card-title {
+    font-size: clamp(1.18rem, 6cqw, 1.48rem) !important;
+  }
+  .ll-bento:is(.ll-bento--default-layout, [data-ll-bento-default-layout="true"]) .ll-bento__card--wide .ll-bento__stat {
+    font-size: clamp(1.16rem, 5.4cqw, 1.42rem) !important;
+  }
+  .ll-bento:is(.ll-bento--default-layout, [data-ll-bento-default-layout="true"]) .ll-bento__card--wide .ll-bento__card-title,
+  .ll-bento:is(.ll-bento--default-layout, [data-ll-bento-default-layout="true"]) .ll-bento__card--use .ll-bento__card-title,
+  .ll-bento:is(.ll-bento--default-layout, [data-ll-bento-default-layout="true"]) .ll-bento__card--detail .ll-bento__card-title {
+    font-size: clamp(.76rem, 3.1cqw, .9rem) !important;
+  }
+  .ll-bento:is(.ll-bento--default-layout, [data-ll-bento-default-layout="true"]) .ll-bento__card-text {
+    font-size: .58rem !important;
+  }
+  .ll-bento:is(.ll-bento--default-layout, [data-ll-bento-default-layout="true"]) .ll-bento__grid > .ll-bento__expand--image-circle {
+    width: min(100%, 104px) !important;
+  }
+}
+</style>`;
+    }
+
+    function buildBentoFinalLayoutCss() {
+      return `<style>
+/* Canonical Bento grid: applied after the editor CSS and safe in host pages. */
+.ll-bento { width:100%!important; max-width:none!important; min-width:0!important; margin:0!important; padding:clamp(16px,2.4vw,32px)!important; overflow:hidden!important; container-type:inline-size!important; container-name:ll-bento-final!important; }
+.ll-bento, .ll-bento *, .ll-bento *::before, .ll-bento *::after { box-sizing:border-box!important; min-width:0!important; }
+.ll-bento .ll-bento__header { width:100%!important; max-width:760px!important; margin:0 0 clamp(16px,2vw,26px)!important; }
+.ll-bento .ll-bento__title { margin:0!important; max-width:13ch!important; font-size:clamp(2rem,4.3cqw,3.65rem)!important; line-height:.98!important; letter-spacing:0!important; overflow-wrap:normal!important; word-break:normal!important; hyphens:none!important; }
+.ll-bento .ll-bento__lead { max-width:62ch!important; margin:.45rem 0 0!important; font-size:clamp(.88rem,1.35cqw,1.08rem)!important; line-height:1.42!important; }
+.ll-bento .ll-bento__grid { display:grid!important; width:100%!important; max-width:none!important; min-width:0!important; margin:0!important; grid-template-columns:minmax(0,1.62fr) minmax(0,.72fr) minmax(0,1.16fr)!important; grid-template-areas:"hero hero summary" "hero hero rectangle" "use circle detail"!important; grid-template-rows:clamp(250px,29cqw,410px) clamp(160px,18cqw,224px) clamp(148px,15cqw,186px)!important; gap:clamp(10px,1.35cqw,18px)!important; align-items:stretch!important; grid-auto-flow:row!important; overflow:visible!important; }
+.ll-bento .ll-bento__grid > * { min-width:0!important; min-height:0!important; max-width:100%!important; margin:0!important; align-self:stretch!important; justify-self:stretch!important; }
+.ll-bento .ll-bento__expand--hero { grid-area:hero!important; }
+.ll-bento .ll-bento__card--wide { grid-area:summary!important; }
+.ll-bento .ll-bento__expand--image-rectangle, .ll-bento .ll-bento__expand--image-square { grid-area:rectangle!important; }
+.ll-bento .ll-bento__card--use { grid-area:use!important; }
+.ll-bento .ll-bento__expand--image-circle, .ll-bento .ll-bento__expand--image:not(.ll-bento__expand--image-rectangle):not(.ll-bento__expand--image-square):not(.ll-bento__expand--image-circle) { grid-area:circle!important; }
+.ll-bento .ll-bento__card--detail { grid-area:detail!important; }
+.ll-bento .ll-bento__expand--hero, .ll-bento .ll-bento__expand--image-rectangle, .ll-bento .ll-bento__expand--image-square { width:100%!important; height:100%!important; min-height:0!important; overflow:hidden!important; }
+.ll-bento .ll-bento__expand--image-circle, .ll-bento .ll-bento__expand--image:not(.ll-bento__expand--image-rectangle):not(.ll-bento__expand--image-square):not(.ll-bento__expand--image-circle) { width:min(100%,180px)!important; height:auto!important; aspect-ratio:1 / 1!important; min-height:0!important; place-self:center!important; overflow:hidden!important; border-radius:50%!important; }
+.ll-bento .ll-bento__expand--hero > .ll-bento__card, .ll-bento .ll-bento__expand--image-rectangle > .ll-bento__card, .ll-bento .ll-bento__expand--image-square > .ll-bento__card, .ll-bento .ll-bento__expand--image-circle > .ll-bento__card, .ll-bento .ll-bento__card--hero, .ll-bento .ll-bento__card--image { width:100%!important; height:100%!important; min-height:0!important; max-height:none!important; }
+.ll-bento .ll-bento__expand--image-circle > .ll-bento__card, .ll-bento .ll-bento__expand--image-circle picture, .ll-bento .ll-bento__expand--image-circle img { aspect-ratio:1 / 1!important; border-radius:50%!important; }
+.ll-bento .ll-bento__media, .ll-bento .ll-bento__media picture, .ll-bento .ll-bento__media img, .ll-bento picture, .ll-bento img { display:block!important; width:100%!important; height:100%!important; min-width:0!important; min-height:0!important; max-width:none!important; object-fit:cover!important; }
+.ll-bento .ll-bento__card { display:flex!important; flex-direction:column!important; justify-content:space-between!important; min-width:0!important; min-height:0!important; height:100%!important; max-height:none!important; padding:clamp(15px,1.8cqw,24px)!important; overflow:hidden!important; }
+.ll-bento .ll-bento__card h2, .ll-bento .ll-bento__card h3, .ll-bento .ll-bento__card-title, .ll-bento .ll-bento__card-copy, .ll-bento .ll-bento__card-text, .ll-bento .ll-bento__eyebrow { max-width:100%!important; overflow-wrap:normal!important; word-break:normal!important; hyphens:none!important; }
+  .ll-bento .ll-bento__expand--hero .ll-bento__card-title, .ll-bento .ll-bento__card--hero .ll-bento__card-title, .ll-bento .ll-bento__expand--hero h2, .ll-bento .ll-bento__card--hero h2 { max-width:100%!important; margin:0!important; font-size:clamp(2rem,4.7cqw,3.8rem)!important; line-height:.94!important; letter-spacing:0!important; }
+.ll-bento .ll-bento__card--wide .ll-bento__stat { font-size:clamp(2rem,3.8cqw,3.25rem)!important; line-height:.9!important; }
+.ll-bento .ll-bento__card--wide .ll-bento__card-title, .ll-bento .ll-bento__card--wide h2 { margin:.2rem 0!important; font-size:clamp(1.2rem,2.1cqw,1.82rem)!important; line-height:.98!important; }
+.ll-bento .ll-bento__card:not(.ll-bento__card--hero):not(.ll-bento__card--wide) .ll-bento__card-title, .ll-bento .ll-bento__card:not(.ll-bento__card--hero):not(.ll-bento__card--wide) h2 { margin:.2rem 0!important; font-size:clamp(1.06rem,1.72cqw,1.52rem)!important; line-height:1.02!important; }
+.ll-bento .ll-bento__card-copy, .ll-bento .ll-bento__card-text, .ll-bento .ll-bento__card p { margin:.3rem 0 0!important; font-size:clamp(.76rem,1.16cqw,.96rem)!important; line-height:1.34!important; }
+.ll-bento .ll-bento__eyebrow, .ll-bento .ll-bento__pill, .ll-bento .ll-bento__chip { font-size:clamp(.58rem,.82cqw,.74rem)!important; line-height:1!important; }
+.ll-bento .ll-bento__expand-button, .ll-bento .ll-bento__image-action, .ll-bento button[data-ll-bento-expand] { width:auto!important; min-width:0!important; max-width:max-content!important; min-height:0!important; padding:.42rem .72rem!important; font-size:.72rem!important; line-height:1!important; }
+@container ll-bento-final (max-width:920px) {
+  .ll-bento .ll-bento__grid { grid-template-columns:minmax(0,1fr) minmax(0,1fr)!important; grid-template-areas:"hero hero" "summary rectangle" "use circle" "detail detail"!important; grid-template-rows:clamp(220px,58cqw,340px) clamp(126px,33cqw,188px) clamp(118px,31cqw,170px) clamp(126px,34cqw,176px)!important; gap:clamp(9px,2.1cqw,14px)!important; }
+  .ll-bento .ll-bento__expand--image-circle, .ll-bento .ll-bento__expand--image:not(.ll-bento__expand--image-rectangle):not(.ll-bento__expand--image-square):not(.ll-bento__expand--image-circle) { width:min(100%,148px)!important; }
+  .ll-bento .ll-bento__expand--hero .ll-bento__card-title, .ll-bento .ll-bento__card--hero .ll-bento__card-title, .ll-bento .ll-bento__expand--hero h2, .ll-bento .ll-bento__card--hero h2 { max-width:100%!important; font-size:clamp(1.75rem,7.6cqw,2.55rem)!important; }
+  .ll-bento .ll-bento__card--wide .ll-bento__stat { font-size:clamp(1.5rem,6.4cqw,2.08rem)!important; }
+  .ll-bento .ll-bento__card--wide .ll-bento__card-title, .ll-bento .ll-bento__card--wide h2 { font-size:clamp(1rem,3.85cqw,1.3rem)!important; }
+  .ll-bento .ll-bento__card:not(.ll-bento__card--hero):not(.ll-bento__card--wide) .ll-bento__card-title, .ll-bento .ll-bento__card:not(.ll-bento__card--hero):not(.ll-bento__card--wide) h2 { font-size:clamp(.92rem,3.15cqw,1.12rem)!important; }
+  .ll-bento .ll-bento__card-copy, .ll-bento .ll-bento__card-text, .ll-bento .ll-bento__card p { font-size:clamp(.68rem,2.2cqw,.81rem)!important; line-height:1.28!important; }
+}
+@container ll-bento-final (max-width:520px) {
+  .ll-bento { padding:12px!important; }
+  .ll-bento .ll-bento__header { margin-bottom:14px!important; }
+  .ll-bento .ll-bento__title { font-size:clamp(1.52rem,8.2cqw,2.1rem)!important; }
+  .ll-bento .ll-bento__lead { font-size:clamp(.74rem,3.25cqw,.9rem)!important; line-height:1.35!important; }
+  .ll-bento .ll-bento__grid { grid-template-rows:clamp(210px,67cqw,278px) clamp(112px,35cqw,154px) clamp(108px,34cqw,148px) clamp(122px,37cqw,164px)!important; gap:9px!important; }
+  .ll-bento .ll-bento__card { padding:12px!important; }
+  .ll-bento .ll-bento__expand--image-circle, .ll-bento .ll-bento__expand--image:not(.ll-bento__expand--image-rectangle):not(.ll-bento__expand--image-square):not(.ll-bento__expand--image-circle) { width:min(100%,112px)!important; }
+  .ll-bento .ll-bento__expand--hero .ll-bento__card-title, .ll-bento .ll-bento__card--hero .ll-bento__card-title, .ll-bento .ll-bento__expand--hero h2, .ll-bento .ll-bento__card--hero h2 { font-size:clamp(1.55rem,8cqw,2.02rem)!important; }
+  .ll-bento .ll-bento__card--wide .ll-bento__stat { font-size:clamp(1.36rem,6.3cqw,1.76rem)!important; }
+  .ll-bento .ll-bento__card--wide .ll-bento__card-title, .ll-bento .ll-bento__card--wide h2 { font-size:clamp(.92rem,3.7cqw,1.12rem)!important; }
+  .ll-bento .ll-bento__card:not(.ll-bento__card--hero):not(.ll-bento__card--wide) .ll-bento__card-title, .ll-bento .ll-bento__card:not(.ll-bento__card--hero):not(.ll-bento__card--wide) h2 { font-size:clamp(.85rem,3.25cqw,1rem)!important; }
+  .ll-bento .ll-bento__card-copy, .ll-bento .ll-bento__card-text, .ll-bento .ll-bento__card p { font-size:clamp(.64rem,2.35cqw,.76rem)!important; line-height:1.25!important; }
+  .ll-bento .ll-bento__card--wide .ll-bento__card-text, .ll-bento .ll-bento__card--detail .ll-bento__card-text { display:-webkit-box!important; -webkit-box-orient:vertical!important; -webkit-line-clamp:3!important; overflow:hidden!important; }
+}
+</style>`;
+    }
+
     function buildBentoStyle() {
       return `${bentoStyle}
-${buildBentoOutputPatch()}`;
+${buildBentoOutputPatch()}
+${buildBentoCanonicalResponsiveCss()}
+${buildBentoFinalLayoutCss()}`;
     }
 
     // A previa mantem a mesma composicao do output e reativa apenas
@@ -2621,6 +2906,11 @@ ${buildBentoOutputPatch()}`;
 }
 </style>
 ${buildBentoRuntimePatch()}
+${buildBentoCanonicalResponsiveCss()}
+${buildBentoFinalLayoutCss()}`;
+
+      /* Kept only as an inactive reference for prior editor experiments. */
+      return `${buildBentoStyle()}
 <style>
 /* This comes after the editor runtime so the starter Bento never inherits
    a stale resize rule while its named-grid composition is active. */
@@ -2695,7 +2985,107 @@ ${buildBentoRuntimePatch()}
     min-height: clamp(260px, 48vw, 380px) !important;
   }
 }
-</style>`;
+
+@media (max-width: 560px) {
+  .ll-bento[data-ll-bento-default-layout="true"] {
+    width: 100% !important;
+    min-width: 0 !important;
+    padding: 12px !important;
+    overflow: hidden !important;
+  }
+
+  .ll-bento[data-ll-bento-default-layout="true"] .ll-bento__grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    grid-template-areas:
+      "hero hero"
+      "summary rectangle"
+      "use circle"
+      "detail detail" !important;
+    grid-template-rows: minmax(235px, 66vw) minmax(118px, 34vw) minmax(118px, 34vw) minmax(132px, auto) !important;
+    grid-auto-rows: auto !important;
+    gap: 8px !important;
+  }
+
+  .ll-bento[data-ll-bento-default-layout="true"] .ll-bento__grid > .ll-bento__expand--hero,
+  .ll-bento[data-ll-bento-default-layout="true"] .ll-bento__grid > .ll-bento__card--wide,
+  .ll-bento[data-ll-bento-default-layout="true"] .ll-bento__grid > .ll-bento__expand--image-rectangle,
+  .ll-bento[data-ll-bento-default-layout="true"] .ll-bento__grid > .ll-bento__expand--image-square,
+  .ll-bento[data-ll-bento-default-layout="true"] .ll-bento__grid > .ll-bento__card--use,
+  .ll-bento[data-ll-bento-default-layout="true"] .ll-bento__grid > .ll-bento__expand--image-circle,
+  .ll-bento[data-ll-bento-default-layout="true"] .ll-bento__grid > .ll-bento__card--detail {
+    width: 100% !important;
+    min-width: 0 !important;
+    height: 100% !important;
+    min-height: 0 !important;
+    max-width: none !important;
+    max-height: none !important;
+    margin: 0 !important;
+    align-self: stretch !important;
+    justify-self: stretch !important;
+  }
+
+  .ll-bento[data-ll-bento-default-layout="true"] .ll-bento__grid > .ll-bento__expand--hero { grid-area: hero !important; }
+  .ll-bento[data-ll-bento-default-layout="true"] .ll-bento__grid > .ll-bento__card--wide { grid-area: summary !important; }
+  .ll-bento[data-ll-bento-default-layout="true"] .ll-bento__grid > .ll-bento__expand--image-rectangle,
+  .ll-bento[data-ll-bento-default-layout="true"] .ll-bento__grid > .ll-bento__expand--image-square { grid-area: rectangle !important; }
+  .ll-bento[data-ll-bento-default-layout="true"] .ll-bento__grid > .ll-bento__card--use { grid-area: use !important; }
+  .ll-bento[data-ll-bento-default-layout="true"] .ll-bento__grid > .ll-bento__expand--image-circle {
+    grid-area: circle !important;
+    width: min(100%, 132px) !important;
+    height: min(100%, 132px) !important;
+    aspect-ratio: 1 / 1 !important;
+    align-self: center !important;
+    justify-self: center !important;
+  }
+  .ll-bento[data-ll-bento-default-layout="true"] .ll-bento__grid > .ll-bento__card--detail { grid-area: detail !important; }
+
+  .ll-bento[data-ll-bento-default-layout="true"] .ll-bento__card--hero,
+  .ll-bento[data-ll-bento-default-layout="true"] .ll-bento__card--wide,
+  .ll-bento[data-ll-bento-default-layout="true"] .ll-bento__card--use,
+  .ll-bento[data-ll-bento-default-layout="true"] .ll-bento__card--detail,
+  .ll-bento[data-ll-bento-default-layout="true"] .ll-bento__card--image {
+    min-height: 0 !important;
+    overflow: hidden !important;
+  }
+
+  .ll-bento[data-ll-bento-default-layout="true"] .ll-bento__card--hero { padding: 14px !important; }
+  .ll-bento[data-ll-bento-default-layout="true"] .ll-bento__card--hero .ll-bento__card-title {
+    max-width: 9ch !important;
+    margin: 0 !important;
+    font-size: clamp(2rem, 10.8vw, 2.8rem) !important;
+    line-height: 0.9 !important;
+    word-break: normal !important;
+    overflow-wrap: normal !important;
+    hyphens: none !important;
+  }
+
+  .ll-bento[data-ll-bento-default-layout="true"] .ll-bento__card--wide,
+  .ll-bento[data-ll-bento-default-layout="true"] .ll-bento__card--use,
+  .ll-bento[data-ll-bento-default-layout="true"] .ll-bento__card--detail { padding: 12px !important; }
+  .ll-bento[data-ll-bento-default-layout="true"] .ll-bento__card--wide .ll-bento__stat { font-size: 2rem !important; line-height: 0.9 !important; }
+  .ll-bento[data-ll-bento-default-layout="true"] .ll-bento__card--wide .ll-bento__card-title,
+  .ll-bento[data-ll-bento-default-layout="true"] .ll-bento__card--use .ll-bento__card-title,
+  .ll-bento[data-ll-bento-default-layout="true"] .ll-bento__card--detail .ll-bento__card-title {
+    max-width: 10ch !important;
+    margin: 5px 0 !important;
+    font-size: 1.1rem !important;
+    line-height: 0.96 !important;
+    word-break: normal !important;
+    overflow-wrap: normal !important;
+    hyphens: none !important;
+  }
+  .ll-bento[data-ll-bento-default-layout="true"] .ll-bento__card-text {
+    display: -webkit-box !important;
+    overflow: hidden !important;
+    margin: 0 !important;
+    font-size: 0.68rem !important;
+    line-height: 1.24 !important;
+    -webkit-box-orient: vertical !important;
+    -webkit-line-clamp: 2 !important;
+  }
+}
+</style>
+${buildBentoCanonicalResponsiveCss()}`;
     }
 
     function cleanBentoOutputHtml(html, options = {}) {
@@ -2715,6 +3105,8 @@ ${buildBentoRuntimePatch()}
         ".ll-bento__card--small",
         ".ll-bento__card--accent",
         ".ll-bento__card--dark",
+        ".ll-bento__card--use",
+        ".ll-bento__card--detail",
         ".ll-bento__expand--image",
         ".ll-bento__card--image",
         ".ll-bento__expand--image-square",
@@ -2746,18 +3138,47 @@ ${buildBentoRuntimePatch()}
               "max-width",
               "max-height",
               "resize",
+              "position",
+              "inset",
+              "top",
+              "right",
+              "bottom",
+              "left",
+              "transform",
+              "aspect-ratio",
+              "flex",
+              "flex-basis",
+              "flex-grow",
+              "flex-shrink",
               "grid-column",
               "grid-row",
               "grid-column-start",
               "grid-column-end",
               "grid-row-start",
               "grid-row-end",
+              "grid-area",
+              "grid-template",
+              "grid-template-columns",
+              "grid-template-rows",
+              "grid-template-areas",
+              "grid-auto-columns",
+              "grid-auto-rows",
+              "grid-auto-flow",
+              "gap",
+              "row-gap",
+              "column-gap",
+              "order",
               "justify-self",
-              "align-self"
+              "align-self",
+              "place-self",
+              "justify-content",
+              "align-content"
             ].forEach((property) => element.style.removeProperty(property));
           }
           element.style.removeProperty("--ll-bento-resize-max-width");
           element.style.removeProperty("--ll-bento-resize-max-height");
+          element.style.removeProperty("--ll-bento-resize-width");
+          element.style.removeProperty("--ll-bento-resize-height");
           element.style.removeProperty("--ll-bento-circle-size");
           element.style.removeProperty("--ll-bento-editor-width");
           element.style.removeProperty("--ll-bento-editor-height");
@@ -2767,7 +3188,65 @@ ${buildBentoRuntimePatch()}
         }
       });
 
+      // O Bento pode chegar ao editor pelo SenkoBridge como HTML customizado.
+      // Quando a composicao e a grade padrao de seis blocos, ela precisa manter
+      // a marca do preset para que a folha estrutural assuma o mobile correto.
+      const bentoRoot = documentClone.querySelector(".ll-bento");
+      if (bentoRoot) {
+        const hasDefaultComposition = [
+          ".ll-bento__expand--hero",
+          ".ll-bento__card--wide",
+          ".ll-bento__card--use",
+          ".ll-bento__expand--image-circle",
+          ".ll-bento__card--detail"
+        ].every((selector) => bentoRoot.querySelector(selector))
+          && bentoRoot.querySelector(".ll-bento__expand--image-rectangle, .ll-bento__expand--image-square");
+
+        if (hasDefaultComposition) {
+          bentoRoot.classList.add("ll-bento--default-layout");
+          bentoRoot.setAttribute("data-ll-bento-default-layout", "true");
+          bentoRoot.removeAttribute("data-ll-bento-fluid-output");
+        }
+      }
+
       return documentClone.body.innerHTML.trim();
+    }
+
+    function cleanBentoOutputCss(css) {
+      const source = String(css || "").trim();
+      if (!source) {
+        return "";
+      }
+
+      // Structural layout belongs to the hosted Bento stylesheet. Dynamic
+      // output must retain only editor customizations, never resize geometry.
+      const editorSizingProperties = [
+        "width", "height", "min-width", "min-height", "max-width", "max-height",
+        "resize", "position", "inset", "top", "right", "bottom", "left",
+        "transform", "aspect-ratio", "flex", "flex-basis", "flex-grow", "flex-shrink",
+        "grid", "grid-template", "grid-template-columns", "grid-template-rows",
+        "grid-template-areas", "grid-auto-columns", "grid-auto-rows", "grid-auto-flow",
+        "grid-column", "grid-column-start", "grid-column-end", "grid-row", "grid-row-start",
+        "grid-row-end", "grid-area", "gap", "row-gap", "column-gap", "order",
+        "justify-self", "align-self", "place-self", "justify-content", "align-content"
+      ];
+      const properties = editorSizingProperties
+        .map((property) => property.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"))
+        .join("|");
+
+      return source
+        .replace(
+          new RegExp(`(^|[;{]\\s*)(?:${properties})\\s*:[^;{}]*(?=;|})`, "gim"),
+          "$1"
+        )
+        .replace(
+          /(^|[;{]\s*)--ll-bento-(?:resize|editor|circle)[\w-]*\s*:[^;{}]*(?=;|})/gim,
+          "$1"
+        )
+        .replace(/;\s*;/g, ";")
+        .replace(/\{\s*;/g, "{")
+        .replace(/;\s*\}/g, "}")
+        .trim();
     }
 
     function buildBentoSectionHtml(options = {}) {
