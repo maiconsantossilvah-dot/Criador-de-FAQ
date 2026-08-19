@@ -2417,6 +2417,47 @@
     font-size: 0.66rem;
   }
 }
+
+/* A mascara circular pertence apenas a miniatura, nunca ao lightbox. */
+.ll-bento__expand--image:not(.ll-bento__expand--image-square):not(.ll-bento__expand--image-rectangle) {
+  overflow: visible !important;
+  border-radius: 0 !important;
+  -webkit-clip-path: none !important;
+  clip-path: none !important;
+}
+
+.ll-bento__expand--image:not(.ll-bento__expand--image-square):not(.ll-bento__expand--image-rectangle) > .ll-bento__card--image,
+.ll-bento__expand--image:not(.ll-bento__expand--image-square):not(.ll-bento__expand--image-rectangle) > .ll-bento__card--image > picture,
+.ll-bento__expand--image:not(.ll-bento__expand--image-square):not(.ll-bento__expand--image-rectangle) > .ll-bento__card--image .ll-bento__card-media {
+  overflow: hidden !important;
+  border-radius: 50% !important;
+  -webkit-clip-path: circle(50% at 50% 50%) !important;
+  clip-path: circle(50% at 50% 50%) !important;
+}
+
+.ll-bento__expand--image:not(.ll-bento__expand--image-square):not(.ll-bento__expand--image-rectangle) > .ll-bento__lightbox,
+.ll-bento__expand--image:not(.ll-bento__expand--image-square):not(.ll-bento__expand--image-rectangle) > .ll-bento__lightbox * {
+  -webkit-clip-path: none !important;
+  clip-path: none !important;
+}
+
+.ll-bento__expand--image:not(.ll-bento__expand--image-square):not(.ll-bento__expand--image-rectangle) > .ll-bento__lightbox .ll-bento__lightbox-panel {
+  overflow: hidden !important;
+  border: 1px solid rgba(255, 255, 255, 0.92) !important;
+  border-radius: 18px !important;
+  background: transparent !important;
+}
+
+.ll-bento__expand--image:not(.ll-bento__expand--image-square):not(.ll-bento__expand--image-rectangle) > .ll-bento__lightbox .ll-bento__lightbox-picture,
+.ll-bento__expand--image:not(.ll-bento__expand--image-square):not(.ll-bento__expand--image-rectangle) > .ll-bento__lightbox .ll-bento__lightbox-picture img {
+  display: block !important;
+  width: auto !important;
+  height: auto !important;
+  max-width: min(94vw, 1100px) !important;
+  max-height: calc(88vh - 2px) !important;
+  border-radius: 0 !important;
+  object-fit: contain !important;
+}
 </style>`;
     }
 
