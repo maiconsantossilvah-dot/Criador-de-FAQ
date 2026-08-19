@@ -21,7 +21,7 @@
     // revision for Bento so a GitHub Pages cache cannot combine an older CSS
     // grid with the current named-grid renderer.
     const tabAssetRevisions = {
-      bento: "20260729-bento-preview-grid-1"
+      bento: "20260819-bento-mobile-output-3"
     };
 
     const tabAssets = {};
@@ -1524,9 +1524,12 @@ ${optionMarkup}
     function buildResponsivePackage(tab, htmlBuilder, styleBuilder) {
       const versionDevices = getResponsiveVersionList(tab);
       const baseSnapshot = getBaseSnapshot(tab);
+      const cleanOutputCss = (css) => tab === "bento" && typeof cleanBentoOutputCss === "function"
+        ? cleanBentoOutputCss(css)
+        : css;
 
       if (!versionDevices.length) {
-        const css = buildWithSnapshot(tab, baseSnapshot, styleBuilder);
+        const css = cleanOutputCss(buildWithSnapshot(tab, baseSnapshot, styleBuilder));
         const markedCss = tab === "faq" ? wrapFaqCssMarkers(css) : css;
         return cleanPictureSourcesFromOutput(repairResponsiveCssOutput(`${markedCss}
 
@@ -1536,12 +1539,12 @@ ${buildWithSnapshot(tab, baseSnapshot, htmlBuilder)}`));
       }
 
       const baseHtml = buildWithSnapshot(tab, baseSnapshot, htmlBuilder);
-      const baseCss = scopeResponsiveStyle(buildWithSnapshot(tab, baseSnapshot, styleBuilder), ".ll-responsive-version--base");
+      const baseCss = scopeResponsiveStyle(cleanOutputCss(buildWithSnapshot(tab, baseSnapshot, styleBuilder)), ".ll-responsive-version--base");
       const versionBlocks = versionDevices.map((device) => {
         const suffix = `ll-${tab}-${device}`;
         const snapshot = state.responsive.saved[tab][device];
         const scopedCss = scopeResponsiveStyle(
-          prefixResponsiveCss(buildWithSnapshot(tab, snapshot, styleBuilder), suffix),
+          prefixResponsiveCss(cleanOutputCss(buildWithSnapshot(tab, snapshot, styleBuilder)), suffix),
           `.ll-responsive-version--${device}`
         );
         return {
@@ -2671,7 +2674,7 @@ ${cleanCss}
       stories: "stories.css",
       article: "artigo.css",
       carousel: "carrossel.css",
-      bento: "bento.css"
+      bento: "bento.css?v=20260819-bento-mobile-output-3"
     };
 
     function getCurrentOutputLayoutKey() {
@@ -2885,19 +2888,24 @@ ${buildFaqPreviewStylePackage({ includeResponsive: true, responsiveOptions: { in
       }
 
       if (currentEditorTab === "bento") {
-        // Structural Bento rules live in the hosted bento.css file. The
-        // exported block carries only styles changed through the editor.
+        // The exported Bento must never receive preview or responsive-draft
+        // CSS. Its fixed grid is supplied by the hosted bento.css file; only
+        // class-level visual overrides made by the user stay in the output.
         const buildBentoMarkup = () => cleanBentoOutputHtml(buildBentoSectionHtml(), {
           stripEditorSizing: true
         });
-        const buildBentoExportPackage = () => buildTabOutputStyleWithClass("bento");
+        const buildBentoExportPackage = () => typeof buildPreviewClassStyle === "function"
+          ? buildPreviewClassStyle("bento")
+          : "";
 
         if (copyMode === "css") {
           return buildBentoExportPackage();
         }
 
         if (copyMode === "full") {
-          return buildResponsivePackage("bento", buildBentoMarkup, buildBentoExportPackage);
+          return [buildBentoExportPackage(), buildBentoMarkup]
+            .filter((part) => String(part || "").trim())
+            .join("\n\n");
         }
 
         return buildBentoMarkup();

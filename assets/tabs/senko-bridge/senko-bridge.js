@@ -26,7 +26,7 @@ const SENKO_BRIDGE_LAB_STYLESHEET_FILES = {
   stories: "stories.css",
   article: "artigo.css",
   carousel: "carrossel.css",
-  bento: "bento.css"
+  bento: "bento.css?v=20260819-bento-mobile-output-3"
 };
 
 function ensureSenkoBridgeState() {
@@ -393,6 +393,38 @@ function normalizeSenkoBridgeBlockHtml(block) {
   return block?.bridgeSource === "lab" ? html : fixSenkoRelativeUrls(html);
 }
 
+function isSenkoBridgeBentoBlock(block) {
+  const identity = [
+    block?.bridgeSource,
+    block?.sourceId,
+    block?.id,
+    block?.name,
+    block?.variantName,
+    block?.html
+  ].join(" ").toLowerCase();
+
+  return block?.bridgeSource === "lab"
+    && (identity.includes("bento") || String(block?.html || "").includes("ll-bento"));
+}
+
+function buildSenkoBridgeBlockCss(block) {
+  // Bento's grid is always supplied by the hosted structural stylesheet.
+  // Keeping a saved preview stylesheet here would override that grid and
+  // collapse cards into narrow columns on mobile.
+  if (isSenkoBridgeBentoBlock(block)) {
+    return "";
+  }
+
+  return normalizeSenkoBridgeBlockCss(block);
+}
+
+function buildSenkoBridgeBlockHtml(block) {
+  const html = normalizeSenkoBridgeBlockHtml(block);
+  return isSenkoBridgeBentoBlock(block) && typeof cleanBentoOutputHtml === "function"
+    ? cleanBentoOutputHtml(html, { stripEditorSizing: true })
+    : html;
+}
+
 function namespaceSenkoBridgeInteractiveIds(html, scope) {
   const ids = new Map();
   const suffix = `--senko-${scope}`;
@@ -738,7 +770,7 @@ function buildSenkoBridgeStackCss() {
 function buildSenkoBridgeCssBundle() {
   const bridge = ensureSenkoBridgeState();
   const cssParts = bridge.blocks
-    .map((block) => `/* ${block.name} - ${block.variantName} */\n${normalizeSenkoBridgeBlockCss(block)}`)
+    .map((block) => `/* ${block.name} - ${block.variantName} */\n${buildSenkoBridgeBlockCss(block)}`)
     .filter((part) => part.trim());
   if (bridge.blocks.length > 1 || hasSenkoBridgeStackGroup(bridge.blocks)) {
     cssParts.push(buildSenkoBridgeStackCss());
@@ -752,7 +784,7 @@ function buildSenkoBridgeHtmlBundle() {
   let group = [];
   let groupKey = "";
 
-  const renderBlock = (block, index) => `<!-- ${block.name} - ${block.variantName} -->\n${namespaceSenkoBridgeInteractiveIds(normalizeSenkoBridgeBlockHtml(block), index)}`.trim();
+  const renderBlock = (block, index) => `<!-- ${block.name} - ${block.variantName} -->\n${namespaceSenkoBridgeInteractiveIds(buildSenkoBridgeBlockHtml(block), index)}`.trim();
   const flushGroup = () => {
     if (!group.length) {
       return;
@@ -822,7 +854,7 @@ function buildSenkoBridgePreviewBlocksHtml() {
   const renderPreviewBlock = (block, index, isGrouped = false) => {
     return `<section class="senko-preview-block${isGrouped ? " senko-section-stack__item" : ""}" data-senko-preview-block="${index}">
   <button class="senko-preview-remove" type="button" data-senko-preview-remove="${index}" aria-label="Remover ${senkoBridgeEscape(block.name)}">&times;</button>
-${namespaceSenkoBridgeInteractiveIds(normalizeSenkoBridgeBlockHtml(block), `preview-${index}`)}
+${namespaceSenkoBridgeInteractiveIds(buildSenkoBridgeBlockHtml(block), `preview-${index}`)}
 </section>`;
   };
 
