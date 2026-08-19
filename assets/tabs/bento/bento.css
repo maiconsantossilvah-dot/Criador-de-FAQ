@@ -649,6 +649,14 @@
       outline-offset: -6px;
     }
 
+    .ll-bento__card--hero > .ll-bento__image-button,
+    .ll-bento__card--image > .ll-bento__image-button {
+      position: absolute !important;
+      inset: 0 !important;
+      z-index: 4 !important;
+      pointer-events: auto !important;
+    }
+
 .ll-bento__lightbox-toggle {
   /* Keep the checkbox outside the document flow: focusing it from a label
      must never make the browser jump to its original grid position. */
@@ -671,6 +679,7 @@
       place-items: center;
       padding: clamp(18px, 4vw, 56px);
       opacity: 0;
+      visibility: hidden;
       transform: scale(0.985);
       pointer-events: none;
       transition:
@@ -680,6 +689,7 @@
 
     .ll-bento__lightbox-toggle:checked ~ .ll-bento__lightbox {
       opacity: 1;
+      visibility: visible;
       transform: scale(1);
       pointer-events: auto;
     }

@@ -393,6 +393,28 @@ function normalizeSenkoBridgeBlockHtml(block) {
   return block?.bridgeSource === "lab" ? html : fixSenkoRelativeUrls(html);
 }
 
+function namespaceSenkoBridgeInteractiveIds(html, scope) {
+  const ids = new Map();
+  const suffix = `--senko-${scope}`;
+  let output = String(html || "").replace(
+    /\bid=(["'])(ll-bento-(?:hero|image|table)-[^"']+)\1/gi,
+    (match, quote, id) => {
+      const namespacedId = `${id}${suffix}`;
+      ids.set(id, namespacedId);
+      return `id=${quote}${namespacedId}${quote}`;
+    }
+  );
+
+  if (!ids.size) {
+    return output;
+  }
+
+  return output.replace(/\bfor=(["'])([^"']+)\1/gi, (match, quote, id) => {
+    const namespacedId = ids.get(id);
+    return namespacedId ? `for=${quote}${namespacedId}${quote}` : match;
+  });
+}
+
 function getSenkoBridgeLabLayoutKey(block) {
   const sourceId = String(block?.sourceId || "");
   if (sourceId.startsWith("lab:")) {
@@ -730,22 +752,22 @@ function buildSenkoBridgeHtmlBundle() {
   let group = [];
   let groupKey = "";
 
-  const renderBlock = (block) => `<!-- ${block.name} - ${block.variantName} -->\n${normalizeSenkoBridgeBlockHtml(block)}`.trim();
+  const renderBlock = (block, index) => `<!-- ${block.name} - ${block.variantName} -->\n${namespaceSenkoBridgeInteractiveIds(normalizeSenkoBridgeBlockHtml(block), index)}`.trim();
   const flushGroup = () => {
     if (!group.length) {
       return;
     }
-    const html = group.map(renderBlock).join("\n\n");
+    const html = group.map((item) => renderBlock(item.block, item.index)).join("\n\n");
     parts.push(group.length > 1 ? `<div class="senko-section-stack senko-section-stack--${groupKey}">\n${html}\n</div>` : html);
     group = [];
     groupKey = "";
   };
 
-  bridge.blocks.forEach((block) => {
+  bridge.blocks.forEach((block, index) => {
     const key = getSenkoBridgeStackKey(block);
     if (!key) {
       flushGroup();
-      parts.push(renderBlock(block));
+      parts.push(renderBlock(block, index));
       return;
     }
 
@@ -754,7 +776,7 @@ function buildSenkoBridgeHtmlBundle() {
     }
 
     groupKey = key;
-    group.push(block);
+    group.push({ block, index });
   });
 
   flushGroup();
@@ -800,7 +822,7 @@ function buildSenkoBridgePreviewBlocksHtml() {
   const renderPreviewBlock = (block, index, isGrouped = false) => {
     return `<section class="senko-preview-block${isGrouped ? " senko-section-stack__item" : ""}" data-senko-preview-block="${index}">
   <button class="senko-preview-remove" type="button" data-senko-preview-remove="${index}" aria-label="Remover ${senkoBridgeEscape(block.name)}">&times;</button>
-${normalizeSenkoBridgeBlockHtml(block)}
+${namespaceSenkoBridgeInteractiveIds(normalizeSenkoBridgeBlockHtml(block), `preview-${index}`)}
 </section>`;
   };
 

@@ -2179,6 +2179,15 @@
   line-height: 0 !important;
 }
 
+/* Preserve the image trigger in pages that ship their own card layers. */
+.ll-bento__card--hero > .ll-bento__image-button,
+.ll-bento__card--image > .ll-bento__image-button {
+  position: absolute !important;
+  inset: 0 !important;
+  z-index: 4 !important;
+  pointer-events: auto !important;
+}
+
 /* O card inteiro continua clicavel. A etiqueta de ampliar nao pode herdar
    o esticamento de um card flex vertical da pagina hospedeira. */
 .ll-bento__card--hero > .ll-bento__media-action {
@@ -2213,18 +2222,20 @@
 }
 
 .ll-bento__lightbox {
-  position: fixed;
-  inset: 0;
-  z-index: 9999;
-  display: grid;
+  position: fixed !important;
+  inset: 0 !important;
+  z-index: 9999 !important;
+  display: grid !important;
   place-items: center;
   padding: clamp(18px, 4vw, 56px);
   opacity: 0;
+  visibility: hidden;
   pointer-events: none;
 }
 
 .ll-bento__lightbox-toggle:checked ~ .ll-bento__lightbox {
   opacity: 1;
+  visibility: visible;
   pointer-events: auto;
 }
 
