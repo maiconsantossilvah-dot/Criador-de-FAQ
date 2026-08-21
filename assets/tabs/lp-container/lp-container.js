@@ -687,13 +687,23 @@ ${containerHtml}`;
       closePreviewEditPopover();
 
       const kind = options.kind || meta.type || "text";
-      const isColor = kind === "color";
+      const isBorder = kind === "border";
+      const isColor = kind === "color" || isBorder;
       const isTextStyle = kind === "text-style";
-      const colorAllowsGradient = isColor && canUseGradientColor(meta, options);
+      const colorAllowsGradient = isColor && !isBorder && canUseGradientColor(meta, options);
       const sourceElement = options.sourceElement || sourceEvent?.currentTarget || sourceEvent?.target || document.body;
-      const classCandidates = (isColor || isTextStyle) ? getPreviewClassCandidates(sourceElement) : [];
+      const borderSides = isBorder && Array.isArray(options.borderSides) && options.borderSides.length
+        ? options.borderSides
+        : ["top", "right", "bottom", "left"];
+      const borderStyle = isBorder
+        ? sourceElement?.ownerDocument?.defaultView?.getComputedStyle(sourceElement)
+        : null;
+      const borderColor = isBorder
+        ? colorToHex(borderStyle?.getPropertyValue(`border-${borderSides[0]}-color`), "#111827")
+        : "";
+      const classCandidates = (isColor || isTextStyle) && !isBorder ? getPreviewClassCandidates(sourceElement) : [];
       const currentValue = isColor
-        ? normalizeCssColorValue(readPreviewEditValue(meta))
+        ? (isBorder ? borderColor : normalizeCssColorValue(readPreviewEditValue(meta)))
         : String(readPreviewEditValue(meta) || "");
       const currentTextStyle = isTextStyle
         ? {
@@ -717,6 +727,7 @@ ${containerHtml}`;
       let colorPickerButton;
       let colorGradientInputs = null;
       let colorOpacityInput = null;
+      let borderWidthInput = null;
       let styleInputs = null;
       let localAssetButton = null;
       let editMode = "element";
@@ -799,6 +810,25 @@ ${containerHtml}`;
 
         row.append(colorInput, colorPickerButton, valueInput);
         form.appendChild(row);
+
+        if (isBorder) {
+          const borderGrid = document.createElement("div");
+          borderGrid.className = "preview-edit-popover__grid";
+          const borderWidthLabel = document.createElement("label");
+          borderWidthLabel.className = "preview-edit-popover__mini-field";
+          const borderWidthText = document.createElement("span");
+          borderWidthText.textContent = "Espessura (px)";
+          borderWidthInput = document.createElement("input");
+          borderWidthInput.type = "number";
+          borderWidthInput.min = "0";
+          borderWidthInput.max = "48";
+          borderWidthInput.step = "1";
+          const detectedWidth = Number.parseFloat(borderStyle?.getPropertyValue(`border-${borderSides[0]}-width`));
+          borderWidthInput.value = String(Number.isFinite(detectedWidth) ? Math.min(48, Math.max(0, detectedWidth)) : 1);
+          borderWidthLabel.append(borderWidthText, borderWidthInput);
+          borderGrid.appendChild(borderWidthLabel);
+          form.appendChild(borderGrid);
+        }
 
         if (options.opacityField) {
           const opacityGrid = document.createElement("div");
@@ -1181,6 +1211,26 @@ ${containerHtml}`;
       const applyLiveValue = (applyOptions = {}) => {
         let nextValue = String(valueInput.value || "").trim();
         if (isColor) {
+          if (isBorder) {
+            const nextColor = isHexColor(valueInput.value) ? normalizeHexColor(valueInput.value) : borderColor;
+            const parsedWidth = Number.parseFloat(borderWidthInput?.value);
+            const nextWidth = Number.isFinite(parsedWidth) ? Math.min(48, Math.max(0, parsedWidth)) : 1;
+            if (borderWidthInput) {
+              borderWidthInput.value = String(nextWidth);
+            }
+            borderSides.forEach((side) => {
+              sourceElement.style.setProperty(`border-${side}-color`, nextColor);
+              sourceElement.style.setProperty(`border-${side}-width`, `${nextWidth}px`);
+              sourceElement.style.setProperty(`border-${side}-style`, nextWidth > 0 ? "solid" : "none");
+            });
+            if (colorInput) {
+              colorInput.value = nextColor;
+              colorInput.style.setProperty("--preview-edit-color", nextColor);
+            }
+            syncTemplateHtmlFromPreview();
+            return;
+          }
+
           if (options.opacityField && colorOpacityInput && meta.scope === "carousel" && meta.slideIndex !== undefined) {
             const slide = state.carousel.slides[meta.slideIndex];
             if (slide) {
@@ -1263,6 +1313,11 @@ ${containerHtml}`;
           input.addEventListener("input", () => applyLiveValue({ multiline: options.multiline }));
           input.addEventListener("change", () => applyLiveValue({ multiline: options.multiline }));
         });
+      }
+
+      if (borderWidthInput) {
+        borderWidthInput.addEventListener("input", applyLiveValue);
+        borderWidthInput.addEventListener("change", applyLiveValue);
       }
 
       previewEditKeyHandler = (event) => {
@@ -3962,6 +4017,80 @@ ${containerHtml}`;
         });
       };
 
+      const templateBorderEditors = new WeakSet();
+
+      const attachTemplateBorderEditor = (element) => {
+        if (!element || templateBorderEditors.has(element) || element.matches?.("img, picture, video, source, iframe, svg, path, input, textarea, select, button, a, label, summary, [contenteditable='true']")) {
+          return;
+        }
+
+        const getBorderSides = () => {
+          const styles = element.ownerDocument?.defaultView?.getComputedStyle(element);
+          if (!styles) {
+            return [];
+          }
+
+          return ["top", "right", "bottom", "left"].filter((side) => {
+            const style = String(styles.getPropertyValue(`border-${side}-style`) || "").trim();
+            const width = Number.parseFloat(styles.getPropertyValue(`border-${side}-width`));
+            return style !== "none" && style !== "hidden" && Number.isFinite(width) && width > 0;
+          });
+        };
+
+        if (!getBorderSides().length) {
+          return;
+        }
+
+        templateBorderEditors.add(element);
+        element.addEventListener("click", (event) => {
+          if (event.button !== 0 || event.defaultPrevented) {
+            return;
+          }
+
+          const borderSides = getBorderSides();
+          if (!borderSides.length) {
+            return;
+          }
+
+          const styles = element.ownerDocument?.defaultView?.getComputedStyle(element);
+          const rect = element.getBoundingClientRect();
+          const isBorderHit = borderSides.some((side) => {
+            const width = Number.parseFloat(styles?.getPropertyValue(`border-${side}-width`)) || 1;
+            const hitArea = Math.max(6, Math.min(18, width + 7));
+
+            if (side === "top") {
+              return event.clientY <= rect.top + hitArea;
+            }
+            if (side === "right") {
+              return event.clientX >= rect.right - hitArea;
+            }
+            if (side === "bottom") {
+              return event.clientY >= rect.bottom - hitArea;
+            }
+            return event.clientX <= rect.left + hitArea;
+          });
+
+          if (!isBorderHit) {
+            return;
+          }
+
+          const interactiveTarget = event.target.closest?.("a[href], button, label[for], input, textarea, select, summary, [role='button'], [role='tab'], [role='link'], .ll-carousel__nav");
+          if (interactiveTarget && interactiveTarget !== element) {
+            return;
+          }
+
+          event.preventDefault();
+          event.stopPropagation();
+          event.stopImmediatePropagation();
+          openPreviewEditPopover(event, { scope: "template", field: "border", type: "border" }, {
+            kind: "border",
+            label: "Editar borda",
+            sourceElement: element,
+            borderSides
+          });
+        }, true);
+      };
+
       const normalizeTemplateOverlayHorizontal = (value) => {
         return ["left", "center", "right"].includes(value) ? value : "center";
       };
@@ -6266,6 +6395,12 @@ ${containerHtml}`;
 
         setupTemplateFaqEditing(root);
         setupTemplateTableEditing(root);
+
+        [root, ...root.querySelectorAll("*")].forEach((element) => {
+          if (element !== root) {
+            attachTemplateBorderEditor(element);
+          }
+        });
 
         [root, ...root.querySelectorAll("*")].forEach((element) => {
           const header = findTemplateHeaderRoot(element, root);
