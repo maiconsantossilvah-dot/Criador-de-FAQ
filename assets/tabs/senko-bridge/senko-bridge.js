@@ -703,19 +703,6 @@ function hasSenkoBridgeStackableBlock(blocks = ensureSenkoBridgeState().blocks) 
 
 function buildSenkoBridgeStackCss() {
   return `
-.senko-section-flow {
-  display: flex !important;
-  flex-direction: column !important;
-  gap: clamp(18px, 3vw, 34px) !important;
-  row-gap: clamp(18px, 3vw, 34px) !important;
-  width: 100%;
-}
-.senko-section-flow > * {
-  min-width: 0;
-}
-.senko-section-flow > * + * {
-  margin-top: 0 !important;
-}
 .senko-section-stack {
   display: grid;
   gap: 0;
@@ -726,16 +713,6 @@ function buildSenkoBridgeStackCss() {
 .senko-section-stack > * {
   margin-top: 0 !important;
   margin-bottom: 0 !important;
-}
-.senko-section-flow > .senko-section-stack {
-  margin-top: 0 !important;
-}
-.lp-container > :not(style) + :not(style) {
-  margin-top: clamp(18px, 3vw, 34px) !important;
-}
-.lp-container .p__end {
-  margin: 0 !important;
-  padding: 16px 0 !important;
 }
 .senko-section-stack--section32 :is(.section-32, .section-32-container, .section-32__container, .section-32__groupimage-section, .c32-carousel, .c32-slides, .c32-slide) {
   box-sizing: border-box !important;
@@ -901,7 +878,7 @@ function buildSenkoBridgeCssBundle() {
   const cssParts = bridge.blocks
     .map((block) => `/* ${block.name} - ${block.variantName} */\n${buildSenkoBridgeBlockCss(block)}`)
     .filter((part) => part.trim());
-  if (bridge.blocks.length > 1 || hasSenkoBridgeStackGroup(bridge.blocks)) {
+  if (hasSenkoBridgeStackGroup(bridge.blocks)) {
     cssParts.push(buildSenkoBridgeStackCss());
   }
   if (bridge.blocks.some(isSenkoBridgeResponsiveFitBlock)) {
