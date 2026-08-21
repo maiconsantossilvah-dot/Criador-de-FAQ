@@ -26,7 +26,7 @@ const SENKO_BRIDGE_LAB_STYLESHEET_FILES = {
   stories: "stories.css",
   article: "artigo.css",
   carousel: "carrossel.css",
-  bento: "bento.css?v=20260819-bento-mobile-output-3"
+  bento: "bento.css?v=20260819-bento-container-responsive-1"
 };
 
 function ensureSenkoBridgeState() {
@@ -407,6 +407,39 @@ function isSenkoBridgeBentoBlock(block) {
     && (identity.includes("bento") || String(block?.html || "").includes("ll-bento"));
 }
 
+function isSenkoBridgeResponsiveFitBlock(block) {
+  const identity = [
+    block?.bridgeSource,
+    block?.sourceId,
+    block?.id,
+    block?.name,
+    block?.variantName,
+    Array.isArray(block?.tags) ? block.tags.join(" ") : "",
+    block?.html,
+    block?.css
+  ].join(" ").toLowerCase();
+
+  return block?.bridgeSource !== "lab"
+    && /section[-_\s]*(?:8|28)\b|secao[-_\s]*(?:8|28)\b|sessao[-_\s]*(?:8|28)\b/.test(identity);
+}
+
+function addSenkoBridgeResponsiveFitClass(html, block) {
+  const value = String(html || "");
+  if (!isSenkoBridgeResponsiveFitBlock(block) || !value) {
+    return value;
+  }
+
+  return value.replace(/<([a-z][\w:-]*)(\s[^>]*?)?>/i, (match, tag, attrs = "") => {
+    if (/\bclass\s*=/i.test(attrs)) {
+      return `<${tag}${attrs.replace(/\bclass=(['"])([^'"]*)\1/i, (classMatch, quote, className) => (
+        `class=${quote}${className} senko-content-fit${quote}`
+      ))}>`;
+    }
+
+    return `<${tag}${attrs} class="senko-content-fit">`;
+  });
+}
+
 function buildSenkoBridgeBlockCss(block) {
   // Bento's grid is always supplied by the hosted structural stylesheet.
   // Keeping a saved preview stylesheet here would override that grid and
@@ -420,9 +453,11 @@ function buildSenkoBridgeBlockCss(block) {
 
 function buildSenkoBridgeBlockHtml(block) {
   const html = normalizeSenkoBridgeBlockHtml(block);
-  return isSenkoBridgeBentoBlock(block) && typeof cleanBentoOutputHtml === "function"
+  const output = isSenkoBridgeBentoBlock(block) && typeof cleanBentoOutputHtml === "function"
     ? cleanBentoOutputHtml(html, { stripEditorSizing: true })
     : html;
+
+  return addSenkoBridgeResponsiveFitClass(output, block);
 }
 
 function namespaceSenkoBridgeInteractiveIds(html, scope) {
@@ -698,6 +733,10 @@ function buildSenkoBridgeStackCss() {
 .lp-container > :not(style) + :not(style) {
   margin-top: clamp(18px, 3vw, 34px) !important;
 }
+.lp-container .p__end {
+  margin: 0 !important;
+  padding: 16px 0 !important;
+}
 .senko-section-stack--section32 :is(.section-32, .section-32-container, .section-32__container, .section-32__groupimage-section, .c32-carousel, .c32-slides, .c32-slide) {
   box-sizing: border-box !important;
   width: 100% !important;
@@ -767,6 +806,96 @@ function buildSenkoBridgeStackCss() {
 `;
 }
 
+function buildSenkoBridgeResponsiveFitCss() {
+  return `
+/* Mantem as secoes 8 e 28 dentro da largura real do conteudo. */
+.senko-content-fit,
+.senko-content-fit [class*="wrapper"],
+.senko-content-fit [class*="container"] {
+  box-sizing: border-box;
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+}
+
+.senko-content-fit [class*="section"] {
+  box-sizing: border-box;
+  max-width: 100% !important;
+  min-width: 0 !important;
+}
+
+.senko-content-fit :is(section, article, div, figure, picture) {
+  max-width: 100% !important;
+  min-width: 0 !important;
+}
+
+.senko-content-fit [style*="width"],
+.senko-content-fit [style*="min-width"] {
+  max-width: 100% !important;
+  min-width: 0 !important;
+}
+
+.senko-content-fit *,
+.senko-content-fit *::before,
+.senko-content-fit *::after {
+  box-sizing: border-box;
+  min-width: 0;
+}
+
+.senko-content-fit :is(img, picture, video, iframe, canvas, svg) {
+  max-width: 100% !important;
+}
+
+.senko-content-fit .image-col-section-8,
+.senko-content-fit .text-col-section-8 {
+  min-width: 0 !important;
+}
+
+.senko-content-fit .bg-image-section-8 {
+  width: calc(100% - 1rem) !important;
+  max-width: calc(100% - 1rem) !important;
+  height: auto !important;
+  min-height: 0 !important;
+}
+
+.senko-content-fit .wrapper-section-8,
+.senko-content-fit [class*="wrapper"],
+.senko-content-fit [class*="container"] {
+  flex-wrap: wrap !important;
+}
+
+.senko-content-fit .p__end {
+  margin: 0 !important;
+  padding: 16px 0 !important;
+}
+
+@media (max-width: 760px) {
+  .senko-content-fit .wrapper-section-8 {
+    flex-direction: column-reverse !important;
+    min-height: 0 !important;
+  }
+
+  .senko-content-fit .text-col-section-8,
+  .senko-content-fit .image-col-section-8 {
+    flex: 0 1 auto !important;
+    width: 100% !important;
+  }
+
+  .senko-content-fit .bg-image-section-8 {
+    width: calc(100% - 1.2rem) !important;
+    max-width: calc(100% - 1.2rem) !important;
+    min-height: 0 !important;
+    aspect-ratio: 26 / 17;
+  }
+
+  .senko-content-fit [class*="grid"],
+  .senko-content-fit [class*="row"] {
+    min-width: 0 !important;
+  }
+}
+`;
+}
+
 function buildSenkoBridgeCssBundle() {
   const bridge = ensureSenkoBridgeState();
   const cssParts = bridge.blocks
@@ -774,6 +903,9 @@ function buildSenkoBridgeCssBundle() {
     .filter((part) => part.trim());
   if (bridge.blocks.length > 1 || hasSenkoBridgeStackGroup(bridge.blocks)) {
     cssParts.push(buildSenkoBridgeStackCss());
+  }
+  if (bridge.blocks.some(isSenkoBridgeResponsiveFitBlock)) {
+    cssParts.push(buildSenkoBridgeResponsiveFitCss());
   }
   return cssParts.join("\n\n");
 }

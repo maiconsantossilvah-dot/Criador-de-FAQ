@@ -152,7 +152,8 @@ function buildLabBridgeIllustrativeNoteCss() {
   font-size: clamp(1rem, 2vw, 1.2rem);
   text-wrap: pretty;
   text-align: center;
-  padding: 40px 0;
+  margin: 0;
+  padding: 16px 0;
 }
 
 @media (prefers-contrast: more) {
