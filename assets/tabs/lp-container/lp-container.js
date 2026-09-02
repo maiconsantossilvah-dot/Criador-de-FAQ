@@ -4,6 +4,10 @@
  * Este arquivo contem a logica que antes ficava direto no motor central.
  */
 
+    // O board deixa mais de um preview aberto; guardar a origem impede que
+    // uma alteracao do celular seja aplicada por engano no frame principal.
+    let templatePreviewSourceFrame = null;
+
     function getTemplateLayoutOptions() {
       return [
         ["faq", "FAQ"],
@@ -1936,6 +1940,11 @@ ${containerHtml}`;
 
       if (currentPage === "conteudo") {
         markResponsiveDirty();
+        if (state.responsive.editDevice === "base") {
+          rememberBaseSnapshot(tab);
+        } else {
+          rememberActiveResponsiveDraft(tab);
+        }
       }
 
       renderEditor(true);
@@ -1951,6 +1960,11 @@ ${containerHtml}`;
       delete state.classStyles[tab][normalizedSelector.key];
       if (currentPage === "conteudo") {
         markResponsiveDirty();
+        if (state.responsive.editDevice === "base") {
+          rememberBaseSnapshot(tab);
+        } else {
+          rememberActiveResponsiveDraft(tab);
+        }
       }
       renderEditor(true);
     }
@@ -1973,8 +1987,11 @@ ${containerHtml}`;
       return `<style>\n/* Ajustes por classe feitos no preview */\n${rules.join("\n\n")}\n</style>`;
     }
 
-    function getTemplatePreviewNode(meta) {
-      const doc = getPreviewDocument(previewFrame);
+    function getTemplatePreviewNode(meta, sourceElement = null) {
+      const sourceFrame = meta?.sourceFrame
+        || sourceElement?.ownerDocument?.defaultView?.frameElement
+        || previewFrame;
+      const doc = getPreviewDocument(sourceFrame);
       if (!doc || !meta.templateNodeId) {
         return null;
       }
@@ -2024,7 +2041,12 @@ ${containerHtml}`;
     }
 
     function syncTemplateHtmlFromPreview(options = {}) {
-      const doc = getPreviewDocument(previewFrame);
+      const requestedFrame = options.sourceFrame
+        || options.sourceElement?.ownerDocument?.defaultView?.frameElement
+        || options.container?.ownerDocument?.defaultView?.frameElement
+        || templatePreviewSourceFrame
+        || previewFrame;
+      const doc = getPreviewDocument(requestedFrame);
       const container = options.container || (doc ? doc.querySelector(".lp-container, .lp_container") : null);
       if (!container) {
         return;
@@ -2055,8 +2077,12 @@ ${containerHtml}`;
       // `container` can come from any live artboard. Resolve its owning
       // iframe first, otherwise an edit in one responsive frame may be saved
       // against whichever frame happened to be active most recently.
-      const sourceFrame = container.ownerDocument?.defaultView?.frameElement;
+      const sourceFrame = container.ownerDocument?.defaultView?.frameElement || requestedFrame;
+      if (sourceFrame?.isConnected) {
+        templatePreviewSourceFrame = sourceFrame;
+      }
       const boardDevice = sourceFrame?.dataset?.llBoardActiveDevice
+        || requestedFrame?.dataset?.llBoardActiveDevice
         || previewFrame?.dataset?.llBoardActiveDevice
         || "";
       if (boardDevice && typeof updateLpBoardCode === "function") {
@@ -3229,7 +3255,7 @@ ${containerHtml}`;
     }
 
     function updateTemplatePreviewEditValue(meta, rawValue, normalizedValue, options = {}) {
-      const element = getTemplatePreviewNode(meta);
+      const element = getTemplatePreviewNode(meta, options.sourceElement);
       if (!element) {
         return;
       }
@@ -3268,7 +3294,10 @@ ${containerHtml}`;
         }
       }
 
-      syncTemplateHtmlFromPreview(options);
+      syncTemplateHtmlFromPreview({
+        ...options,
+        sourceFrame: meta?.sourceFrame || options.sourceFrame
+      });
     }
 
     function updateInlinePreviewTextValue(meta, element, rawValue, options = {}) {
@@ -3276,7 +3305,10 @@ ${containerHtml}`;
       const value = normalizePreviewText(rawValue, multiline);
 
       if (meta.scope === "template") {
-        syncTemplateHtmlFromPreview(options.commit ? {} : { skipPreviewUpdate: true });
+        syncTemplateHtmlFromPreview({
+          ...(options.commit ? {} : { skipPreviewUpdate: true }),
+          sourceFrame: meta?.sourceFrame || element?.ownerDocument?.defaultView?.frameElement
+        });
         return value;
       }
 
@@ -3651,6 +3683,15 @@ ${containerHtml}`;
         return;
       }
       doc.documentElement.dataset.llPreviewEditingReady = "true";
+
+      const rememberTemplatePreviewSource = () => {
+        if (frame?.isConnected && frame.contentDocument === doc) {
+          templatePreviewSourceFrame = frame;
+        }
+      };
+      doc.addEventListener("pointerdown", rememberTemplatePreviewSource, true);
+      doc.addEventListener("focusin", rememberTemplatePreviewSource, true);
+      doc.addEventListener("keydown", rememberTemplatePreviewSource, true);
 
       const previewScrollbarOutline = document.documentElement.dataset.theme === "dark"
         ? "rgba(255, 255, 255, 0.72)"
@@ -4045,11 +4086,16 @@ ${containerHtml}`;
         const acceptsSvg = /svg/i.test(label);
         const isVideoEditor = /vídeo|video|youtube/i.test(label);
         const isPosterEditor = /poster/i.test(label);
-        openPreviewEditPopover(event, { ...meta, type: "media" }, {
+        openPreviewEditPopover(event, {
+          ...meta,
+          sourceFrame: meta?.sourceFrame || element?.ownerDocument?.defaultView?.frameElement || frame,
+          type: "media"
+        }, {
           inputType: "text",
           label,
           multiline: acceptsSvg,
           rows: 5,
+          sourceElement: element,
           accept: isPosterEditor ? "image/*" : isVideoEditor ? "video/*,image/*" : "image/*,video/*",
           placeholder: acceptsSvg ? "Cole uma URL .svg/.webp, caminho local ou o código <svg>...</svg>" : "Cole URL hospedada ou caminho local, ex.: C:\\Users\\nome\\Downloads\\imagem.webp"
         });
@@ -4064,11 +4110,12 @@ ${containerHtml}`;
           return;
         }
 
+        const sourceMeta = { ...meta, sourceFrame: frame };
         const multiline = Boolean(options.multiline);
         element.dataset.llPreviewText = "true";
         previewTextEditors.add(element);
         previewTextMeta.set(element, {
-          meta,
+          meta: sourceMeta,
           multiline,
           triggerEvent: options.triggerEvent || "click",
           disableSingleClickPopover: Boolean(options.disableSingleClickPopover)
@@ -4093,7 +4140,7 @@ ${containerHtml}`;
             return;
           }
 
-          const normalizedValue = updateInlinePreviewTextValue(meta, element, element.innerText, { multiline, commit: true });
+          const normalizedValue = updateInlinePreviewTextValue(sourceMeta, element, element.innerText, { multiline, commit: true });
           element.textContent = normalizedValue;
           element.removeAttribute("contenteditable");
           element.removeAttribute("spellcheck");
@@ -4142,7 +4189,7 @@ ${containerHtml}`;
           event.stopImmediatePropagation();
           window.clearTimeout(singleClickTimer);
           singleClickTimer = window.setTimeout(() => {
-            openPreviewEditPopover(event, { ...meta, type: "textStyle" }, {
+            openPreviewEditPopover(event, { ...sourceMeta, type: "textStyle" }, {
               kind: "text-style",
               label: "Editar texto",
               multiline,
@@ -4159,7 +4206,7 @@ ${containerHtml}`;
             event.preventDefault();
             event.stopImmediatePropagation();
             window.clearTimeout(singleClickTimer);
-            openPreviewEditPopover(event, { ...meta, type: "textStyle" }, {
+            openPreviewEditPopover(event, { ...sourceMeta, type: "textStyle" }, {
               kind: "text-style",
               label: "Editar texto",
               multiline,
@@ -4195,7 +4242,7 @@ ${containerHtml}`;
             return;
           }
 
-          updateInlinePreviewTextValue(meta, element, element.innerText, { multiline });
+          updateInlinePreviewTextValue(sourceMeta, element, element.innerText, { multiline });
         });
 
         element.addEventListener("blur", finishInlineTextEdit);
@@ -4443,6 +4490,7 @@ ${containerHtml}`;
           return;
         }
 
+        const sourceMeta = { ...meta, sourceFrame: frame };
         const triggerEvent = options.triggerEvent || (/fundo|prote[cç][aã]o|borda|se[cç][aã]o|m[ií]dia/i.test(label) ? "click" : "dblclick");
         element.dataset.llPreviewColor = "true";
         element.setAttribute("title", triggerEvent === "click" ? `Clique para editar ${label}.` : `Duplo clique para editar ${label}.`);
@@ -4490,10 +4538,11 @@ ${containerHtml}`;
           element.__llPreviewSkipMedia = true;
           window.clearTimeout(element.__llPreviewMediaTimer);
 
-          openPreviewEditPopover(event, { ...meta, type: "color" }, {
+          openPreviewEditPopover(event, { ...sourceMeta, type: "color" }, {
             ...options,
             kind: "color",
-            label
+            label,
+            sourceElement: element
           });
         });
       };

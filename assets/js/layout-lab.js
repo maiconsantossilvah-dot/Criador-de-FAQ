@@ -658,45 +658,55 @@
       return cloneValue((state.textStyles && state.textStyles[tab]) || {});
     }
 
+    function getSnapshotClassStyles(tab) {
+      return cloneValue((state.classStyles && state.classStyles[tab]) || {});
+    }
+
     function applySnapshotTextStyles(tab, snapshot) {
       state.textStyles = state.textStyles || {};
       state.textStyles[tab] = cloneValue(snapshot && snapshot.textStyles ? snapshot.textStyles : {});
     }
 
+    function applySnapshotClassStyles(tab, snapshot) {
+      state.classStyles = state.classStyles || {};
+      state.classStyles[tab] = cloneValue(snapshot && snapshot.classStyles ? snapshot.classStyles : {});
+    }
+
     function getTabSnapshot(tab = getResponsiveTab()) {
       if (tab === "table") {
-        return { table: cloneValue(state.table), textStyles: getSnapshotTextStyles(tab) };
+        return { table: cloneValue(state.table), textStyles: getSnapshotTextStyles(tab), classStyles: getSnapshotClassStyles(tab) };
       }
 
       if (tab === "stories") {
-        return { stories: cloneValue(state.stories), textStyles: getSnapshotTextStyles(tab) };
+        return { stories: cloneValue(state.stories), textStyles: getSnapshotTextStyles(tab), classStyles: getSnapshotClassStyles(tab) };
       }
 
       if (tab === "article") {
-        return { article: cloneValue(state.article), textStyles: getSnapshotTextStyles(tab) };
+        return { article: cloneValue(state.article), textStyles: getSnapshotTextStyles(tab), classStyles: getSnapshotClassStyles(tab) };
       }
 
       if (tab === "carousel") {
-        return { carousel: cloneValue(state.carousel), textStyles: getSnapshotTextStyles(tab) };
+        return { carousel: cloneValue(state.carousel), textStyles: getSnapshotTextStyles(tab), classStyles: getSnapshotClassStyles(tab) };
       }
 
       if (tab === "bento") {
-        return { bento: cloneValue(state.bento), textStyles: getSnapshotTextStyles(tab) };
+        return { bento: cloneValue(state.bento), textStyles: getSnapshotTextStyles(tab), classStyles: getSnapshotClassStyles(tab) };
       }
 
       if (tab === "labbridge") {
-        return { labBridge: cloneValue(state.labBridge), textStyles: getSnapshotTextStyles(tab) };
+        return { labBridge: cloneValue(state.labBridge), textStyles: getSnapshotTextStyles(tab), classStyles: getSnapshotClassStyles(tab) };
       }
 
       if (tab === "template") {
-        return { template: cloneValue(state.template), textStyles: getSnapshotTextStyles(tab) };
+        return { template: cloneValue(state.template), textStyles: getSnapshotTextStyles(tab), classStyles: getSnapshotClassStyles(tab) };
       }
 
       return {
         items: cloneValue(state.items),
         faqBulkInput: state.faqBulkInput,
         faqBulkStatus: state.faqBulkStatus,
-        textStyles: getSnapshotTextStyles("faq")
+        textStyles: getSnapshotTextStyles("faq"),
+        classStyles: getSnapshotClassStyles("faq")
       };
     }
 
@@ -708,42 +718,49 @@
       if (tab === "table" && snapshot.table) {
         state.table = cloneValue(snapshot.table);
         applySnapshotTextStyles(tab, snapshot);
+        applySnapshotClassStyles(tab, snapshot);
         return;
       }
 
       if (tab === "stories" && snapshot.stories) {
         state.stories = cloneValue(snapshot.stories);
         applySnapshotTextStyles(tab, snapshot);
+        applySnapshotClassStyles(tab, snapshot);
         return;
       }
 
       if (tab === "article" && snapshot.article) {
         state.article = cloneValue(snapshot.article);
         applySnapshotTextStyles(tab, snapshot);
+        applySnapshotClassStyles(tab, snapshot);
         return;
       }
 
       if (tab === "carousel" && snapshot.carousel) {
         state.carousel = cloneValue(snapshot.carousel);
         applySnapshotTextStyles(tab, snapshot);
+        applySnapshotClassStyles(tab, snapshot);
         return;
       }
 
       if (tab === "bento" && snapshot.bento) {
         state.bento = cloneValue(snapshot.bento);
         applySnapshotTextStyles(tab, snapshot);
+        applySnapshotClassStyles(tab, snapshot);
         return;
       }
 
       if (tab === "labbridge" && snapshot.labBridge) {
         state.labBridge = cloneValue(snapshot.labBridge);
         applySnapshotTextStyles(tab, snapshot);
+        applySnapshotClassStyles(tab, snapshot);
         return;
       }
 
       if (tab === "template" && snapshot.template) {
         state.template = cloneValue(snapshot.template);
         applySnapshotTextStyles(tab, snapshot);
+        applySnapshotClassStyles(tab, snapshot);
         return;
       }
 
@@ -752,6 +769,7 @@
         state.faqBulkInput = snapshot.faqBulkInput || "";
         state.faqBulkStatus = snapshot.faqBulkStatus || "";
         applySnapshotTextStyles("faq", snapshot);
+        applySnapshotClassStyles("faq", snapshot);
       }
     }
 
