@@ -8,6 +8,158 @@
     // uma alteracao do celular seja aplicada por engano no frame principal.
     let templatePreviewSourceFrame = null;
 
+    // Alteracoes feitas diretamente nos frames nao passam pelo historico
+    // nativo do navegador. Mantemos um historico pequeno por breakpoint para
+    // que Ctrl+Z/Ctrl+Shift+Z funcione tambem para texto, cor, midia e CSS.
+    const previewEditHistory = { undo: [], redo: [], restoring: false, limit: 80 };
+    let previewEditHistoryParentListenerBound = false;
+
+    function getPreviewEditHistoryTab(meta = {}) {
+      const scope = String(meta?.scope || "").trim();
+      const supportedTabs = ["faq", "table", "stories", "article", "carousel", "bento", "labbridge", "template"];
+      if (supportedTabs.includes(scope)) {
+        return scope;
+      }
+
+      const activeTab = currentPage === "conteudo" ? currentEditorTab : "faq";
+      return supportedTabs.includes(activeTab) ? activeTab : "faq";
+    }
+
+    function getPreviewEditHistoryDevice(meta = {}, sourceFrame = null) {
+      const frame = meta?.sourceFrame || sourceFrame;
+      const frameDevice = frame?.dataset?.llBoardActiveDevice;
+      if (frameDevice) {
+        return frameDevice === "base" ? "desktop" : frameDevice;
+      }
+
+      const editDevice = state.responsive?.editDevice || "base";
+      return editDevice === "base" ? "desktop" : editDevice;
+    }
+
+    function getPreviewEditHistorySnapshot(tab, device) {
+      if (device === "desktop") {
+        return cloneValue(getBaseSnapshot(tab));
+      }
+
+      return cloneValue(getResponsiveSnapshot(tab, device));
+    }
+
+    function arePreviewEditSnapshotsEqual(first, second) {
+      try {
+        return JSON.stringify(first) === JSON.stringify(second);
+      } catch (_) {
+        return false;
+      }
+    }
+
+    function recordPreviewEditHistory(meta = {}, sourceFrame = null) {
+      if (previewEditHistory.restoring || currentPage !== "conteudo") {
+        return false;
+      }
+
+      const tab = getPreviewEditHistoryTab(meta);
+      const device = getPreviewEditHistoryDevice(meta, sourceFrame);
+      const snapshot = getPreviewEditHistorySnapshot(tab, device);
+      previewEditHistory.undo.push({ tab, device, snapshot });
+      if (previewEditHistory.undo.length > previewEditHistory.limit) {
+        previewEditHistory.undo.shift();
+      }
+      previewEditHistory.redo = [];
+      return true;
+    }
+
+    function applyPreviewEditHistorySnapshot(entry, snapshot) {
+      const tab = entry?.tab;
+      const device = entry?.device;
+      if (!tab || !device || !snapshot) {
+        return false;
+      }
+
+      const restoredSnapshot = cloneValue(snapshot);
+      state.responsive.baseSnapshots = state.responsive.baseSnapshots || {};
+      state.responsive.drafts = state.responsive.drafts || {};
+
+      if (device === "desktop") {
+        state.responsive.baseSnapshots[tab] = cloneValue(restoredSnapshot);
+        if (getResponsiveTab() === tab && state.responsive.editDevice === "base") {
+          applyTabSnapshot(tab, restoredSnapshot);
+        }
+      } else {
+        state.responsive.drafts[tab] = state.responsive.drafts[tab] || {};
+        state.responsive.drafts[tab][device] = cloneValue(restoredSnapshot);
+        if (getResponsiveTab() === tab && state.responsive.editDevice === device) {
+          applyTabSnapshot(tab, restoredSnapshot);
+        }
+        state.responsive.dirty = true;
+      }
+
+      // No FrameWork, atualizar os iframes incrementalmente evita desmontar o
+      // frame em que o atalho foi usado. Nas outras abas, o preview comum e
+      // recomposto a partir do mesmo snapshot restaurado.
+      if (tab === "template" && typeof scheduleLpBoardIncrementalSync === "function" && scheduleLpBoardIncrementalSync(0)) {
+        generatedHtml.value = buildOutputHtml("html");
+      } else {
+        updateOutput({ preservePreviewScroll: true, preserveLiveFrame: true });
+      }
+
+      return true;
+    }
+
+    function movePreviewEditHistory(direction) {
+      const source = direction === "redo" ? previewEditHistory.redo : previewEditHistory.undo;
+      const destination = direction === "redo" ? previewEditHistory.undo : previewEditHistory.redo;
+
+      while (source.length) {
+        const entry = source.pop();
+        const currentSnapshot = getPreviewEditHistorySnapshot(entry.tab, entry.device);
+        if (arePreviewEditSnapshotsEqual(currentSnapshot, entry.snapshot)) {
+          continue;
+        }
+
+        destination.push({ tab: entry.tab, device: entry.device, snapshot: currentSnapshot });
+        previewEditHistory.restoring = true;
+        const restored = applyPreviewEditHistorySnapshot(entry, entry.snapshot);
+        previewEditHistory.restoring = false;
+        return restored;
+      }
+
+      return false;
+    }
+
+    function handlePreviewEditHistoryShortcut(event, options = {}) {
+      if (!(event.ctrlKey || event.metaKey) || event.altKey) {
+        return false;
+      }
+
+      const key = String(event.key || "").toLowerCase();
+      const wantsUndo = key === "z" && !event.shiftKey;
+      const wantsRedo = (key === "z" && event.shiftKey) || key === "y";
+      if (!wantsUndo && !wantsRedo) {
+        return false;
+      }
+
+      const target = event.target;
+      const isNativeField = target instanceof Element
+        && Boolean(target.closest("input, textarea, select, [contenteditable='true']"));
+      if (!options.insidePreview && isNativeField) {
+        return false;
+      }
+
+      const handled = movePreviewEditHistory(wantsRedo ? "redo" : "undo");
+      if (handled) {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+      }
+      return handled;
+    }
+
+    if (!previewEditHistoryParentListenerBound) {
+      previewEditHistoryParentListenerBound = true;
+      document.addEventListener("keydown", (event) => {
+        handlePreviewEditHistoryShortcut(event);
+      }, true);
+    }
+
     function getTemplateLayoutOptions() {
       return [
         ["faq", "FAQ"],
@@ -913,6 +1065,14 @@ ${containerHtml}`;
       let classSelect = null;
       let classPropertySelect = null;
       let resetClassButton = null;
+      let previewEditHistoryRecorded = false;
+      const recordPopoverEditHistory = () => {
+        if (previewEditHistoryRecorded) {
+          return;
+        }
+        recordPreviewEditHistory(meta, sourceElement?.ownerDocument?.defaultView?.frameElement || meta?.sourceFrame);
+        previewEditHistoryRecorded = true;
+      };
 
       if (isColor) {
         const parsedGradient = parseCssGradient(currentValue);
@@ -1370,7 +1530,10 @@ ${containerHtml}`;
         classTab.addEventListener("click", () => setEditMode("class"));
         classSelect.addEventListener("change", () => applyLiveValue({ multiline: options.multiline }));
         classPropertySelect?.addEventListener("change", () => applyLiveValue({ multiline: options.multiline }));
-        resetClassButton.addEventListener("click", () => clearPreviewClassStyle(meta, classSelect.value));
+        resetClassButton.addEventListener("click", () => {
+          recordPopoverEditHistory();
+          clearPreviewClassStyle(meta, classSelect.value);
+        });
       }
 
       const actions = document.createElement("div");
@@ -1393,6 +1556,7 @@ ${containerHtml}`;
       form.appendChild(actions);
 
       const applyLiveValue = (applyOptions = {}) => {
+        recordPopoverEditHistory();
         let nextValue = String(valueInput.value || "").trim();
         if (isColor) {
           if (isBorder) {
@@ -2705,6 +2869,7 @@ ${containerHtml}`;
 
     function openTemplateHeaderPopover(sourceEvent, headerElement) {
       closePreviewEditPopover();
+      recordPreviewEditHistory({ scope: "template", sourceFrame: headerElement?.ownerDocument?.defaultView?.frameElement });
 
       let activeHeader = headerElement;
       let headerData = getTemplateHeaderDataFromElement(activeHeader);
@@ -2870,6 +3035,7 @@ ${containerHtml}`;
       }
 
       closePreviewEditPopover();
+      recordPreviewEditHistory({ scope: "template", sourceFrame: element?.ownerDocument?.defaultView?.frameElement });
 
       const form = document.createElement("form");
       form.className = "preview-edit-popover";
@@ -2956,6 +3122,7 @@ ${containerHtml}`;
 
     function openTemplateSvgPopover(sourceEvent, element) {
       closePreviewEditPopover();
+      recordPreviewEditHistory({ scope: "template", sourceFrame: element?.ownerDocument?.defaultView?.frameElement });
 
       const form = document.createElement("form");
       form.className = "preview-edit-popover preview-edit-popover--svg";
@@ -3089,6 +3256,7 @@ ${containerHtml}`;
       }
 
       closePreviewEditPopover();
+      recordPreviewEditHistory({ scope: "template", sourceFrame: element?.ownerDocument?.defaultView?.frameElement });
 
       const form = document.createElement("form");
       form.className = "preview-edit-popover preview-edit-popover--svg";
@@ -3692,6 +3860,12 @@ ${containerHtml}`;
       doc.addEventListener("pointerdown", rememberTemplatePreviewSource, true);
       doc.addEventListener("focusin", rememberTemplatePreviewSource, true);
       doc.addEventListener("keydown", rememberTemplatePreviewSource, true);
+      doc.addEventListener("keydown", (event) => {
+        // Atalhos digitados em um iframe nao chegam ao documento principal.
+        // Trate-os aqui para que Ctrl+Z tambem restaure o estado salvo pelo
+        // FrameWork, e nao somente o texto visual do contenteditable.
+        handlePreviewEditHistoryShortcut(event, { insidePreview: true });
+      }, true);
 
       const previewScrollbarOutline = document.documentElement.dataset.theme === "dark"
         ? "rgba(255, 255, 255, 0.72)"
@@ -4152,6 +4326,7 @@ ${containerHtml}`;
           event.stopPropagation();
           window.clearTimeout(singleClickTimer);
           closePreviewEditPopover();
+          recordPreviewEditHistory(sourceMeta, frame);
           originalInlineText = element.innerText || element.textContent || "";
           element.dataset.llPreviewInline = "true";
           element.setAttribute("contenteditable", "plaintext-only");
@@ -4286,6 +4461,8 @@ ${containerHtml}`;
         }
 
         const multiline = Boolean(options.multiline);
+        const sourceMeta = { ...meta, sourceFrame: frame };
+        let inlineHistoryRecorded = false;
         element.dataset.llPreviewText = "true";
         element.dataset.llPreviewInline = "true";
         element.setAttribute("contenteditable", "plaintext-only");
@@ -4299,6 +4476,13 @@ ${containerHtml}`;
           }
         });
 
+        element.addEventListener("focus", () => {
+          if (!inlineHistoryRecorded) {
+            recordPreviewEditHistory(sourceMeta, frame);
+            inlineHistoryRecorded = true;
+          }
+        });
+
         element.addEventListener("input", () => {
           syncTablePreviewField(meta, element.innerText, { multiline });
         });
@@ -4309,6 +4493,7 @@ ${containerHtml}`;
             syncTablePreviewField(meta, element.innerText, { multiline });
           }
           element.textContent = normalizedValue;
+          inlineHistoryRecorded = false;
         });
       };
 
@@ -4945,6 +5130,7 @@ ${containerHtml}`;
 
       const openTemplateOptionCardPopover = (sourceEvent, element) => {
         closePreviewEditPopover();
+        recordPreviewEditHistory({ scope: "template", sourceFrame: element?.ownerDocument?.defaultView?.frameElement || frame });
         const styles = element.ownerDocument.defaultView.getComputedStyle(element);
         const isOptionDot = isTemplateOptionDot(element);
         const textTarget = isOptionDot ? null : getTemplateOptionTextTarget(element);
@@ -5440,6 +5626,12 @@ ${containerHtml}`;
       const openTemplateOverlayPopover = (sourceEvent, overlayElement) => {
         closePreviewEditPopover();
 
+        const overlayMeta = {
+          scope: "template",
+          sourceFrame: overlayElement?.ownerDocument?.defaultView?.frameElement || frame
+        };
+        let overlayHistoryRecorded = false;
+
         const computed = overlayElement.ownerDocument.defaultView.getComputedStyle(overlayElement);
         const initialColor = colorToHex(computed.backgroundColor || "#000000", "#000000");
         const initialOpacity = getAlphaFromCssColor(computed.backgroundColor, 0.64).toFixed(2);
@@ -5532,13 +5724,17 @@ ${containerHtml}`;
         form.appendChild(actions);
 
         const applyOverlay = () => {
+          if (!overlayHistoryRecorded) {
+            recordPreviewEditHistory(overlayMeta, overlayMeta.sourceFrame);
+            overlayHistoryRecorded = true;
+          }
           const nextColor = isHexColor(colorHexInput.value) ? normalizeHexColor(colorHexInput.value) : colorInput.value;
           const nextOpacity = normalizeCarouselCaptionOpacity(opacityInput.value);
           colorInput.value = nextColor;
           colorHexInput.value = nextColor;
           overlayElement.style.backgroundColor = hexToRgba(nextColor, nextOpacity);
           applyTemplateOverlayPosition(overlayElement, horizontalSelect.value, verticalSelect.value);
-          syncTemplateHtmlFromPreview();
+          syncTemplateHtmlFromPreview({ sourceFrame: overlayMeta.sourceFrame });
         };
 
         horizontalSelect.addEventListener("input", applyOverlay);
@@ -5656,6 +5852,7 @@ ${containerHtml}`;
         }
 
         closePreviewEditPopover();
+        recordPreviewEditHistory({ scope: "carousel", sourceFrame: captionElement?.ownerDocument?.defaultView?.frameElement || frame });
 
         const getCaptionSolidColor = () => {
           const gradient = parseCssGradient(slide.backgroundColor);
@@ -6160,6 +6357,7 @@ ${containerHtml}`;
 
       const openTemplateFaqStylePopover = (sourceEvent, faqRoot, summary) => {
         closePreviewEditPopover();
+        recordPreviewEditHistory({ scope: "template", sourceFrame: faqRoot?.ownerDocument?.defaultView?.frameElement || frame });
         ensureTemplateFaqStyle(faqRoot);
 
         const computed = summary.ownerDocument.defaultView.getComputedStyle(summary);
@@ -6553,6 +6751,7 @@ ${containerHtml}`;
         }
 
         closePreviewEditPopover();
+        recordPreviewEditHistory({ scope: "carousel", sourceFrame: carouselRoot?.ownerDocument?.defaultView?.frameElement || frame });
 
         const getColor = (field, fallback) => normalizeHexColor(state.carousel[field] || fallback);
         const getNumber = (field, fallback, min, max) => {
@@ -6849,6 +7048,7 @@ ${containerHtml}`;
         }
 
         closePreviewEditPopover();
+        recordPreviewEditHistory({ scope: "template", sourceFrame: tableRoot?.ownerDocument?.defaultView?.frameElement || frame });
 
         const table = tableRoot.tagName === "TABLE" ? tableRoot : tableRoot.querySelector("table") || tableRoot;
         const headerCells = Array.from(tableRoot.querySelectorAll("th, .table-th-custom"));
@@ -7060,6 +7260,8 @@ ${containerHtml}`;
           return;
         }
 
+        recordPreviewEditHistory({ scope: "template", sourceFrame: table.ownerDocument?.defaultView?.frameElement || frame });
+
         const docRef = table.ownerDocument;
         const headerRows = Array.from(table.tHead?.rows || table.querySelectorAll("thead tr") || []);
         headerRows.forEach((row) => {
@@ -7097,6 +7299,8 @@ ${containerHtml}`;
         if (!table) {
           return;
         }
+
+        recordPreviewEditHistory({ scope: "template", sourceFrame: table.ownerDocument?.defaultView?.frameElement || frame });
 
         const docRef = table.ownerDocument;
         const body = table.tBodies?.[0] || table.createTBody();

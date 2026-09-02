@@ -534,21 +534,43 @@
 
   function startFramePan(data) {
     if (state.editorOpen || !getArtboard(data?.key)) return;
-    state.panning = { frameKey: data.key };
+    const pointerId = Number(data?.pointerId);
+    state.panning = {
+      frameKey: data.key,
+      pointerId: Number.isFinite(pointerId) ? pointerId : null
+    };
     state.root?.classList.add("is-panning");
+  }
+
+  function getFramePanDelta(value) {
+    const delta = Number(value);
+    if (!Number.isFinite(delta)) return 0;
+
+    // O iframe recebe a distancia no tamanho original do artboard, enquanto o
+    // board esta desenhado com zoom. Converter para pixels da tela evita que
+    // um pequeno arraste dentro de um frame desloque o visor varios metros.
+    const zoom = Number.isFinite(state.zoom) ? state.zoom : 1;
+    const screenDelta = delta * zoom;
+
+    // Um evento atrasado nunca deve arremessar o canvas para longe. O proximo
+    // movimento continua normalmente, entao o limite so protege contra saltos.
+    return Math.max(-180, Math.min(180, screenDelta));
   }
 
   function moveFramePan(data) {
     if (!state.panning?.frameKey || state.panning.frameKey !== data?.key) return;
-    const deltaX = Number(data.dx);
-    const deltaY = Number(data.dy);
-    state.panX = (Number.isFinite(state.panX) ? state.panX : 72) + (Number.isFinite(deltaX) ? deltaX : 0);
-    state.panY = (Number.isFinite(state.panY) ? state.panY : 86) + (Number.isFinite(deltaY) ? deltaY : 0);
+    const pointerId = Number(data?.pointerId);
+    if (state.panning.pointerId !== null && (!Number.isFinite(pointerId) || state.panning.pointerId !== pointerId)) return;
+    state.panX = (Number.isFinite(state.panX) ? state.panX : 72) + getFramePanDelta(data.dx);
+    state.panY = (Number.isFinite(state.panY) ? state.panY : 86) + getFramePanDelta(data.dy);
     applyTransform();
   }
 
   function endFramePan(data) {
-    if (state.panning?.frameKey && state.panning.frameKey === data?.key) {
+    const pointerId = Number(data?.pointerId);
+    if (state.panning?.frameKey
+      && state.panning.frameKey === data?.key
+      && (state.panning.pointerId === null || (Number.isFinite(pointerId) && state.panning.pointerId === pointerId))) {
       state.panning = null;
       state.root?.classList.remove("is-panning");
     }
