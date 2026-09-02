@@ -1368,6 +1368,15 @@
         return;
       }
       if (data?.type === "layout-lab:board-frame-activate" && getArtboard(data.key)) {
+        const clickedFrame = Array.from(state.scene?.querySelectorAll("iframe") || [])
+          .find((node) => node.contentWindow === event.source);
+        // Um clique dentro de um frame deve chegar ao conteudo no mesmo
+        // instante. Antes ele ativava o breakpoint e reconstruia o iframe,
+        // fazendo o primeiro clique apenas piscar a tela.
+        if (clickedFrame) {
+          selectArtboard(data.key);
+          return;
+        }
         const liveFrame = getLiveFrame();
         // A click made just before a device swap can arrive after srcdoc has
         // changed. The live iframe keeps the same contentWindow, so discard
