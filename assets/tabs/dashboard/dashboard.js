@@ -61,8 +61,8 @@
     function getTemplateDashboardSection() {
       return {
         tab: "template",
-        icon: "LP",
-        title: "Modo LP container",
+        icon: "FR",
+        title: "FrameWork",
         summary: "Edite o HTML que vai dentro de Detalhes do produto, separado dos layouts.",
         meta: state.template.html.trim() ? "HTML carregado" : "Aguardando conteúdo"
       };
@@ -1448,7 +1448,7 @@ ${trends}
         </button>`;
       }).join("");
       const lpSection = getTemplateDashboardSection();
-      const lpCard = `<button class="ll-dashboard__lp-card" type="button" data-dashboard-preview-tab="${lpSection.tab}" aria-label="Abrir ${escapeHtml(lpSection.title)}">
+      const lpCard = `<button class="ll-dashboard__lp-card ll-dashboard__lp-card--framework" type="button" data-dashboard-preview-tab="${lpSection.tab}" aria-label="Abrir ${escapeHtml(lpSection.title)}">
     <span>${escapeHtml(lpSection.icon)}</span>
     <div>
       <strong>${escapeHtml(lpSection.title)}</strong>
@@ -1697,6 +1697,45 @@ ${senkoCard}
 
   .ll-dashboard__lp-card--senko {
     background: linear-gradient(135deg, ${colors.card}, ${isDark ? "rgba(251, 146, 60, 0.14)" : "rgba(251, 146, 60, 0.10)"});
+  }
+
+  .ll-dashboard__lp-card--framework {
+    isolation: isolate;
+    overflow: hidden;
+    border-color: #eab308;
+    background: linear-gradient(135deg, ${colors.card}, ${isDark ? "rgba(14, 116, 144, 0.18)" : "rgba(224, 242, 254, 0.74)"});
+    box-shadow: inset 0 0 0 1px rgba(250, 204, 21, 0.14), ${colors.shadow};
+  }
+
+  .ll-dashboard__lp-card--framework:hover,
+  .ll-dashboard__lp-card--framework:focus-visible {
+    border-color: #facc15;
+    box-shadow: inset 0 0 0 1px rgba(254, 240, 138, 0.3), 0 10px 24px rgba(234, 179, 8, 0.18);
+  }
+
+  .ll-dashboard__lp-card.ll-dashboard__lp-card--framework > span {
+    color: #2b2100;
+    background: linear-gradient(135deg, #fef3a0, #eab308) !important;
+    box-shadow: 0 7px 16px rgba(234, 179, 8, 0.26) !important;
+  }
+
+  .ll-dashboard__lp-card--framework::before {
+    position: absolute;
+    z-index: -1;
+    inset: 0;
+    content: "";
+    pointer-events: none;
+    background: url("assets/tabs/dashboard/framework-gears-blueprint.png") center / cover no-repeat;
+    opacity: ${isDark ? "0.3" : "0.22"};
+  }
+
+  .ll-dashboard__lp-card--framework::after {
+    position: absolute;
+    z-index: -1;
+    inset: 0;
+    content: "";
+    pointer-events: none;
+    background: linear-gradient(90deg, ${isDark ? "rgba(17, 24, 39, 0.6)" : "rgba(255, 255, 255, 0.74)"}, transparent 76%);
   }
 
   .ll-dashboard__lp-card--senko:hover,

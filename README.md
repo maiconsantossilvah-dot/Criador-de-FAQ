@@ -6,7 +6,7 @@ Aplicacao estatica para montar layouts de conteudo, gerar blocos HTML/CSS e publ
 
 Abra `index.html` ou acesse o link publicado no GitHub Pages.
 
-- `Qualidade Conteudo`: layouts, guias, LP container, FAQ, tabela, stories, artigo, carrossel e bento.
+- `Qualidade Conteudo`: layouts, guias, FrameWork, FAQ, tabela, stories, artigo, carrossel e bento.
 - `Qualidade Tecnica`: gerador de FAQ tecnico mais enxuto.
 
 ## Para publicar

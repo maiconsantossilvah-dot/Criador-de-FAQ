@@ -47,8 +47,54 @@
       }
 
       const parsedDocument = new DOMParser().parseFromString(rawValue, "text/html");
+      const responsiveOutput = parsedDocument.querySelector(".ll-responsive-output");
       const container = parsedDocument.querySelector(".lp-container, .lp_container");
-      return container ? container.innerHTML.trim() : rawValue;
+      if (!container) {
+        return rawValue;
+      }
+
+      // O resultado de “Copiar HTML/CSS” deixa os estilos antes do markup.
+      // Ao recolar esse resultado no FrameWork, mantenha esses estilos e a
+      // casca responsiva; antes eles eram descartados junto com o container.
+      const externalStyles = Array.from(parsedDocument.querySelectorAll("style"))
+        .filter((style) => !container.contains(style))
+        .map((style) => style.outerHTML.trim())
+        .filter(Boolean);
+      if (responsiveOutput) {
+        return [...externalStyles, responsiveOutput.outerHTML.trim()].filter(Boolean).join("\n\n");
+      }
+
+      return [...externalStyles, container.innerHTML.trim()].filter(Boolean).join("\n\n");
+    }
+
+    function repairLegacyOptionStateCss(value) {
+      const rawValue = String(value || "");
+      const optionChildPattern = /\s+(\.(?:section[-_](?:8|28)__tab-(?:icon|text)[\w-]*))$/i;
+
+      return rawValue.replace(/([^{}]+)\{([^{}]*)\}/g, (rule, rawSelector, declarations) => {
+        const selectors = rawSelector.split(",").map((selector) => selector.trim()).filter(Boolean);
+        if (selectors.length < 2) {
+          return rule;
+        }
+
+        const lastSelector = selectors.at(-1) || "";
+        const childMatch = lastSelector.match(optionChildPattern);
+        const earlierSelectors = selectors.slice(0, -1);
+        if (!childMatch || earlierSelectors.some((selector) => optionChildPattern.test(selector))) {
+          return rule;
+        }
+
+        const parentSelector = lastSelector.slice(0, lastSelector.length - childMatch[0].length).trim();
+        if (!parentSelector || !earlierSelectors.every((selector) => /section[-_](?:8|28)__tab/i.test(selector))) {
+          return rule;
+        }
+
+        const childSelector = childMatch[1];
+        const repairedSelectors = [...earlierSelectors, parentSelector]
+          .map((selector) => `${selector} ${childSelector}`)
+          .join(", ");
+        return `${repairedSelectors} {${declarations}}`;
+      });
     }
 
     function extractTemplateEmbeddedCss(value = state.template.html) {
@@ -65,6 +111,7 @@
 
       return Array.from(wrapper.querySelectorAll("style"))
         .map((element) => element.textContent || "")
+        .map(repairLegacyOptionStateCss)
         .map((css) => css.trim())
         .filter(Boolean)
         .join("\n\n");
@@ -86,9 +133,13 @@
       return wrapper.innerHTML.trim();
     }
 
-    function buildTemplateEmbeddedStyle(value = state.template.html) {
+    function buildTemplateEmbeddedStyle(value = state.template.html, options = {}) {
       const css = extractTemplateEmbeddedCss(value);
-      return css ? `<style>\n${css}\n</style>` : "";
+      const previewMarker = options.previewMarker === true ? " data-ll-template-embedded-style" : "";
+      const previewComment = options.previewMarker === true
+        ? "/* Layout Lab: estilos embutidos do conteúdo */\n"
+        : "";
+      return css ? `<style${previewMarker}>\n${previewComment}${css}\n</style>` : "";
     }
 
     function isLabEditorTooltip(value) {
@@ -434,9 +485,18 @@
       const frameCss = includeFrame ? `
 html,
 body {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
   margin: 0;
   min-height: 100%;
   background: #ffffff;
+  overflow-x: hidden;
+}
+
+html {
+  overflow-y: auto;
+  scrollbar-gutter: stable;
 }
 
 body {
@@ -446,12 +506,14 @@ body {
 
       return `<style>
 ${frameCss}
-${includeFrame ? "" : `
 .lp-container,
 .lp_container {
+  display: block;
   box-sizing: border-box;
   width: 100%;
-  margin: 0 auto;
+  min-width: 0;
+  max-width: 1280px;
+  margin: 0 auto 16px;
   background: #ffffff;
   overflow: hidden;
   font-family: Arial, sans-serif;
@@ -474,7 +536,6 @@ ${includeFrame ? "" : `
 .lp_container iframe {
   max-width: 100%;
 }
-`}
 </style>`;
     }
 
@@ -549,6 +610,10 @@ ${rules.join("\n")}
         preservePreviewFaqState: options.includeLabAttrs === true
       });
       const innerHtml = content || "";
+      const isResponsiveOutput = /class\s*=\s*["'][^"']*\bll-responsive-output\b/i.test(innerHtml);
+      if (isResponsiveOutput) {
+        return innerHtml;
+      }
       return `<div class="lp-container">
 ${innerHtml}
 </div>`;
@@ -565,7 +630,7 @@ ${innerHtml}
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   ${buildLpContainerCss(true)}
-  ${buildTemplateEmbeddedStyle()}
+  ${buildTemplateEmbeddedStyle(state.template.html, { previewMarker: true })}
   ${templateStyle}
 </head>
 <body>
@@ -593,10 +658,18 @@ ${containerHtml}`;
       return containerHtml;
     }
 
+    function getPreviewDocument(frame = previewFrame) {
+      try {
+        return frame?.contentDocument || frame?.contentWindow?.document || null;
+      } catch (_) {
+        return null;
+      }
+    }
+
     function getPreviewScrollPosition() {
       try {
         const frameWindow = previewFrame.contentWindow;
-        const frameDocument = previewFrame.contentDocument;
+        const frameDocument = getPreviewDocument(previewFrame);
 
         if (!frameWindow || !frameDocument) {
           return { x: 0, y: 0 };
@@ -628,6 +701,16 @@ ${containerHtml}`;
     }
 
     function closePreviewEditPopover() {
+      const beforeClose = previewEditBeforeCloseHandler;
+      previewEditBeforeCloseHandler = null;
+      if (typeof beforeClose === "function") {
+        try {
+          beforeClose();
+        } catch (error) {
+          // Fechar a janela nao pode bloquear a proxima edicao.
+        }
+      }
+
       if (previewEditPopover) {
         previewEditPopover.remove();
         previewEditPopover = null;
@@ -644,6 +727,94 @@ ${containerHtml}`;
       }
     }
 
+    function clampPreviewEditPopover(popover) {
+      if (!popover?.isConnected) {
+        return;
+      }
+
+      const margin = 12;
+      const rect = popover.getBoundingClientRect();
+      const currentLeft = Number.parseFloat(popover.style.left);
+      const currentTop = Number.parseFloat(popover.style.top);
+      const maxLeft = Math.max(margin, window.innerWidth - rect.width - margin);
+      const maxTop = Math.max(margin, window.innerHeight - rect.height - margin);
+      const left = Number.isFinite(currentLeft) ? currentLeft : rect.left;
+      const top = Number.isFinite(currentTop) ? currentTop : rect.top;
+
+      popover.style.left = `${Math.min(maxLeft, Math.max(margin, left))}px`;
+      popover.style.top = `${Math.min(maxTop, Math.max(margin, top))}px`;
+    }
+
+    function makePreviewEditPopoverMovable(popover) {
+      if (!popover || popover.dataset.llPreviewPopoverWindow === "true") {
+        return;
+      }
+
+      popover.dataset.llPreviewPopoverWindow = "true";
+      const handle = popover.querySelector(".preview-edit-popover__title, h3:first-child") || popover;
+      handle.classList.add("preview-edit-popover__drag-handle");
+      handle.setAttribute("title", "Arraste para mover a janela. Use a alça inferior direita para redimensionar.");
+
+      handle.addEventListener("pointerdown", (event) => {
+        if (event.button !== 0 || event.target.closest("button, input, select, textarea, label")) {
+          return;
+        }
+
+        const rect = popover.getBoundingClientRect();
+        const drag = {
+          pointerId: event.pointerId,
+          startX: event.clientX,
+          startY: event.clientY,
+          left: rect.left,
+          top: rect.top
+        };
+        popover.classList.add("is-dragging");
+        handle.setPointerCapture?.(event.pointerId);
+        event.preventDefault();
+
+        const move = (moveEvent) => {
+          if (moveEvent.pointerId !== drag.pointerId) {
+            return;
+          }
+          popover.style.left = `${drag.left + moveEvent.clientX - drag.startX}px`;
+          popover.style.top = `${drag.top + moveEvent.clientY - drag.startY}px`;
+          clampPreviewEditPopover(popover);
+        };
+        const finish = (finishEvent) => {
+          if (finishEvent.pointerId !== drag.pointerId) {
+            return;
+          }
+          popover.classList.remove("is-dragging");
+          try {
+            if (handle.hasPointerCapture?.(drag.pointerId)) {
+              handle.releasePointerCapture(drag.pointerId);
+            }
+          } catch (_) {
+            // A captura pode ser encerrada automaticamente pelo navegador.
+          }
+          clampPreviewEditPopover(popover);
+          window.removeEventListener("pointermove", move, true);
+          window.removeEventListener("pointerup", finish, true);
+          window.removeEventListener("pointercancel", finish, true);
+        };
+
+        window.addEventListener("pointermove", move, true);
+        window.addEventListener("pointerup", finish, true);
+        window.addEventListener("pointercancel", finish, true);
+      });
+
+      // Some embedded preview documents polyfill ResizeObserver through a
+      // MutationObserver from another document. Watching this host popover
+      // through that bridge raises an exception and can interrupt the next
+      // edit. Native resize still works; after the gesture ends we only clamp
+      // the window back inside the visible page.
+      const clampAfterResize = () => {
+        window.requestAnimationFrame(() => clampPreviewEditPopover(popover));
+      };
+      popover.addEventListener("pointerup", clampAfterResize);
+      popover.addEventListener("pointercancel", clampAfterResize);
+    }
+
     function getPreviewEditPoint(sourceEvent) {
       const targetDocument = sourceEvent?.target?.ownerDocument || document;
       if (targetDocument === document) {
@@ -654,9 +825,11 @@ ${containerHtml}`;
       }
 
       const frameRect = previewFrame.getBoundingClientRect();
+      const frameScaleX = frameRect.width / Math.max(1, previewFrame.clientWidth || frameRect.width);
+      const frameScaleY = frameRect.height / Math.max(1, previewFrame.clientHeight || frameRect.height);
       return {
-        x: frameRect.left + (sourceEvent?.clientX || 0),
-        y: frameRect.top + (sourceEvent?.clientY || 0)
+        x: frameRect.left + (sourceEvent?.clientX || 0) * frameScaleX,
+        y: frameRect.top + (sourceEvent?.clientY || 0) * frameScaleY
       };
     }
 
@@ -665,6 +838,7 @@ ${containerHtml}`;
         return;
       }
 
+      makePreviewEditPopoverMovable(previewEditPopover);
       const point = getPreviewEditPoint(sourceEvent);
       const rect = previewEditPopover.getBoundingClientRect();
       const margin = 12;
@@ -681,6 +855,7 @@ ${containerHtml}`;
 
       previewEditPopover.style.left = `${left}px`;
       previewEditPopover.style.top = `${top}px`;
+      clampPreviewEditPopover(previewEditPopover);
     }
 
     function openPreviewEditPopover(sourceEvent, meta, options = {}) {
@@ -775,9 +950,10 @@ ${containerHtml}`;
             if (colorGradientInputs?.toggle?.checked) {
               colorGradientInputs.start.value = valueInput.value;
             }
-            applyLiveValue();
+            applyLiveValue({ skipPreviewUpdate: true });
           }
         });
+        valueInput.addEventListener("change", () => applyLiveValue());
 
         colorInput.addEventListener("input", () => {
           valueInput.value = normalizeHexColor(colorInput.value);
@@ -785,8 +961,9 @@ ${containerHtml}`;
           if (colorGradientInputs?.toggle?.checked) {
             colorGradientInputs.start.value = valueInput.value;
           }
-          applyLiveValue();
+          applyLiveValue({ skipPreviewUpdate: true });
         });
+        colorInput.addEventListener("change", () => applyLiveValue());
 
         colorPickerButton.addEventListener("click", async () => {
           if (!("EyeDropper" in window)) {
@@ -933,8 +1110,9 @@ ${containerHtml}`;
         form.appendChild(valueInput);
         valueInput.addEventListener("input", () => {
           valueInput.dataset.touched = "true";
-          applyLiveValue();
+          applyLiveValue({ skipPreviewUpdate: true });
         });
+        valueInput.addEventListener("change", () => applyLiveValue());
 
         const grid = document.createElement("div");
         grid.className = "preview-edit-popover__grid";
@@ -967,14 +1145,15 @@ ${containerHtml}`;
               input.value = normalizeHexColor(input.value);
               color.value = input.value;
               color.style.setProperty("--preview-edit-color", input.value);
-              applyLiveValue({ multiline: options.multiline });
+              applyLiveValue({ multiline: options.multiline, skipPreviewUpdate: true });
             }
           });
           color.addEventListener("input", () => {
             input.value = normalizeHexColor(color.value);
             color.style.setProperty("--preview-edit-color", input.value);
-            applyLiveValue({ multiline: options.multiline });
+            applyLiveValue({ multiline: options.multiline, skipPreviewUpdate: true });
           });
+          color.addEventListener("change", () => applyLiveValue({ multiline: options.multiline }));
           wrapper.append(color, input);
           wrapper.__llColorInput = input;
           return wrapper;
@@ -1087,7 +1266,8 @@ ${containerHtml}`;
         valueInput.value = currentValue;
         valueInput.placeholder = options.placeholder || "";
         form.appendChild(valueInput);
-        valueInput.addEventListener("input", () => applyLiveValue());
+        valueInput.addEventListener("input", () => applyLiveValue({ skipPreviewUpdate: meta.scope === "template" }));
+        valueInput.addEventListener("change", () => applyLiveValue());
         if (kind === "media" && !options.multiline) {
           localAssetButton = document.createElement("button");
           localAssetButton.className = "button button--soft";
@@ -1227,7 +1407,7 @@ ${containerHtml}`;
               colorInput.value = nextColor;
               colorInput.style.setProperty("--preview-edit-color", nextColor);
             }
-            syncTemplateHtmlFromPreview();
+            syncTemplateHtmlFromPreview({ skipPreviewUpdate: Boolean(applyOptions.skipPreviewUpdate) });
             return;
           }
 
@@ -1282,11 +1462,18 @@ ${containerHtml}`;
           updatePreviewEditValue({ ...meta, type: "textStyle", multiline: applyOptions.multiline, allowBackgroundStyle: Boolean(styleInputs.backgroundColor) }, {
             text: nextText,
             style: nextStyle
-          });
+          }, { skipPreviewUpdate: Boolean(applyOptions.skipPreviewUpdate) });
           return;
         }
 
-        updatePreviewEditValue({ ...meta, type: kind }, nextValue);
+        updatePreviewEditValue({ ...meta, type: kind }, nextValue, { skipPreviewUpdate: Boolean(applyOptions.skipPreviewUpdate) });
+      };
+
+      // Entradas de texto e cor usam atualizacao leve enquanto a pessoa
+      // digita. Ao fechar, consolide uma unica vez para propagar a versao
+      // final aos outros frames sem remontar o iframe que esta em uso.
+      previewEditBeforeCloseHandler = () => {
+        applyLiveValue({ multiline: options.multiline });
       };
 
       if (localAssetButton) {
@@ -1310,7 +1497,7 @@ ${containerHtml}`;
 
       if (isTextStyle && styleInputs) {
         Object.values(styleInputs).filter(Boolean).forEach((input) => {
-          input.addEventListener("input", () => applyLiveValue({ multiline: options.multiline }));
+          input.addEventListener("input", () => applyLiveValue({ multiline: options.multiline, skipPreviewUpdate: true }));
           input.addEventListener("change", () => applyLiveValue({ multiline: options.multiline }));
         });
       }
@@ -1347,8 +1534,11 @@ ${containerHtml}`;
       }
     }
 
-    function getPreviewEditTab() {
-      return currentPage === "conteudo" ? currentEditorTab : "faq";
+    function getPreviewEditTab(frame = previewFrame) {
+      const labDocument = frame?.ownerDocument || document;
+      return labDocument.documentElement.dataset.page === "conteudo"
+        ? (labDocument.documentElement.dataset.editorTab || "dashboard")
+        : "faq";
     }
 
     function normalizePreviewText(value, multiline = false) {
@@ -1688,6 +1878,20 @@ ${containerHtml}`;
 
         if (["background", "background-color", "color", "border-color", "outline-color"].includes(property)) {
           declarations[property] = /^linear-gradient\(/i.test(rawValue) ? rawValue : normalizeCssColorValue(rawValue);
+          return;
+        }
+
+        if (["border-width", "border-radius", "padding"].includes(property)) {
+          const numericValue = Number.parseFloat(rawValue);
+          if (Number.isFinite(numericValue)) {
+            const limit = property === "padding" ? 96 : property === "border-radius" ? 120 : 48;
+            declarations[property] = `${Math.min(limit, Math.max(0, numericValue))}px`;
+          }
+          return;
+        }
+
+        if (property === "border-style" && /^(none|solid|dashed|dotted|double)$/i.test(rawValue)) {
+          declarations[property] = rawValue.toLowerCase();
         }
       });
 
@@ -1770,7 +1974,7 @@ ${containerHtml}`;
     }
 
     function getTemplatePreviewNode(meta) {
-      const doc = previewFrame.contentDocument;
+      const doc = getPreviewDocument(previewFrame);
       if (!doc || !meta.templateNodeId) {
         return null;
       }
@@ -1819,15 +2023,52 @@ ${containerHtml}`;
       return clone;
     }
 
-    function syncTemplateHtmlFromPreview() {
-      const doc = previewFrame.contentDocument;
-      const container = doc ? doc.querySelector(".lp-container, .lp_container") : null;
+    function syncTemplateHtmlFromPreview(options = {}) {
+      const doc = getPreviewDocument(previewFrame);
+      const container = options.container || (doc ? doc.querySelector(".lp-container, .lp_container") : null);
       if (!container) {
         return;
       }
 
       const clone = cleanTemplatePreviewClone(container);
-      state.template.html = clone.innerHTML.trim();
+      const sourceDocument = container.ownerDocument || doc;
+      // Preview rendering moves user CSS out of `.lp-container` and into the
+      // document head. Preserve that CSS before cloning the next edit, or a
+      // second option-state edit would serialize only its newest rule and
+      // silently discard the colors already chosen for the other states.
+      const embeddedCss = repairLegacyOptionStateCss(
+        Array.from(sourceDocument?.head?.querySelectorAll("style") || [])
+          .filter((style) => style.hasAttribute("data-ll-template-embedded-style")
+            || /\/\*\s*Layout Lab: estilos embutidos do conteúdo\s*\*\//.test(style.textContent || ""))
+          .map((style) => (style.textContent || "")
+            .replace(/\/\*\s*Layout Lab: estilos embutidos do conteúdo\s*\*\/\s*/g, "")
+            .trim())
+          .filter(Boolean)
+          .join("\n\n")
+      );
+      if (embeddedCss) {
+        const preservedStyle = sourceDocument.createElement("style");
+        preservedStyle.textContent = embeddedCss;
+        clone.insertBefore(preservedStyle, clone.firstChild);
+      }
+      const nextHtml = clone.innerHTML.trim();
+      // `container` can come from any live artboard. Resolve its owning
+      // iframe first, otherwise an edit in one responsive frame may be saved
+      // against whichever frame happened to be active most recently.
+      const sourceFrame = container.ownerDocument?.defaultView?.frameElement;
+      const boardDevice = sourceFrame?.dataset?.llBoardActiveDevice
+        || previewFrame?.dataset?.llBoardActiveDevice
+        || "";
+      if (boardDevice && typeof updateLpBoardCode === "function") {
+        updateLpBoardCode(nextHtml, boardDevice, {
+          previewDelay: options.previewDelay || 0,
+          skipPreviewUpdate: Boolean(options.skipPreviewUpdate),
+          preserveLiveFrame: options.preserveLiveFrame !== false
+        });
+        return;
+      }
+
+      state.template.html = nextHtml;
       const textarea = editor.querySelector('[data-template-field="html"]');
       if (textarea && document.activeElement !== textarea) {
         textarea.value = state.template.html;
@@ -1838,12 +2079,12 @@ ${containerHtml}`;
     }
 
     function getBentoPreviewRoot() {
-      const doc = previewFrame.contentDocument;
+      const doc = getPreviewDocument(previewFrame);
       return doc ? doc.querySelector(".ll-bento") : null;
     }
 
     function getBentoPreviewNode(meta) {
-      const doc = previewFrame.contentDocument;
+      const doc = getPreviewDocument(previewFrame);
       if (!doc || !meta.bentoNodeId) {
         return null;
       }
@@ -2434,6 +2675,8 @@ ${containerHtml}`;
       }
     }
 
+    window.__llClosePreviewEditPopover = closePreviewEditPopover;
+
     function openTemplateHeaderPopover(sourceEvent, headerElement) {
       closePreviewEditPopover();
 
@@ -2985,7 +3228,7 @@ ${containerHtml}`;
       (typeSelect.value === "svg" ? svgMarkup : imageUrl).focus();
     }
 
-    function updateTemplatePreviewEditValue(meta, rawValue, normalizedValue) {
+    function updateTemplatePreviewEditValue(meta, rawValue, normalizedValue, options = {}) {
       const element = getTemplatePreviewNode(meta);
       if (!element) {
         return;
@@ -3025,7 +3268,7 @@ ${containerHtml}`;
         }
       }
 
-      syncTemplateHtmlFromPreview();
+      syncTemplateHtmlFromPreview(options);
     }
 
     function updateInlinePreviewTextValue(meta, element, rawValue, options = {}) {
@@ -3033,7 +3276,7 @@ ${containerHtml}`;
       const value = normalizePreviewText(rawValue, multiline);
 
       if (meta.scope === "template") {
-        syncTemplateHtmlFromPreview();
+        syncTemplateHtmlFromPreview(options.commit ? {} : { skipPreviewUpdate: true });
         return value;
       }
 
@@ -3271,7 +3514,7 @@ ${containerHtml}`;
       return "";
     }
 
-    function updatePreviewEditValue(meta, rawValue) {
+    function updatePreviewEditValue(meta, rawValue, options = {}) {
       const isColor = meta.type === "color";
       const isTextStyle = meta.type === "textStyle";
       const isMedia = meta.type === "media";
@@ -3284,7 +3527,7 @@ ${containerHtml}`;
             : String(rawValue || "");
 
       if (meta.scope === "template") {
-        updateTemplatePreviewEditValue(meta, rawValue, value);
+        updateTemplatePreviewEditValue(meta, rawValue, value, options);
         return;
       }
 
@@ -3391,11 +3634,23 @@ ${containerHtml}`;
       renderEditor(true);
     }
 
-    function setupPreviewEditing() {
-      const doc = previewFrame.contentDocument;
+    function setupPreviewEditing(frame = previewFrame) {
+      const doc = getPreviewDocument(frame);
       if (!doc) {
         return;
       }
+
+      if ((frame?.ownerDocument || document).documentElement.dataset.page !== "conteudo") {
+        return;
+      }
+
+      // O board preserva o documento do iframe e troca apenas o body. Quando isso
+      // acontece, os elementos novos precisam receber os bindings de edicao de novo.
+      if (doc.documentElement.dataset.llPreviewEditingReady === "true") {
+        doc.defaultView?.__llPreviewEditingRefresh?.();
+        return;
+      }
+      doc.documentElement.dataset.llPreviewEditingReady = "true";
 
       const previewScrollbarOutline = document.documentElement.dataset.theme === "dark"
         ? "rgba(255, 255, 255, 0.72)"
@@ -3435,10 +3690,171 @@ ${containerHtml}`;
         }
       `;
       doc.head.appendChild(style);
+      doc.querySelectorAll("[data-ll-preview-text-bound]").forEach((element) => {
+        delete element.dataset.llPreviewTextBound;
+      });
 
-      if (currentPage !== "conteudo") {
-        return;
-      }
+      const previewTextEditors = new WeakSet();
+      const previewTextMeta = new WeakMap();
+      let boardFrameSpaceDown = false;
+      let boardFramePanPointer = null;
+      let boardFramePanLastPoint = null;
+
+      const getBoardFrame = () => doc.defaultView?.frameElement || null;
+      const postBoardFrameEvent = (type, event, movement = {}) => {
+        const frame = getBoardFrame();
+        if (!frame?.dataset?.llBoardInteractionScale) {
+          return;
+        }
+        doc.defaultView?.parent?.postMessage({
+          type,
+          key: frame.dataset.llBoardActiveDevice || "",
+          dx: Number(movement.dx) || 0,
+          dy: Number(movement.dy) || 0,
+          pointerId: event.pointerId
+        }, "*");
+      };
+
+      doc.defaultView?.addEventListener("message", (event) => {
+        if (event.data?.type === "layout-lab:board-space") {
+          boardFrameSpaceDown = Boolean(event.data.down);
+        }
+      });
+
+      doc.addEventListener("keydown", (event) => {
+        if (event.code === "Space" && getBoardFrame()?.dataset?.llBoardInteractionScale) {
+          boardFrameSpaceDown = true;
+          event.preventDefault();
+        }
+      }, true);
+
+      doc.addEventListener("keyup", (event) => {
+        if (event.code === "Space") {
+          boardFrameSpaceDown = false;
+        }
+      }, true);
+
+      doc.addEventListener("pointerdown", (event) => {
+        if (!getBoardFrame()?.dataset?.llBoardInteractionScale || (event.button !== 1 && !boardFrameSpaceDown)) {
+          return;
+        }
+        boardFramePanPointer = event.pointerId;
+        boardFramePanLastPoint = { x: event.clientX, y: event.clientY };
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        event.target.setPointerCapture?.(event.pointerId);
+        postBoardFrameEvent("layout-lab:board-frame-pan-start", event);
+      }, true);
+
+      doc.addEventListener("pointermove", (event) => {
+        if (event.pointerId !== boardFramePanPointer) {
+          return;
+        }
+        const previousPoint = boardFramePanLastPoint || { x: event.clientX, y: event.clientY };
+        boardFramePanLastPoint = { x: event.clientX, y: event.clientY };
+        event.preventDefault();
+        postBoardFrameEvent("layout-lab:board-frame-pan-move", event, {
+          dx: event.clientX - previousPoint.x,
+          dy: event.clientY - previousPoint.y
+        });
+      }, true);
+
+      const endBoardFramePan = (event) => {
+        if (event.pointerId !== boardFramePanPointer) {
+          return;
+        }
+        postBoardFrameEvent("layout-lab:board-frame-pan-end", event);
+        boardFramePanPointer = null;
+        boardFramePanLastPoint = null;
+      };
+      doc.addEventListener("pointerup", endBoardFramePan, true);
+      doc.addEventListener("pointercancel", endBoardFramePan, true);
+
+      doc.addEventListener("wheel", (event) => {
+        if (!event.ctrlKey && !event.metaKey) {
+          return;
+        }
+
+        const frame = doc.defaultView?.frameElement;
+        if (!frame?.dataset?.llBoardInteractionScale) {
+          return;
+        }
+
+        event.preventDefault();
+        doc.defaultView?.parent?.postMessage({
+          type: "layout-lab:board-frame-zoom",
+          key: frame.dataset.llBoardActiveDevice || "",
+          deltaY: event.deltaY
+        }, "*");
+      }, { capture: true, passive: false });
+
+      const getPreviewTextTarget = (event) => {
+        const frameScale = Number(doc.defaultView?.frameElement?.dataset?.llBoardInteractionScale) || 1;
+        const pointX = frameScale < 1 ? event.clientX / frameScale : event.clientX;
+        const pointY = frameScale < 1 ? event.clientY / frameScale : event.clientY;
+
+        if (frameScale < 1 && typeof doc.elementsFromPoint === "function") {
+          const scaledTarget = doc.elementsFromPoint(pointX, pointY)
+            .map((element) => element?.closest?.("[data-ll-preview-text]"))
+            .find(Boolean);
+          if (scaledTarget) {
+            return scaledTarget;
+          }
+        }
+
+        const directTarget = event.target?.closest?.("[data-ll-preview-text]");
+        if (directTarget) {
+          return directTarget;
+        }
+
+        if (typeof doc.elementsFromPoint !== "function") {
+          return null;
+        }
+
+        return doc.elementsFromPoint(pointX, pointY)
+          .map((element) => element?.closest?.("[data-ll-preview-text]"))
+          .find(Boolean) || null;
+      };
+
+      doc.addEventListener("click", (event) => {
+        const element = getPreviewTextTarget(event);
+        if (!element || element.isContentEditable) {
+          return;
+        }
+
+        // O clique simples em textos de uma opcao deve continuar chegando ao radio/checkbox.
+        const optionLabel = element.closest?.("label");
+        const optionControl = getControlledInput(optionLabel);
+        if (optionControl?.matches?.('input[type="radio"], input[type="checkbox"]')) {
+          return;
+        }
+
+        const config = previewTextMeta.get(element) || (element.dataset.llTemplateNode
+          ? {
+              meta: {
+                scope: "template",
+                field: "text",
+                templateNodeId: element.dataset.llTemplateNode,
+                value: element.innerText || element.textContent || ""
+              },
+              multiline: isTemplateMultilineText(element),
+              triggerEvent: "click"
+            }
+          : null);
+        if (!config || config.triggerEvent === "dblclick" || config.disableSingleClickPopover) {
+          return;
+        }
+
+        event.preventDefault();
+        event.stopPropagation();
+        event.stopImmediatePropagation();
+        openPreviewEditPopover(event, { ...config.meta, type: "textStyle" }, {
+          kind: "text-style",
+          label: "Editar texto",
+          multiline: config.multiline,
+          sourceElement: element
+        });
+      }, true);
 
       const editStyle = doc.createElement("style");
       editStyle.textContent = `
@@ -3644,13 +4060,23 @@ ${containerHtml}`;
           return;
         }
 
-        if (element.dataset.llPreviewText === "true") {
+        if (previewTextEditors.has(element)) {
           return;
         }
 
         const multiline = Boolean(options.multiline);
         element.dataset.llPreviewText = "true";
-        element.setAttribute("title", "Clique para editar texto e estilo. Dê dois cliques para editar só o texto.");
+        previewTextEditors.add(element);
+        previewTextMeta.set(element, {
+          meta,
+          multiline,
+          triggerEvent: options.triggerEvent || "click",
+          disableSingleClickPopover: Boolean(options.disableSingleClickPopover)
+        });
+        const requiresCtrlClick = Boolean(options.ctrlClickOpensEditor || options.ctrlDoubleClick);
+        element.setAttribute("title", requiresCtrlClick
+          ? "Clique para interagir. Use Ctrl + clique para editar o texto."
+          : "Clique para editar texto e estilo. Dê dois cliques para editar só o texto.");
 
         let singleClickTimer = 0;
         let originalInlineText = "";
@@ -3667,7 +4093,7 @@ ${containerHtml}`;
             return;
           }
 
-          const normalizedValue = updateInlinePreviewTextValue(meta, element, element.innerText, { multiline });
+          const normalizedValue = updateInlinePreviewTextValue(meta, element, element.innerText, { multiline, commit: true });
           element.textContent = normalizedValue;
           element.removeAttribute("contenteditable");
           element.removeAttribute("spellcheck");
@@ -3688,6 +4114,10 @@ ${containerHtml}`;
         };
 
         element.addEventListener("click", (event) => {
+          if (requiresCtrlClick && (event.ctrlKey || event.metaKey)) {
+            startInlineTextEdit(event);
+            return;
+          }
           if (options.triggerEvent === "dblclick") {
             if (element.isContentEditable) {
               event.stopPropagation();
@@ -3709,6 +4139,7 @@ ${containerHtml}`;
 
           event.preventDefault();
           event.stopPropagation();
+          event.stopImmediatePropagation();
           window.clearTimeout(singleClickTimer);
           singleClickTimer = window.setTimeout(() => {
             openPreviewEditPopover(event, { ...meta, type: "textStyle" }, {
@@ -3718,9 +4149,28 @@ ${containerHtml}`;
               sourceElement: element
             });
           }, 210);
-        });
+        }, true);
 
-        element.addEventListener("dblclick", startInlineTextEdit);
+        element.addEventListener("dblclick", (event) => {
+          if (requiresCtrlClick) {
+            return;
+          }
+          if (options.doubleClickOpensPopover) {
+            event.preventDefault();
+            event.stopImmediatePropagation();
+            window.clearTimeout(singleClickTimer);
+            openPreviewEditPopover(event, { ...meta, type: "textStyle" }, {
+              kind: "text-style",
+              label: "Editar texto",
+              multiline,
+              sourceElement: element
+            });
+            return;
+          }
+
+          event.stopImmediatePropagation();
+          startInlineTextEdit(event);
+        }, true);
 
         element.addEventListener("keydown", (event) => {
           if (!element.isContentEditable) {
@@ -3821,7 +4271,9 @@ ${containerHtml}`;
         }
 
         const targetId = label.getAttribute("for");
-        return label.control || (targetId ? doc.getElementById(targetId) : null);
+        return label.control
+          || label.querySelector?.('input[type="radio"], input[type="checkbox"]')
+          || (targetId ? doc.getElementById(targetId) : null);
       };
 
       const getTemplateSignature = (element) => {
@@ -3852,38 +4304,47 @@ ${containerHtml}`;
       };
 
       const isRadioToggleLabel = (element) => {
-        const label = element?.closest?.("label[for]");
+        const label = element?.closest?.("label");
         const control = getControlledInput(label);
         return Boolean(control?.matches?.('input[type="radio"], input[type="checkbox"]'));
       };
 
+      const getTemplateElementsAtPoint = (event) => {
+        if (typeof doc.elementsFromPoint !== "function") {
+          return [];
+        }
+
+        const frameScale = Number(doc.defaultView?.frameElement?.dataset?.llBoardInteractionScale) || 1;
+        const pointX = frameScale < 1 ? event.clientX / frameScale : event.clientX;
+        const pointY = frameScale < 1 ? event.clientY / frameScale : event.clientY;
+        return doc.elementsFromPoint(pointX, pointY);
+      };
+
       const findTemplateLabelAtPoint = (event, root) => {
-        const directLabel = event.target?.closest?.("label[for]");
+        // O alvo nativo do evento permanece correto mesmo quando o iframe do
+        // board esta reduzido. So consultar coordenadas quando o clique nao
+        // nasceu dentro de um label, evitando selecionar a opcao vizinha.
+        const directLabel = event.target?.closest?.("label");
         if (directLabel && root.contains(directLabel)) {
           return directLabel;
         }
 
-        if (typeof doc.elementsFromPoint !== "function") {
-          return null;
-        }
-
-        const stack = doc.elementsFromPoint(event.clientX, event.clientY);
-        for (const element of stack) {
-          const label = element?.closest?.("label[for]");
-          if (label && root.contains(label)) {
-            return label;
-          }
+        const pointLabel = getTemplateElementsAtPoint(event)
+          .map((element) => element?.closest?.("label"))
+          .find((label) => label && root.contains(label));
+        if (pointLabel) {
+          return pointLabel;
         }
 
         return null;
       };
 
       const isStoryLabelText = (element) => {
-        return Boolean(element?.closest?.("label[for]") && isTemplateStoryLike(element));
+        return Boolean(element?.closest?.("label") && isTemplateStoryLike(element));
       };
 
       const isTemplateInteractiveControl = (element) => {
-        return Boolean(element?.closest?.('a[href], button, label[for], input, textarea, select, summary, [role="button"], [role="tab"], [role="link"], .lp-stories__options, .lp-stories__nav, .ll-carousel__nav'));
+        return Boolean(element?.closest?.('a[href], button, label, input, textarea, select, summary, [role="button"], [role="tab"], [role="link"], .lp-stories__options, .lp-stories__nav, .ll-carousel__nav'));
       };
 
       const isEditableStoryText = (element) => {
@@ -3897,9 +4358,22 @@ ${containerHtml}`;
 
         element.dataset.llPreviewMedia = "true";
         const shouldPreserveClick = meta.scope === "template" && isTemplateInteractiveControl(element);
-        const triggerEvent = options.triggerEvent || (shouldPreserveClick ? "dblclick" : "click");
-        element.setAttribute("title", triggerEvent === "dblclick" ? `Dê dois cliques para trocar ${label}.` : `Clique para trocar ${label}.`);
+        const requiresCtrlClick = Boolean(options.ctrlClickOpensEditor || shouldPreserveClick);
+        const triggerEvent = options.triggerEvent || (requiresCtrlClick ? "click" : (meta.scope === "template" ? "dblclick" : "click"));
+        element.setAttribute("title", triggerEvent === "dblclick"
+          ? `Dê dois cliques para trocar ${label}.`
+          : `${requiresCtrlClick ? "Use Ctrl + clique" : "Clique"} para trocar ${label}.`);
         element.addEventListener(triggerEvent, (event) => {
+          if (requiresCtrlClick && !event.ctrlKey && !event.metaKey) {
+            return;
+          }
+          if (requiresCtrlClick) {
+            event.preventDefault();
+            event.stopPropagation();
+            event.stopImmediatePropagation();
+            openMediaEditor(event, element, meta, label);
+            return;
+          }
           if (element.dataset.llPreviewColor) {
             window.clearTimeout(element.__llPreviewMediaTimer);
             element.__llPreviewMediaTimer = window.setTimeout(() => {
@@ -3921,7 +4395,7 @@ ${containerHtml}`;
         }
 
         element.dataset.llPreviewMedia = "true";
-        element.setAttribute("title", `Clique para trocar ${label}.`);
+        element.setAttribute("title", `Dê dois cliques para trocar ${label}.`);
 
         const parent = element.parentElement;
         parent.dataset.llTemplateIframeParent = "true";
@@ -3932,12 +4406,12 @@ ${containerHtml}`;
         overlay.dataset.llTemplateHelper = "true";
         overlay.dataset.llPreviewMedia = "true";
         overlay.setAttribute("aria-label", `Editar ${label}`);
-        overlay.setAttribute("title", `Clique para trocar ${label}.`);
+        overlay.setAttribute("title", `Dê dois cliques para trocar ${label}.`);
         overlay.style.left = `${element.offsetLeft}px`;
         overlay.style.top = `${element.offsetTop}px`;
         overlay.style.width = `${element.offsetWidth || element.getBoundingClientRect().width}px`;
         overlay.style.height = `${element.offsetHeight || element.getBoundingClientRect().height}px`;
-        overlay.addEventListener("click", (event) => {
+        overlay.addEventListener("dblclick", (event) => {
           openMediaEditor(event, element, meta, label);
         });
         element.insertAdjacentElement("afterend", overlay);
@@ -3953,8 +4427,11 @@ ${containerHtml}`;
         element.dataset.llPreviewIcon = "true";
         iconMedia.dataset.llPreviewMedia = "true";
         iconMedia.dataset.llPreviewIcon = "true";
-        element.setAttribute("title", "Dê dois cliques para editar o ícone.");
-        element.addEventListener("dblclick", (event) => {
+        element.setAttribute("title", "Use Ctrl + clique para editar o ícone.");
+        element.addEventListener("click", (event) => {
+          if (!event.ctrlKey && !event.metaKey) {
+            return;
+          }
           event.preventDefault();
           event.stopImmediatePropagation();
           openTemplateIconPopover(event, element);
@@ -3970,6 +4447,10 @@ ${containerHtml}`;
         element.dataset.llPreviewColor = "true";
         element.setAttribute("title", triggerEvent === "click" ? `Clique para editar ${label}.` : `Duplo clique para editar ${label}.`);
         element.addEventListener(triggerEvent, (event) => {
+          if (event.target.closest?.("[data-ll-template-faq-details], [data-ll-template-faq-root]")) {
+            return;
+          }
+
           const interactiveTarget = event.target.closest('a[href], button, label[for], input, textarea, select, summary, [role="button"], [role="tab"], [role="link"], .ll-carousel__nav');
           if (interactiveTarget && interactiveTarget !== element) {
             return;
@@ -4020,7 +4501,7 @@ ${containerHtml}`;
       const templateBorderEditors = new WeakSet();
 
       const attachTemplateBorderEditor = (element) => {
-        if (!element || templateBorderEditors.has(element) || element.matches?.("img, picture, video, source, iframe, svg, path, input, textarea, select, button, a, label, summary, [contenteditable='true']")) {
+        if (!element || element.closest?.("[data-ll-template-faq-details], [data-ll-template-faq-root]") || templateBorderEditors.has(element) || element.matches?.("img, picture, video, source, iframe, svg, path, input, textarea, select, button, a, label, summary, [contenteditable='true']")) {
           return;
         }
 
@@ -4088,6 +4569,662 @@ ${containerHtml}`;
             sourceElement: element,
             borderSides
           });
+        }, true);
+      };
+
+      const templateOptionCardEditors = new WeakSet();
+
+      const isTemplateOptionCard = (element, root) => {
+        if (!element || !root?.contains(element) || element.matches?.("input, textarea, select, option")) {
+          return false;
+        }
+
+        if (isTemplateOptionDot(element)) {
+          return true;
+        }
+
+        const section = element.closest?.("[class*='section-8'], [class*='section_8'], [class*='section-28'], [class*='section_28']");
+        if (!section) {
+          return false;
+        }
+
+        const signature = getTemplateSignature(element);
+        const hasOptionName = /(?:option|choice|tab|benefit|feature|card|control)/i.test(signature);
+        const nestedControls = Array.from(element.querySelectorAll?.('input[type="radio"], input[type="checkbox"]') || []);
+        if (nestedControls.length > 1) {
+          return false;
+        }
+        const isControl = element.matches?.("label, button, [role='tab'], [role='radio'], [role='checkbox']")
+          || nestedControls.length === 1;
+        return hasOptionName && isControl;
+      };
+
+      const getTemplateOptionCardFromTarget = (target, root) => {
+        let current = target?.nodeType === 1 ? target : target?.parentElement;
+        while (current && current !== root) {
+          if (isTemplateOptionCard(current, root)) {
+            return current;
+          }
+          current = current.parentElement;
+        }
+        return isTemplateOptionCard(root, root) ? root : null;
+      };
+
+      const getTemplateOptionCardAtPoint = (event, root) => {
+        const directCard = getTemplateOptionCardFromTarget(event.target, root);
+        if (directCard) {
+          return directCard;
+        }
+
+        const pointCard = getTemplateElementsAtPoint(event)
+          .map((element) => getTemplateOptionCardFromTarget(element, root))
+          .find(Boolean);
+        return pointCard || null;
+      };
+
+      const getTemplateOptionRoot = (element) => {
+        let current = element;
+        let fallback = null;
+        while (current && current.nodeType === 1) {
+          const classes = Array.from(current.classList || []);
+          if (classes.some((className) => /^(?:section[-_]8|section[-_]28)$/i.test(className))) {
+            return current;
+          }
+          if (!fallback && classes.some((className) => /(?:section[-_]8|section[-_]28)/i.test(className) && !className.includes("__"))) {
+            fallback = current;
+          }
+          current = current.parentElement;
+        }
+        return fallback;
+      };
+
+      const getTemplateOptionIcon = (element) => {
+        return Array.from(element.querySelectorAll?.("svg, img, [class*='icon' i], [class*='badge' i], [class*='symbol' i], [class*='mark' i]") || [])
+          .find((candidate) => candidate !== element && (/svg|img/i.test(candidate.tagName) || /icon|badge|symbol|mark/i.test(getTemplateSignature(candidate)))) || null;
+      };
+
+      const getTemplateOptionDotToken = (element) => {
+        return Array.from(element?.classList || [])
+          .map((className) => String(className).match(/^(section[-_](?:8|28)__dot)--(.+)$/i))
+          .find(Boolean) || null;
+      };
+
+      const isTemplateOptionDot = (element) => Boolean(getTemplateOptionDotToken(element));
+
+      const getTemplateOptionDotControl = (element) => {
+        const dotToken = getTemplateOptionDotToken(element);
+        const optionRoot = getTemplateOptionRoot(element);
+        if (!dotToken || !optionRoot) {
+          return null;
+        }
+
+        const controlClass = `${dotToken[1].replace(/__dot$/i, "__control")}--${dotToken[2]}`;
+        return Array.from(optionRoot.querySelectorAll('input[type="radio"], input[type="checkbox"]'))
+          .find((candidate) => candidate.classList.contains(controlClass)) || null;
+      };
+
+      const getTemplateOptionStateControl = (element) => {
+        return getControlledInput(element) || getTemplateOptionDotControl(element);
+      };
+
+      const getTemplateOptionTextTarget = (element) => {
+        return Array.from(element.querySelectorAll?.("h1, h2, h3, h4, h5, h6, p, span, strong, b") || [])
+          .find((candidate) => !candidate.closest("svg") && (candidate.innerText || candidate.textContent || "").trim()) || element;
+      };
+
+      const getTemplateOptionSelector = (element) => {
+        if (!element) {
+          return "";
+        }
+
+        if (element.id && !/^ll-template-|^preview-|^codex-/i.test(element.id)) {
+          return `#${escapeCssClassName(element.id)}`;
+        }
+
+        const classes = Array.from(element.classList || []).filter(isUsefulPreviewClass);
+        const uniqueClass = classes.find((className) => className.includes("--")) || classes[0] || "";
+        const tagName = String(element.tagName || "").toLowerCase();
+        return uniqueClass ? `${tagName}.${escapeCssClassName(uniqueClass)}` : tagName;
+      };
+
+      const getTemplateOptionControlSelector = (control, options = {}) => {
+        if (!control) {
+          return "";
+        }
+
+        const shared = Boolean(options.shared);
+        if (control.id && !shared) {
+          return `#${escapeCssClassName(control.id)}`;
+        }
+
+        const tagName = String(control.tagName || "input").toLowerCase();
+        const classes = Array.from(control.classList || []).filter(isUsefulPreviewClass);
+        const className = shared
+          ? classes.find((value) => !value.includes("--")) || classes[0] || ""
+          : classes.find((value) => value.includes("--")) || classes[0] || "";
+        if (className) {
+          return `${tagName}.${escapeCssClassName(className)}`;
+        }
+
+        if (shared && control.name) {
+          const escapedName = String(control.name).replace(/\\/g, "\\\\").replace(/"/g, '\\"');
+          const type = String(control.type || "radio").toLowerCase();
+          return `${tagName}[type="${type}"][name="${escapedName}"]`;
+        }
+
+        return getTemplateOptionSelector(control);
+      };
+
+      const getTemplateOptionStateSelector = (element, stateName, className = "") => {
+        const control = getTemplateOptionStateControl(element);
+        if (!control) {
+          return "";
+        }
+
+        const targetSelector = className
+          ? (normalizePreviewSelectorValue(className)?.selector || "")
+          : "";
+        const controlSelector = getTemplateOptionControlSelector(control, { shared: Boolean(targetSelector) });
+        if (!controlSelector) {
+          return "";
+        }
+        const stateSelector = stateName === "checked" ? ":checked" : ":not(:checked)";
+        if (isTemplateOptionDot(element)) {
+          const optionRoot = getTemplateOptionRoot(element);
+          const rootSelector = getTemplateOptionSelector(optionRoot);
+          if (!optionRoot || !rootSelector) {
+            return "";
+          }
+
+          let dotTargets = [element];
+          if (targetSelector) {
+            try {
+              const matchingDots = Array.from(optionRoot.querySelectorAll(targetSelector))
+                .filter(isTemplateOptionDot);
+              if (matchingDots.length) {
+                dotTargets = matchingDots;
+              }
+            } catch (_) {}
+          }
+
+          return dotTargets
+            .map((dot) => {
+              const dotControl = getTemplateOptionStateControl(dot);
+              const dotControlSelector = getTemplateOptionControlSelector(dotControl);
+              const dotSelector = getTemplateOptionSelector(dot);
+              return dotControlSelector && dotSelector
+                ? `${rootSelector}:has(${dotControlSelector}${stateSelector}) ${dotSelector}`
+                : "";
+            })
+            .filter(Boolean)
+            .join(", ");
+        }
+
+        const buildCardStateSelector = (card, cardControl) => {
+          const cardSelector = getTemplateOptionSelector(card);
+          const cardControlSelector = getTemplateOptionControlSelector(cardControl);
+          if (!cardSelector || !cardControlSelector) {
+            return "";
+          }
+
+          if (card.contains(cardControl)) {
+            return `${cardSelector}:has(${cardControlSelector}${stateSelector})`;
+          }
+
+          const label = card.matches?.("label[for]")
+            ? card
+            : Array.from(cardControl.labels || []).find((candidate) => candidate === card || card.contains(candidate));
+          if (!label) {
+            return "";
+          }
+
+          const combinator = cardControl.nextElementSibling === label ? "+" : "~";
+          return `${cardControlSelector}${stateSelector} ${combinator} ${cardSelector}`;
+        };
+
+        // A class shared by option cards needs one selector per paired
+        // control/card. A generic :has(input:not(:checked)) selector can be
+        // overridden by a layout's per-card state rules and make only part of
+        // the group update.
+        if (targetSelector) {
+          try {
+            const matchingCards = Array.from(getTemplateOptionRoot(element)?.querySelectorAll(targetSelector) || [])
+              .filter((candidate) => !isTemplateOptionDot(candidate) && isTemplateOptionCard(candidate, getTemplateOptionRoot(element)));
+            const pairedSelectors = matchingCards
+              .map((card) => buildCardStateSelector(card, getTemplateOptionStateControl(card)))
+              .filter(Boolean);
+            if (pairedSelectors.length) {
+              return pairedSelectors.join(", ");
+            }
+          } catch (_) {}
+        }
+        if (element.contains(control)) {
+          const nestedTarget = targetSelector || getTemplateOptionSelector(element);
+          return `${nestedTarget}:has(${controlSelector}${stateSelector})`;
+        }
+
+        const label = element.matches?.("label[for]")
+          ? element
+          : Array.from(control.labels || []).find((candidate) => candidate === element || element.contains(candidate));
+        if (!label) {
+          return "";
+        }
+
+        const escapedFor = String(control.id || "").replace(/\\/g, "\\\\").replace(/\"/g, '\\"');
+        const labelSelector = targetSelector
+          || (escapedFor ? `label[for=\"${escapedFor}\"]` : getTemplateOptionSelector(label));
+        const combinator = control.nextElementSibling === label ? "+" : "~";
+        return `${controlSelector}${stateSelector} ${combinator} ${labelSelector}`;
+      };
+
+      const getTemplateOptionChildSelector = (element, child, stateSelector) => {
+        if (!child || !stateSelector) {
+          return "";
+        }
+
+        const appendToStateSelectors = (childSelector) => {
+          return String(stateSelector)
+            .split(",")
+            .map((selector) => selector.trim())
+            .filter(Boolean)
+            .map((selector) => `${selector} ${childSelector}`)
+            .join(", ");
+        };
+
+        const childClass = Array.from(child.classList || []).find(isUsefulPreviewClass);
+        if (childClass) {
+          return appendToStateSelectors(`.${escapeCssClassName(childClass)}`);
+        }
+
+        if (child.id && !/^ll-template-|^preview-|^codex-/i.test(child.id)) {
+          return appendToStateSelectors(`#${escapeCssClassName(child.id)}`);
+        }
+
+        const tagName = String(child.tagName || "").toLowerCase();
+        return tagName ? appendToStateSelectors(tagName) : "";
+      };
+
+      const getTemplateOptionStateStyle = (root) => {
+        let style = root.querySelector(":scope > style.template-option-state-styles");
+        if (!style) {
+          style = doc.createElement("style");
+          style.className = "template-option-state-styles";
+          root.appendChild(style);
+        }
+        return style;
+      };
+
+      const updateTemplateOptionStateRule = (root, selector, declarations) => {
+        if (!root || !selector) {
+          return;
+        }
+
+        const style = getTemplateOptionStateStyle(root);
+        const existingRules = Array.from(style.sheet?.cssRules || [])
+          .filter((rule) => rule.selectorText !== selector)
+          .map((rule) => rule.cssText);
+
+        const content = Object.entries(declarations)
+          .filter(([, value]) => value !== "" && value != null)
+          .map(([property, value]) => `${property}: ${value} !important;`)
+          .join(" ");
+        if (content) {
+          existingRules.push(`${selector} { ${content} }`);
+        }
+        // insertRule updates the live CSSOM but does not serialize back into
+        // the style tag. Persist the rule as text so the board and export
+        // retain both states after the editor closes.
+        style.textContent = existingRules.join("\n");
+      };
+
+      const clearTemplateOptionStateRule = (root, selector) => {
+        const style = root?.querySelector(":scope > style.template-option-state-styles");
+        if (!style || !selector) {
+          return;
+        }
+
+        const remainingRules = Array.from(style.sheet?.cssRules || [])
+          .filter((rule) => rule.selectorText !== selector)
+          .map((rule) => rule.cssText);
+
+        if (!remainingRules.length) {
+          style.remove();
+          return;
+        }
+        style.textContent = remainingRules.join("\n");
+      };
+
+      const openTemplateOptionCardPopover = (sourceEvent, element) => {
+        closePreviewEditPopover();
+        const styles = element.ownerDocument.defaultView.getComputedStyle(element);
+        const isOptionDot = isTemplateOptionDot(element);
+        const textTarget = isOptionDot ? null : getTemplateOptionTextTarget(element);
+        const textStyles = textTarget
+          ? textTarget.ownerDocument.defaultView.getComputedStyle(textTarget)
+          : styles;
+        const icon = getTemplateOptionIcon(element);
+        const control = getTemplateOptionStateControl(element);
+        const optionRoot = getTemplateOptionRoot(element);
+        // Board frames share the editor state but each one owns a different
+        // live document. Always serialize the container that originated the
+        // edit so a refresh from another viewport cannot discard this rule.
+        const optionContainer = optionRoot?.closest(".lp-container, .lp_container") || null;
+        const syncOptionTemplateHtml = (options = {}) => {
+          syncTemplateHtmlFromPreview({
+            ...options,
+            container: optionContainer || undefined
+          });
+        };
+        const form = document.createElement("form");
+        form.className = "preview-edit-popover preview-edit-popover--option-card";
+        form.setAttribute("role", "dialog");
+        form.setAttribute("aria-label", isOptionDot ? "Editar aparência do indicador" : "Editar aparência da opção");
+        form.innerHTML = `<p class="preview-edit-popover__title">${isOptionDot ? "Editar indicador" : "Editar opção"}</p><div class="preview-edit-popover__grid"></div><div class="preview-edit-popover__actions"><button class="button button--soft" type="button" data-option-reset>Limpar aparência</button><button class="button" type="button" data-option-close>Fechar</button></div>`;
+
+        const grid = form.querySelector(".preview-edit-popover__grid");
+        const createColorField = (label, value) => {
+          const field = document.createElement("label");
+          field.className = "preview-edit-popover__mini-field";
+          const caption = document.createElement("span");
+          caption.textContent = label;
+          const control = document.createElement("div");
+          control.className = "preview-edit-popover__mini-color";
+          const swatch = document.createElement("input");
+          swatch.type = "color";
+          swatch.className = "preview-edit-popover__color preview-edit-popover__inline-swatch";
+          const input = document.createElement("input");
+          input.type = "text";
+          input.value = colorToHex(value, "#ffffff");
+          swatch.value = input.value;
+          swatch.style.setProperty("--preview-edit-color", input.value);
+          const sync = (fromSwatch) => {
+            const next = fromSwatch ? normalizeHexColor(swatch.value) : isHexColor(input.value) ? normalizeHexColor(input.value) : "";
+            if (!next) return;
+            input.value = next;
+            swatch.value = next;
+            swatch.style.setProperty("--preview-edit-color", next);
+            apply(true);
+          };
+          input.addEventListener("input", () => sync(false));
+          input.addEventListener("change", () => { sync(false); apply(false); });
+          swatch.addEventListener("input", () => sync(true));
+          swatch.addEventListener("change", () => { sync(true); apply(false); });
+          control.append(swatch, input);
+          field.append(caption, control);
+          grid.appendChild(field);
+          return input;
+        };
+        const createNumberField = (label, value, min, max, step = "1") => {
+          const field = document.createElement("label");
+          field.className = "preview-edit-popover__mini-field";
+          const caption = document.createElement("span");
+          caption.textContent = label;
+          const input = document.createElement("input");
+          input.type = "number";
+          input.min = String(min);
+          input.max = String(max);
+          input.step = step;
+          input.value = String(value);
+          input.addEventListener("input", () => apply(true));
+          input.addEventListener("change", () => apply(false));
+          field.append(caption, input);
+          grid.appendChild(field);
+          return input;
+        };
+        let stateSelect = null;
+        let optionCardDirty = false;
+        if (control?.matches?.('input[type="radio"], input[type="checkbox"]') && optionRoot) {
+          const field = document.createElement("label");
+          field.className = "preview-edit-popover__mini-field";
+          const caption = document.createElement("span");
+          caption.textContent = "Estado da opção";
+          stateSelect = document.createElement("select");
+          stateSelect.innerHTML = '<option value="unchecked">Não selecionado</option><option value="checked">Selecionado (checked)</option>';
+          stateSelect.value = control.checked ? "checked" : "unchecked";
+          field.append(caption, stateSelect);
+          grid.appendChild(field);
+        }
+        const backgroundInput = createColorField(isOptionDot ? "Cor" : "Fundo", styles.backgroundColor);
+        const textInput = isOptionDot ? null : createColorField("Texto", textStyles.color);
+        const borderInput = createColorField("Borda", styles.borderTopColor);
+        const borderWidth = createNumberField("Borda (px)", Number.parseFloat(styles.borderTopWidth) || 0, 0, 48);
+        const radius = createNumberField("Raio (px)", Number.parseFloat(styles.borderTopLeftRadius) || 0, 0, 120);
+        const padding = isOptionDot ? null : createNumberField("Espaçamento", Number.parseFloat(styles.paddingTop) || 0, 0, 96);
+        const dotSize = isOptionDot
+          ? createNumberField("Tamanho (px)", Math.max(Number.parseFloat(styles.width) || 0, Number.parseFloat(styles.height) || 0, 8), 2, 96)
+          : null;
+        const classCandidates = getPreviewClassCandidates(element);
+        let classModeToggle = null;
+        let classSelect = null;
+        if (classCandidates.length) {
+          const classScope = document.createElement("div");
+          classScope.className = "preview-edit-popover__grid";
+          const toggleField = document.createElement("label");
+          toggleField.className = "preview-edit-popover__toggle";
+          classModeToggle = document.createElement("input");
+          classModeToggle.type = "checkbox";
+          const toggleCaption = document.createElement("span");
+          toggleCaption.textContent = "Editar a classe/ID inteira";
+          toggleField.append(classModeToggle, toggleCaption);
+          const classField = document.createElement("label");
+          classField.className = "preview-edit-popover__mini-field";
+          const classCaption = document.createElement("span");
+          classCaption.textContent = "Alvo";
+          classSelect = document.createElement("select");
+          classCandidates.forEach((candidate) => {
+            const option = document.createElement("option");
+            option.value = candidate.className;
+            option.textContent = candidate.label;
+            classSelect.appendChild(option);
+          });
+          classField.append(classCaption, classSelect);
+          classScope.append(toggleField, classField);
+          form.querySelector(".preview-edit-popover__actions").before(classScope);
+          classModeToggle.addEventListener("change", () => apply(false));
+          classSelect.addEventListener("change", () => apply(false));
+        }
+        let iconToggle = null;
+        if (icon) {
+          const field = document.createElement("label");
+          field.className = "preview-edit-popover__toggle";
+          iconToggle = document.createElement("input");
+          iconToggle.type = "checkbox";
+          const iconStyles = icon.ownerDocument.defaultView.getComputedStyle(icon);
+          iconToggle.checked = iconStyles.display !== "none" && iconStyles.visibility !== "hidden";
+          const caption = document.createElement("span");
+          caption.textContent = "Mostrar ícone";
+          iconToggle.addEventListener("change", () => apply(false));
+          field.append(iconToggle, caption);
+          form.querySelector(".preview-edit-popover__actions").before(field);
+        }
+
+        const apply = (skipPreviewUpdate) => {
+          optionCardDirty = true;
+          const background = isHexColor(backgroundInput.value) ? normalizeHexColor(backgroundInput.value) : colorToHex(styles.backgroundColor, "#ffffff");
+          const textColor = textInput && isHexColor(textInput.value) ? normalizeHexColor(textInput.value) : colorToHex(textStyles.color, "#111827");
+          const borderColor = isHexColor(borderInput.value) ? normalizeHexColor(borderInput.value) : colorToHex(styles.borderTopColor, "#111827");
+          const borderSize = Math.min(48, Math.max(0, Number(borderWidth.value) || 0));
+          const cornerRadius = Math.min(120, Math.max(0, Number(radius.value) || 0));
+          const inset = Math.min(96, Math.max(0, Number(padding?.value) || 0));
+          const indicatorSize = Math.min(96, Math.max(2, Number(dotSize?.value) || 8));
+          const selectedClass = classModeToggle?.checked ? classSelect?.value || "" : "";
+          const stateSelector = stateSelect && optionRoot
+            ? getTemplateOptionStateSelector(element, stateSelect.value, selectedClass)
+            : "";
+          if (stateSelector) {
+            const stateDeclarations = {
+              background: background,
+              "border-color": borderColor,
+              "border-width": `${borderSize}px`,
+              "border-style": borderSize > 0 ? "solid" : "none",
+              "border-radius": `${cornerRadius}px`
+            };
+            if (isOptionDot) {
+              stateDeclarations.width = `${indicatorSize}px`;
+              stateDeclarations.height = `${indicatorSize}px`;
+              stateDeclarations.padding = "0px";
+            } else {
+              stateDeclarations.color = textColor;
+              stateDeclarations.padding = `${inset}px`;
+            }
+            updateTemplateOptionStateRule(optionRoot, stateSelector, stateDeclarations);
+            const textSelector = textTarget ? getTemplateOptionChildSelector(element, textTarget, stateSelector) : "";
+            if (textSelector && textSelector !== stateSelector) {
+              updateTemplateOptionStateRule(optionRoot, textSelector, { color: textColor });
+            }
+            const iconSelector = getTemplateOptionChildSelector(element, icon, stateSelector);
+            if (iconSelector) {
+              updateTemplateOptionStateRule(optionRoot, iconSelector, { display: iconToggle?.checked === false ? "none" : "" });
+            }
+            syncOptionTemplateHtml({ skipPreviewUpdate: Boolean(skipPreviewUpdate) });
+            if (!skipPreviewUpdate) optionCardDirty = false;
+            return;
+          }
+          if (classModeToggle?.checked && classSelect?.value) {
+            const classDeclarations = {
+              background: background,
+              "border-color": borderColor,
+              "border-width": borderSize,
+              "border-style": borderSize > 0 ? "solid" : "none",
+              "border-radius": cornerRadius
+            };
+            if (isOptionDot) {
+              classDeclarations.width = indicatorSize;
+              classDeclarations.height = indicatorSize;
+              classDeclarations.padding = 0;
+            } else {
+              classDeclarations.color = textColor;
+              classDeclarations.padding = inset;
+            }
+            setPreviewClassStyle({ scope: "template", field: "optionCard" }, classSelect.value, classDeclarations);
+            if (!skipPreviewUpdate) optionCardDirty = false;
+            return;
+          }
+          element.style.backgroundColor = background;
+          element.style.borderColor = borderColor;
+          element.style.borderWidth = `${borderSize}px`;
+          element.style.borderStyle = borderSize > 0 ? "solid" : "none";
+          element.style.borderRadius = `${cornerRadius}px`;
+          element.style.padding = isOptionDot ? "0px" : `${inset}px`;
+          if (isOptionDot) {
+            element.style.width = `${indicatorSize}px`;
+            element.style.height = `${indicatorSize}px`;
+          } else if (textTarget) {
+            textTarget.style.color = textColor;
+          }
+          if (icon && iconToggle) icon.style.display = iconToggle.checked ? "" : "none";
+          syncOptionTemplateHtml({ skipPreviewUpdate: Boolean(skipPreviewUpdate) });
+          if (!skipPreviewUpdate) optionCardDirty = false;
+        };
+
+        const applyOptionPreviewState = () => {
+          if (!control || !stateSelect) {
+            return;
+          }
+
+          const shouldBeChecked = stateSelect.value === "checked";
+          if (control.type === "radio" && shouldBeChecked && control.name) {
+            optionRoot?.querySelectorAll('input[type="radio"]').forEach((candidate) => {
+              if (candidate.name !== control.name) {
+                return;
+              }
+              candidate.checked = candidate === control;
+              candidate.toggleAttribute("checked", candidate.checked);
+            });
+            return;
+          }
+
+          if (control.type === "radio" && !shouldBeChecked && control.name && control.checked) {
+            const alternative = Array.from(optionRoot?.querySelectorAll('input[type="radio"]') || [])
+              .find((candidate) => candidate.name === control.name && candidate !== control);
+            if (alternative) {
+              optionRoot?.querySelectorAll('input[type="radio"]').forEach((candidate) => {
+                if (candidate.name !== control.name) {
+                  return;
+                }
+                candidate.checked = candidate === alternative;
+                candidate.toggleAttribute("checked", candidate === alternative);
+              });
+              return;
+            }
+          }
+
+          control.checked = shouldBeChecked;
+          control.toggleAttribute("checked", shouldBeChecked);
+        };
+
+        const commitOptionCardChanges = () => {
+          if (optionCardDirty) {
+            apply(false);
+          }
+        };
+
+        previewEditBeforeCloseHandler = commitOptionCardChanges;
+        stateSelect?.addEventListener("change", () => {
+          applyOptionPreviewState();
+          apply(false);
+        });
+
+        form.addEventListener("submit", (event) => {
+          event.preventDefault();
+          closePreviewEditPopover();
+        });
+        form.querySelector("[data-option-close]").addEventListener("click", closePreviewEditPopover);
+        form.querySelector("[data-option-reset]").addEventListener("click", () => {
+          const selectedClass = classModeToggle?.checked ? classSelect?.value || "" : "";
+          const stateSelector = stateSelect && optionRoot
+            ? getTemplateOptionStateSelector(element, stateSelect.value, selectedClass)
+            : "";
+          if (stateSelector) {
+            clearTemplateOptionStateRule(optionRoot, stateSelector);
+            clearTemplateOptionStateRule(optionRoot, getTemplateOptionChildSelector(element, textTarget, stateSelector));
+            clearTemplateOptionStateRule(optionRoot, getTemplateOptionChildSelector(element, icon, stateSelector));
+            syncOptionTemplateHtml();
+            optionCardDirty = false;
+            closePreviewEditPopover();
+            return;
+          }
+          if (classModeToggle?.checked && classSelect?.value) {
+            clearPreviewClassStyle({ scope: "template", field: "optionCard" }, classSelect.value);
+            optionCardDirty = false;
+            closePreviewEditPopover();
+            return;
+          }
+          ["backgroundColor", "borderColor", "borderWidth", "borderStyle", "borderRadius", "padding", "width", "height"].forEach((property) => element.style[property] = "");
+          if (textTarget) textTarget.style.color = "";
+          if (icon) icon.style.display = "";
+          syncOptionTemplateHtml();
+          optionCardDirty = false;
+          closePreviewEditPopover();
+        });
+        previewEditKeyHandler = (event) => { if (event.key === "Escape") closePreviewEditPopover(); };
+        previewEditOutsideHandler = (event) => {
+          if (previewEditPopover && !previewEditPopover.contains(event.target)) closePreviewEditPopover();
+        };
+        document.body.appendChild(form);
+        previewEditPopover = form;
+        positionPreviewEditPopover(sourceEvent);
+        window.setTimeout(() => {
+          document.addEventListener("mousedown", previewEditOutsideHandler, true);
+          document.addEventListener("keydown", previewEditKeyHandler, true);
+        }, 0);
+      };
+
+      const attachTemplateOptionCardEditor = (element, root) => {
+        if (!isTemplateOptionCard(element, root) || templateOptionCardEditors.has(element)) {
+          return;
+        }
+
+        templateOptionCardEditors.add(element);
+        element.setAttribute("title", "Ctrl + clique para editar a aparência desta opção.");
+        element.addEventListener("click", (event) => {
+          if (!event.ctrlKey && !event.metaKey) {
+            return;
+          }
+          event.preventDefault();
+          event.stopPropagation();
+          event.stopImmediatePropagation();
+          openTemplateOptionCardPopover(event, element);
         }, true);
       };
 
@@ -4961,7 +6098,7 @@ ${containerHtml}`;
             titleElement.ownerDocument.defaultView.getComputedStyle(titleElement).backgroundColor || "#0ea5e9",
             "#0ea5e9"
           )
-        }, "cor de fundo do título do FAQ", { triggerEvent: "click" });
+        }, "cor de fundo do título do FAQ", { triggerEvent: "dblclick" });
 
         const textTarget = ensureTemplateFaqTitleTextElement(titleElement);
         attachText(textTarget, {
@@ -5336,11 +6473,6 @@ ${containerHtml}`;
           return;
         }
 
-        const firstFaqRoot = getTemplateFaqRoot(detailsList[0], root);
-        ensureTemplateFaqStyle(firstFaqRoot);
-        const faqTitle = findTemplateFaqTitle(firstFaqRoot, root);
-        attachTemplateFaqTitleEditor(faqTitle);
-
         detailsList.forEach((details, index) => {
           const summary = details.querySelector("summary");
           if (!summary) {
@@ -5349,53 +6481,20 @@ ${containerHtml}`;
 
           const faqRoot = getTemplateFaqRoot(details, root);
           ensureTemplateFaqStyle(faqRoot);
+          details.dataset.llTemplateFaqDetails = "true";
+          faqRoot.dataset.llTemplateFaqRoot = "true";
           summary.classList.add("ll-template-faq-summary");
-          summary.setAttribute("title", "Clique para abrir o FAQ. Dê dois cliques no fundo para mudar as cores do FAQ.");
-
-          const question = findTemplateFaqQuestion(details);
-          const answer = findTemplateFaqAnswer(details);
-
-          if (question) {
-            attachText(question, {
-              scope: "template",
-              field: "text",
-              templateNodeId: markTemplateNode(question),
-              value: question.innerText || question.textContent || ""
-            }, { disableSingleClickPopover: true });
-          }
-
-          if (answer) {
-            attachText(answer, {
-              scope: "template",
-              field: "text",
-              templateNodeId: markTemplateNode(answer),
-              value: answer.innerText || answer.textContent || ""
-            }, { multiline: true, disableSingleClickPopover: true });
-          }
-
-          details.addEventListener("toggle", () => {
-            syncTemplateHtmlFromPreview();
-          });
-
+          summary.setAttribute("title", "Clique para abrir ou fechar. Use Ctrl + clique para editar o FAQ.");
           summary.addEventListener("click", (event) => {
-            if (event.detail > 1 || event.target.closest("[data-ll-preview-inline]")) {
+            if (!event.ctrlKey && !event.metaKey) {
               return;
             }
-
-            event.stopImmediatePropagation();
-            openTemplateFaqStylePopover(event, faqRoot, summary);
-            window.setTimeout(syncTemplateHtmlFromPreview, 0);
-          }, true);
-
-          summary.addEventListener("dblclick", (event) => {
-            if (event.target.closest("[data-ll-preview-text]")) {
-              return;
-            }
-
             event.preventDefault();
             event.stopPropagation();
+            event.stopImmediatePropagation();
             openTemplateFaqStylePopover(event, faqRoot, summary);
-          });
+          }, true);
+
         });
       };
 
@@ -6238,11 +7337,99 @@ ${containerHtml}`;
 
       const setupTemplatePreviewEditing = () => {
         const root = doc.querySelector(".lp-container, .lp_container");
-        if (!root) {
+        if (!root || root.dataset.llPreviewTemplateEditingReady === "true") {
           return;
+        }
+        root.dataset.llPreviewTemplateEditingReady = "true";
+        let optionCardClickTimer = null;
+
+        const syncTemplateOptionSelection = (event, interactionRoot) => {
+          if (event.__llTemplateOptionSelectionHandled) {
+            return true;
+          }
+
+          const label = findTemplateLabelAtPoint(event, interactionRoot);
+          if (!label || !interactionRoot.contains(label)) {
+            return false;
+          }
+
+          const target = getControlledInput(label);
+          if (!target || !target.matches?.('input[type="radio"], input[type="checkbox"]')
+            || !isTemplateOptionCard(label, interactionRoot)
+            || findTemplateStoryRoot(label, interactionRoot)) {
+            return false;
+          }
+
+          event.__llTemplateOptionSelectionHandled = true;
+          if (event.ctrlKey || event.metaKey) {
+            event.preventDefault();
+            event.stopImmediatePropagation();
+            if (optionCardClickTimer) {
+              window.clearTimeout(optionCardClickTimer);
+              optionCardClickTimer = null;
+            }
+            openTemplateOptionCardPopover(event, label);
+            return true;
+          }
+          // O radio ja recebe o estado abaixo. Bloquear apenas a acao padrao
+          // evita que o label reaplique o checked anterior apos o preview.
+          event.preventDefault();
+          if (target.type === "radio" && target.name) {
+            const optionRoot = getTemplateOptionRoot(label) || interactionRoot;
+            optionRoot.querySelectorAll('input[type="radio"]').forEach((candidate) => {
+              if (candidate.name !== target.name) {
+                return;
+              }
+              candidate.checked = candidate === target;
+              candidate.toggleAttribute("checked", candidate.checked);
+            });
+          } else {
+            target.checked = !target.checked;
+            target.toggleAttribute("checked", target.checked);
+          }
+          // Guarda o estado no HTML imediatamente, mas deixa a atualizacao do
+          // frame para depois da janela de duplo clique. Assim um card pode
+          // ser editado sem ser substituido entre os dois cliques.
+          if (interactionRoot.isConnected) {
+            syncTemplateHtmlFromPreview({
+              container: interactionRoot,
+              skipPreviewUpdate: true
+            });
+          }
+          if (optionCardClickTimer) {
+            window.clearTimeout(optionCardClickTimer);
+          }
+          optionCardClickTimer = window.setTimeout(() => {
+            optionCardClickTimer = null;
+            if (interactionRoot.isConnected) {
+              syncTemplateHtmlFromPreview({
+                container: interactionRoot,
+                preserveLiveFrame: false
+              });
+            }
+          }, 220);
+          return true;
+        };
+
+        // Os documentos do board podem receber outros controles de preview
+        // depois de montados. Capturar a opcao no documento a deixa acima
+        // desses listeners e tambem preserva a interacao apos uma atualizacao.
+        if (doc.documentElement.dataset.llTemplateOptionSelectionReady !== "true") {
+          doc.documentElement.dataset.llTemplateOptionSelectionReady = "true";
+          doc.addEventListener("click", (event) => {
+            const interactionRoot = doc.querySelector(".lp-container, .lp_container");
+            if (interactionRoot) {
+              syncTemplateOptionSelection(event, interactionRoot);
+            }
+          }, true);
+
         }
 
         root.addEventListener("click", (event) => {
+          if (syncTemplateOptionSelection(event, root)) {
+            return;
+          }
+
           const label = findTemplateLabelAtPoint(event, root);
           if (!label || !root.contains(label)) {
             return;
@@ -6272,44 +7459,6 @@ ${containerHtml}`;
             doc.defaultView.requestAnimationFrame(syncStorySelection);
           } else {
             window.setTimeout(syncStorySelection, 0);
-          }
-        }, true);
-
-        root.addEventListener("dblclick", (event) => {
-          if (event.target.closest("[data-ll-preview-text]")) {
-            return;
-          }
-
-          const iconHost = event.target.closest?.(".ll-carousel__dot-icon, [class*='icon' i], [class*='logo' i], [class*='avatar' i], [class*='emblem' i]");
-          if (iconHost && root.contains(iconHost) && getTemplateIconMediaElement(iconHost)) {
-            event.preventDefault();
-            event.stopImmediatePropagation();
-            openTemplateIconPopover(event, iconHost);
-            return;
-          }
-
-          const editableElement = findTemplateMediaAtPoint(event, root);
-          if (!editableElement) {
-            return;
-          }
-
-          event.preventDefault();
-          event.stopPropagation();
-
-          const id = markTemplateNode(editableElement);
-          const mediaMeta = {
-            scope: "template",
-            field: "media",
-            templateNodeId: id,
-            value: getTemplateMediaValue(editableElement)
-          };
-
-          if (isTemplateIconElement(editableElement)) {
-            openTemplateIconPopover(event, editableElement);
-          } else if (editableElement.tagName === "IMG") {
-            openTemplateImagePopover(event, editableElement, mediaMeta, "URL da imagem ou mídia");
-          } else {
-            openMediaEditor(event, editableElement, mediaMeta, editableElement.tagName === "IFRAME" ? "URL do vídeo do YouTube" : "URL da imagem ou mídia");
           }
         }, true);
 
@@ -6362,6 +7511,8 @@ ${containerHtml}`;
           attachTemplateHeaderEditor(header);
         });
 
+        setupTemplateFaqEditing(root);
+
         root.addEventListener("click", (event) => {
           const header = findTemplateHeaderRoot(event.target, root);
           if (!header || !root.contains(header)) {
@@ -6382,19 +7533,28 @@ ${containerHtml}`;
         }, true);
 
         [root, ...root.querySelectorAll("*")].forEach((element) => {
+          if (element.closest?.("[data-ll-template-faq-details], [data-ll-template-faq-root]")) {
+            return;
+          }
           if (isTemplateOverlayCandidate(element, root)) {
             attachTemplateOverlay(element);
           }
         });
 
         root.querySelectorAll(".ll-carousel__dot-icon, [class*='icon' i], [class*='logo' i], [class*='avatar' i], [class*='emblem' i]").forEach((element) => {
+          if (element.closest?.("[data-ll-template-faq-details], [data-ll-template-faq-root]")) {
+            return;
+          }
           if (getTemplateIconMediaElement(element)) {
             attachTemplateIcon(element);
           }
         });
 
-        setupTemplateFaqEditing(root);
         setupTemplateTableEditing(root);
+
+        [root, ...root.querySelectorAll("*")].forEach((element) => {
+          attachTemplateOptionCardEditor(element, root);
+        });
 
         [root, ...root.querySelectorAll("*")].forEach((element) => {
           if (element !== root) {
@@ -6403,6 +7563,10 @@ ${containerHtml}`;
         });
 
         [root, ...root.querySelectorAll("*")].forEach((element) => {
+          if (element.closest?.("[data-ll-template-faq-details], [data-ll-template-faq-root]")) {
+            return;
+          }
+
           const header = findTemplateHeaderRoot(element, root);
           if (header && isTemplateHeaderBannerTarget(element, header) && !isTemplateHeaderLogoTarget(element, header)) {
             return;
@@ -6428,7 +7592,11 @@ ${containerHtml}`;
               field: "text",
               templateNodeId: id,
               value: element.innerText || element.textContent || ""
-            }, { multiline: isTemplateMultilineText(element), triggerEvent: shouldUseDblClick ? "dblclick" : "click" });
+            }, {
+              multiline: isTemplateMultilineText(element),
+              triggerEvent: shouldUseDblClick ? "dblclick" : "click",
+              ctrlClickOpensEditor: shouldUseDblClick
+            });
           }
 
           if (["IMG", "VIDEO", "SOURCE", "IFRAME"].includes(element.tagName) || hasTemplateBackgroundImage(element)) {
@@ -6474,12 +7642,12 @@ ${containerHtml}`;
               field: "backgroundColor",
               templateNodeId: id,
               value: backgroundColor
-            }, "cor de fundo", { allowOnMedia: true, triggerEvent: "click" });
+            }, "cor de fundo", { allowOnMedia: true, triggerEvent: "dblclick" });
           }
         });
       };
 
-      const tab = getPreviewEditTab();
+      const tab = getPreviewEditTab(frame);
 
       if (tab === "dashboard") {
         doc.querySelectorAll("[data-dashboard-preview-home]").forEach((button) => {
@@ -6504,6 +7672,7 @@ ${containerHtml}`;
       }
 
       if (tab === "template") {
+        doc.defaultView.__llPreviewEditingRefresh = setupTemplatePreviewEditing;
         setupTemplatePreviewEditing();
         return;
       }
@@ -6640,6 +7809,14 @@ ${containerHtml}`;
               return;
             }
 
+            if (event.ctrlKey || event.metaKey) {
+              event.preventDefault();
+              event.stopPropagation();
+              window.clearTimeout(dotClickTimer);
+              openCarouselNavStylePopover(event, carouselRoot);
+              return;
+            }
+
             event.preventDefault();
             event.stopPropagation();
             window.clearTimeout(dotClickTimer);
@@ -6651,12 +7828,7 @@ ${containerHtml}`;
 
           dot.addEventListener("dblclick", (event) => {
             window.clearTimeout(dotClickTimer);
-            if (event.target.closest("[data-ll-preview-text], .ll-carousel__dot-icon")) {
-              return;
-            }
-            event.preventDefault();
             event.stopPropagation();
-            openCarouselNavStylePopover(event, carouselRoot);
           });
 
           attachText(dot.querySelector(".ll-carousel__dot-number"), { scope: "carousel", slideIndex, field: "navNumber" });
@@ -7022,29 +8194,11 @@ ${containerHtml}`;
           const resizeCards = Array.from(
             root.querySelectorAll(".ll-bento__card--text, .ll-bento__expand--image-square, .ll-bento__expand--image-circle")
           );
-          const ResizeObserverCtor = doc.defaultView.ResizeObserver;
-          const resizeObserver = ResizeObserverCtor
-            ? new ResizeObserverCtor((entries) => {
-              entries.forEach((entry) => {
-                const element = entry.target;
-                if (!element.__llBentoResizeActive) {
-                  return;
-                }
-
-                const start = element.__llBentoResizeStart || {};
-                const width = Math.round(entry.contentRect.width);
-                const height = Math.round(entry.contentRect.height);
-                const changed = Math.abs(width - (start.width || width)) > 2
-                  || Math.abs(height - (start.height || height)) > 2;
-                if (!changed) {
-                  return;
-                }
-
-                window.clearTimeout(element.__llBentoResizeTimer);
-                element.__llBentoResizeTimer = window.setTimeout(() => persistBentoResize(element), 120);
-              });
-            })
-            : null;
+          // Persistencia ocorre no fim do gesto de redimensionamento. Evitar
+          // ResizeObserver aqui elimina o observador polifilado que alguns
+          // srcdocs emprestam do documento pai e que pode interromper a
+          // proxima interacao do preview.
+          const resizeObserver = null;
 
           resizeCards.forEach((element, orderIndex) => {
             element.dataset.llBentoResizeReady = "true";
@@ -7701,7 +8855,7 @@ ${containerHtml}`;
       return `
         <div class="editor-section-title">
           <div>
-            <h3>LP container</h3>
+            <h3>FrameWork</h3>
             <p>Monte o conteúdo que vai dentro de Detalhes do produto. A prévia mostra só o comportamento da <code>.lp-container</code>.</p>
           </div>
         </div>
@@ -7710,13 +8864,19 @@ ${containerHtml}`;
           <div class="faq-editor__bar">
             <strong>Conteúdo da LP</strong>
             <div class="template-editor__actions">
+              <button class="button button--soft icon-button" type="button" data-action="open-lp-board" aria-label="Abrir board responsivo" title="Abrir board responsivo">
+                <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                  <rect x="3" y="3" width="18" height="18" rx="2" stroke="currentColor" stroke-width="1.8"></rect>
+                  <path d="M8.5 3v18M3 9h18M15.5 9v12" stroke="currentColor" stroke-width="1.8"></path>
+                </svg>
+              </button>
               <button class="button button--soft icon-button" type="button" data-action="save-template-html-cache" aria-label="Salvar conteúdo da LP no navegador" title="Salvar conteúdo da LP">${saveIcon()}</button>
               <button class="button button--danger icon-button" type="button" data-action="clear-template-html" aria-label="Limpar conteúdo da LP e apagar cache" title="Limpar conteúdo da LP">${trashIcon()}</button>
             </div>
           </div>
           <div class="faq-bulk-panel__body">
             <label class="field">
-              <span>HTML dentro da lp-container</span>
+              <span>HTML dentro do FrameWork</span>
               <textarea class="bulk-input template-editor__textarea" data-template-field="html" spellcheck="false">${escapeHtml(state.template.html)}</textarea>
             </label>
             <p class="template-editor__status" aria-live="polite">${escapeHtml(state.template.status)}</p>

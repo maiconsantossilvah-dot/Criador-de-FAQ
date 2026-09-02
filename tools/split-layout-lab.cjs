@@ -149,7 +149,7 @@ const modules = {
     ]
   },
   "lp-container": {
-    title: "LP container",
+    title: "FrameWork",
     styles: [],
     functions: [
       "getTemplateLayoutOptions",

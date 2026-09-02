@@ -4306,7 +4306,7 @@ ${dots}
       return {
         tab: "template",
         icon: "LP",
-        title: "Modo LP container",
+        title: "FrameWork",
         summary: "Edite o HTML que vai dentro de Detalhes do produto, separado dos layouts.",
         meta: state.template.html.trim() ? "HTML carregado" : "Aguardando conteúdo"
       };
@@ -11479,7 +11479,7 @@ ${slides}
       return `
         <div class="editor-section-title">
           <div>
-            <h3>LP container</h3>
+            <h3>FrameWork</h3>
             <p>Monte o conteúdo que vai dentro de Detalhes do produto. A prévia mostra só o comportamento da <code>.lp-container</code>.</p>
           </div>
         </div>

@@ -1,6 +1,6 @@
-# LP container
+# FrameWork
 
-Esta pasta agrupa os arquivos da aba LP container para ficar mais facil localizar e editar o layout.
+Esta pasta agrupa os arquivos da aba FrameWork para ficar mais facil localizar e editar o layout.
 
 - lp-container.html: estrutura HTML de referencia do bloco gerado.
 - lp-container.css: estilos do bloco/output desta aba.

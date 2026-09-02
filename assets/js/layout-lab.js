@@ -108,6 +108,17 @@
         editDevice: "base",
         dirty: false,
         baseSnapshots: {},
+        drafts: {
+          faq: {},
+          table: {},
+          stories: {},
+          article: {},
+          carousel: {},
+          bento: {},
+          senko: {},
+          labbridge: {},
+          template: {}
+        },
         saved: {
           faq: {},
           table: {},
@@ -536,14 +547,18 @@
     let previewEditPopover = null;
     let previewEditOutsideHandler = null;
     let previewEditKeyHandler = null;
+    let previewEditBeforeCloseHandler = null;
     let isPreviewFullscreen = false;
     let isFocusMode = false;
     let isCodeFocusMode = false;
     let templatePreviewUpdateTimer = 0;
+    let lpBoardIncrementalSyncTimer = 0;
     let actionFeedbackTimer = 0;
+    let frameworkFeedbackTimer = 0;
     const fixedStartPage = document.documentElement.dataset.startPage || document.body?.dataset.startPage || "";
     let currentPage = fixedStartPage || "home";
     let currentEditorTab = "dashboard";
+    let lpPreviewMode = "board";
     const previewDevices = [
       { key: "mobile", label: "Celular", width: 390 },
       { key: "tablet", label: "Tablet", width: 768 },
@@ -553,8 +568,9 @@
     const responsiveEditDevices = [
       { key: "base", label: "Geral", note: "Os campos normais continuam valendo para todos os tamanhos." },
       { key: "mobile", label: "Celular", note: "Esses ajustes entram em telas pequenas, ate 560px." },
-      { key: "tablet", label: "Tablet", note: "Esses ajustes entram entre 561px e 1024px." },
-      { key: "desktop", label: "Desktop", note: "Esses ajustes entram acima de 1025px." }
+      { key: "tablet", label: "Tablet", note: "Esses ajustes entram entre 561px e 899px." },
+      { key: "notebook", label: "Notebook", note: "Esses ajustes entram entre 900px e 1199px." },
+      { key: "desktop", label: "Desktop", note: "Esses ajustes entram a partir de 1200px." }
     ];
     const responsiveDefaults = {
       titleScale: 100,
@@ -565,8 +581,9 @@
     };
     const responsiveMediaQueries = {
       mobile: "(max-width: 560px)",
-      tablet: "(min-width: 561px) and (max-width: 1024px)",
-      desktop: "(min-width: 1025px)"
+      tablet: "(min-width: 561px) and (max-width: 899px)",
+      notebook: "(min-width: 900px) and (max-width: 1199px)",
+      desktop: "(min-width: 1200px)"
     };
     const storyLimits = {
       minContainers: 1,
@@ -752,6 +769,43 @@
       }
     }
 
+    function getResponsiveDraft(tab, device) {
+      return state.responsive.drafts?.[tab]?.[device] || null;
+    }
+
+    function rememberResponsiveDraft(tab, device, snapshot = getTabSnapshot(tab)) {
+      if (!device || device === "base" || (tab === "template" && device === "desktop")) {
+        return;
+      }
+
+      state.responsive.drafts[tab] = state.responsive.drafts[tab] || {};
+      state.responsive.drafts[tab][device] = cloneValue(snapshot);
+    }
+
+    function clearResponsiveDraft(tab, device) {
+      if (state.responsive.drafts?.[tab]) {
+        delete state.responsive.drafts[tab][device];
+      }
+    }
+
+    function getResponsiveSnapshot(tab, device, options = {}) {
+      if (device === "base" || (tab === "template" && device === "desktop")) {
+        return cloneValue(getBaseSnapshot(tab));
+      }
+
+      const includeDraft = options.includeDraft !== false;
+      const draftSnapshot = includeDraft ? getResponsiveDraft(tab, device) : null;
+      const savedSnapshot = state.responsive.saved?.[tab]?.[device] || null;
+      return cloneValue(draftSnapshot || savedSnapshot || getBaseSnapshot(tab));
+    }
+
+    function rememberActiveResponsiveDraft(tab = getResponsiveTab()) {
+      const device = state.responsive.editDevice;
+      if (device !== "base") {
+        rememberResponsiveDraft(tab, device, getTabSnapshot(tab));
+      }
+    }
+
     function markResponsiveDirty() {
       if (currentPage === "conteudo" && state.responsive.editDevice !== "base") {
         state.responsive.dirty = true;
@@ -801,12 +855,15 @@
         return;
       }
 
-      if (!confirmDiscardResponsiveDraft()) {
+      const preserveDraft = options.preserveDraft === true;
+      if (!preserveDraft && !confirmDiscardResponsiveDraft()) {
         return;
       }
 
       if (state.responsive.editDevice === "base") {
         rememberBaseSnapshot(tab);
+      } else if (state.responsive.dirty && preserveDraft) {
+        rememberActiveResponsiveDraft(tab);
       }
 
       if (validDevice === "base") {
@@ -815,10 +872,7 @@
           state.responsive.previewDevice = options.previewDevice;
         }
       } else {
-        const versionSnapshot = state.responsive.saved[tab] && state.responsive.saved[tab][validDevice]
-          ? state.responsive.saved[tab][validDevice]
-          : getBaseSnapshot(tab);
-        applyTabSnapshot(tab, versionSnapshot);
+        applyTabSnapshot(tab, getResponsiveSnapshot(tab, validDevice));
         state.responsive.previewDevice = options.previewDevice || (validDevice === "desktop" ? "desktop" : validDevice);
       }
 
@@ -838,6 +892,7 @@
 
       state.responsive.saved[tab] = state.responsive.saved[tab] || {};
       state.responsive.saved[tab][device] = getTabSnapshot(tab);
+      clearResponsiveDraft(tab, device);
       state.responsive.dirty = false;
       renderEditor(true);
       return true;
@@ -851,8 +906,8 @@
         return;
       }
 
-      const savedVersion = state.responsive.saved[tab] && state.responsive.saved[tab][device];
-      applyTabSnapshot(tab, savedVersion || getBaseSnapshot(tab));
+      clearResponsiveDraft(tab, device);
+      applyTabSnapshot(tab, getResponsiveSnapshot(tab, device, { includeDraft: false }));
       state.responsive.dirty = false;
       renderEditor(true);
     }
@@ -873,16 +928,10 @@
       if (state.responsive.saved[tab]) {
         delete state.responsive.saved[tab][device];
       }
+      clearResponsiveDraft(tab, device);
       applyTabSnapshot(tab, getBaseSnapshot(tab));
       state.responsive.dirty = false;
       renderEditor(true);
-    }
-
-    function resetResponsiveForTab(tab) {
-      state.responsive.saved[tab] = {};
-      delete state.responsive.baseSnapshots[tab];
-      state.responsive.dirty = false;
-      state.responsive.editDevice = "base";
     }
 
     function hasResponsiveVersion(tab, device) {
@@ -890,7 +939,14 @@
     }
 
     function getResponsiveVersionList(tab = getResponsiveTab()) {
-      return ["mobile", "tablet", "desktop"].filter((device) => hasResponsiveVersion(tab, device));
+      return ["mobile", "tablet", "notebook", "desktop"].filter((device) => {
+        // FrameWork usa o Desktop como a base geral; somente os demais
+        // breakpoints podem sobrescreve-la no output publicado.
+        if (tab === "template" && device === "desktop") {
+          return false;
+        }
+        return hasResponsiveVersion(tab, device);
+      });
     }
 
     function normalizeResponsiveScale(value) {
@@ -1163,6 +1219,7 @@ ${optionMarkup}
       applyTabSnapshot(tab, preset.snapshot);
       state.responsive.baseSnapshots[tab] = cloneValue(preset.snapshot);
       state.responsive.saved[tab] = cloneValue(preset.responsiveVersions || {});
+      state.responsive.drafts[tab] = {};
       state.responsive.editDevice = "base";
       state.responsive.dirty = false;
       renderEditor();
@@ -1472,8 +1529,8 @@ ${optionMarkup}
 
     function repairResponsiveCssOutput(value) {
       return String(value || "")
-        .replace(/(^|\n)([ \t]*)\.ll-responsive-version--(?:base|mobile|tablet|desktop)\s+(\/\*[\s\S]*?\*\/\s*@(?:media|supports|container|layer)\b)/gi, "$1$2$3")
-        .replace(/(^|\n)([ \t]*)\.ll-responsive-version--(?:base|mobile|tablet|desktop)\s+(@(?:media|supports|container|layer|keyframes|font-face|property|page|-[\w-]+-keyframes)\b)/gi, "$1$2$3");
+        .replace(/(^|\n)([ \t]*)\.ll-responsive-version--(?:base|mobile|tablet|notebook|desktop)\s+(\/\*[\s\S]*?\*\/\s*@(?:media|supports|container|layer)\b)/gi, "$1$2$3")
+        .replace(/(^|\n)([ \t]*)\.ll-responsive-version--(?:base|mobile|tablet|notebook|desktop)\s+(@(?:media|supports|container|layer|keyframes|font-face|property|page|-[\w-]+-keyframes)\b)/gi, "$1$2$3");
     }
 
     function buildWithSnapshot(tab, snapshot, builder) {
@@ -1484,99 +1541,207 @@ ${optionMarkup}
       return output;
     }
 
-    function buildResponsiveSwitchStyle(versionDevices) {
-      if (!versionDevices.length) {
-        return "";
+    function getResponsiveOutputCss(tab, value) {
+      return tab === "bento" && typeof cleanBentoOutputCss === "function"
+        ? cleanBentoOutputCss(value)
+        : value;
+    }
+
+    function wrapResponsiveStyleInMedia(value, mediaQuery) {
+      const scopedStyle = scopeResponsiveStyle(value, ".ll-responsive-output");
+      return scopedStyle.replace(/<style\b[^>]*>([\s\S]*?)<\/style>/gi, (match, css) => `<style>\n@media ${mediaQuery} {\n${css}\n}\n</style>`);
+    }
+
+    function normalizeResponsiveCss(value) {
+      return String(value || "").replace(/\s+/g, " ").trim();
+    }
+
+    function buildResponsiveInlineOverrides(tab, htmlBuilder) {
+      const baseHtml = buildWithSnapshot(tab, getBaseSnapshot(tab), htmlBuilder);
+      const versionDevices = getResponsiveVersionList(tab);
+      if (!versionDevices.length || typeof DOMParser === "undefined") {
+        return { baseHtml, rulesByDevice: {} };
       }
 
-      return `<style>
-.ll-responsive-output,
-.ll-responsive-output > .ll-responsive-version {
-  box-sizing: border-box;
-  display: block;
-  inline-size: 100%;
-  width: 100%;
-  min-width: 0;
-  max-width: none;
-  margin: 0;
-}
+      const parseMarkup = (value) => {
+        const parsed = new DOMParser().parseFromString(`<div data-ll-responsive-root>${String(value || "")}</div>`, "text/html");
+        return parsed.querySelector("[data-ll-responsive-root]");
+      };
+      const baseRoot = parseMarkup(baseHtml);
+      if (!baseRoot) {
+        return { baseHtml, rulesByDevice: {} };
+      }
 
-.ll-responsive-output > .ll-responsive-version--mobile,
-.ll-responsive-output > .ll-responsive-version--tablet,
-.ll-responsive-output > .ll-responsive-version--desktop {
-  display: none;
-}
-@media (max-width: 560px) {
-  .ll-responsive-output--has-mobile > .ll-responsive-version { display: none; }
-  .ll-responsive-output--has-mobile > .ll-responsive-version--mobile { display: block; }
-}
-@media (min-width: 561px) and (max-width: 1024px) {
-  .ll-responsive-output--has-tablet > .ll-responsive-version { display: none; }
-  .ll-responsive-output--has-tablet > .ll-responsive-version--tablet { display: block; }
-}
-@media (min-width: 1025px) {
-  .ll-responsive-output--has-desktop > .ll-responsive-version { display: none; }
-  .ll-responsive-output--has-desktop > .ll-responsive-version--desktop { display: block; }
-}
-</style>`;
+      const baseElements = [baseRoot, ...baseRoot.querySelectorAll("*")];
+      const rulesByDevice = {};
+      const responsiveTextByIndex = new Map();
+      const supportsResponsiveText = tab === "template";
+      versionDevices.forEach((device) => {
+        const snapshot = state.responsive.saved[tab][device];
+        const versionRoot = parseMarkup(buildWithSnapshot(tab, snapshot, htmlBuilder));
+        const versionElements = versionRoot ? [versionRoot, ...versionRoot.querySelectorAll("*")] : [];
+        if (versionElements.length !== baseElements.length) {
+          return;
+        }
+
+        const rules = [];
+        versionElements.forEach((versionElement, index) => {
+          const baseElement = baseElements[index];
+          if (!baseElement || baseElement.tagName !== versionElement.tagName) {
+            return;
+          }
+
+          // Compare the complete inline-style surface. A responsive version
+          // may deliberately remove a desktop declaration, which must also
+          // be represented in the generated media rule.
+          const properties = new Set([
+            ...Array.from(baseElement.style || []),
+            ...Array.from(versionElement.style || [])
+          ]);
+          const declarations = Array.from(properties).reduce((result, property) => {
+            const nextValue = versionElement.style.getPropertyValue(property).trim();
+            const baseValue = baseElement.style.getPropertyValue(property).trim();
+            if (nextValue !== baseValue) {
+              result.push(`${property}: ${nextValue || "unset"} !important;`);
+            }
+            return result;
+          }, []);
+
+          // O FrameWork exporta uma única árvore HTML. Para manter textos
+          // diferentes em cada frame sem duplicar a estrutura inteira,
+          // guardamos variantes apenas em nós que contêm texto simples.
+          if (supportsResponsiveText && baseElement.children.length === 0 && versionElement.children.length === 0) {
+            const entry = responsiveTextByIndex.get(index) || {
+              base: baseElement.textContent || "",
+              versions: {}
+            };
+            entry.versions[device] = versionElement.textContent || "";
+            responsiveTextByIndex.set(index, entry);
+          }
+
+          if (!declarations.length) {
+            return;
+          }
+
+          // This marker is deliberately not prefixed with data-ll-. The
+          // output cleaner removes editor-only data attributes with that
+          // prefix, while this one is required by the published media rule.
+          const nodeKey = `${tab}-${index}`;
+          baseElement.setAttribute("data-layout-responsive-node", nodeKey);
+          rules.push(`.ll-responsive-output [data-layout-responsive-node="${nodeKey}"] { ${declarations.join(" ")} }`);
+        });
+        if (rules.length) {
+          rulesByDevice[device] = rules;
+        }
+      });
+
+      const textNodes = [];
+      responsiveTextByIndex.forEach((entry, index) => {
+        const baseElement = baseElements[index];
+        const valuesByDevice = versionDevices.map((device) => entry.versions[device] ?? entry.base);
+        if (!baseElement || !valuesByDevice.some((value) => value !== entry.base)) {
+          return;
+        }
+
+        const nodeKey = `${tab}-text-${index}`;
+        baseElement.setAttribute("data-layout-responsive-text", nodeKey);
+        baseElement.innerHTML = [
+          `<span class="ll-responsive-text ll-responsive-text--base" data-layout-responsive-text-version="base">${escapeHtml(entry.base)}</span>`,
+          ...versionDevices.map((device) => `<span class="ll-responsive-text ll-responsive-text--${device}" data-layout-responsive-text-version="${device}" hidden>${escapeHtml(entry.versions[device] ?? entry.base)}</span>`)
+        ].join("");
+        textNodes.push({ nodeKey, devices: versionDevices });
+      });
+
+      return { baseHtml: baseRoot.innerHTML.trim(), rulesByDevice, textNodes };
+    }
+
+    function buildResponsiveInlineOverrideStyles(tab, htmlBuilder) {
+      const { rulesByDevice, textNodes = [] } = buildResponsiveInlineOverrides(tab, htmlBuilder);
+      const inlineStyleBlocks = Object.entries(rulesByDevice).map(([device, rules]) => {
+        const mediaQuery = responsiveMediaQueries[device];
+        return mediaQuery ? `<style>\n@media ${mediaQuery} {\n${rules.join("\n")}\n}\n</style>` : "";
+      }).filter(Boolean);
+
+      if (textNodes.length) {
+        const deviceStyleRules = [...new Set(textNodes.flatMap((node) => node.devices))].map((device) => {
+          const mediaQuery = responsiveMediaQueries[device];
+          return mediaQuery ? `@media ${mediaQuery} {\n  .ll-responsive-output [data-layout-responsive-text] > .ll-responsive-text { display: none !important; }\n  .ll-responsive-output [data-layout-responsive-text] > .ll-responsive-text--${device} { display: inline !important; }\n}` : "";
+        }).filter(Boolean).join("\n");
+        inlineStyleBlocks.push(`<style>\n.ll-responsive-output [data-layout-responsive-text] > .ll-responsive-text { display: none !important; }\n.ll-responsive-output [data-layout-responsive-text] > .ll-responsive-text--base { display: inline !important; }\n${deviceStyleRules}\n</style>`);
+      }
+
+      return inlineStyleBlocks.join("\n\n");
+    }
+
+    function buildResponsiveCssPackage(tab, styleBuilder, htmlBuilder) {
+      const versionDevices = getResponsiveVersionList(tab);
+      const baseSnapshot = getBaseSnapshot(tab);
+      const baseCssParts = extractStylesheetLinks(getResponsiveOutputCss(tab, buildWithSnapshot(tab, baseSnapshot, styleBuilder)));
+      const baseCssSource = baseCssParts.markup;
+      const markupParts = typeof htmlBuilder === "function"
+        ? extractStylesheetLinks(buildResponsiveInlineOverrides(tab, htmlBuilder).baseHtml)
+        : { links: [] };
+      const stylesheetLinks = [...new Set([...baseCssParts.links, ...markupParts.links])].join("\n");
+
+      if (!versionDevices.length) {
+        return `${stylesheetLinks}${stylesheetLinks && baseCssSource ? "\n\n" : ""}${baseCssSource}`;
+      }
+
+      const versionStyles = versionDevices.map((device) => {
+        const snapshot = state.responsive.saved[tab][device];
+        const cssSource = extractStylesheetLinks(getResponsiveOutputCss(tab, buildWithSnapshot(tab, snapshot, styleBuilder))).markup;
+        const mediaQuery = responsiveMediaQueries[device];
+        if (!mediaQuery || normalizeResponsiveCss(cssSource) === normalizeResponsiveCss(baseCssSource)) {
+          return "";
+        }
+        return wrapResponsiveStyleInMedia(cssSource, mediaQuery);
+      }).filter(Boolean);
+
+      const inlineOverrides = typeof htmlBuilder === "function"
+        ? buildResponsiveInlineOverrideStyles(tab, htmlBuilder)
+        : "";
+      return [stylesheetLinks, scopeResponsiveStyle(baseCssSource, ".ll-responsive-output"), ...versionStyles, inlineOverrides]
+        .filter(Boolean)
+        .join("\n\n");
+    }
+
+    function buildResponsiveMarkup(tab, htmlBuilder) {
+      const { baseHtml } = buildResponsiveInlineOverrides(tab, htmlBuilder);
+      return getResponsiveVersionList(tab).length
+        ? `<div class="ll-responsive-output">\n${baseHtml}\n</div>`
+        : baseHtml;
+    }
+
+    function extractStylesheetLinks(value) {
+      const links = [];
+      const seen = new Set();
+      const markup = String(value || "").replace(/<link\b[^>]*>/gi, (tag) => {
+        if (!/\brel\s*=\s*(?:"[^"]*\bstylesheet\b[^"]*"|'[^']*\bstylesheet\b[^']*'|stylesheet)(?=\s|\/?>)/i.test(tag)) {
+          return tag;
+        }
+        const normalized = tag.replace(/\s+/g, " ").trim();
+        if (!seen.has(normalized)) {
+          seen.add(normalized);
+          links.push(normalized);
+        }
+        return "";
+      });
+      return { links, markup: markup.trim() };
     }
 
     function buildResponsivePackage(tab, htmlBuilder, styleBuilder) {
-      const versionDevices = getResponsiveVersionList(tab);
-      const baseSnapshot = getBaseSnapshot(tab);
-      const cleanOutputCss = (css) => tab === "bento" && typeof cleanBentoOutputCss === "function"
-        ? cleanBentoOutputCss(css)
-        : css;
+      const cssPackage = buildResponsiveCssPackage(tab, styleBuilder, htmlBuilder);
+      const htmlPackage = buildResponsiveMarkup(tab, htmlBuilder);
+      const cssParts = extractStylesheetLinks(cssPackage);
+      const htmlParts = extractStylesheetLinks(htmlPackage);
+      const stylesheetLinks = [...new Set([...cssParts.links, ...htmlParts.links])].join("\n");
+      const markedCssPackage = tab === "faq" ? wrapFaqCssMarkers(cssParts.markup) : cssParts.markup;
 
-      if (!versionDevices.length) {
-        const css = cleanOutputCss(buildWithSnapshot(tab, baseSnapshot, styleBuilder));
-        const markedCss = tab === "faq" ? wrapFaqCssMarkers(css) : css;
-        return cleanPictureSourcesFromOutput(repairResponsiveCssOutput(`${markedCss}
+      return cleanPictureSourcesFromOutput(repairResponsiveCssOutput(`${stylesheetLinks}${stylesheetLinks ? "\n\n" : ""}${markedCssPackage}
 
 <!-- HTML DO LAYOUT -->
 
-${buildWithSnapshot(tab, baseSnapshot, htmlBuilder)}`));
-      }
-
-      const baseHtml = buildWithSnapshot(tab, baseSnapshot, htmlBuilder);
-      const baseCss = scopeResponsiveStyle(cleanOutputCss(buildWithSnapshot(tab, baseSnapshot, styleBuilder)), ".ll-responsive-version--base");
-      const versionBlocks = versionDevices.map((device) => {
-        const suffix = `ll-${tab}-${device}`;
-        const snapshot = state.responsive.saved[tab][device];
-        const scopedCss = scopeResponsiveStyle(
-          prefixResponsiveCss(cleanOutputCss(buildWithSnapshot(tab, snapshot, styleBuilder)), suffix),
-          `.ll-responsive-version--${device}`
-        );
-        return {
-          device,
-          html: prefixResponsiveIds(buildWithSnapshot(tab, snapshot, htmlBuilder), suffix),
-          css: scopedCss
-        };
-      });
-      const wrapperClasses = [
-        "ll-responsive-output",
-        ...versionDevices.map((device) => `ll-responsive-output--has-${device}`)
-      ].join(" ");
-
-      const cssPackage = `${baseCss}
-
-${versionBlocks.map((block) => block.css).join("\n\n")}
-
-${buildResponsiveSwitchStyle(versionDevices)}`;
-      const markedCssPackage = tab === "faq" ? wrapFaqCssMarkers(cssPackage) : cssPackage;
-
-      return cleanPictureSourcesFromOutput(repairResponsiveCssOutput(`${markedCssPackage}
-
-<!-- HTML DO LAYOUT -->
-
-<div class="${wrapperClasses}">
-  <div class="ll-responsive-version ll-responsive-version--base">
-${baseHtml}
-  </div>
-${versionBlocks.map((block) => `  <div class="ll-responsive-version ll-responsive-version--${block.device}">
-${block.html}
-  </div>`).join("\n")}
-</div>`));
+${htmlParts.markup}`));
     }
 
     function stripOutputImageSizeVariant(value) {
@@ -1696,7 +1861,7 @@ ${block.html}
       }).join("");
       const hasSavedCurrent = currentDevice !== "base" && hasResponsiveVersion(getResponsiveTab(), currentDevice);
       const controls = currentDevice === "base" ? `
-              <p class="responsive-editor__notice">Edite o layout geral nos campos abaixo. Para uma mudança existir só no celular, tablet ou desktop, abra a versão correspondente e edite os mesmos campos.</p>
+              <p class="responsive-editor__notice">Edite o layout geral nos campos abaixo. Para uma mudança existir só no celular, tablet, notebook ou desktop, abra a versão correspondente e edite os mesmos campos.</p>
             ` : `
               <p class="responsive-editor__notice${state.responsive.dirty ? " is-warning" : ""}">${state.responsive.dirty ? "Existem alterações não salvas nesta versão." : currentMeta.note} Os campos abaixo agora pertencem só a esta versão.</p>
               <div class="responsive-editor__actions">
@@ -2096,6 +2261,7 @@ ${itemMarkup}
 
     function resetResponsiveForTab(tab) {
       state.responsive.saved[tab] = {};
+      state.responsive.drafts[tab] = {};
       delete state.responsive.baseSnapshots[tab];
       state.responsive.dirty = false;
       state.responsive.editDevice = "base";
@@ -2835,56 +3001,56 @@ ${buildFaqPreviewStylePackage({ includeResponsive: true, responsiveOptions: { in
         const tableHtml = buildTableSectionHtml(true);
 
         if (copyMode === "css") {
-          return buildTabOutputStyleWithClass("table", buildTableDynamicStyle);
+          return buildResponsiveCssPackage("table", () => buildTabOutputStyleWithClass("table", buildTableDynamicStyle), () => buildTableSectionHtml(true));
         }
 
         if (copyMode === "full") {
           return buildResponsivePackage("table", () => buildTableSectionHtml(true), () => buildTabOutputStyleWithClass("table", buildTableDynamicStyle));
         }
 
-        return tableHtml;
+        return buildResponsiveMarkup("table", () => buildTableSectionHtml(true));
       }
 
       if (currentEditorTab === "stories") {
         const storiesHtml = buildStoriesSectionHtml();
 
         if (copyMode === "css") {
-          return buildTabOutputStyleWithClass("stories", buildStoriesDynamicStyle);
+          return buildResponsiveCssPackage("stories", () => buildTabOutputStyleWithClass("stories", buildStoriesDynamicStyle), () => buildStoriesSectionHtml());
         }
 
         if (copyMode === "full") {
           return buildResponsivePackage("stories", () => buildStoriesSectionHtml(), () => buildTabOutputStyleWithClass("stories", buildStoriesDynamicStyle));
         }
 
-        return storiesHtml;
+        return buildResponsiveMarkup("stories", () => buildStoriesSectionHtml());
       }
 
       if (currentEditorTab === "article") {
         const articleHtml = buildArticleSectionHtml();
 
         if (copyMode === "css") {
-          return buildTabOutputStyleWithClass("article", buildArticleDynamicStyle);
+          return buildResponsiveCssPackage("article", () => buildTabOutputStyleWithClass("article", buildArticleDynamicStyle), () => buildArticleSectionHtml());
         }
 
         if (copyMode === "full") {
           return buildResponsivePackage("article", () => buildArticleSectionHtml(), () => buildTabOutputStyleWithClass("article", buildArticleDynamicStyle));
         }
 
-        return articleHtml;
+        return buildResponsiveMarkup("article", () => buildArticleSectionHtml());
       }
 
       if (currentEditorTab === "carousel") {
         const carouselHtml = buildCarouselSectionHtml();
 
         if (copyMode === "css") {
-          return buildTabOutputStyleWithClass("carousel", buildCarouselDynamicStyle);
+          return buildResponsiveCssPackage("carousel", () => buildTabOutputStyleWithClass("carousel", buildCarouselDynamicStyle), () => buildCarouselSectionHtml());
         }
 
         if (copyMode === "full") {
           return buildResponsivePackage("carousel", () => buildCarouselSectionHtml(), () => buildTabOutputStyleWithClass("carousel", buildCarouselDynamicStyle));
         }
 
-        return carouselHtml;
+        return buildResponsiveMarkup("carousel", () => buildCarouselSectionHtml());
       }
 
       if (currentEditorTab === "bento") {
@@ -2929,8 +3095,10 @@ ${buildFaqPreviewStylePackage({ includeResponsive: true, responsiveOptions: { in
 
       if (currentEditorTab === "template") {
         if (copyMode === "css") {
-          const embeddedStyle = typeof buildTemplateEmbeddedStyle === "function" ? buildTemplateEmbeddedStyle() : "";
-          return [embeddedStyle, buildTabStyleWithClass("template", buildTemplateStyle)].filter(Boolean).join("\n\n");
+          return buildResponsiveCssPackage("template", () => {
+            const embeddedStyle = typeof buildTemplateEmbeddedStyle === "function" ? buildTemplateEmbeddedStyle() : "";
+            return [embeddedStyle, buildTabStyleWithClass("template", buildTemplateStyle)].filter(Boolean).join("\n\n");
+          }, () => buildTemplateOutputHtml("html"));
         }
 
         if (copyMode === "full" && getResponsiveVersionList("template").length) {
@@ -2940,7 +3108,9 @@ ${buildFaqPreviewStylePackage({ includeResponsive: true, responsiveOptions: { in
           });
         }
 
-        return buildTemplateOutputHtml(copyMode);
+        return copyMode === "html"
+          ? buildResponsiveMarkup("template", () => buildTemplateOutputHtml("html"))
+          : buildTemplateOutputHtml(copyMode);
       }
 
       const faqHtml = buildFaqSectionHtml();
@@ -3207,12 +3377,20 @@ ${buildFaqPreviewStylePackage({ includeResponsive: true, responsiveOptions: { in
     }
 
     function getResponsiveEditDeviceFromPreview(device = state.responsive.previewDevice) {
+      if (device === "desktop" && currentPage === "conteudo" && currentEditorTab === "template") {
+        return "base";
+      }
+
       if (device === "mobile") {
         return "mobile";
       }
 
       if (device === "tablet") {
         return "tablet";
+      }
+
+      if (device === "notebook") {
+        return "notebook";
       }
 
       return "desktop";
@@ -3229,6 +3407,7 @@ ${buildFaqPreviewStylePackage({ includeResponsive: true, responsiveOptions: { in
         }
         state.template.html = buildLabBridgeTransferHtml();
         state.template.status = "Montagem dos layouts do Lab transferida para o LP.";
+        rememberActiveTemplateSnapshot();
         currentEditorTab = "template";
         renderEditor();
         return;
@@ -3239,6 +3418,7 @@ ${buildFaqPreviewStylePackage({ includeResponsive: true, responsiveOptions: { in
       }
       state.template.html = buildSenkoBridgeTransferHtml();
       state.template.status = "Montagem do SenkoBridge transferida para o LP.";
+      rememberActiveTemplateSnapshot();
       currentEditorTab = "template";
       renderEditor();
     }
@@ -3270,6 +3450,201 @@ ${buildFaqPreviewStylePackage({ includeResponsive: true, responsiveOptions: { in
       }
 
       return saveResponsiveDraft();
+    }
+
+    function saveLpBoardResponsiveVersion(device) {
+      const previewDevice = getPreviewDeviceConfig(device).key;
+      const editDevice = getResponsiveEditDeviceFromPreview(previewDevice);
+
+      // Desktop e a base geral sao a mesma fonte. Salvar outro frame nunca
+      // pode trocar o estado em edicao para esse breakpoint.
+      if (previewDevice === "desktop") {
+        if (state.responsive.editDevice === "base") {
+          rememberBaseSnapshot("template");
+        }
+        scheduleLpBoardIncrementalSync(0);
+        return true;
+      }
+
+      const snapshot = state.responsive.editDevice === editDevice
+        ? getTabSnapshot("template")
+        : getResponsiveSnapshot("template", editDevice);
+      state.responsive.saved.template = state.responsive.saved.template || {};
+      state.responsive.saved.template[editDevice] = cloneValue(snapshot);
+      clearResponsiveDraft("template", editDevice);
+      if (state.responsive.editDevice === editDevice) {
+        state.responsive.dirty = false;
+      }
+      scheduleLpBoardIncrementalSync(0);
+      return true;
+    }
+
+    function activateLpBoardDevice(device) {
+      if (device === "desktop") {
+        if (state.responsive.editDevice !== "base") {
+          setResponsiveEditDevice("base", { previewDevice: "desktop", preserveDraft: true });
+          return;
+        }
+        state.responsive.previewDevice = "desktop";
+        updatePreviewDeviceUi();
+        updateOutput({ preservePreviewScroll: false });
+        return;
+      }
+
+      if (device !== state.responsive.previewDevice) {
+        setPreviewDevice(device, { preserveDraft: true });
+      }
+    }
+
+    function updateLpBoardCode(value, device = "desktop", options = {}) {
+      if (currentPage !== "conteudo" || currentEditorTab !== "template") {
+        return;
+      }
+      const nextValue = String(value || "");
+      const targetDevice = getPreviewDeviceConfig(device).key;
+      const isDesktopGeneral = targetDevice === "desktop";
+      const shouldUpdatePreview = !options.skipPreviewUpdate;
+      const previewDelay = Number.isFinite(Number(options.previewDelay))
+        ? Math.max(0, Number(options.previewDelay))
+        : 0;
+      const updatePreviewNaturally = () => {
+        if (options.preserveLiveFrame && scheduleLpBoardIncrementalSync(previewDelay)) {
+          return;
+        }
+        scheduleTemplatePreviewUpdate(previewDelay, { preserveLiveFrame: Boolean(options.preserveLiveFrame) });
+      };
+
+      const activeDevice = state.responsive.editDevice === "base"
+        ? "desktop"
+        : state.responsive.editDevice;
+      const appliesToActiveSnapshot = activeDevice === targetDevice;
+
+      if (isDesktopGeneral) {
+        const baseSnapshot = getBaseSnapshot("template");
+        const nextBaseSnapshot = cloneValue(baseSnapshot);
+        nextBaseSnapshot.template = {
+          ...(nextBaseSnapshot.template || {}),
+          html: nextValue,
+          status: ""
+        };
+        state.responsive.baseSnapshots.template = nextBaseSnapshot;
+
+        if (state.responsive.editDevice === "base") {
+          state.template.html = nextValue;
+          state.template.status = "";
+        }
+      } else if (appliesToActiveSnapshot) {
+        state.template.html = nextValue;
+        state.template.status = "";
+        state.responsive.dirty = true;
+        rememberActiveResponsiveDraft("template");
+      } else {
+        const currentSnapshot = getResponsiveSnapshot("template", targetDevice);
+        const nextSnapshot = cloneValue(currentSnapshot);
+        nextSnapshot.template = {
+          ...(nextSnapshot.template || {}),
+          html: nextValue,
+          status: ""
+        };
+        rememberResponsiveDraft("template", targetDevice, nextSnapshot);
+      }
+
+      if (appliesToActiveSnapshot) {
+        const templateTextarea = editor.querySelector('[data-template-field="html"]');
+        if (templateTextarea && templateTextarea.value !== nextValue) {
+          templateTextarea.value = nextValue;
+          updateTemplateCodeHighlight(templateTextarea);
+        }
+      }
+      if (shouldUpdatePreview) {
+        updatePreviewNaturally();
+      }
+    }
+
+    function rememberActiveTemplateSnapshot() {
+      if (state.responsive.editDevice === "base") {
+        rememberBaseSnapshot("template");
+        return;
+      }
+
+      state.responsive.dirty = true;
+      rememberActiveResponsiveDraft("template");
+    }
+
+    function getLpBoardSnapshotForDevice(device) {
+      return getResponsiveSnapshot("template", device);
+    }
+
+    function buildLpBoardPreviewHtmlByDevice(currentPreviewHtml) {
+      if (typeof buildTemplatePreviewHtml !== "function") {
+        return {};
+      }
+
+      return ["desktop", "notebook", "tablet", "mobile"].reduce((previews, device) => {
+        previews[device] = buildWithSnapshot("template", getLpBoardSnapshotForDevice(device), buildTemplatePreviewHtml);
+        return previews;
+      }, {});
+    }
+
+    function buildLpBoardSourceByDevice() {
+      return ["desktop", "notebook", "tablet", "mobile"].reduce((sources, device) => {
+        const snapshot = getLpBoardSnapshotForDevice(device);
+        sources[device] = String(snapshot?.template?.html || "");
+        return sources;
+      }, {});
+    }
+
+    function syncLpBoardIncrementally() {
+      const board = window.LpBoard;
+      const canSync = currentPage === "conteudo"
+        && currentEditorTab === "template"
+        && lpPreviewMode === "board"
+        && board
+        && typeof board.isOpen === "function"
+        && board.isOpen()
+        && typeof board.sync === "function";
+      if (!canSync) return false;
+
+      const previewHtml = buildPreviewHtml();
+      generatedHtml.value = buildOutputHtml("html");
+      board.sync({
+        previewHtml,
+        previewHtmlByDevice: buildLpBoardPreviewHtmlByDevice(previewHtml),
+        source: state.template && state.template.html ? state.template.html : "",
+        sourceByDevice: buildLpBoardSourceByDevice(),
+        previewFrame,
+        activeDevice: state.responsive.previewDevice,
+        onEditDevice: activateLpBoardDevice,
+        onCodeChange: updateLpBoardCode,
+        onSaveDevice: saveLpBoardResponsiveVersion,
+        onExport: handleLpBoardExport,
+        onFrameMounted(frame) {
+          setupPreviewEditing(frame);
+        },
+        onLegacy: openLegacyLpPreview
+      });
+      return true;
+    }
+
+    function scheduleLpBoardIncrementalSync(delay = 0) {
+      const board = window.LpBoard;
+      const canSync = lpPreviewMode === "board"
+        && board
+        && typeof board.isOpen === "function"
+        && board.isOpen()
+        && typeof board.sync === "function";
+      if (!canSync) return false;
+
+      // Uma atualizacao completa antiga nao pode chegar depois da edicao
+      // direta e recriar o iframe que acabou de ser alterado.
+      window.clearTimeout(templatePreviewUpdateTimer);
+      templatePreviewUpdateTimer = 0;
+      window.clearTimeout(lpBoardIncrementalSyncTimer);
+      // O documento sob edicao muda na hora. Os demais quadros recebem um
+      // unico update curto, evitando varias reconstrucoes enquanto se arrasta
+      // um seletor de cor ou se digita uma sequencia de caracteres.
+      lpBoardIncrementalSyncTimer = window.setTimeout(syncLpBoardIncrementally, Math.max(90, Number(delay) || 0));
+      return true;
     }
 
     function removeResponsivePreviewVersion() {
@@ -3398,18 +3773,41 @@ ${buildFaqPreviewStylePackage({ includeResponsive: true, responsiveOptions: { in
       updateSenkoTransferPreviewButtons();
     }
 
-    function setPreviewDevice(device) {
+    function setPreviewDevice(device, options = {}) {
       const config = getPreviewDeviceConfig(device);
       if (shouldShowResponsivePreviewActions()) {
         const editDevice = getResponsiveEditDeviceFromPreview(config.key);
         if (editDevice !== state.responsive.editDevice) {
-          setResponsiveEditDevice(editDevice, { previewDevice: config.key });
+          setResponsiveEditDevice(editDevice, {
+            previewDevice: config.key,
+            preserveDraft: options.preserveDraft === true
+          });
           return;
         }
       }
 
       state.responsive.previewDevice = config.key;
       updatePreviewDeviceUi();
+      updateOutput({ preservePreviewScroll: false });
+    }
+
+    function openLpBoard() {
+      if (currentPage !== "conteudo" || currentEditorTab !== "template" || !window.LpBoard) {
+        return;
+      }
+
+      lpPreviewMode = "board";
+      if (typeof window.LpBoard.open === "function") {
+        window.LpBoard.open();
+        updateOutput({ preservePreviewScroll: false });
+      }
+    }
+
+    function openLegacyLpPreview() {
+      lpPreviewMode = "legacy";
+      if (window.LpBoard && typeof window.LpBoard.close === "function") {
+        window.LpBoard.close();
+      }
       updateOutput({ preservePreviewScroll: false });
     }
 
@@ -3445,10 +3843,10 @@ ${buildFaqPreviewStylePackage({ includeResponsive: true, responsiveOptions: { in
       snapshot.element.scrollLeft = snapshot.scrollLeft || 0;
     }
 
-    function scheduleTemplatePreviewUpdate(delay = 320) {
+    function scheduleTemplatePreviewUpdate(delay = 320, options = {}) {
       window.clearTimeout(templatePreviewUpdateTimer);
       templatePreviewUpdateTimer = window.setTimeout(() => {
-        updateOutput();
+        updateOutput(options);
       }, delay);
     }
 
@@ -3456,16 +3854,62 @@ ${buildFaqPreviewStylePackage({ includeResponsive: true, responsiveOptions: { in
       const editorFocusSnapshot = getEditorFocusSnapshot();
       const preservePreviewScroll = options.preservePreviewScroll !== false;
       const previewScrollPosition = preservePreviewScroll ? getPreviewScrollPosition() : null;
+      const previewHtml = buildPreviewHtml();
       generatedHtml.value = buildOutputHtml("html");
       updatePreviewDeviceUi();
+
+      const useLpBoard = currentPage === "conteudo"
+        && currentEditorTab === "template"
+        && lpPreviewMode === "board"
+        && window.LpBoard
+        && typeof window.LpBoard.open === "function";
+
+      if (useLpBoard) {
+        window.LpBoard.open();
+      }
+
+      if (window.LpBoard && typeof window.LpBoard.isOpen === "function" && window.LpBoard.isOpen()) {
+        if (!useLpBoard) {
+          window.LpBoard.close();
+        }
+      }
+
+      const renderLpBoard = () => {
+        window.LpBoard.render({
+          previewHtml,
+          previewHtmlByDevice: buildLpBoardPreviewHtmlByDevice(previewHtml),
+          source: state.template && state.template.html ? state.template.html : "",
+          sourceByDevice: buildLpBoardSourceByDevice(),
+          previewFrame,
+          activeDevice: state.responsive.previewDevice,
+          preserveLiveFrame: Boolean(options.preserveLiveFrame),
+          onEditDevice: activateLpBoardDevice,
+          onCodeChange: updateLpBoardCode,
+          onSaveDevice: saveLpBoardResponsiveVersion,
+          onExport: handleLpBoardExport,
+          onFrameMounted(frame) {
+            setupPreviewEditing(frame);
+          },
+          onLegacy: openLegacyLpPreview
+        });
+      };
+
+      if (useLpBoard) {
+        renderLpBoard();
+        restoreEditorFocusSnapshot(editorFocusSnapshot);
+        copyStatus.textContent = "";
+        copyStatus.classList.remove("is-warning", "is-visible");
+        return;
+      }
+
       previewFrame.addEventListener("load", () => {
-        setupPreviewEditing();
+        setupPreviewEditing(previewFrame);
         if (previewScrollPosition) {
           restorePreviewScrollPosition(previewScrollPosition);
         }
         restoreEditorFocusSnapshot(editorFocusSnapshot);
       }, { once: true });
-      previewFrame.srcdoc = buildPreviewHtml();
+      previewFrame.srcdoc = previewHtml;
       restoreEditorFocusSnapshot(editorFocusSnapshot);
       copyStatus.textContent = "";
       copyStatus.classList.remove("is-warning", "is-visible");
@@ -3669,6 +4113,28 @@ ${buildFaqPreviewStylePackage({ includeResponsive: true, responsiveOptions: { in
       }, options.warning ? 5200 : 2500);
     }
 
+    function showFrameworkFeedback(message, options = {}) {
+      if (currentPage !== "conteudo" || currentEditorTab !== "template") {
+        return;
+      }
+
+      state.template.status = message;
+      const status = editor.querySelector(".template-editor__status");
+      if (status) {
+        status.textContent = message;
+        status.classList.toggle("is-warning", Boolean(options.warning));
+        status.classList.remove("is-success", "is-visible");
+        void status.offsetWidth;
+        status.classList.add("is-success", "is-visible");
+        window.clearTimeout(frameworkFeedbackTimer);
+        frameworkFeedbackTimer = window.setTimeout(() => status.classList.remove("is-success", "is-visible", "is-warning"), options.warning ? 5200 : 2800);
+      }
+
+      if (window.LpBoard?.isOpen?.()) {
+        window.LpBoard.showFeedback?.(message, options);
+      }
+    }
+
     function getCopyStatusMessage(copyMode, warnings) {
       const baseStatus = copyMode === "css" && currentPage === "conteudo"
         ? pageConfigs[currentPage].cssCopiedStatus
@@ -3737,10 +4203,61 @@ ${buildFaqPreviewStylePackage({ includeResponsive: true, responsiveOptions: { in
       copyStatus.classList.add("is-visible");
       triggerMicroInteraction("copy");
       showActionFeedback(getCopyStatusMessage(copyMode, warnings), button, { warning: warnings.length > 0 });
+      showFrameworkFeedback(getCopyStatusMessage(copyMode, warnings), { warning: warnings.length > 0, button });
       window.setTimeout(() => {
         copyStatus.textContent = "";
         copyStatus.classList.remove("is-warning", "is-visible");
       }, warnings.length ? 5600 : 2400);
+      return true;
+    }
+
+    function downloadGeneratedHtml(mode = "html", button) {
+      const exportMode = mode === "full" ? "full" : mode === "css" ? "css" : "html";
+      if (state.responsive.dirty && exportMode === "full") {
+        const shouldExport = window.confirm("Existe uma versão responsiva com alterações não salvas. Exportar agora não inclui esse rascunho. Exportar mesmo assim?");
+        if (!shouldExport) {
+          return;
+        }
+      }
+
+      const rawValue = buildOutputHtml(exportMode);
+      const value = exportMode === "full" || exportMode === "css" ? repairResponsiveCssOutput(rawValue) : rawValue;
+      const blockerPrefix = exportMode === "full" ? "HTML/CSS" : exportMode === "css" ? "CSS" : "HTML";
+      const blockers = collectHtmlLocalAssetBlockers(value, blockerPrefix);
+      if (blockers.length) {
+        showActionFeedback(getCopyBlockedStatusMessage(blockers), button, { warning: true });
+        return;
+      }
+
+      const fileName = exportMode === "full"
+        ? "WorkHC.html"
+        : exportMode === "css"
+          ? "WorkC.css"
+          : "WorkH.html";
+      const mimeType = exportMode === "css" ? "text/css;charset=utf-8" : "text/html;charset=utf-8";
+      const blob = new Blob([value], { type: mimeType });
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = fileName;
+      anchor.style.display = "none";
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      window.setTimeout(() => URL.revokeObjectURL(url), 0);
+
+      generatedHtml.value = value;
+      const label = exportMode === "full" ? "HTML/CSS" : exportMode.toUpperCase();
+      showActionFeedback(`${label} exportado como ${fileName}.`, button);
+    }
+
+    function handleLpBoardExport(mode, button) {
+      const value = String(mode || "html");
+      if (value.startsWith("download-")) {
+        downloadGeneratedHtml(value.replace("download-", ""), button);
+        return;
+      }
+      copyGeneratedHtml(value, button);
     }
 
     function insertSelectedTemplateLayout() {
@@ -3748,6 +4265,7 @@ ${buildFaqPreviewStylePackage({ includeResponsive: true, responsiveOptions: { in
       state.template.html = buildTemplateLayoutPackage(selectedLayout);
       const option = getTemplateLayoutOptions().find(([value]) => value === selectedLayout);
       state.template.status = `${option ? option[1] : "Layout"} inserido dentro da lp-container.`;
+      rememberActiveTemplateSnapshot();
       renderEditor(true);
     }
 
@@ -3778,6 +4296,7 @@ ${buildFaqPreviewStylePackage({ includeResponsive: true, responsiveOptions: { in
       window.setTimeout(() => {
         state.template.html = event.target.value;
         state.template.status = "";
+        rememberActiveTemplateSnapshot();
         updateTemplateCodeHighlight(event.target);
         scheduleTemplatePreviewUpdate(0);
       }, 0);
@@ -3799,6 +4318,7 @@ ${buildFaqPreviewStylePackage({ includeResponsive: true, responsiveOptions: { in
         if (templateField === "sourceLayout") {
           state.template.sourceLayout = event.target.value;
           state.template.status = "";
+          rememberActiveTemplateSnapshot();
           updateOutput();
           return;
         }
@@ -3806,6 +4326,7 @@ ${buildFaqPreviewStylePackage({ includeResponsive: true, responsiveOptions: { in
         if (templateField === "html") {
           state.template.html = event.target.value;
           state.template.status = "";
+          rememberActiveTemplateSnapshot();
           updateTemplateCodeHighlight(event.target);
           scheduleTemplatePreviewUpdate();
           return;
@@ -4375,6 +4896,11 @@ ${buildFaqPreviewStylePackage({ includeResponsive: true, responsiveOptions: { in
         return;
       }
 
+      if (action === "open-lp-board") {
+        openLpBoard();
+        return;
+      }
+
       if (action === "clear-template-html") {
         clearTemplateHtml();
         return;
@@ -4383,6 +4909,7 @@ ${buildFaqPreviewStylePackage({ includeResponsive: true, responsiveOptions: { in
       if (action === "save-template-html-cache") {
         if (saveTemplateHtmlCache()) {
           showActionFeedback("Conteudo da LP salvo neste navegador.", button);
+          showFrameworkFeedback("Conteúdo do FrameWork salvo neste navegador.", { button });
         }
         return;
       }
@@ -4390,6 +4917,7 @@ ${buildFaqPreviewStylePackage({ includeResponsive: true, responsiveOptions: { in
       if (action === "save-responsive") {
         if (saveResponsiveDraft()) {
           showActionFeedback("Versao responsiva salva.", button);
+          showFrameworkFeedback("Versão responsiva do FrameWork salva.", { button });
         }
         return;
       }
@@ -4842,6 +5370,9 @@ ${buildFaqPreviewStylePackage({ includeResponsive: true, responsiveOptions: { in
           return;
         }
         currentEditorTab = nextEditorTab;
+        if (currentEditorTab === "template") {
+          lpPreviewMode = "board";
+        }
         renderEditor();
       });
     });
@@ -4913,6 +5444,7 @@ ${buildFaqPreviewStylePackage({ includeResponsive: true, responsiveOptions: { in
       button.addEventListener("click", () => {
         if (saveResponsivePreviewVersion()) {
           showActionFeedback("Versao responsiva salva.", button);
+          showFrameworkFeedback("Versão responsiva do FrameWork salva.", { button });
         }
       });
     });

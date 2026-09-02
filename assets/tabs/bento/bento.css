@@ -1903,3 +1903,99 @@
   border-radius: 0 !important;
   object-fit: contain !important;
 }
+
+/* Mantem o preview fiel ao output em telas de celular. */
+@media (max-width: 560px) {
+  .ll-bento:is(.ll-bento--default-layout, [data-ll-bento-default-layout="true"]) .ll-bento__grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr) ) !important;
+    grid-template-areas: "hero hero" "summary rectangle" "use circle" "detail detail" !important;
+    grid-template-rows: minmax(235px, 66vw) minmax(118px, 34vw) minmax(118px, 34vw) minmax(132px, auto) !important;
+    gap: 8px !important;
+  }
+
+  .ll-bento:is(.ll-bento--default-layout, [data-ll-bento-default-layout="true"]) .ll-bento__grid > .ll-bento__expand--hero { grid-area: hero !important; min-height: 0 !important; }
+  .ll-bento:is(.ll-bento--default-layout, [data-ll-bento-default-layout="true"]) .ll-bento__grid > .ll-bento__card--wide { grid-area: summary !important; }
+  .ll-bento:is(.ll-bento--default-layout, [data-ll-bento-default-layout="true"]) .ll-bento__grid > .ll-bento__expand--image-rectangle,
+  .ll-bento:is(.ll-bento--default-layout, [data-ll-bento-default-layout="true"]) .ll-bento__grid > .ll-bento__expand--image-square { grid-area: rectangle !important; }
+  .ll-bento:is(.ll-bento--default-layout, [data-ll-bento-default-layout="true"]) .ll-bento__grid > .ll-bento__card--use { grid-area: use !important; }
+  .ll-bento:is(.ll-bento--default-layout, [data-ll-bento-default-layout="true"]) .ll-bento__grid > .ll-bento__expand--image-circle { grid-area: circle !important; width: min(100%, 132px) !important; height: min(100%, 132px) !important; aspect-ratio: 1 / 1 !important; align-self: center !important; justify-self: center !important; }
+  .ll-bento:is(.ll-bento--default-layout, [data-ll-bento-default-layout="true"]) .ll-bento__grid > .ll-bento__card--detail { grid-area: detail !important; }
+
+  .ll-bento:is(.ll-bento--default-layout, [data-ll-bento-default-layout="true"]) .ll-bento__card--hero { padding: 14px !important; min-height: 0 !important; overflow: hidden !important; }
+  .ll-bento:is(.ll-bento--default-layout, [data-ll-bento-default-layout="true"]) .ll-bento__card--hero .ll-bento__card-title { max-width: 9ch !important; font-size: clamp(2rem, 10.8vw, 2.8rem) !important; line-height: 0.9 !important; word-break: normal !important; overflow-wrap: break-word !important; white-space: normal !important; hyphens: none !important; }
+  .ll-bento:is(.ll-bento--default-layout, [data-ll-bento-default-layout="true"]) .ll-bento__card--wide,
+  .ll-bento:is(.ll-bento--default-layout, [data-ll-bento-default-layout="true"]) .ll-bento__card--use,
+  .ll-bento:is(.ll-bento--default-layout, [data-ll-bento-default-layout="true"]) .ll-bento__card--detail { min-height: 0 !important; overflow: hidden !important; padding: 12px !important; }
+  .ll-bento:is(.ll-bento--default-layout, [data-ll-bento-default-layout="true"]) .ll-bento__card--wide .ll-bento__stat { font-size: 2rem !important; line-height: 0.9 !important; }
+  .ll-bento:is(.ll-bento--default-layout, [data-ll-bento-default-layout="true"]) .ll-bento__card--wide .ll-bento__card-title,
+  .ll-bento:is(.ll-bento--default-layout, [data-ll-bento-default-layout="true"]) .ll-bento__card--use .ll-bento__card-title,
+  .ll-bento:is(.ll-bento--default-layout, [data-ll-bento-default-layout="true"]) .ll-bento__card--detail .ll-bento__card-title { font-size: 1.1rem !important; line-height: 0.96 !important; word-break: normal !important; overflow-wrap: break-word !important; white-space: normal !important; hyphens: none !important; }
+  .ll-bento:is(.ll-bento--default-layout, [data-ll-bento-default-layout="true"]) .ll-bento__card-text { display: -webkit-box !important; overflow: hidden !important; font-size: 0.68rem !important; line-height: 1.24 !important; -webkit-box-orient: vertical !important; -webkit-line-clamp: 2 !important; }
+}
+
+/* Keep the editor preview aligned with the exported mobile Bento grid. */
+@media (max-width: 560px) {
+  .ll-bento:is(.ll-bento--default-layout, [data-ll-bento-default-layout="true"]) .ll-bento__grid {
+    display: grid !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    grid-template-areas:
+      "hero hero"
+      "summary rectangle"
+      "use circle"
+      "detail detail" !important;
+    grid-template-rows: minmax(235px, 66vw) minmax(118px, 34vw) minmax(118px, 34vw) minmax(132px, auto) !important;
+    grid-auto-columns: minmax(0, 1fr) !important;
+    grid-auto-rows: auto !important;
+    grid-auto-flow: row !important;
+    gap: 8px !important;
+    align-content: start !important;
+    align-items: stretch !important;
+    justify-items: stretch !important;
+  }
+
+  .ll-bento:is(.ll-bento--default-layout, [data-ll-bento-default-layout="true"]) .ll-bento__grid > :is(
+    .ll-bento__expand--hero,
+    .ll-bento__card--wide,
+    .ll-bento__expand--image-rectangle,
+    .ll-bento__expand--image-square,
+    .ll-bento__card--use,
+    .ll-bento__expand--image-circle,
+    .ll-bento__card--detail
+  ) {
+    position: relative !important;
+    inset: auto !important;
+    top: auto !important;
+    right: auto !important;
+    bottom: auto !important;
+    left: auto !important;
+    transform: none !important;
+    grid-column: auto !important;
+    grid-row: auto !important;
+    grid-area: auto !important;
+    width: 100% !important;
+    height: 100% !important;
+    min-width: 0 !important;
+    min-height: 0 !important;
+    max-width: none !important;
+    max-height: none !important;
+    margin: 0 !important;
+    align-self: stretch !important;
+    justify-self: stretch !important;
+  }
+
+  .ll-bento:is(.ll-bento--default-layout, [data-ll-bento-default-layout="true"]) .ll-bento__grid > .ll-bento__expand--hero { grid-area: hero !important; }
+  .ll-bento:is(.ll-bento--default-layout, [data-ll-bento-default-layout="true"]) .ll-bento__grid > .ll-bento__card--wide { grid-area: summary !important; }
+  .ll-bento:is(.ll-bento--default-layout, [data-ll-bento-default-layout="true"]) .ll-bento__grid > :is(.ll-bento__expand--image-rectangle, .ll-bento__expand--image-square) { grid-area: rectangle !important; }
+  .ll-bento:is(.ll-bento--default-layout, [data-ll-bento-default-layout="true"]) .ll-bento__grid > .ll-bento__card--use { grid-area: use !important; }
+  .ll-bento:is(.ll-bento--default-layout, [data-ll-bento-default-layout="true"]) .ll-bento__grid > .ll-bento__expand--image-circle {
+    grid-area: circle !important;
+    width: min(100%, 132px) !important;
+    height: min(100%, 132px) !important;
+    aspect-ratio: 1 / 1 !important;
+    align-self: center !important;
+    justify-self: center !important;
+  }
+  .ll-bento:is(.ll-bento--default-layout, [data-ll-bento-default-layout="true"]) .ll-bento__grid > .ll-bento__card--detail { grid-area: detail !important; }
+}

@@ -4467,7 +4467,7 @@ ${containerHtml}`;
       return `
         <div class="editor-section-title">
           <div>
-            <h3>LP container</h3>
+            <h3>FrameWork</h3>
             <p>Monte o conteúdo que vai dentro de Detalhes do produto. A prévia mostra só o comportamento da <code>.lp-container</code>.</p>
           </div>
         </div>

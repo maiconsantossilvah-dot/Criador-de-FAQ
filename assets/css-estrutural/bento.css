@@ -1812,3 +1812,59 @@
   .ll-bento:is(.ll-bento--default-layout, [data-ll-bento-default-layout="true"]) .ll-bento__card-text { font-size: .58rem !important; }
   .ll-bento:is(.ll-bento--default-layout, [data-ll-bento-default-layout="true"]) .ll-bento__grid > .ll-bento__expand--image-circle { width: min(100%, 104px) !important; }
 }
+
+/* Final output authority: compact typography must use the whole card. */
+.ll-bento:is(.ll-bento--default-layout, [data-ll-bento-default-layout="true"]) :is(.ll-bento__card-title, .ll-bento__card-text) {
+  inline-size: 100% !important;
+  max-inline-size: none !important;
+  overflow-wrap: normal !important;
+  word-break: normal !important;
+  hyphens: none !important;
+}
+
+.ll-bento:is(.ll-bento--default-layout, [data-ll-bento-default-layout="true"]) .ll-bento__card--hero .ll-bento__card-title {
+  font-weight: 900 !important;
+}
+
+@container ll-bento (max-width: 920px) {
+  .ll-bento:is(.ll-bento--default-layout, [data-ll-bento-default-layout="true"]) .ll-bento__chip {
+    min-height: 18px !important;
+    padding: 3px 6px !important;
+    font-size: clamp(.5rem, 1.8cqw, .62rem) !important;
+    letter-spacing: 0 !important;
+  }
+}
+
+@container ll-bento (max-width: 500px) {
+  .ll-bento:is(.ll-bento--default-layout, [data-ll-bento-default-layout="true"]) .ll-bento__card--hero .ll-bento__card-title {
+    max-inline-size: 100% !important;
+    font-size: clamp(1.12rem, 5.2cqw, 1.46rem) !important;
+    line-height: 1 !important;
+    text-wrap: balance !important;
+  }
+
+  .ll-bento:is(.ll-bento--default-layout, [data-ll-bento-default-layout="true"]) .ll-bento__card--hero .ll-bento__card-text {
+    font-size: clamp(.62rem, 2.45cqw, .72rem) !important;
+    line-height: 1.28 !important;
+  }
+
+  .ll-bento:is(.ll-bento--default-layout, [data-ll-bento-default-layout="true"]) :is(.ll-bento__card--wide, .ll-bento__card--use, .ll-bento__card--detail) .ll-bento__card-title {
+    max-inline-size: 100% !important;
+    font-size: clamp(.78rem, 3cqw, .9rem) !important;
+    line-height: 1.08 !important;
+    text-wrap: pretty !important;
+  }
+
+  .ll-bento:is(.ll-bento--default-layout, [data-ll-bento-default-layout="true"]) .ll-bento__card-text {
+    font-size: clamp(.58rem, 2.15cqw, .68rem) !important;
+    line-height: 1.3 !important;
+    -webkit-line-clamp: 3 !important;
+  }
+
+  .ll-bento:is(.ll-bento--default-layout, [data-ll-bento-default-layout="true"]) .ll-bento__chip {
+    min-height: 16px !important;
+    padding: 2px 5px !important;
+    font-size: clamp(.43rem, 1.9cqw, .54rem) !important;
+    letter-spacing: 0 !important;
+  }
+}
