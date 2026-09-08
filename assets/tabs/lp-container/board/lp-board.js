@@ -817,6 +817,10 @@
     state.scene.innerHTML = state.artboards.map((artboard) => {
       const isInline = !state.editorOpen && artboard.key === state.inlineKey;
       const artboardHtml = state.previewHtmlByDevice[artboard.key] || state.previewHtml;
+      // Desktop is the shared/base version, so it has nothing responsive to
+      // save. Keep the action only where a separate breakpoint can exist.
+      const saveButton = artboard.key === "desktop" ? "" : `
+          <button type="button" class="ll-board__save-frame" data-board-save="${artboard.key}" aria-label="Salvar versão ${escapeHtml(artboard.label)}">Salvar</button>`;
       const viewport = isInline
         ? `<div class="ll-board__artboard-viewport" data-board-live-mount="${artboard.key}"></div>`
         : `<div class="ll-board__artboard-viewport"><iframe title="Prévia interativa ${escapeHtml(artboard.label)}" data-ll-board-active-device="${escapeHtml(artboard.key)}" data-ll-board-document-key="${escapeHtml(artboard.key)}" srcdoc="${escapeHtml(buildArtboardDocument(artboardHtml, artboard.key))}" style="width:${artboard.width}px;height:${artboard.height}px"></iframe></div>`;
@@ -826,7 +830,7 @@
           <strong>${escapeHtml(artboard.label)}</strong><span>${escapeHtml(artboard.detail)}</span>
           <button type="button" class="ll-board__open-frame" data-board-open="${artboard.key}" aria-label="Editar ${escapeHtml(artboard.label)}">Editar</button>
           <button type="button" class="ll-board__code-frame" data-board-code-for="${artboard.key}" aria-label="Ver código de ${escapeHtml(artboard.label)}">Codigo</button>
-          <button type="button" class="ll-board__save-frame" data-board-save="${artboard.key}" aria-label="Salvar versão ${escapeHtml(artboard.label)}">Salvar</button>
+          ${saveButton}
         </header>
         ${viewport}
         <button type="button" class="ll-board__artboard-open" data-board-open="${artboard.key}">Editar ${escapeHtml(artboard.label)}</button>
