@@ -27,8 +27,9 @@
 .ll-board__artboard-resize::before { content: ""; display: block; width: 22px; height: 3px; margin: 6px auto; border-radius: 999px; background: currentColor; opacity: .82; }
 .ll-board__artboard-resize:hover { border-color: var(--ll-window-active); background: color-mix(in srgb, var(--ll-window-active) 20%, var(--ll-window-header)); }
 .ll-board__menu { position: fixed; z-index: 9; top: 16px; right: 18px; display: grid; max-height: calc(100vh - 16px); justify-items: end; gap: 8px; }
-.ll-board__menu-toggle { width: 42px; height: 42px; display: grid; place-content: center; gap: 4px; border: 1px solid var(--ll-board-line); border-radius: 6px; background: var(--ll-board-panel); color: var(--ll-board-contrast); box-shadow: 0 12px 32px rgba(0,0,0,.25); cursor: pointer; }
+.ll-board__menu-toggle, .ll-board__home { width: 42px; height: 42px; display: grid; place-content: center; gap: 4px; border: 1px solid var(--ll-board-line); border-radius: 6px; background: var(--ll-board-panel); color: var(--ll-board-contrast); box-shadow: 0 12px 32px rgba(0,0,0,.25); cursor: pointer; }
 .ll-board__menu-toggle span { width: 18px; height: 2px; background: currentColor; }
+.ll-board__home svg { width: 20px; height: 20px; }
 .ll-board__menu-panel { width: min(330px, calc(100vw - 32px)); max-height: calc(100vh - 74px); display: grid; gap: 8px; padding: 10px; overflow-y: auto; overscroll-behavior: contain; border: 1px solid var(--ll-board-line); border-radius: 8px; background: color-mix(in srgb, var(--ll-board-secondary) 92%, #000000); color: var(--ll-board-contrast); box-shadow: 0 18px 54px rgba(0,0,0,.42); backdrop-filter: blur(12px); }
 .ll-board__menu-panel[hidden] { display: none !important; }
 .ll-board__menu-section { display: grid; gap: 7px; padding-bottom: 8px; border-bottom: 1px solid color-mix(in srgb, var(--ll-board-contrast) 13%, transparent); }

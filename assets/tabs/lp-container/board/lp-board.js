@@ -1009,6 +1009,7 @@
       <div class="ll-board__interaction-shield" data-board-interaction-shield aria-hidden="true"></div>
       <div class="ll-board__menu">
         <button class="ll-board__menu-toggle" type="button" data-board-action="menu" aria-expanded="false" aria-label="Abrir menu do board" title="Menu do board"><span></span><span></span><span></span></button>
+        <button class="ll-board__home" type="button" data-board-action="hub" aria-label="Voltar para o Hub" title="Voltar para o Hub"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"/></svg></button>
         <aside class="ll-board__menu-panel" data-board-menu-panel hidden aria-label="Menu do board">
           <div class="ll-board__menu-section ll-board__menu-view"><button type="button" data-board-action="fit" title="Ajustar frames (Shift+1)">Ajustar</button><div class="ll-board__zoom"><button type="button" data-board-action="zoom-out" title="Diminuir zoom (-)">-</button><output data-board-zoom-output>40%</output><button type="button" data-board-action="zoom-in" title="Aumentar zoom (+)">+</button></div></div>
           <div class="ll-board__menu-section ll-board__menu-actions"><button type="button" data-board-action="code" title="Mostrar código geral (Ctrl+Alt+C)">Codigo geral</button><button type="button" data-board-action="export" title="Opções de exportação (Ctrl+Shift+E)">Exportar</button><button type="button" data-board-action="legacy" title="Abrir modo legado">Legado</button></div>
@@ -1158,6 +1159,10 @@
         const isOpen = panel?.hidden === false;
         if (panel) panel.hidden = isOpen;
         event.target.closest("[data-board-action]")?.setAttribute("aria-expanded", String(!isOpen));
+        return;
+      }
+      if (action === "hub" && typeof state.callbacks.onHub === "function") {
+        state.callbacks.onHub();
         return;
       }
       if (action === "fit") fitBoard();

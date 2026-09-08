@@ -2781,7 +2781,7 @@ ${itemMarkup}
 
     function returnDashboardHome() {
       if (!returnToBaseVersion()) {
-        return;
+        return false;
       }
 
       currentPage = "conteudo";
@@ -2799,6 +2799,19 @@ ${itemMarkup}
         }
       });
       renderEditor();
+      return true;
+    }
+
+    function returnToHubFromLpBoard() {
+      if (!returnDashboardHome()) {
+        return false;
+      }
+
+      if (window.LpBoard && typeof window.LpBoard.close === "function") {
+        window.LpBoard.close();
+      }
+
+      return true;
     }
 
     function applyPage(page) {
@@ -3671,6 +3684,7 @@ ${buildFaqPreviewStylePackage({ includeResponsive: true, responsiveOptions: { in
         onCodeChange: updateLpBoardCode,
         onSaveDevice: saveLpBoardResponsiveVersion,
         onExport: handleLpBoardExport,
+        onHub: returnToHubFromLpBoard,
         onFrameMounted(frame) {
           setupPreviewEditing(frame);
         },
@@ -3940,6 +3954,7 @@ ${buildFaqPreviewStylePackage({ includeResponsive: true, responsiveOptions: { in
           onCodeChange: updateLpBoardCode,
           onSaveDevice: saveLpBoardResponsiveVersion,
           onExport: handleLpBoardExport,
+          onHub: returnToHubFromLpBoard,
           onFrameMounted(frame) {
             setupPreviewEditing(frame);
           },
