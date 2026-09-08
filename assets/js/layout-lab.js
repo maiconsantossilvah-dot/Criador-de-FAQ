@@ -1861,9 +1861,44 @@ ${htmlParts.markup}`));
         if ((hasLabAttributes || hasLabTooltip) && element.style) {
           element.style.removeProperty("cursor");
         }
+
+        // These classes only exist while a frame is being edited. They are
+        // useful in the Lab, but have no meaning in a published LP.
+        if (element.classList) {
+          element.classList.remove("ll-template-faq-summary", "ll-template-faq-custom-colors");
+          if (!element.getAttribute("class")) {
+            element.removeAttribute("class");
+          }
+        }
+
+        if (element.style) {
+          [
+            "--ll-template-faq-summary-bg",
+            "--ll-template-faq-summary-hover-bg",
+            "--ll-template-faq-question-color",
+            "--ll-template-faq-answer-color",
+            "--ll-bento-resize-max-width",
+            "--ll-bento-resize-max-height",
+            "--ll-bento-circle-size"
+          ].forEach((property) => element.style.removeProperty(property));
+          if (!element.getAttribute("style")) {
+            element.removeAttribute("style");
+          }
+        }
       });
 
-      return wrapper.innerHTML;
+      // Responsive variants need a small wrapper and selectors to work after
+      // export. Give those public, neutral names instead of leaking the Lab
+      // implementation names into copied/downloaded code.
+      return wrapper.innerHTML
+        .replace(/\bdata-layout-responsive-text-version\b/g, "data-pdp-responsive-text-version")
+        .replace(/\bdata-layout-responsive-text\b/g, "data-pdp-responsive-text")
+        .replace(/\bdata-layout-responsive-node\b/g, "data-pdp-responsive-node")
+        .replace(/\bll-responsive-version--/g, "pdp-responsive-version--")
+        .replace(/\bll-responsive-text--/g, "pdp-responsive-text--")
+        .replace(/\bll-responsive-text\b/g, "pdp-responsive-text")
+        .replace(/\bll-responsive-root\b/g, "pdp-responsive-root")
+        .replace(/\bll-responsive-output\b/g, "pdp-responsive-output");
     }
 
     function renderResponsiveEditor() {

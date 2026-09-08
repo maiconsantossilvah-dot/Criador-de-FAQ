@@ -203,7 +203,9 @@
       }
 
       const parsedDocument = new DOMParser().parseFromString(rawValue, "text/html");
-      const responsiveOutput = parsedDocument.querySelector(".ll-responsive-output");
+      // Accept older copies as well as the neutral public wrapper used by
+      // current exports, so a saved output can be brought back to the Lab.
+      const responsiveOutput = parsedDocument.querySelector(".ll-responsive-output, .pdp-responsive-output");
       const container = parsedDocument.querySelector(".lp-container, .lp_container");
       if (!container) {
         return rawValue;
@@ -212,15 +214,21 @@
       // O resultado de “Copiar HTML/CSS” deixa os estilos antes do markup.
       // Ao recolar esse resultado no FrameWork, mantenha esses estilos e a
       // casca responsiva; antes eles eram descartados junto com o container.
-      const externalStyles = Array.from(parsedDocument.querySelectorAll("style"))
-        .filter((style) => !container.contains(style))
-        .map((style) => style.outerHTML.trim())
+      const externalResources = Array.from(parsedDocument.querySelectorAll("style, link"))
+        .filter((element) => {
+          if (container.contains(element)) {
+            return false;
+          }
+
+          return element.tagName === "STYLE" || isTemplateStylesheetLink(element);
+        })
+        .map((element) => element.outerHTML.trim())
         .filter(Boolean);
       if (responsiveOutput) {
-        return [...externalStyles, responsiveOutput.outerHTML.trim()].filter(Boolean).join("\n\n");
+        return [...externalResources, responsiveOutput.outerHTML.trim()].filter(Boolean).join("\n\n");
       }
 
-      return [...externalStyles, container.innerHTML.trim()].filter(Boolean).join("\n\n");
+      return [...externalResources, container.innerHTML.trim()].filter(Boolean).join("\n\n");
     }
 
     function repairLegacyOptionStateCss(value) {
@@ -273,9 +281,47 @@
         .join("\n\n");
     }
 
+    function isTemplateStylesheetLink(element) {
+      if (!element || element.tagName !== "LINK") {
+        return false;
+      }
+
+      const relations = String(element.getAttribute("rel") || "")
+        .toLowerCase()
+        .split(/\s+/)
+        .filter(Boolean);
+      return relations.includes("stylesheet") && Boolean(String(element.getAttribute("href") || "").trim());
+    }
+
+    function extractTemplateStylesheetLinks(value = state.template.html) {
+      const rawValue = String(value || "").trim();
+      if (!rawValue || !/<link\b/i.test(rawValue)) {
+        return "";
+      }
+
+      const parsedDocument = new DOMParser().parseFromString(`<div data-ll-stylesheet-root>${rawValue}</div>`, "text/html");
+      const wrapper = parsedDocument.querySelector("[data-ll-stylesheet-root]");
+      if (!wrapper) {
+        return "";
+      }
+
+      const seen = new Set();
+      return Array.from(wrapper.querySelectorAll("link"))
+        .filter(isTemplateStylesheetLink)
+        .map((element) => element.outerHTML.replace(/\s+/g, " ").trim())
+        .filter((link) => {
+          if (!link || seen.has(link)) {
+            return false;
+          }
+          seen.add(link);
+          return true;
+        })
+        .join("\n");
+    }
+
     function stripTemplateEmbeddedStyles(value) {
       const rawValue = String(value || "").trim();
-      if (!rawValue || !/<style\b/i.test(rawValue)) {
+      if (!rawValue || (!/<style\b/i.test(rawValue) && !/<link\b/i.test(rawValue))) {
         return rawValue;
       }
 
@@ -286,6 +332,11 @@
       }
 
       wrapper.querySelectorAll("style").forEach((element) => element.remove());
+      wrapper.querySelectorAll("link").forEach((element) => {
+        if (isTemplateStylesheetLink(element)) {
+          element.remove();
+        }
+      });
       return wrapper.innerHTML.trim();
     }
 
@@ -766,7 +817,7 @@ ${rules.join("\n")}
         preservePreviewFaqState: options.includeLabAttrs === true
       });
       const innerHtml = content || "";
-      const isResponsiveOutput = /class\s*=\s*["'][^"']*\bll-responsive-output\b/i.test(innerHtml);
+      const isResponsiveOutput = /class\s*=\s*["'][^"']*\b(?:ll|pdp)-responsive-output\b/i.test(innerHtml);
       if (isResponsiveOutput) {
         return innerHtml;
       }
@@ -779,6 +830,7 @@ ${innerHtml}
       const templateStyle = typeof buildTabStyleWithClass === "function"
         ? buildTabStyleWithClass("template", buildTemplateStyle)
         : buildTemplateStyle();
+      const stylesheetLinks = extractTemplateStylesheetLinks(state.template.html);
 
       return `<!doctype html>
 <html lang="pt-BR">
@@ -786,6 +838,7 @@ ${innerHtml}
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   ${buildLpContainerCss(true)}
+  ${stylesheetLinks}
   ${buildTemplateEmbeddedStyle(state.template.html, { previewMarker: true })}
   ${templateStyle}
 </head>
@@ -797,6 +850,7 @@ ${buildLpContainerHtml(state.template.html, { includeLabAttrs: true })}
 
     function buildTemplateOutputHtml(copyMode = "html") {
       const containerHtml = buildLpContainerHtml();
+      const stylesheetLinks = extractTemplateStylesheetLinks();
 
       if (copyMode === "full") {
         const templateStyle = typeof buildTabStyleWithClass === "function"
@@ -804,14 +858,14 @@ ${buildLpContainerHtml(state.template.html, { includeLabAttrs: true })}
           : buildTemplateStyle();
         const embeddedStyle = buildTemplateEmbeddedStyle();
 
-        return `${[embeddedStyle, templateStyle].filter(Boolean).join("\n\n")}
+        return `${[stylesheetLinks, embeddedStyle, templateStyle].filter(Boolean).join("\n\n")}
 
 <!-- HTML DO LAYOUT -->
 
 ${containerHtml}`;
       }
 
-      return containerHtml;
+      return [stylesheetLinks, containerHtml].filter(Boolean).join("\n\n");
     }
 
     function getPreviewDocument(frame = previewFrame) {
@@ -2237,7 +2291,14 @@ ${containerHtml}`;
         preservedStyle.textContent = embeddedCss;
         clone.insertBefore(preservedStyle, clone.firstChild);
       }
-      const nextHtml = clone.innerHTML.trim();
+      // Stylesheet links are moved to the preview document head so the
+      // browser applies them correctly. Keep those original links when an
+      // edit serializes the frame back into the template, otherwise one edit
+      // would silently make a later preview/export lose its external CSS.
+      const preservedStylesheetLinks = extractTemplateStylesheetLinks(state.template.html);
+      const nextHtml = [preservedStylesheetLinks, clone.innerHTML.trim()]
+        .filter(Boolean)
+        .join("\n\n");
       // `container` can come from any live artboard. Resolve its owning
       // iframe first, otherwise an edit in one responsive frame may be saved
       // against whichever frame happened to be active most recently.
