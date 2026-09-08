@@ -726,15 +726,6 @@ ${frameCss}
   font-family: Arial, sans-serif;
 }
 
-.lp-container *,
-.lp-container *::before,
-.lp-container *::after,
-.lp_container *,
-.lp_container *::before,
-.lp_container *::after {
-  box-sizing: border-box;
-}
-
 .lp-container img,
 .lp-container video,
 .lp-container iframe,
