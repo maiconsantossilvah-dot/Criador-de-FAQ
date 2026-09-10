@@ -5122,16 +5122,30 @@ ${containerHtml}`;
           return `${cardControlSelector}${stateSelector} ${combinator} ${cardSelector}`;
         };
 
-        // A class shared by option cards needs one selector per paired
-        // control/card. A generic :has(input:not(:checked)) selector can be
-        // overridden by a layout's per-card state rules and make only part of
-        // the group update.
+        // When the person chooses a shared class, emit one shared rule for
+        // the whole group. The old behavior expanded the same edit into one
+        // selector per card (care, fragrance, application...), which made the
+        // exported CSS needlessly long and, worse, made a class edit look like
+        // individual card edits. Keep the paired selector only as a fallback
+        // for layouts whose controls do not share the same structure.
         if (targetSelector) {
           try {
-            const matchingCards = Array.from(getTemplateOptionRoot(element)?.querySelectorAll(targetSelector) || [])
-              .filter((candidate) => !isTemplateOptionDot(candidate) && isTemplateOptionCard(candidate, getTemplateOptionRoot(element)));
+            const optionRoot = getTemplateOptionRoot(element);
+            const matchingCards = Array.from(optionRoot?.querySelectorAll(targetSelector) || [])
+              .filter((candidate) => !isTemplateOptionDot(candidate) && isTemplateOptionCard(candidate, optionRoot));
+            const sharedNestedControls = matchingCards.map((card) => getTemplateOptionStateControl(card));
+            const supportsSharedNestedSelector = matchingCards.length > 0
+              && sharedNestedControls.every((cardControl, index) => {
+                return cardControl
+                  && matchingCards[index].contains(cardControl)
+                  && getTemplateOptionControlSelector(cardControl, { shared: true }) === controlSelector;
+              });
+            if (supportsSharedNestedSelector) {
+              return `${targetSelector}:has(${controlSelector}${stateSelector})`;
+            }
+
             const pairedSelectors = matchingCards
-              .map((card) => buildCardStateSelector(card, getTemplateOptionStateControl(card)))
+              .map((card, index) => buildCardStateSelector(card, sharedNestedControls[index]))
               .filter(Boolean);
             if (pairedSelectors.length) {
               return pairedSelectors.join(", ");
