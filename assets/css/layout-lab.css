@@ -3467,6 +3467,28 @@
       font-size: 12px;
     }
 
+    .preview-edit-popover__option-save {
+      color: #fb923c;
+      border: 1px solid #f97316;
+      background: transparent;
+      box-shadow: none;
+    }
+
+    .preview-edit-popover__option-save:hover {
+      color: #ffffff;
+      border-color: #f97316;
+      background: #f97316;
+      box-shadow: 0 8px 18px rgba(249, 115, 22, 0.22);
+    }
+
+    .preview-edit-popover__option-save.is-saved,
+    .preview-edit-popover__option-save.is-saved:hover {
+      color: #ffffff;
+      border-color: #16a34a;
+      background: #16a34a;
+      box-shadow: 0 8px 18px rgba(22, 163, 74, 0.22);
+    }
+
     .responsive-editor,
     .preset-panel {
       flex: 0 0 auto;

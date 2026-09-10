@@ -676,10 +676,205 @@
     window.queueMicrotask(notify);
   }
 
+  function getBoardSourceCandidates(element, root) {
+    const nodes = [];
+    let current = element?.nodeType === 1 ? element : element?.parentElement;
+    while (current && root?.contains(current)) {
+      nodes.push(current);
+      if (current === root) break;
+      current = current.parentElement;
+    }
+
+    const candidates = [];
+    const seen = new Set();
+    const add = (type, value) => {
+      const normalized = String(value || "").trim();
+      const key = `${type}:${normalized}`;
+      if (!normalized || seen.has(key)) return;
+      seen.add(key);
+      candidates.push({ type, value: normalized });
+    };
+
+    // A section wrapper is the most useful destination for images, text and
+    // controls inside it. Then fall back to the exact node that was clicked.
+    nodes.forEach((node) => Array.from(node.classList || [])
+      .filter((className) => /^(?:section|sessao|sessão)[-_]\d+$/i.test(className))
+      .forEach((className) => add("class", className)));
+    nodes.forEach((node) => add("id", node.id));
+    nodes.forEach((node) => Array.from(node.classList || [])
+      .filter((className) => !/^(?:ll-|preview-|codex-)/i.test(className))
+      .forEach((className) => add("class", className)));
+    return candidates;
+  }
+
+  function findBoardSourceTag(source, candidate) {
+    const value = String(candidate?.value || "").trim();
+    if (!value) return null;
+    const tagPattern = /<[A-Za-z][^<>]*>/g;
+    let tagMatch = tagPattern.exec(source);
+    while (tagMatch) {
+      const tag = tagMatch[0];
+      const attribute = candidate.type === "id" ? "id" : "class";
+      const attributeMatch = tag.match(new RegExp(`\\b${attribute}\\s*=\\s*(?:\"([^\"]*)\"|'([^']*)'|([^\\s>]+))`, "i"));
+      const attributeValue = attributeMatch
+        ? (attributeMatch[1] ?? attributeMatch[2] ?? attributeMatch[3] ?? "")
+        : "";
+      const matches = candidate.type === "id"
+        ? attributeValue === value
+        : attributeValue.split(/\s+/).includes(value);
+      if (matches) {
+        return { start: tagMatch.index, end: tagMatch.index + tag.length };
+      }
+      tagMatch = tagPattern.exec(source);
+    }
+    return null;
+  }
+
+  function revealBoardSourceForCandidates(key, candidates) {
+    const source = String(getCodeSource(key) || "");
+    const match = Array.from(candidates || [])
+      .map((candidate) => findBoardSourceTag(source, candidate))
+      .find(Boolean);
+    if (!match) return false;
+
+    const isDesktop = key === "desktop";
+    if (isDesktop) {
+      openGeneralCode();
+    } else {
+      openResponsiveCode(key, false);
+    }
+    const textarea = isDesktop
+      ? state.code
+      : getResponsiveCodePanel(key)?.querySelector("[data-board-code]");
+    if (!textarea) return false;
+    const lineNumber = source.slice(0, match.start).split("\n").length - 1;
+    const lineHeight = Number.parseFloat(window.getComputedStyle(textarea).lineHeight) || 18;
+    try {
+      textarea.focus({ preventScroll: true });
+    } catch (_) {
+      textarea.focus();
+    }
+    textarea.setSelectionRange(match.start, match.end);
+    textarea.scrollTop = Math.max(0, lineNumber * lineHeight - textarea.clientHeight * 0.32);
+    textarea.scrollLeft = 0;
+    syncCodeHighlight(textarea);
+    updateCodeStatus(textarea);
+    return true;
+  }
+
+  function revealBoardSourceForFrameElement(key, element, root) {
+    return revealBoardSourceForCandidates(key, getBoardSourceCandidates(element, root));
+  }
+
+  function attachBoardSourceNavigator(frame) {
+    const frameDocument = frame?.contentDocument;
+    const root = frameDocument?.querySelector(".lp-container, .lp_container") || frameDocument?.body;
+    const key = frame?.dataset?.llBoardDocumentKey || frame?.dataset?.llBoardActiveDevice || "";
+    if (!frameDocument || !root || !key || frameDocument.documentElement.dataset.llBoardSourceNavigator === "true") return;
+    frameDocument.documentElement.dataset.llBoardSourceNavigator = "true";
+    frameDocument.addEventListener("click", (event) => {
+      if (event.button && event.button !== 0) return;
+      const target = event.target?.nodeType === 1 ? event.target : event.target?.parentElement;
+      if (!target || !root.contains(target)) return;
+      // The template editor also listens inside the iframe. Marking the same
+      // event keeps it from focusing its hidden, general textarea afterwards.
+      event.__llBoardSourceHandled = true;
+      revealBoardSourceForFrameElement(key, target, root);
+    }, true);
+  }
+
+  function buildBoardFrameBridge(key, documentToken = "") {
+    // Kept as a small, independent bridge so navigation works even when a
+    // preview has no editor helpers mounted in its document.
+    return `<script>
+      (function () {
+        document.documentElement.dataset.llBoardDocumentToken = ${JSON.stringify(documentToken)};
+        var key = ${JSON.stringify(key)};
+        var space = false;
+        var panPointer = null;
+        var lastX = 0;
+        var lastY = 0;
+        function send(type, event, dx, dy, extra) {
+          var message = { type: type, key: key, dx: dx || 0, dy: dy || 0, pointerId: event && event.pointerId };
+          if (extra) Object.keys(extra).forEach(function (name) { message[name] = extra[name]; });
+          parent.postMessage(message, "*");
+        }
+        function getSourceAnchors(target) {
+          var root = document.querySelector(".lp-container, .lp_container") || document.body;
+          var node = target && target.nodeType === 1 ? target : target && target.parentElement;
+          var nodes = [], items = [], seen = {};
+          function add(type, value) {
+            value = String(value || "").trim();
+            var id = type + ":" + value;
+            if (value && !seen[id]) { seen[id] = true; items.push({ type: type, value: value }); }
+          }
+          while (node && root.contains(node)) { nodes.push(node); if (node === root) break; node = node.parentElement; }
+          nodes.forEach(function (item) {
+            Array.prototype.slice.call(item.classList || []).filter(function (name) { return /^(?:section|sessao|sessão)[-_][0-9]+$/i.test(name); }).forEach(function (name) { add("class", name); });
+          });
+          nodes.forEach(function (item) { add("id", item.id); });
+          nodes.forEach(function (item) {
+            Array.prototype.slice.call(item.classList || []).filter(function (name) { return !/^(?:ll-|preview-|codex-)/i.test(name); }).forEach(function (name) { add("class", name); });
+          });
+          return items.slice(0, 32);
+        }
+        function getManagedHeadNodes(sourceDocument) { return Array.prototype.slice.call(sourceDocument.head.querySelectorAll("style,link[rel~='stylesheet']")); }
+        function syncStyles(nextDocument) {
+          var current = getManagedHeadNodes(document), next = getManagedHeadNodes(nextDocument);
+          var signature = function (nodes) { return nodes.map(function (node) { return node.outerHTML; }).join("\\n"); };
+          if (signature(current) === signature(next)) return;
+          current.forEach(function (node) { node.remove(); });
+          next.forEach(function (node) { document.head.appendChild(document.importNode(node, true)); });
+        }
+        function syncDocument(nextHtml) {
+          var parser = new DOMParser(), nextDocument = parser.parseFromString(nextHtml, "text/html");
+          var scrollX = window.scrollX, scrollY = window.scrollY;
+          var nodes = Array.prototype.slice.call(nextDocument.body.childNodes).map(function (node) { return document.importNode(node, true); });
+          syncStyles(nextDocument); document.body.replaceChildren.apply(document.body, nodes); window.scrollTo(scrollX, scrollY);
+          send("layout-lab:board-frame-updated");
+        }
+        window.addEventListener("message", function (event) {
+          var data = event.data || {};
+          if (data.type === "layout-lab:board-space") { space = !!data.down; return; }
+          if (data.type === "layout-lab:board-frame-update" && typeof data.html === "string") syncDocument(data.html);
+        });
+        window.addEventListener("keydown", function (event) { if (event.code === "Space") { space = true; event.preventDefault(); } }, true);
+        window.addEventListener("keyup", function (event) { if (event.code === "Space") space = false; }, true);
+        window.addEventListener("pointerdown", function (event) {
+          if (event.button === 1 || space) {
+            panPointer = event.pointerId; lastX = event.clientX; lastY = event.clientY;
+            event.preventDefault(); event.stopImmediatePropagation();
+            event.target.setPointerCapture && event.target.setPointerCapture(event.pointerId);
+            send("layout-lab:board-frame-pan-start", event); return;
+          }
+          if (event.ctrlKey && event.shiftKey) {
+            send("layout-lab:board-frame-source-select", event, 0, 0, { anchors: getSourceAnchors(event.target) });
+            event.preventDefault(); event.stopImmediatePropagation(); return;
+          }
+          send("layout-lab:board-frame-activate", event);
+        }, true);
+        window.addEventListener("pointermove", function (event) {
+          if (event.pointerId !== panPointer) return;
+          var dx = event.clientX - lastX, dy = event.clientY - lastY;
+          lastX = event.clientX; lastY = event.clientY; event.preventDefault(); send("layout-lab:board-frame-pan-move", event, dx, dy);
+        }, true);
+        function end(event) { if (event.pointerId !== panPointer) return; send("layout-lab:board-frame-pan-end", event); panPointer = null; }
+        window.addEventListener("pointerup", end, true);
+        window.addEventListener("pointercancel", end, true);
+        window.addEventListener("wheel", function (event) {
+          if (!event.ctrlKey && !event.metaKey) return;
+          event.preventDefault(); parent.postMessage({ type: "layout-lab:board-frame-zoom", key: key, deltaY: event.deltaY }, "*");
+        }, { capture: true, passive: false });
+      })();
+    <\/script>`;
+    return `<script>(function(){document.documentElement.dataset.llBoardDocumentToken=${JSON.stringify(documentToken)};var key=${JSON.stringify(key)},space=false,panPointer=null,lastX=0,lastY=0;function send(type,event,dx,dy,extra){var message={type:type,key:key,dx:dx||0,dy:dy||0,pointerId:event&&event.pointerId};if(extra){Object.keys(extra).forEach(function(name){message[name]=extra[name]})}parent.postMessage(message,"*")}function getSourceAnchors(target){var root=document.querySelector(".lp-container,.lp_container")||document.body,node=target&&target.nodeType===1?target:target&&target.parentElement,nodes=[],items=[],seen={};function add(type,value){value=String(value||"").trim();var id=type+":"+value;if(value&&!seen[id]){seen[id]=true;items.push({type:type,value:value})}}while(node&&root.contains(node)){nodes.push(node);if(node===root)break;node=node.parentElement}nodes.forEach(function(item){Array.prototype.slice.call(item.classList||[]).filter(function(name){return /^(?:section|sessao|sessão)[-_][0-9]+$/i.test(name)}).forEach(function(name){add("class",name)})});nodes.forEach(function(item){add("id",item.id)});nodes.forEach(function(item){Array.prototype.slice.call(item.classList||[]).filter(function(name){return !/^(?:ll-|preview-|codex-)/i.test(name)}).forEach(function(name){add("class",name)})});return items.slice(0,32)}function getManagedHeadNodes(sourceDocument){return Array.prototype.slice.call(sourceDocument.head.querySelectorAll("style,link[rel~='stylesheet']"))}function syncStyles(nextDocument){var current=getManagedHeadNodes(document),next=getManagedHeadNodes(nextDocument),signature=function(nodes){return nodes.map(function(node){return node.outerHTML}).join("\\n")};if(signature(current)===signature(next))return;current.forEach(function(node){node.remove()});next.forEach(function(node){document.head.appendChild(document.importNode(node,true))})}function syncDocument(nextHtml){var parser=new DOMParser(),nextDocument=parser.parseFromString(nextHtml,"text/html"),scrollX=window.scrollX,scrollY=window.scrollY,nodes=Array.prototype.slice.call(nextDocument.body.childNodes).map(function(node){return document.importNode(node,true)});syncStyles(nextDocument);document.body.replaceChildren.apply(document.body,nodes);window.scrollTo(scrollX,scrollY);send("layout-lab:board-frame-updated")}window.addEventListener("message",function(event){var data=event.data||{};if(data.type==="layout-lab:board-space"){space=!!data.down;return}if(data.type==="layout-lab:board-frame-update"&&typeof data.html==="string")syncDocument(data.html)});window.addEventListener("keydown",function(event){if(event.code==="Space"){space=true;event.preventDefault()}},true);window.addEventListener("keyup",function(event){if(event.code==="Space")space=false},true);window.addEventListener("pointerdown",function(event){if(event.button===1||space){panPointer=event.pointerId;lastX=event.clientX;lastY=event.clientY;event.preventDefault();event.stopImmediatePropagation();event.target.setPointerCapture&&event.target.setPointerCapture(event.pointerId);send("layout-lab:board-frame-pan-start",event);return}var anchors=getSourceAnchors(event.target);if(anchors.length)send("layout-lab:board-frame-source-select",event,0,0,{anchors:anchors});send("layout-lab:board-frame-activate",event)},true);window.addEventListener("pointermove",function(event){if(event.pointerId!==panPointer)return;var dx=event.clientX-lastX,dy=event.clientY-lastY;lastX=event.clientX;lastY=event.clientY;event.preventDefault();send("layout-lab:board-frame-pan-move",event,dx,dy)},true);function end(event){if(event.pointerId!==panPointer)return;send("layout-lab:board-frame-pan-end",event);panPointer=null}window.addEventListener("pointerup",end,true);window.addEventListener("pointercancel",end,true);window.addEventListener("wheel",function(event){if(!event.ctrlKey&&!event.metaKey)return;event.preventDefault();parent.postMessage({type:"layout-lab:board-frame-zoom",key:key,deltaY:event.deltaY},"*")},{capture:true,passive:false})})();<\/script>`;
+  }
+
   function buildArtboardDocument(html, key, documentToken = "") {
     const bridge = `<script>(function(){document.documentElement.dataset.llBoardDocumentToken=${JSON.stringify(documentToken)};var key=${JSON.stringify(key)},space=false,panPointer=null,lastX=0,lastY=0;function send(type,event,dx,dy){parent.postMessage({type:type,key:key,dx:dx||0,dy:dy||0,pointerId:event&&event.pointerId},"*")}function getManagedHeadNodes(sourceDocument){return Array.prototype.slice.call(sourceDocument.head.querySelectorAll("style,link[rel~='stylesheet']"))}function syncStyles(nextDocument){var current=getManagedHeadNodes(document),next=getManagedHeadNodes(nextDocument),signature=function(nodes){return nodes.map(function(node){return node.outerHTML}).join("\\n")};if(signature(current)===signature(next))return;current.forEach(function(node){node.remove()});next.forEach(function(node){document.head.appendChild(document.importNode(node,true))})}function syncDocument(nextHtml){var parser=new DOMParser(),nextDocument=parser.parseFromString(nextHtml,"text/html"),scrollX=window.scrollX,scrollY=window.scrollY,nodes=Array.prototype.slice.call(nextDocument.body.childNodes).map(function(node){return document.importNode(node,true)});syncStyles(nextDocument);document.body.replaceChildren.apply(document.body,nodes);window.scrollTo(scrollX,scrollY);send("layout-lab:board-frame-updated")}window.addEventListener("message",function(event){var data=event.data||{};if(data.type==="layout-lab:board-space"){space=!!data.down;return}if(data.type==="layout-lab:board-frame-update"&&typeof data.html==="string")syncDocument(data.html)});window.addEventListener("keydown",function(event){if(event.code==="Space"){space=true;event.preventDefault()}},true);window.addEventListener("keyup",function(event){if(event.code==="Space")space=false},true);window.addEventListener("pointerdown",function(event){if(event.button===1||space){panPointer=event.pointerId;lastX=event.clientX;lastY=event.clientY;event.preventDefault();event.stopImmediatePropagation();event.target.setPointerCapture&&event.target.setPointerCapture(event.pointerId);send("layout-lab:board-frame-pan-start",event);return}parent.postMessage({type:"layout-lab:board-frame-activate",key:key},"*")},true);window.addEventListener("pointermove",function(event){if(event.pointerId!==panPointer)return;var dx=event.clientX-lastX,dy=event.clientY-lastY;lastX=event.clientX;lastY=event.clientY;event.preventDefault();send("layout-lab:board-frame-pan-move",event,dx,dy)},true);function end(event){if(event.pointerId!==panPointer)return;send("layout-lab:board-frame-pan-end",event);panPointer=null}window.addEventListener("pointerup",end,true);window.addEventListener("pointercancel",end,true);window.addEventListener("wheel",function(event){if(!event.ctrlKey&&!event.metaKey)return;event.preventDefault();parent.postMessage({type:"layout-lab:board-frame-zoom",key:key,deltaY:event.deltaY},"*")},{capture:true,passive:false})})();<\/script>`;
     const source = String(html || "");
-    return /<\/body\s*>/i.test(source) ? source.replace(/<\/body\s*>/i, `${bridge}</body>`) : `${source}${bridge}`;
+    const liveBridge = buildBoardFrameBridge(key, documentToken);
+    return /<\/body\s*>/i.test(source) ? source.replace(/<\/body\s*>/i, `${liveBridge}</body>`) : `${source}${liveBridge}`;
   }
 
   function updateArtboardPosition(artboard) {
@@ -1385,6 +1580,17 @@
     window.addEventListener("message", (event) => {
       const data = event.data;
       if (!isOpen()) return;
+      if (data?.type === "layout-lab:board-frame-source-select") {
+        const knownFrames = [
+          ...Array.from(state.scene?.querySelectorAll("iframe") || []),
+          getLiveFrame()
+        ].filter(Boolean);
+        const clickedFrame = knownFrames.find((node) => node.contentWindow === event.source);
+        if (clickedFrame && getArtboard(data.key)) {
+          revealBoardSourceForCandidates(data.key, data.anchors);
+        }
+        return;
+      }
       if (data?.type === "layout-lab:board-frame-zoom") {
         zoomFromFrame(data.deltaY, data.key);
         return;

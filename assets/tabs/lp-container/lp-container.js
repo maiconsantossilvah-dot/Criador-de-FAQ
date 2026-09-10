@@ -261,6 +261,10 @@
       });
     }
 
+    function isTemplateOptionStateStyle(element) {
+      return Boolean(element?.matches?.("style[data-ll-template-option-state-style], style.template-option-state-styles"));
+    }
+
     function extractTemplateEmbeddedCss(value = state.template.html) {
       const rawValue = String(value || "").trim();
       if (!rawValue || !/<style\b/i.test(rawValue)) {
@@ -274,6 +278,7 @@
       }
 
       return Array.from(wrapper.querySelectorAll("style"))
+        .filter((element) => !isTemplateOptionStateStyle(element))
         .map((element) => element.textContent || "")
         .map(repairLegacyOptionStateCss)
         .map((css) => css.trim())
@@ -331,7 +336,11 @@
         return rawValue;
       }
 
-      wrapper.querySelectorAll("style").forEach((element) => element.remove());
+      wrapper.querySelectorAll("style").forEach((element) => {
+        if (!isTemplateOptionStateStyle(element)) {
+          element.remove();
+        }
+      });
       wrapper.querySelectorAll("link").forEach((element) => {
         if (isTemplateStylesheetLink(element)) {
           element.remove();
@@ -356,19 +365,24 @@
       return editorInstruction.test(tooltip) && editorAction.test(tooltip);
     }
 
-    function stripLabEditorArtifacts(element) {
+    function stripLabEditorArtifacts(element, options = {}) {
       if (!element || !element.attributes) {
         return;
       }
 
+      const preserveOptionStateStyle = options.preserveOptionStateStyle === true && isTemplateOptionStateStyle(element);
       const hasLabAttributes = Array.from(element.attributes).some((attribute) => attribute.name.startsWith("data-ll-"));
       const hasLabTooltip = isLabEditorTooltip(element.getAttribute("title"));
 
       Array.from(element.attributes).forEach((attribute) => {
-        if (attribute.name.startsWith("data-ll-")) {
+        if (attribute.name.startsWith("data-ll-") && !(preserveOptionStateStyle && attribute.name === "data-ll-template-option-state-style")) {
           element.removeAttribute(attribute.name);
         }
       });
+
+      if (!preserveOptionStateStyle && isTemplateOptionStateStyle(element)) {
+        element.classList.remove("template-option-state-styles");
+      }
 
       element.removeAttribute("contenteditable");
       element.removeAttribute("spellcheck");
@@ -2250,7 +2264,7 @@ ${containerHtml}`;
         element.remove();
       });
       [clone, ...clone.querySelectorAll("*")].forEach((element) => {
-        stripLabEditorArtifacts(element);
+        stripLabEditorArtifacts(element, { preserveOptionStateStyle: true });
       });
 
       return clone;
@@ -5171,13 +5185,147 @@ ${containerHtml}`;
       };
 
       const getTemplateOptionStateStyle = (root) => {
-        let style = root.querySelector(":scope > style.template-option-state-styles");
+        let style = root.querySelector(":scope > style[data-ll-template-option-state-style], :scope > style.template-option-state-styles");
         if (!style) {
           style = doc.createElement("style");
-          style.className = "template-option-state-styles";
           root.appendChild(style);
         }
+        style.classList.add("template-option-state-styles");
+        style.setAttribute("data-ll-template-option-state-style", "true");
         return style;
+      };
+
+      const splitTemplateOptionStateSelectors = (value) => String(value || "")
+        .split(",")
+        .map((selector) => selector.trim())
+        .filter(Boolean);
+
+      const normalizeTemplateOptionStateSelector = (value) => String(value || "")
+        .replace(/\s+/g, " ")
+        .trim();
+
+      // Do not read these rules through CSSOM. The browser expands shorthands
+      // such as `background` and `padding` into many longhand properties there,
+      // which used to make a small colour change produce a very large rule.
+      const readTemplateOptionStateDeclarations = (source) => {
+        const declarations = new Map();
+        let start = 0;
+        let quote = "";
+        let parentheses = 0;
+        const commit = (end) => {
+          const declaration = String(source || "").slice(start, end).trim();
+          start = end + 1;
+          if (!declaration) {
+            return;
+          }
+          const separator = declaration.indexOf(":");
+          if (separator <= 0) {
+            return;
+          }
+          const property = declaration.slice(0, separator).trim().toLowerCase();
+          const value = declaration.slice(separator + 1).trim();
+          if (property && value) {
+            declarations.set(property, value);
+          }
+        };
+
+        const css = String(source || "");
+        for (let index = 0; index < css.length; index += 1) {
+          const character = css[index];
+          if (quote) {
+            if (character === quote && css[index - 1] !== "\\") {
+              quote = "";
+            }
+            continue;
+          }
+          if (character === '"' || character === "'") {
+            quote = character;
+          } else if (character === "(") {
+            parentheses += 1;
+          } else if (character === ")") {
+            parentheses = Math.max(0, parentheses - 1);
+          } else if (character === ";" && parentheses === 0) {
+            commit(index);
+          }
+        }
+        commit(css.length);
+        return declarations;
+      };
+
+      const readTemplateOptionStateRules = (style) => {
+        const originalCss = style.textContent || "";
+        const repairedCss = repairLegacyOptionStateCss(originalCss);
+        if (repairedCss !== originalCss) {
+          style.textContent = repairedCss;
+        }
+
+        const rules = new Map();
+        const css = repairedCss.replace(/\/\*[\s\S]*?\*\//g, "");
+        const rulePattern = /([^{}]+)\{([^{}]*)\}/g;
+        let match = rulePattern.exec(css);
+        while (match) {
+          const selectorText = match[1].trim();
+          if (!selectorText || selectorText.startsWith("@")) {
+            match = rulePattern.exec(css);
+            continue;
+          }
+          const declarations = readTemplateOptionStateDeclarations(match[2]);
+          splitTemplateOptionStateSelectors(selectorText).forEach((selector) => {
+            const key = normalizeTemplateOptionStateSelector(selector);
+            if (!key) {
+              return;
+            }
+            const existing = rules.get(key);
+            rules.set(key, {
+              selector,
+              declarations: new Map([
+                ...(existing?.declarations || []),
+                ...declarations
+              ])
+            });
+          });
+          match = rulePattern.exec(css);
+        }
+        return rules;
+      };
+
+      const writeTemplateOptionStateRules = (style, rules) => {
+        style.textContent = Array.from(rules.values())
+          .map(({ selector, declarations }) => {
+            const content = Array.from(declarations.entries())
+              .map(([property, value]) => `${property}: ${value};`)
+              .join(" ");
+            return selector && content ? `${selector} { ${content} }` : "";
+          })
+          .filter(Boolean)
+          .join("\n");
+      };
+
+      const isTemplateOptionLegacyBulkRule = (declarations) => {
+        return Array.from(declarations?.keys?.() || []).some((property) => {
+          return /^(?:background-(?:image|position|size|repeat|attachment|origin|clip|color)|border-(?:top|right|bottom|left)-(?:color|width|style)|border-(?:top|right|bottom|left)-(?:left|right)-radius|padding-(?:top|right|bottom|left))$/i.test(property);
+        });
+      };
+
+      const removeTemplateOptionPropertyGroup = (declarations, property) => {
+        const groupedProperties = {
+          background: /^(?:background|background-.*)$/i,
+          "border-color": /^(?:border-color|border-(?:top|right|bottom|left)-color)$/i,
+          "border-width": /^(?:border-width|border-(?:top|right|bottom|left)-width)$/i,
+          "border-style": /^(?:border-style|border-(?:top|right|bottom|left)-style)$/i,
+          "border-radius": /^(?:border-radius|border-(?:top|right|bottom|left)-(?:left|right)-radius)$/i,
+          padding: /^(?:padding|padding-(?:top|right|bottom|left))$/i
+        };
+        const matcher = groupedProperties[property];
+        if (!matcher) {
+          declarations.delete(property);
+          return;
+        }
+        Array.from(declarations.keys()).forEach((currentProperty) => {
+          if (matcher.test(currentProperty)) {
+            declarations.delete(currentProperty);
+          }
+        });
       };
 
       const updateTemplateOptionStateRule = (root, selector, declarations) => {
@@ -5186,55 +5334,101 @@ ${containerHtml}`;
         }
 
         const style = getTemplateOptionStateStyle(root);
-        const existingRules = Array.from(style.sheet?.cssRules || [])
-          .filter((rule) => rule.selectorText !== selector)
-          .map((rule) => rule.cssText);
-
-        const content = Object.entries(declarations)
-          .filter(([, value]) => value !== "" && value != null)
-          .map(([property, value]) => `${property}: ${value} !important;`)
-          .join(" ");
-        if (content) {
-          existingRules.push(`${selector} { ${content} }`);
-        }
-        // insertRule updates the live CSSOM but does not serialize back into
-        // the style tag. Persist the rule as text so the board and export
-        // retain both states after the editor closes.
-        style.textContent = existingRules.join("\n");
+        const rules = readTemplateOptionStateRules(style);
+        splitTemplateOptionStateSelectors(selector).forEach((targetSelector) => {
+          const key = normalizeTemplateOptionStateSelector(targetSelector);
+          if (!key) {
+            return;
+          }
+          const current = rules.get(key);
+          // Older saves carry browser-expanded longhands. Replacing that
+          // legacy bundle on the first new save keeps only intentional edits.
+          const nextDeclarations = isTemplateOptionLegacyBulkRule(current?.declarations)
+            ? new Map()
+            : new Map(current?.declarations || []);
+          Object.entries(declarations)
+            .filter(([, value]) => value !== "" && value != null)
+            .forEach(([property, value]) => {
+              removeTemplateOptionPropertyGroup(nextDeclarations, property);
+              nextDeclarations.set(property, `${value} !important`);
+            });
+          rules.delete(key);
+          rules.set(key, { selector: targetSelector, declarations: nextDeclarations });
+        });
+        writeTemplateOptionStateRules(style, rules);
       };
 
       const clearTemplateOptionStateRule = (root, selector) => {
-        const style = root?.querySelector(":scope > style.template-option-state-styles");
+        const style = root?.querySelector(":scope > style[data-ll-template-option-state-style], :scope > style.template-option-state-styles");
         if (!style || !selector) {
           return;
         }
 
-        const remainingRules = Array.from(style.sheet?.cssRules || [])
-          .filter((rule) => rule.selectorText !== selector)
-          .map((rule) => rule.cssText);
+        const selectors = new Set(splitTemplateOptionStateSelectors(selector)
+          .map(normalizeTemplateOptionStateSelector));
+        const remainingRules = readTemplateOptionStateRules(style);
+        selectors.forEach((targetSelector) => remainingRules.delete(targetSelector));
 
-        if (!remainingRules.length) {
+        if (!remainingRules.size) {
           style.remove();
           return;
         }
-        style.textContent = remainingRules.join("\n");
+        writeTemplateOptionStateRules(style, remainingRules);
+      };
+
+      const isTemplateOptionStateRule = (rule) => {
+        const selector = String(rule?.selectorText || "");
+        return /:(?:checked|not\(\s*:checked\s*\))/i.test(selector)
+          && /(?:section[-_](?:8|28)(?:__|[-_])|section[-_](?:8|28)-control)/i.test(selector);
+      };
+
+      const migrateTemplateOptionStateRules = (root) => {
+        if (!root?.ownerDocument) {
+          return;
+        }
+
+        const stateStyle = getTemplateOptionStateStyle(root);
+        const migratedRules = [];
+        Array.from(root.ownerDocument.head.querySelectorAll("style")).forEach((sourceStyle) => {
+          if (sourceStyle === stateStyle) {
+            return;
+          }
+          const rules = Array.from(sourceStyle.sheet?.cssRules || []);
+          const optionRules = rules.filter(isTemplateOptionStateRule);
+          if (!optionRules.length) {
+            return;
+          }
+
+          migratedRules.push(...optionRules.map((rule) => rule.cssText));
+          sourceStyle.textContent = rules
+            .filter((rule) => !isTemplateOptionStateRule(rule))
+            .map((rule) => rule.cssText)
+            .join("\n");
+        });
+
+        if (!migratedRules.length) {
+          return;
+        }
+
+        stateStyle.textContent = repairLegacyOptionStateCss([stateStyle.textContent, ...migratedRules].filter(Boolean).join("\n"));
+        writeTemplateOptionStateRules(stateStyle, readTemplateOptionStateRules(stateStyle));
       };
 
       const openTemplateOptionCardPopover = (sourceEvent, element) => {
         closePreviewEditPopover();
-        recordPreviewEditHistory({ scope: "template", sourceFrame: element?.ownerDocument?.defaultView?.frameElement || frame });
         // These values need to be refreshed when the option state changes.
         // Keeping the initial computed-style snapshot here made the form carry
         // values from "checked" into "unchecked" (and the other way around).
-        let styles = element.ownerDocument.defaultView.getComputedStyle(element);
         const isOptionDot = isTemplateOptionDot(element);
         const textTarget = isOptionDot ? null : getTemplateOptionTextTarget(element);
-        let textStyles = textTarget
-          ? textTarget.ownerDocument.defaultView.getComputedStyle(textTarget)
-          : styles;
         const icon = getTemplateOptionIcon(element);
         const control = getTemplateOptionStateControl(element);
         const optionRoot = getTemplateOptionRoot(element);
+        migrateTemplateOptionStateRules(optionRoot);
+        let styles = element.ownerDocument.defaultView.getComputedStyle(element);
+        let textStyles = textTarget
+          ? textTarget.ownerDocument.defaultView.getComputedStyle(textTarget)
+          : styles;
         // Board frames share the editor state but each one owns a different
         // live document. Always serialize the container that originated the
         // edit so a refresh from another viewport cannot discard this rule.
@@ -5249,10 +5443,10 @@ ${containerHtml}`;
         form.className = "preview-edit-popover preview-edit-popover--option-card";
         form.setAttribute("role", "dialog");
         form.setAttribute("aria-label", isOptionDot ? "Editar aparência do indicador" : "Editar aparência da opção");
-        form.innerHTML = `<p class="preview-edit-popover__title">${isOptionDot ? "Editar indicador" : "Editar opção"}</p><div class="preview-edit-popover__grid"></div><div class="preview-edit-popover__actions"><button class="button button--soft" type="button" data-option-reset>Limpar aparência</button><button class="button" type="button" data-option-close>Fechar</button></div>`;
+        form.innerHTML = `<p class="preview-edit-popover__title">${isOptionDot ? "Editar indicador" : "Editar opção"}</p><div class="preview-edit-popover__grid"></div><div class="preview-edit-popover__actions"><button class="button preview-edit-popover__option-save" type="button" data-option-save>✓ Salvar aparência</button><button class="button button--soft" type="button" data-option-close>Fechar</button></div>`;
 
         const grid = form.querySelector(".preview-edit-popover__grid");
-        const createColorField = (label, value) => {
+        const createColorField = (label, value, dirtyField) => {
           const field = document.createElement("label");
           field.className = "preview-edit-popover__mini-field";
           const caption = document.createElement("span");
@@ -5273,18 +5467,18 @@ ${containerHtml}`;
             input.value = next;
             swatch.value = next;
             swatch.style.setProperty("--preview-edit-color", next);
-            apply(true);
+            markOptionCardDirty(dirtyField);
           };
           input.addEventListener("input", () => sync(false));
-          input.addEventListener("change", () => { sync(false); apply(false); });
+          input.addEventListener("change", () => sync(false));
           swatch.addEventListener("input", () => sync(true));
-          swatch.addEventListener("change", () => { sync(true); apply(false); });
+          swatch.addEventListener("change", () => sync(true));
           control.append(swatch, input);
           field.append(caption, control);
           grid.appendChild(field);
           return input;
         };
-        const createNumberField = (label, value, min, max, step = "1") => {
+        const createNumberField = (label, value, min, max, step = "1", dirtyField = "") => {
           const field = document.createElement("label");
           field.className = "preview-edit-popover__mini-field";
           const caption = document.createElement("span");
@@ -5295,14 +5489,27 @@ ${containerHtml}`;
           input.max = String(max);
           input.step = step;
           input.value = String(value);
-          input.addEventListener("input", () => apply(true));
-          input.addEventListener("change", () => apply(false));
+          input.addEventListener("input", () => markOptionCardDirty(dirtyField));
+          input.addEventListener("change", () => markOptionCardDirty(dirtyField));
           field.append(caption, input);
           grid.appendChild(field);
           return input;
         };
         let stateSelect = null;
         let optionCardDirty = false;
+        const optionCardChangedFields = new Set();
+        const optionSaveButton = form.querySelector("[data-option-save]");
+        const setOptionSaveButtonState = (saved = false) => {
+          optionSaveButton.classList.toggle("is-saved", saved);
+          optionSaveButton.textContent = saved ? "✓ Aparência salva" : "✓ Salvar aparência";
+        };
+        const markOptionCardDirty = (field = "") => {
+          optionCardDirty = true;
+          if (field) {
+            optionCardChangedFields.add(field);
+          }
+          setOptionSaveButtonState(false);
+        };
         if (control?.matches?.('input[type="radio"], input[type="checkbox"]') && optionRoot) {
           const field = document.createElement("label");
           field.className = "preview-edit-popover__mini-field";
@@ -5314,14 +5521,14 @@ ${containerHtml}`;
           field.append(caption, stateSelect);
           grid.appendChild(field);
         }
-        const backgroundInput = createColorField(isOptionDot ? "Cor" : "Fundo", styles.backgroundColor);
-        const textInput = isOptionDot ? null : createColorField("Texto", textStyles.color);
-        const borderInput = createColorField("Borda", styles.borderTopColor);
-        const borderWidth = createNumberField("Borda (px)", Number.parseFloat(styles.borderTopWidth) || 0, 0, 48);
-        const radius = createNumberField("Raio (px)", Number.parseFloat(styles.borderTopLeftRadius) || 0, 0, 120);
-        const padding = isOptionDot ? null : createNumberField("Espaçamento", Number.parseFloat(styles.paddingTop) || 0, 0, 96);
+        const backgroundInput = createColorField(isOptionDot ? "Cor" : "Fundo", styles.backgroundColor, "background");
+        const textInput = isOptionDot ? null : createColorField("Texto", textStyles.color, "textColor");
+        const borderInput = createColorField("Borda", styles.borderTopColor, "borderColor");
+        const borderWidth = createNumberField("Borda (px)", Number.parseFloat(styles.borderTopWidth) || 0, 0, 48, "1", "borderWidth");
+        const radius = createNumberField("Raio (px)", Number.parseFloat(styles.borderTopLeftRadius) || 0, 0, 120, "1", "radius");
+        const padding = isOptionDot ? null : createNumberField("Espaçamento", Number.parseFloat(styles.paddingTop) || 0, 0, 96, "1", "padding");
         const dotSize = isOptionDot
-          ? createNumberField("Tamanho (px)", Math.max(Number.parseFloat(styles.width) || 0, Number.parseFloat(styles.height) || 0, 8), 2, 96)
+          ? createNumberField("Tamanho (px)", Math.max(Number.parseFloat(styles.width) || 0, Number.parseFloat(styles.height) || 0, 8), 2, 96, "1", "dotSize")
           : null;
         const classCandidates = getPreviewClassCandidates(element);
         let classModeToggle = null;
@@ -5350,8 +5557,11 @@ ${containerHtml}`;
           classField.append(classCaption, classSelect);
           classScope.append(toggleField, classField);
           form.querySelector(".preview-edit-popover__actions").before(classScope);
-          classModeToggle.addEventListener("change", () => apply(false));
-          classSelect.addEventListener("change", () => apply(false));
+          // Changing the target only chooses where a later visual change will
+          // be applied. It is not a style change by itself and must never
+          // erase a rule when the person presses Save without editing a field.
+          classModeToggle.addEventListener("change", () => setOptionSaveButtonState(false));
+          classSelect.addEventListener("change", () => setOptionSaveButtonState(false));
         }
         let iconToggle = null;
         if (icon) {
@@ -5363,7 +5573,7 @@ ${containerHtml}`;
           iconToggle.checked = iconStyles.display !== "none" && iconStyles.visibility !== "hidden";
           const caption = document.createElement("span");
           caption.textContent = "Mostrar ícone";
-          iconToggle.addEventListener("change", () => apply(false));
+          iconToggle.addEventListener("change", () => markOptionCardDirty("iconDisplay"));
           field.append(iconToggle, caption);
           form.querySelector(".preview-edit-popover__actions").before(field);
         }
@@ -5409,13 +5619,59 @@ ${containerHtml}`;
             const iconStyles = icon.ownerDocument.defaultView.getComputedStyle(icon);
             iconToggle.checked = iconStyles.display !== "none" && iconStyles.visibility !== "hidden";
           }
-          // Every valid field event already writes its state rule immediately.
-          // The next state starts with a fresh, independent form value set.
+          // Switching states only loads that state's current values. Nothing
+          // is written until the person confirms with "Salvar".
           optionCardDirty = false;
+          optionCardChangedFields.clear();
+          setOptionSaveButtonState(false);
+        };
+
+        const clearOptionCardStateScope = (stateSelector, selectedClass = "", options = {}) => {
+          if (!stateSelector || !optionRoot) {
+            return;
+          }
+
+          if (options.keepStateRule !== true) {
+            clearTemplateOptionStateRule(optionRoot, stateSelector);
+            clearTemplateOptionStateRule(optionRoot, getTemplateOptionChildSelector(element, textTarget, stateSelector));
+            clearTemplateOptionStateRule(optionRoot, getTemplateOptionChildSelector(element, icon, stateSelector));
+          }
+
+          // Before the state editor was made deterministic, a card could
+          // leave an individual rule behind and later receive a class rule as
+          // well. When editing the entire class, clear those old per-card
+          // rules for this state so the saved class rule is the sole source
+          // of color and appearance.
+          const targetSelector = selectedClass
+            ? normalizePreviewSelectorValue(selectedClass)?.selector || ""
+            : "";
+          if (!targetSelector) {
+            return;
+          }
+
+          let matchingCards = [];
+          try {
+            matchingCards = Array.from(optionRoot.querySelectorAll(targetSelector))
+              .filter((candidate) => !isTemplateOptionDot(candidate) && isTemplateOptionCard(candidate, optionRoot));
+          } catch (_) {
+            return;
+          }
+
+          matchingCards.forEach((card) => {
+            const individualSelector = getTemplateOptionStateSelector(card, stateSelect?.value || "unchecked");
+            if (!individualSelector) {
+              return;
+            }
+            clearTemplateOptionStateRule(optionRoot, individualSelector);
+            clearTemplateOptionStateRule(optionRoot, getTemplateOptionChildSelector(card, getTemplateOptionTextTarget(card), individualSelector));
+            clearTemplateOptionStateRule(optionRoot, getTemplateOptionChildSelector(card, getTemplateOptionIcon(card), individualSelector));
+          });
         };
 
         const apply = (skipPreviewUpdate) => {
-          optionCardDirty = true;
+          if (!optionCardChangedFields.size) {
+            return;
+          }
           const background = isHexColor(backgroundInput.value) ? normalizeHexColor(backgroundInput.value) : colorToHex(styles.backgroundColor, "#ffffff");
           const textColor = textInput && isHexColor(textInput.value) ? normalizeHexColor(textInput.value) : colorToHex(textStyles.color, "#111827");
           const borderColor = isHexColor(borderInput.value) ? normalizeHexColor(borderInput.value) : colorToHex(styles.borderTopColor, "#111827");
@@ -5428,28 +5684,49 @@ ${containerHtml}`;
             ? getTemplateOptionStateSelector(element, stateSelect.value, selectedClass)
             : "";
           if (stateSelector) {
-            const stateDeclarations = {
-              background: background,
-              "border-color": borderColor,
-              "border-width": `${borderSize}px`,
-              "border-style": borderSize > 0 ? "solid" : "none",
-              "border-radius": `${cornerRadius}px`
-            };
+            const stateDeclarations = {};
+            const textSelector = textTarget ? getTemplateOptionChildSelector(element, textTarget, stateSelector) : "";
+            if (optionCardChangedFields.has("background")) {
+              stateDeclarations.background = background;
+            }
+            if (optionCardChangedFields.has("borderColor")) {
+              stateDeclarations["border-color"] = borderColor;
+            }
+            if (optionCardChangedFields.has("borderWidth")) {
+              stateDeclarations["border-width"] = `${borderSize}px`;
+              stateDeclarations["border-style"] = borderSize > 0 ? "solid" : "none";
+            }
+            if (optionCardChangedFields.has("radius")) {
+              stateDeclarations["border-radius"] = `${cornerRadius}px`;
+            }
             if (isOptionDot) {
-              stateDeclarations.width = `${indicatorSize}px`;
-              stateDeclarations.height = `${indicatorSize}px`;
-              stateDeclarations.padding = "0px";
-            } else {
-              stateDeclarations.color = textColor;
+              if (optionCardChangedFields.has("dotSize")) {
+                stateDeclarations.width = `${indicatorSize}px`;
+                stateDeclarations.height = `${indicatorSize}px`;
+              }
+            } else if (optionCardChangedFields.has("padding")) {
               stateDeclarations.padding = `${inset}px`;
             }
-            updateTemplateOptionStateRule(optionRoot, stateSelector, stateDeclarations);
-            const textSelector = textTarget ? getTemplateOptionChildSelector(element, textTarget, stateSelector) : "";
-            if (textSelector && textSelector !== stateSelector) {
+            if (optionCardChangedFields.has("textColor") && (!textSelector || textSelector === stateSelector)) {
+              stateDeclarations.color = textColor;
+            }
+            // A class-wide edit replaces obsolete per-card rules. An edit of
+            // one card keeps its earlier compact declarations and changes
+            // only the property the person touched now.
+            if (selectedClass) {
+              // Preserve the already saved class rule and remove only stale
+              // per-card overrides. Otherwise a later color-only save would
+              // clear the previous class border/radius values before merging.
+              clearOptionCardStateScope(stateSelector, selectedClass, { keepStateRule: true });
+            }
+            if (Object.keys(stateDeclarations).length) {
+              updateTemplateOptionStateRule(optionRoot, stateSelector, stateDeclarations);
+            }
+            if (optionCardChangedFields.has("textColor") && textSelector && textSelector !== stateSelector) {
               updateTemplateOptionStateRule(optionRoot, textSelector, { color: textColor });
             }
             const iconSelector = getTemplateOptionChildSelector(element, icon, stateSelector);
-            if (iconSelector) {
+            if (optionCardChangedFields.has("iconDisplay") && iconSelector) {
               updateTemplateOptionStateRule(optionRoot, iconSelector, { display: iconToggle?.checked === false ? "none" : "" });
             }
             syncOptionTemplateHtml({ skipPreviewUpdate: Boolean(skipPreviewUpdate) });
@@ -5457,38 +5734,46 @@ ${containerHtml}`;
             return;
           }
           if (classModeToggle?.checked && classSelect?.value) {
-            const classDeclarations = {
-              background: background,
-              "border-color": borderColor,
-              "border-width": borderSize,
-              "border-style": borderSize > 0 ? "solid" : "none",
-              "border-radius": cornerRadius
-            };
-            if (isOptionDot) {
-              classDeclarations.width = indicatorSize;
-              classDeclarations.height = indicatorSize;
-              classDeclarations.padding = 0;
-            } else {
-              classDeclarations.color = textColor;
-              classDeclarations.padding = inset;
+            const classDeclarations = {};
+            if (optionCardChangedFields.has("background")) classDeclarations.background = background;
+            if (optionCardChangedFields.has("borderColor")) classDeclarations["border-color"] = borderColor;
+            if (optionCardChangedFields.has("borderWidth")) {
+              classDeclarations["border-width"] = borderSize;
+              classDeclarations["border-style"] = borderSize > 0 ? "solid" : "none";
             }
-            setPreviewClassStyle({ scope: "template", field: "optionCard" }, classSelect.value, classDeclarations);
+            if (optionCardChangedFields.has("radius")) classDeclarations["border-radius"] = cornerRadius;
+            if (isOptionDot) {
+              if (optionCardChangedFields.has("dotSize")) {
+                classDeclarations.width = indicatorSize;
+                classDeclarations.height = indicatorSize;
+              }
+            } else {
+              if (optionCardChangedFields.has("textColor")) classDeclarations.color = textColor;
+              if (optionCardChangedFields.has("padding")) classDeclarations.padding = inset;
+            }
+            if (Object.keys(classDeclarations).length) {
+              setPreviewClassStyle({ scope: "template", field: "optionCard" }, classSelect.value, classDeclarations);
+            }
             if (!skipPreviewUpdate) optionCardDirty = false;
             return;
           }
-          element.style.backgroundColor = background;
-          element.style.borderColor = borderColor;
-          element.style.borderWidth = `${borderSize}px`;
-          element.style.borderStyle = borderSize > 0 ? "solid" : "none";
-          element.style.borderRadius = `${cornerRadius}px`;
-          element.style.padding = isOptionDot ? "0px" : `${inset}px`;
+          if (optionCardChangedFields.has("background")) element.style.backgroundColor = background;
+          if (optionCardChangedFields.has("borderColor")) element.style.borderColor = borderColor;
+          if (optionCardChangedFields.has("borderWidth")) {
+            element.style.borderWidth = `${borderSize}px`;
+            element.style.borderStyle = borderSize > 0 ? "solid" : "none";
+          }
+          if (optionCardChangedFields.has("radius")) element.style.borderRadius = `${cornerRadius}px`;
+          if (!isOptionDot && optionCardChangedFields.has("padding")) element.style.padding = `${inset}px`;
           if (isOptionDot) {
-            element.style.width = `${indicatorSize}px`;
-            element.style.height = `${indicatorSize}px`;
-          } else if (textTarget) {
+            if (optionCardChangedFields.has("dotSize")) {
+              element.style.width = `${indicatorSize}px`;
+              element.style.height = `${indicatorSize}px`;
+            }
+          } else if (textTarget && optionCardChangedFields.has("textColor")) {
             textTarget.style.color = textColor;
           }
-          if (icon && iconToggle) icon.style.display = iconToggle.checked ? "" : "none";
+          if (icon && iconToggle && optionCardChangedFields.has("iconDisplay")) icon.style.display = iconToggle.checked ? "" : "none";
           syncOptionTemplateHtml({ skipPreviewUpdate: Boolean(skipPreviewUpdate) });
           if (!skipPreviewUpdate) optionCardDirty = false;
         };
@@ -5529,50 +5814,45 @@ ${containerHtml}`;
           control.toggleAttribute("checked", shouldBeChecked);
         };
 
-        const commitOptionCardChanges = () => {
-          if (optionCardDirty) {
-            apply(false);
-          }
+        const getOptionControlStateSnapshot = () => Array.from(optionRoot?.querySelectorAll('input[type="radio"], input[type="checkbox"]') || [])
+          .map((candidate) => ({
+            candidate,
+            checked: candidate.checked,
+            hasCheckedAttribute: candidate.hasAttribute("checked")
+          }));
+
+        const restoreOptionControlStateSnapshot = (snapshot) => {
+          snapshot.forEach(({ candidate, checked, hasCheckedAttribute }) => {
+            candidate.checked = checked;
+            candidate.toggleAttribute("checked", hasCheckedAttribute);
+          });
         };
 
-        previewEditBeforeCloseHandler = commitOptionCardChanges;
         stateSelect?.addEventListener("change", () => {
+          const previousState = getOptionControlStateSnapshot();
           applyOptionPreviewState();
-          window.requestAnimationFrame(refreshOptionCardFields);
+          window.requestAnimationFrame(() => {
+            refreshOptionCardFields();
+            restoreOptionControlStateSnapshot(previousState);
+          });
         });
+
+        const saveOptionCardChanges = () => {
+          if (!optionCardDirty || !optionCardChangedFields.size) {
+            return;
+          }
+          recordPreviewEditHistory({ scope: "template", sourceFrame: element?.ownerDocument?.defaultView?.frameElement || frame });
+          apply(false);
+          optionCardChangedFields.clear();
+          setOptionSaveButtonState(true);
+        };
 
         form.addEventListener("submit", (event) => {
           event.preventDefault();
-          closePreviewEditPopover();
+          saveOptionCardChanges();
         });
         form.querySelector("[data-option-close]").addEventListener("click", closePreviewEditPopover);
-        form.querySelector("[data-option-reset]").addEventListener("click", () => {
-          const selectedClass = classModeToggle?.checked ? classSelect?.value || "" : "";
-          const stateSelector = stateSelect && optionRoot
-            ? getTemplateOptionStateSelector(element, stateSelect.value, selectedClass)
-            : "";
-          if (stateSelector) {
-            clearTemplateOptionStateRule(optionRoot, stateSelector);
-            clearTemplateOptionStateRule(optionRoot, getTemplateOptionChildSelector(element, textTarget, stateSelector));
-            clearTemplateOptionStateRule(optionRoot, getTemplateOptionChildSelector(element, icon, stateSelector));
-            syncOptionTemplateHtml();
-            optionCardDirty = false;
-            closePreviewEditPopover();
-            return;
-          }
-          if (classModeToggle?.checked && classSelect?.value) {
-            clearPreviewClassStyle({ scope: "template", field: "optionCard" }, classSelect.value);
-            optionCardDirty = false;
-            closePreviewEditPopover();
-            return;
-          }
-          ["backgroundColor", "borderColor", "borderWidth", "borderStyle", "borderRadius", "padding", "width", "height"].forEach((property) => element.style[property] = "");
-          if (textTarget) textTarget.style.color = "";
-          if (icon) icon.style.display = "";
-          syncOptionTemplateHtml();
-          optionCardDirty = false;
-          closePreviewEditPopover();
-        });
+        form.querySelector("[data-option-save]").addEventListener("click", saveOptionCardChanges);
         previewEditKeyHandler = (event) => { if (event.key === "Escape") closePreviewEditPopover(); };
         previewEditOutsideHandler = (event) => {
           if (previewEditPopover && !previewEditPopover.contains(event.target)) closePreviewEditPopover();
@@ -6184,6 +6464,106 @@ ${containerHtml}`;
           element.dataset.llTemplateNode = `template-${Math.random().toString(16).slice(2)}`;
         }
         return element.dataset.llTemplateNode;
+      };
+
+      const getTemplateSourceAnchorCandidates = (element, root) => {
+        const nodes = [];
+        let current = element?.nodeType === 1 ? element : element?.parentElement;
+        while (current && root.contains(current)) {
+          nodes.push(current);
+          if (current === root) {
+            break;
+          }
+          current = current.parentElement;
+        }
+
+        const candidates = [];
+        const seen = new Set();
+        const addCandidate = (type, value) => {
+          const normalized = String(value || "").trim();
+          const key = `${type}:${normalized}`;
+          if (!normalized || seen.has(key)) {
+            return;
+          }
+          seen.add(key);
+          candidates.push({ type, value: normalized });
+        };
+
+        // The section wrapper is the most useful source destination. A click
+        // on `.section-28__tab`, for example, leads to `.section-28`.
+        nodes.forEach((node) => {
+          Array.from(node.classList || [])
+            .filter((className) => /^(?:section|sessao|sessão)[-_]\d+$/i.test(className))
+            .forEach((className) => addCandidate("class", className));
+        });
+        nodes.forEach((node) => addCandidate("id", node.id));
+        nodes.forEach((node) => {
+          Array.from(node.classList || [])
+            .filter((className) => !/^ll-|^preview-|^codex-/i.test(className))
+            .forEach((className) => addCandidate("class", className));
+        });
+        return candidates;
+      };
+
+      const findTemplateSourceOpeningTag = (source, candidate) => {
+        const value = String(candidate?.value || "").trim();
+        if (!value) {
+          return null;
+        }
+
+        let index = source.indexOf(value);
+        while (index !== -1) {
+          const start = source.lastIndexOf("<", index);
+          const end = start >= 0 ? source.indexOf(">", start) : -1;
+          if (start >= 0 && end >= index && !/^<\s*\//.test(source.slice(start, start + 3))) {
+            const tag = source.slice(start, end + 1);
+            const attribute = candidate.type === "id" ? "id" : "class";
+            const attributeMatch = tag.match(new RegExp(`\\b${attribute}\\s*=\\s*(?:\"([^\"]*)\"|'([^']*)'|([^\\s>]+))`, "i"));
+            const attributeValue = attributeMatch
+              ? (attributeMatch[1] ?? attributeMatch[2] ?? attributeMatch[3] ?? "")
+              : "";
+            const matches = candidate.type === "id"
+              ? attributeValue === value
+              : attributeValue.split(/\s+/).includes(value);
+            if (matches) {
+              return { start, end: end + 1 };
+            }
+          }
+          index = source.indexOf(value, index + value.length);
+        }
+        return null;
+      };
+
+      const revealTemplateSourceForPreviewElement = (element, root) => {
+        const textarea = editor.querySelector('[data-template-field="html"]');
+        if (!textarea || !element || !root?.contains(element)) {
+          return;
+        }
+
+        const source = textarea.value || state.template.html || "";
+        const match = getTemplateSourceAnchorCandidates(element, root)
+          .map((candidate) => findTemplateSourceOpeningTag(source, candidate))
+          .find(Boolean);
+        if (!match) {
+          return;
+        }
+
+        const lineNumber = source.slice(0, match.start).split("\n").length - 1;
+        const lineHeight = Number.parseFloat(window.getComputedStyle(textarea).lineHeight) || 18;
+        try {
+          textarea.focus({ preventScroll: true });
+        } catch (_) {
+          textarea.focus();
+        }
+        textarea.setSelectionRange(match.start, match.end);
+        textarea.scrollTop = Math.max(0, (lineNumber * lineHeight) - (textarea.clientHeight * 0.34));
+        textarea.scrollLeft = 0;
+        // A programmatic scroll does not emit this event in every browser;
+        // trigger it so the highlighted code layer follows the textarea too.
+        textarea.dispatchEvent(new Event("scroll", { bubbles: false }));
+        if (typeof syncTemplateCodeEditorScroll === "function") {
+          syncTemplateCodeEditorScroll(textarea);
+        }
       };
 
       const markBentoNode = (element) => {
@@ -7736,6 +8116,42 @@ ${containerHtml}`;
         }
         root.dataset.llPreviewTemplateEditingReady = "true";
         let optionCardClickTimer = null;
+        let templateSourceSelectionTimer = null;
+
+        const queueTemplateSourceReveal = (event) => {
+          // The board bridge routes preview clicks to the floating code window
+          // for the matching breakpoint. Do not let this generic handler move
+          // focus back to the hidden general editor afterwards.
+          if (doc.defaultView?.frameElement?.dataset?.llBoardDocumentKey
+            || doc.defaultView?.frameElement?.dataset?.llBoardActiveDevice) {
+            return;
+          }
+          if (!event.ctrlKey || !event.shiftKey) {
+            return;
+          }
+          // Frames on the board own a floating code editor per breakpoint.
+          // Its document-level listener has already routed this same click.
+          if (event.__llBoardSourceHandled) {
+            return;
+          }
+          if (event.button && event.button !== 0) {
+            return;
+          }
+          const selectedElement = event.target?.nodeType === 1 ? event.target : event.target?.parentElement;
+          if (!selectedElement || !root.contains(selectedElement)) {
+            return;
+          }
+
+          // Let click handlers, radio changes and preview synchronization
+          // finish first. Some cards intentionally block their click event,
+          // so also listen to pointerdown in capture phase.
+          window.clearTimeout(templateSourceSelectionTimer);
+          templateSourceSelectionTimer = window.setTimeout(() => {
+            revealTemplateSourceForPreviewElement(selectedElement, root);
+          }, 32);
+        };
+        root.addEventListener("pointerdown", queueTemplateSourceReveal, true);
+        root.addEventListener("click", queueTemplateSourceReveal, true);
 
         const syncTemplateOptionSelection = (event, interactionRoot) => {
           if (event.__llTemplateOptionSelectionHandled) {
