@@ -973,6 +973,15 @@
     window.setTimeout(() => state.root?.querySelector("[data-board-export]")?.focus(), 0);
   }
 
+  function toggleExportOptions() {
+    if (!state.root) return;
+    if (state.root.classList.contains("is-export-open")) {
+      state.root.classList.remove("is-export-open");
+      return;
+    }
+    openExportOptions();
+  }
+
   function openLiveEditor(key, notify = true) {
     const artboard = getArtboard(key);
     if (!artboard || !state.root) return;
@@ -1173,8 +1182,7 @@
         else openGeneralCode();
       }
       if (action === "export") {
-        state.root.classList.toggle("is-export-open");
-        if (state.root.classList.contains("is-export-open")) openExportOptions();
+        toggleExportOptions();
       }
       if (action === "shortcuts") {
         const help = state.root.querySelector("[data-board-shortcuts]");
@@ -1505,7 +1513,7 @@
       if (!isOpen()) return;
       if (event.ctrlKey && event.shiftKey && event.code === "KeyE") {
         event.preventDefault();
-        openExportOptions();
+        toggleExportOptions();
         return;
       }
       if (event.ctrlKey && event.shiftKey && event.code === "KeyS") {

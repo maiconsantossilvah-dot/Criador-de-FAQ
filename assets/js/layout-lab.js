@@ -817,6 +817,365 @@
       return cloneValue(draftSnapshot || savedSnapshot || getBaseSnapshot(tab));
     }
 
+    function getTemplateSnapshotHtml(snapshot) {
+      return String(snapshot?.template?.html || "");
+    }
+
+    function parseResponsiveTemplateMarkup(value) {
+      if (typeof DOMParser === "undefined") {
+        return null;
+      }
+
+      const parsed = new DOMParser().parseFromString(
+        `<div data-layout-responsive-rebase-root>${String(value || "")}</div>`,
+        "text/html"
+      );
+      const root = parsed.querySelector("[data-layout-responsive-rebase-root]");
+      return root ? { document: parsed, root } : null;
+    }
+
+    function getResponsiveMarkupElements(root, options = {}) {
+      const excludeStyles = options.excludeStyles === true;
+      return [root, ...root.querySelectorAll("*")].filter((element) => {
+        const tag = String(element.tagName || "").toLowerCase();
+        return !(excludeStyles && (tag === "style" || tag === "script"));
+      });
+    }
+
+    function sameResponsiveMarkupShape(baseElements, versionElements, nextElements) {
+      return baseElements.length === versionElements.length
+        && baseElements.length === nextElements.length
+        && baseElements.every((element, index) => {
+          const tag = String(element.tagName || "").toLowerCase();
+          return tag
+            && tag === String(versionElements[index]?.tagName || "").toLowerCase()
+            && tag === String(nextElements[index]?.tagName || "").toLowerCase();
+        });
+    }
+
+    function rebaseResponsiveInlineStyle(baseElement, versionElement, nextElement) {
+      const properties = new Set([
+        ...Array.from(baseElement.style || []),
+        ...Array.from(versionElement.style || [])
+      ]);
+
+      properties.forEach((property) => {
+        const baseValue = baseElement.style.getPropertyValue(property);
+        const versionValue = versionElement.style.getPropertyValue(property);
+        const basePriority = baseElement.style.getPropertyPriority(property);
+        const versionPriority = versionElement.style.getPropertyPriority(property);
+        if (baseValue === versionValue && basePriority === versionPriority) {
+          return;
+        }
+
+        if (versionValue) {
+          nextElement.style.setProperty(property, versionValue, versionPriority);
+        } else {
+          nextElement.style.removeProperty(property);
+        }
+      });
+    }
+
+    function rebaseResponsiveMarkupAttributes(baseElement, versionElement, nextElement) {
+      const names = new Set([
+        ...Array.from(baseElement.attributes || []).map((attribute) => attribute.name),
+        ...Array.from(versionElement.attributes || []).map((attribute) => attribute.name)
+      ]);
+
+      names.forEach((name) => {
+        if (name === "style") {
+          rebaseResponsiveInlineStyle(baseElement, versionElement, nextElement);
+          return;
+        }
+
+        const baseValue = baseElement.getAttribute(name);
+        const versionValue = versionElement.getAttribute(name);
+        if (baseValue === versionValue) {
+          return;
+        }
+
+        if (name === "class") {
+          const baseClasses = new Set(String(baseValue || "").split(/\s+/).filter(Boolean));
+          const versionClasses = new Set(String(versionValue || "").split(/\s+/).filter(Boolean));
+          const nextClasses = new Set(String(nextElement.getAttribute("class") || "").split(/\s+/).filter(Boolean));
+          baseClasses.forEach((className) => {
+            if (!versionClasses.has(className)) nextClasses.delete(className);
+          });
+          versionClasses.forEach((className) => {
+            if (!baseClasses.has(className)) nextClasses.add(className);
+          });
+          if (nextClasses.size) {
+            nextElement.setAttribute("class", Array.from(nextClasses).join(" "));
+          } else {
+            nextElement.removeAttribute("class");
+          }
+          return;
+        }
+
+        if (versionValue == null) {
+          nextElement.removeAttribute(name);
+        } else {
+          nextElement.setAttribute(name, versionValue);
+        }
+      });
+
+      if (baseElement.children.length === 0
+        && versionElement.children.length === 0
+        && baseElement.textContent !== versionElement.textContent) {
+        nextElement.textContent = versionElement.textContent || "";
+      }
+    }
+
+    function readResponsiveCssRules(css) {
+      try {
+        const documentForCss = document.implementation.createHTMLDocument("layout-responsive-rebase");
+        const style = documentForCss.createElement("style");
+        style.textContent = String(css || "");
+        documentForCss.head.appendChild(style);
+        const entries = [];
+        const occurrences = new Map();
+        let supported = true;
+
+        const walk = (rules, parents = []) => {
+          Array.from(rules || []).forEach((rule) => {
+            if (Number(rule.type) === 1) {
+              const ruleKey = `${parents.join("\u001f")}\u0000${rule.selectorText}`;
+              const occurrence = occurrences.get(ruleKey) || 0;
+              occurrences.set(ruleKey, occurrence + 1);
+              const declarations = {};
+              Array.from(rule.style || []).forEach((property) => {
+                declarations[property] = {
+                  value: rule.style.getPropertyValue(property),
+                  priority: rule.style.getPropertyPriority(property)
+                };
+              });
+              entries.push({
+                key: `${ruleKey}\u0000${occurrence}`,
+                parents,
+                selector: rule.selectorText,
+                declarations
+              });
+              return;
+            }
+
+            if (rule.cssRules) {
+              const openingBrace = String(rule.cssText || "").indexOf("{");
+              if (openingBrace < 0) {
+                supported = false;
+                return;
+              }
+              walk(rule.cssRules, [...parents, String(rule.cssText || "").slice(0, openingBrace).trim()]);
+              return;
+            }
+
+            // @font-face, @keyframes and imports cannot be safely split into
+            // declaration-level overrides. The caller retains their version
+            // verbatim in that rare case.
+            supported = false;
+          });
+        };
+
+        walk(style.sheet?.cssRules || []);
+        return { entries, supported };
+      } catch (_) {
+        return { entries: [], supported: false };
+      }
+    }
+
+    function buildResponsiveCssDelta(baseCss, versionCss) {
+      if (String(baseCss || "") === String(versionCss || "")) {
+        return "";
+      }
+
+      const baseRules = readResponsiveCssRules(baseCss);
+      const versionRules = readResponsiveCssRules(versionCss);
+      if (!baseRules.supported || !versionRules.supported) {
+        return String(versionCss || "").trim();
+      }
+
+      const baseByKey = new Map(baseRules.entries.map((entry) => [entry.key, entry]));
+      const versionByKey = new Map(versionRules.entries.map((entry) => [entry.key, entry]));
+      const deltaRules = [];
+
+      const appendDelta = (baseRule, versionRule) => {
+        const properties = new Set([
+          ...Object.keys(baseRule?.declarations || {}),
+          ...Object.keys(versionRule?.declarations || {})
+        ]);
+        const declarations = Array.from(properties).reduce((result, property) => {
+          const baseDeclaration = baseRule?.declarations?.[property] || { value: "", priority: "" };
+          const versionDeclaration = versionRule?.declarations?.[property] || { value: "", priority: "" };
+          if (baseDeclaration.value === versionDeclaration.value
+            && baseDeclaration.priority === versionDeclaration.priority) {
+            return result;
+          }
+
+          const value = versionDeclaration.value || "unset";
+          result.push(`${property}: ${value} !important;`);
+          return result;
+        }, []);
+        const sourceRule = versionRule || baseRule;
+        if (sourceRule && declarations.length) {
+          deltaRules.push({ ...sourceRule, declarations });
+        }
+      };
+
+      versionRules.entries.forEach((versionRule) => appendDelta(baseByKey.get(versionRule.key), versionRule));
+      baseRules.entries.forEach((baseRule) => {
+        if (!versionByKey.has(baseRule.key)) appendDelta(baseRule, null);
+      });
+
+      return deltaRules.map((rule) => {
+        let output = `${rule.selector} { ${rule.declarations.join(" ")} }`;
+        [...rule.parents].reverse().forEach((parent) => {
+          output = `${parent} {\n${output}\n}`;
+        });
+        return output;
+      }).join("\n");
+    }
+
+    function rebaseResponsiveStyleMap(baseStyles = {}, versionStyles = {}, nextBaseStyles = {}) {
+      const result = cloneValue(nextBaseStyles || {});
+      const keys = new Set([...Object.keys(baseStyles || {}), ...Object.keys(versionStyles || {})]);
+
+      keys.forEach((key) => {
+        const baseEntry = baseStyles?.[key];
+        const versionEntry = versionStyles?.[key];
+        if (JSON.stringify(baseEntry || null) === JSON.stringify(versionEntry || null)) {
+          return;
+        }
+        if (!baseEntry && versionEntry) {
+          result[key] = cloneValue(versionEntry);
+          return;
+        }
+        if (baseEntry && !versionEntry) {
+          delete result[key];
+          return;
+        }
+
+        const nextEntry = cloneValue(result[key] || {});
+        const usesDeclarations = baseEntry?.declarations || versionEntry?.declarations;
+        if (usesDeclarations) {
+          ["className", "selector"].forEach((property) => {
+            if (baseEntry[property] !== versionEntry[property]) {
+              nextEntry[property] = versionEntry[property];
+            }
+          });
+          const nextDeclarations = { ...(nextEntry.declarations || {}) };
+          const declarationKeys = new Set([
+            ...Object.keys(baseEntry.declarations || {}),
+            ...Object.keys(versionEntry.declarations || {})
+          ]);
+          declarationKeys.forEach((property) => {
+            if (baseEntry.declarations?.[property] === versionEntry.declarations?.[property]) return;
+            if (versionEntry.declarations?.[property] == null) {
+              delete nextDeclarations[property];
+            } else {
+              nextDeclarations[property] = versionEntry.declarations[property];
+            }
+          });
+          nextEntry.declarations = nextDeclarations;
+        } else {
+          const properties = new Set([...Object.keys(baseEntry || {}), ...Object.keys(versionEntry || {})]);
+          properties.forEach((property) => {
+            if (baseEntry[property] === versionEntry[property]) return;
+            if (versionEntry[property] == null) {
+              delete nextEntry[property];
+            } else {
+              nextEntry[property] = versionEntry[property];
+            }
+          });
+        }
+        result[key] = nextEntry;
+      });
+
+      return result;
+    }
+
+    function rebaseResponsiveTemplateSnapshot(baseSnapshot, versionSnapshot, nextBaseSnapshot) {
+      if (!versionSnapshot || !baseSnapshot || !nextBaseSnapshot) {
+        return cloneValue(versionSnapshot || nextBaseSnapshot || {});
+      }
+
+      const baseHtml = getTemplateSnapshotHtml(baseSnapshot);
+      const versionHtml = getTemplateSnapshotHtml(versionSnapshot);
+      const result = cloneValue(nextBaseSnapshot);
+      result.textStyles = rebaseResponsiveStyleMap(baseSnapshot.textStyles, versionSnapshot.textStyles, nextBaseSnapshot.textStyles);
+      result.classStyles = rebaseResponsiveStyleMap(baseSnapshot.classStyles, versionSnapshot.classStyles, nextBaseSnapshot.classStyles);
+      if (versionHtml === baseHtml) {
+        return result;
+      }
+
+      const baseMarkup = parseResponsiveTemplateMarkup(baseHtml);
+      const versionMarkup = parseResponsiveTemplateMarkup(versionHtml);
+      const nextMarkup = parseResponsiveTemplateMarkup(getTemplateSnapshotHtml(nextBaseSnapshot));
+      if (!baseMarkup || !versionMarkup || !nextMarkup) {
+        return { ...result, template: cloneValue(versionSnapshot.template || result.template) };
+      }
+
+      const baseElements = getResponsiveMarkupElements(baseMarkup.root, { excludeStyles: true });
+      const versionElements = getResponsiveMarkupElements(versionMarkup.root, { excludeStyles: true });
+      const nextElements = getResponsiveMarkupElements(nextMarkup.root, { excludeStyles: true });
+      if (!sameResponsiveMarkupShape(baseElements, versionElements, nextElements)) {
+        return { ...result, template: cloneValue(versionSnapshot.template || result.template) };
+      }
+
+      versionElements.forEach((versionElement, index) => {
+        rebaseResponsiveMarkupAttributes(baseElements[index], versionElement, nextElements[index]);
+      });
+
+      const baseStyles = Array.from(baseMarkup.root.querySelectorAll("style"));
+      const versionStyles = Array.from(versionMarkup.root.querySelectorAll("style"));
+      versionStyles.forEach((versionStyle, index) => {
+        const baseStyle = baseStyles[index];
+        if (!baseStyle) {
+          nextMarkup.root.appendChild(versionStyle.cloneNode(true));
+          return;
+        }
+
+        const cssDelta = buildResponsiveCssDelta(baseStyle.textContent, versionStyle.textContent);
+        if (!cssDelta) return;
+        const override = nextMarkup.document.createElement("style");
+        override.textContent = cssDelta;
+        nextMarkup.root.appendChild(override);
+      });
+
+      result.template = {
+        ...(result.template || {}),
+        ...(versionSnapshot.template?.status ? { status: versionSnapshot.template.status } : {}),
+        html: nextMarkup.root.innerHTML.trim()
+      };
+      return result;
+    }
+
+    function rebaseTemplateResponsiveVersions(baseSnapshot, nextBaseSnapshot) {
+      [state.responsive.saved, state.responsive.drafts].forEach((collection) => {
+        const versions = collection?.template;
+        if (!versions) return;
+        Object.keys(versions).forEach((device) => {
+          versions[device] = rebaseResponsiveTemplateSnapshot(baseSnapshot, versions[device], nextBaseSnapshot);
+        });
+      });
+    }
+
+    function updateTemplateBaseHtml(value, status = "") {
+      const baseSnapshot = getBaseSnapshot("template");
+      const nextBaseSnapshot = cloneValue(baseSnapshot);
+      nextBaseSnapshot.template = {
+        ...(nextBaseSnapshot.template || {}),
+        html: String(value || ""),
+        status: String(status || "")
+      };
+      rebaseTemplateResponsiveVersions(baseSnapshot, nextBaseSnapshot);
+      state.responsive.baseSnapshots.template = nextBaseSnapshot;
+
+      if (state.responsive.editDevice === "base") {
+        state.template.html = nextBaseSnapshot.template.html;
+        state.template.status = nextBaseSnapshot.template.status;
+      }
+      return nextBaseSnapshot;
+    }
+
     function rememberActiveResponsiveDraft(tab = getResponsiveTab()) {
       const device = state.responsive.editDevice;
       if (device !== "base") {
@@ -2779,9 +3138,13 @@ ${itemMarkup}
       });
     }
 
-    function returnDashboardHome() {
+    function returnDashboardHome(options = {}) {
       if (!returnToBaseVersion()) {
         return false;
+      }
+
+      if (options.closeBoard && window.LpBoard && typeof window.LpBoard.close === "function") {
+        window.LpBoard.close();
       }
 
       currentPage = "conteudo";
@@ -2803,15 +3166,7 @@ ${itemMarkup}
     }
 
     function returnToHubFromLpBoard() {
-      if (!returnDashboardHome()) {
-        return false;
-      }
-
-      if (window.LpBoard && typeof window.LpBoard.close === "function") {
-        window.LpBoard.close();
-      }
-
-      return true;
+      return returnDashboardHome({ closeBoard: true });
     }
 
     function applyPage(page) {
@@ -2901,7 +3256,7 @@ ${cleanCss}
 
     const structuralStylesheetBaseUrl = "https://imgprd.martinsatacado.com.br/catalogoimg/catalogo";
     const structuralStylesheetFiles = {
-      faq: "style-faq-padrao.css",
+      faq: "style-faq-padrao-conteudo.css",
       table: "tabela.css",
       stories: "stories.css",
       article: "artigo.css",
@@ -3471,9 +3826,15 @@ ${buildFaqPreviewStylePackage({ includeResponsive: true, responsiveOptions: { in
         if (typeof buildLabBridgeTransferHtml !== "function") {
           return;
         }
-        state.template.html = buildLabBridgeTransferHtml();
-        state.template.status = "Montagem dos layouts do Lab transferida para o LP.";
-        rememberActiveTemplateSnapshot();
+        const nextTemplateHtml = buildLabBridgeTransferHtml();
+        const nextStatus = "Montagem dos layouts do Lab transferida para o LP.";
+        if (state.responsive.editDevice === "base") {
+          updateTemplateBaseHtml(nextTemplateHtml, nextStatus);
+        } else {
+          state.template.html = nextTemplateHtml;
+          state.template.status = nextStatus;
+          rememberActiveTemplateSnapshot();
+        }
         currentEditorTab = "template";
         renderEditor();
         return;
@@ -3482,9 +3843,15 @@ ${buildFaqPreviewStylePackage({ includeResponsive: true, responsiveOptions: { in
       if (typeof buildSenkoBridgeTransferHtml !== "function") {
         return;
       }
-      state.template.html = buildSenkoBridgeTransferHtml();
-      state.template.status = "Montagem do SenkoBridge transferida para o LP.";
-      rememberActiveTemplateSnapshot();
+      const nextTemplateHtml = buildSenkoBridgeTransferHtml();
+      const nextStatus = "Montagem do SenkoBridge transferida para o LP.";
+      if (state.responsive.editDevice === "base") {
+        updateTemplateBaseHtml(nextTemplateHtml, nextStatus);
+      } else {
+        state.template.html = nextTemplateHtml;
+        state.template.status = nextStatus;
+        rememberActiveTemplateSnapshot();
+      }
       currentEditorTab = "template";
       renderEditor();
     }
@@ -3586,19 +3953,10 @@ ${buildFaqPreviewStylePackage({ includeResponsive: true, responsiveOptions: { in
       const appliesToActiveSnapshot = activeDevice === targetDevice;
 
       if (isDesktopGeneral) {
-        const baseSnapshot = getBaseSnapshot("template");
-        const nextBaseSnapshot = cloneValue(baseSnapshot);
-        nextBaseSnapshot.template = {
-          ...(nextBaseSnapshot.template || {}),
-          html: nextValue,
-          status: ""
-        };
-        state.responsive.baseSnapshots.template = nextBaseSnapshot;
-
-        if (state.responsive.editDevice === "base") {
-          state.template.html = nextValue;
-          state.template.status = "";
-        }
+        // A responsive frame is an overlay, not an older independent copy of
+        // the Desktop. This shared base updater rebases its inline/CSS changes
+        // onto the new Desktop HTML before the other frames are refreshed.
+        updateTemplateBaseHtml(nextValue);
       } else if (appliesToActiveSnapshot) {
         state.template.html = nextValue;
         state.template.status = "";
@@ -4330,10 +4688,16 @@ ${buildFaqPreviewStylePackage({ includeResponsive: true, responsiveOptions: { in
 
     function insertSelectedTemplateLayout() {
       const selectedLayout = state.template.sourceLayout || "carousel";
-      state.template.html = buildTemplateLayoutPackage(selectedLayout);
+      const nextTemplateHtml = buildTemplateLayoutPackage(selectedLayout);
       const option = getTemplateLayoutOptions().find(([value]) => value === selectedLayout);
-      state.template.status = `${option ? option[1] : "Layout"} inserido dentro da lp-container.`;
-      rememberActiveTemplateSnapshot();
+      const nextStatus = `${option ? option[1] : "Layout"} inserido dentro da lp-container.`;
+      if (state.responsive.editDevice === "base") {
+        updateTemplateBaseHtml(nextTemplateHtml, nextStatus);
+      } else {
+        state.template.html = nextTemplateHtml;
+        state.template.status = nextStatus;
+        rememberActiveTemplateSnapshot();
+      }
       renderEditor(true);
     }
 
@@ -4362,9 +4726,13 @@ ${buildFaqPreviewStylePackage({ includeResponsive: true, responsiveOptions: { in
       }
 
       window.setTimeout(() => {
-        state.template.html = event.target.value;
-        state.template.status = "";
-        rememberActiveTemplateSnapshot();
+        if (state.responsive.editDevice === "base") {
+          updateTemplateBaseHtml(event.target.value);
+        } else {
+          state.template.html = event.target.value;
+          state.template.status = "";
+          rememberActiveTemplateSnapshot();
+        }
         updateTemplateCodeHighlight(event.target);
         scheduleTemplatePreviewUpdate(0);
       }, 0);
@@ -4392,9 +4760,13 @@ ${buildFaqPreviewStylePackage({ includeResponsive: true, responsiveOptions: { in
         }
 
         if (templateField === "html") {
-          state.template.html = event.target.value;
-          state.template.status = "";
-          rememberActiveTemplateSnapshot();
+          if (state.responsive.editDevice === "base") {
+            updateTemplateBaseHtml(event.target.value);
+          } else {
+            state.template.html = event.target.value;
+            state.template.status = "";
+            rememberActiveTemplateSnapshot();
+          }
           updateTemplateCodeHighlight(event.target);
           scheduleTemplatePreviewUpdate();
           return;

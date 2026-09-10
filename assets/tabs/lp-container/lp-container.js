@@ -189,7 +189,7 @@
 
       return typeof buildFaqOutputPackage === "function"
         ? buildFaqOutputPackage()
-        : `<link rel="stylesheet" href="https://imgprd.martinsatacado.com.br/catalogoimg/catalogo/style-faq-padrao.css">\n\n${buildFaqSectionHtml()}`;
+        : `<link rel="stylesheet" href="https://imgprd.martinsatacado.com.br/catalogoimg/catalogo/style-faq-padrao-conteudo.css">\n\n${buildFaqSectionHtml()}`;
     }
 
     function extractLpContainerHtml(value) {
@@ -1111,6 +1111,7 @@ ${containerHtml}`;
       let classPropertySelect = null;
       let resetClassButton = null;
       let previewEditHistoryRecorded = false;
+      let previewEditDirty = false;
       const recordPopoverEditHistory = () => {
         if (previewEditHistoryRecorded) {
           return;
@@ -1601,6 +1602,9 @@ ${containerHtml}`;
       form.appendChild(actions);
 
       const applyLiveValue = (applyOptions = {}) => {
+        if (!applyOptions.finalizeOnly) {
+          previewEditDirty = true;
+        }
         recordPopoverEditHistory();
         let nextValue = String(valueInput.value || "").trim();
         if (isColor) {
@@ -1684,9 +1688,12 @@ ${containerHtml}`;
 
       // Entradas de texto e cor usam atualizacao leve enquanto a pessoa
       // digita. Ao fechar, consolide uma unica vez para propagar a versao
-      // final aos outros frames sem remontar o iframe que esta em uso.
+      // final aos outros frames sem remontar o iframe que esta em uso. Abrir
+      // e fechar o editor sem tocar em nada nao pode reserializar o HTML.
       previewEditBeforeCloseHandler = () => {
-        applyLiveValue({ multiline: options.multiline });
+        if (previewEditDirty) {
+          applyLiveValue({ multiline: options.multiline, finalizeOnly: true });
+        }
       };
 
       if (localAssetButton) {
@@ -2310,7 +2317,11 @@ ${containerHtml}`;
         return;
       }
 
-      state.template.html = nextHtml;
+      if (state.responsive?.editDevice === "base" && typeof updateTemplateBaseHtml === "function") {
+        updateTemplateBaseHtml(nextHtml);
+      } else {
+        state.template.html = nextHtml;
+      }
       const textarea = editor.querySelector('[data-template-field="html"]');
       if (textarea && document.activeElement !== textarea) {
         textarea.value = state.template.html;
@@ -4353,6 +4364,7 @@ ${containerHtml}`;
 
         let singleClickTimer = 0;
         let originalInlineText = "";
+        let inlineHistoryRecorded = false;
         const focusEditableText = () => {
           const selection = doc.defaultView.getSelection();
           const range = doc.createRange();
@@ -4366,11 +4378,22 @@ ${containerHtml}`;
             return;
           }
 
-          const normalizedValue = updateInlinePreviewTextValue(sourceMeta, element, element.innerText, { multiline, commit: true });
-          element.textContent = normalizedValue;
+          const nextRawValue = element.innerText || element.textContent || "";
+          const normalizedValue = normalizePreviewText(nextRawValue, multiline);
+          const originalValue = normalizePreviewText(originalInlineText, multiline);
+          // contenteditable can normalize whitespace as soon as it receives
+          // focus. Do not serialize that browser-only change when the person
+          // has not actually edited the text.
+          if (normalizedValue !== originalValue) {
+            updateInlinePreviewTextValue(sourceMeta, element, nextRawValue, { multiline, commit: true });
+            element.textContent = normalizedValue;
+          } else {
+            element.textContent = originalInlineText;
+          }
           element.removeAttribute("contenteditable");
           element.removeAttribute("spellcheck");
           delete element.dataset.llPreviewInline;
+          inlineHistoryRecorded = false;
         };
 
         const startInlineTextEdit = (event) => {
@@ -4378,8 +4401,8 @@ ${containerHtml}`;
           event.stopPropagation();
           window.clearTimeout(singleClickTimer);
           closePreviewEditPopover();
-          recordPreviewEditHistory(sourceMeta, frame);
           originalInlineText = element.innerText || element.textContent || "";
+          inlineHistoryRecorded = false;
           element.dataset.llPreviewInline = "true";
           element.setAttribute("contenteditable", "plaintext-only");
           element.setAttribute("spellcheck", "false");
@@ -4469,6 +4492,10 @@ ${containerHtml}`;
             return;
           }
 
+          if (!inlineHistoryRecorded) {
+            recordPreviewEditHistory(sourceMeta, frame);
+            inlineHistoryRecorded = true;
+          }
           updateInlinePreviewTextValue(sourceMeta, element, element.innerText, { multiline });
         });
 
@@ -4528,14 +4555,11 @@ ${containerHtml}`;
           }
         });
 
-        element.addEventListener("focus", () => {
+        element.addEventListener("input", () => {
           if (!inlineHistoryRecorded) {
             recordPreviewEditHistory(sourceMeta, frame);
             inlineHistoryRecorded = true;
           }
-        });
-
-        element.addEventListener("input", () => {
           syncTablePreviewField(meta, element.innerText, { multiline });
         });
 
@@ -5183,10 +5207,13 @@ ${containerHtml}`;
       const openTemplateOptionCardPopover = (sourceEvent, element) => {
         closePreviewEditPopover();
         recordPreviewEditHistory({ scope: "template", sourceFrame: element?.ownerDocument?.defaultView?.frameElement || frame });
-        const styles = element.ownerDocument.defaultView.getComputedStyle(element);
+        // These values need to be refreshed when the option state changes.
+        // Keeping the initial computed-style snapshot here made the form carry
+        // values from "checked" into "unchecked" (and the other way around).
+        let styles = element.ownerDocument.defaultView.getComputedStyle(element);
         const isOptionDot = isTemplateOptionDot(element);
         const textTarget = isOptionDot ? null : getTemplateOptionTextTarget(element);
-        const textStyles = textTarget
+        let textStyles = textTarget
           ? textTarget.ownerDocument.defaultView.getComputedStyle(textTarget)
           : styles;
         const icon = getTemplateOptionIcon(element);
@@ -5325,6 +5352,52 @@ ${containerHtml}`;
           form.querySelector(".preview-edit-popover__actions").before(field);
         }
 
+        const setOptionColorFieldValue = (input, value, fallback) => {
+          if (!input) {
+            return;
+          }
+
+          const nextValue = colorToHex(value, fallback);
+          input.value = nextValue;
+          const swatch = input.parentElement?.querySelector('input[type="color"]');
+          if (swatch) {
+            swatch.value = nextValue;
+            swatch.style.setProperty("--preview-edit-color", nextValue);
+          }
+        };
+
+        const refreshOptionCardFields = () => {
+          // Let the browser resolve :checked/:not(:checked) first, then read
+          // the actual appearance for the state that was just selected.
+          styles = element.ownerDocument.defaultView.getComputedStyle(element);
+          textStyles = textTarget
+            ? textTarget.ownerDocument.defaultView.getComputedStyle(textTarget)
+            : styles;
+
+          setOptionColorFieldValue(backgroundInput, styles.backgroundColor, "#ffffff");
+          setOptionColorFieldValue(textInput, textStyles.color, "#111827");
+          setOptionColorFieldValue(borderInput, styles.borderTopColor, "#111827");
+          borderWidth.value = String(Number.parseFloat(styles.borderTopWidth) || 0);
+          radius.value = String(Number.parseFloat(styles.borderTopLeftRadius) || 0);
+          if (padding) {
+            padding.value = String(Number.parseFloat(styles.paddingTop) || 0);
+          }
+          if (dotSize) {
+            dotSize.value = String(Math.max(
+              Number.parseFloat(styles.width) || 0,
+              Number.parseFloat(styles.height) || 0,
+              8
+            ));
+          }
+          if (iconToggle && icon) {
+            const iconStyles = icon.ownerDocument.defaultView.getComputedStyle(icon);
+            iconToggle.checked = iconStyles.display !== "none" && iconStyles.visibility !== "hidden";
+          }
+          // Every valid field event already writes its state rule immediately.
+          // The next state starts with a fresh, independent form value set.
+          optionCardDirty = false;
+        };
+
         const apply = (skipPreviewUpdate) => {
           optionCardDirty = true;
           const background = isHexColor(backgroundInput.value) ? normalizeHexColor(backgroundInput.value) : colorToHex(styles.backgroundColor, "#ffffff");
@@ -5449,7 +5522,7 @@ ${containerHtml}`;
         previewEditBeforeCloseHandler = commitOptionCardChanges;
         stateSelect?.addEventListener("change", () => {
           applyOptionPreviewState();
-          apply(false);
+          window.requestAnimationFrame(refreshOptionCardFields);
         });
 
         form.addEventListener("submit", (event) => {
@@ -9191,8 +9264,13 @@ ${containerHtml}`;
     }
 
     function clearTemplateHtml() {
-      state.template.html = "";
-      state.template.status = "Conteúdo da LP limpo.";
+      const nextStatus = "Conteúdo da LP limpo.";
+      if (state.responsive?.editDevice === "base" && typeof updateTemplateBaseHtml === "function") {
+        updateTemplateBaseHtml("", nextStatus);
+      } else {
+        state.template.html = "";
+        state.template.status = nextStatus;
+      }
       try {
         localStorage.removeItem(templateCacheKey);
       } catch (error) {}
@@ -9231,10 +9309,15 @@ ${containerHtml}`;
       reader.addEventListener("load", () => {
         const rawValue = String(reader.result || "");
         const extractedValue = extractLpContainerHtml(rawValue);
-        state.template.html = extractedValue;
-        state.template.status = rawValue.trim() && extractedValue !== rawValue.trim()
+        const nextStatus = rawValue.trim() && extractedValue !== rawValue.trim()
           ? "HTML importado. Encontrei a lp-container e trouxe só o conteúdo interno."
           : "HTML importado para a lp-container.";
+        if (state.responsive?.editDevice === "base" && typeof updateTemplateBaseHtml === "function") {
+          updateTemplateBaseHtml(extractedValue, nextStatus);
+        } else {
+          state.template.html = extractedValue;
+          state.template.status = nextStatus;
+        }
         renderEditor(true);
       });
       reader.readAsText(file);
