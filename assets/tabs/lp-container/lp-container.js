@@ -351,7 +351,7 @@
 
     function isLabEditorTooltip(value) {
       const tooltip = String(value || "").trim();
-      const editorInstruction = /^(?:Clique|Duplo clique|D(?:\u00ea|\u00c3\u00aa) dois cliques)/i;
+      const editorInstruction = /^(?:Clique|Duplo clique|D(?:\u00ea|\u00c3\u00aa) dois cliques|(?:Use\s+)?Ctrl\s*\+\s*clique)/i;
       const editorAction = /(?:editar|trocar|url|m[i\u00ed]dia|m\u00c3\u00addia|media|texto|estilo|cor|fundo|alt)/i;
       return editorInstruction.test(tooltip) && editorAction.test(tooltip);
     }
@@ -4579,9 +4579,25 @@ ${containerHtml}`;
         }
 
         const targetId = label.getAttribute("for");
-        return label.control
-          || label.querySelector?.('input[type="radio"], input[type="checkbox"]')
-          || (targetId ? doc.getElementById(targetId) : null);
+        const nestedControl = label.querySelector?.('input[type="radio"], input[type="checkbox"]');
+        if (nestedControl) {
+          return nestedControl;
+        }
+
+        // Some imported sections reuse an old `section-8-*` id in newer
+        // section-28 cards. `label.control` then resolves to the first id in
+        // the document, which can belong to another card/section. Prefer the
+        // matching radio or checkbox beside this label before consulting the
+        // document-wide association.
+        if (targetId) {
+          const localControl = Array.from(label.parentElement?.querySelectorAll?.('input[type="radio"], input[type="checkbox"]') || [])
+            .find((candidate) => candidate.id === targetId);
+          if (localControl) {
+            return localControl;
+          }
+        }
+
+        return label.control || (targetId ? doc.getElementById(targetId) : null);
       };
 
       const getTemplateSignature = (element) => {
