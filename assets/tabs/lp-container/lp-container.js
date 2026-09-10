@@ -5290,14 +5290,23 @@ ${containerHtml}`;
       };
 
       const writeTemplateOptionStateRules = (style, rules) => {
-        style.textContent = Array.from(rules.values())
-          .map(({ selector, declarations }) => {
-            const content = Array.from(declarations.entries())
-              .map(([property, value]) => `${property}: ${value};`)
-              .join(" ");
-            return selector && content ? `${selector} { ${content} }` : "";
-          })
-          .filter(Boolean)
+        // Several cards often receive exactly the same state declaration.
+        // Keep their selector maps independent for editing, then group equal
+        // rules only when serializing so the exported CSS stays concise.
+        const groupedRules = new Map();
+        Array.from(rules.values()).forEach(({ selector, declarations }) => {
+          const content = Array.from(declarations.entries())
+            .map(([property, value]) => `${property}: ${value};`)
+            .join(" ");
+          if (!selector || !content) {
+            return;
+          }
+          const group = groupedRules.get(content) || { content, selectors: [] };
+          group.selectors.push(selector);
+          groupedRules.set(content, group);
+        });
+        style.textContent = Array.from(groupedRules.values())
+          .map(({ selectors, content }) => `${selectors.join(",\n")} { ${content} }`)
           .join("\n");
       };
 
