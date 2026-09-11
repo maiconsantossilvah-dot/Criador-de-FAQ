@@ -1100,6 +1100,16 @@
     window.setTimeout(() => state.code?.focus(), 0);
   }
 
+  // O Desktop é sempre a fonte principal da LP. Somente as versões
+  // responsivas têm uma janela de código própria.
+  function openCodeForDevice(key) {
+    if (!key || key === "desktop") {
+      openGeneralCode();
+      return;
+    }
+    openResponsiveCode(key);
+  }
+
   function getResponsiveCodePanel(key) {
     return state.root?.querySelector(`[data-board-code-window="${key}"]`) || null;
   }
@@ -1354,7 +1364,7 @@
       const save = event.target.closest("[data-board-save]")?.dataset.boardSave;
       const exportMode = event.target.closest("[data-board-export]")?.dataset.boardExport;
       if (open) { openLiveEditor(open); return; }
-      if (codeFor) { openResponsiveCode(codeFor); return; }
+      if (codeFor) { openCodeForDevice(codeFor); return; }
       if (exportMode && typeof state.callbacks.onExport === "function") {
         state.callbacks.onExport(exportMode, event.target.closest("[data-board-export]"));
         return;
@@ -1742,8 +1752,7 @@
       }
       if (event.ctrlKey && event.altKey && event.code === "KeyC") {
         event.preventDefault();
-        if (state.selectedKey) openResponsiveCode(state.selectedKey);
-        else openGeneralCode();
+        openCodeForDevice(state.selectedKey);
         return;
       }
       if (event.ctrlKey && event.altKey && event.shiftKey && event.code === "KeyA") {

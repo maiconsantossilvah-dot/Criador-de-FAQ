@@ -826,6 +826,12 @@ ${frameCss}
 
       const parsedDocument = new DOMParser().parseFromString(`<div data-ll-faq-style-root>${extractLpContainerHtml(rawValue)}</div>`, "text/html");
       const wrapper = parsedDocument.querySelector("[data-ll-faq-style-root]");
+      // New FAQ edits are kept in an ordinary style block inside the source
+      // HTML. It is visible in the general code editor and is preserved by
+      // export, so do not regenerate a second hidden rule from legacy vars.
+      if (wrapper?.querySelector("style.faq-custom-style")) {
+        return "";
+      }
       const faqRoot = wrapper?.querySelector(".ll-template-faq-custom-colors, [style*='--ll-template-faq-summary-bg'], [style*='--ll-template-faq-summary-hover-bg']");
       if (!faqRoot) {
         return "";
@@ -2219,6 +2225,9 @@ ${containerHtml}`;
       }
 
       const tab = getPreviewClassStyleTab(meta);
+      const previousTemplateBaseSnapshot = tab === "template" && state.responsive?.editDevice === "base"
+        ? cloneValue(getBaseSnapshot("template"))
+        : null;
       const normalized = normalizePreviewClassDeclarations(declarations);
       if (!Object.keys(normalized).length) {
         return;
@@ -2238,7 +2247,16 @@ ${containerHtml}`;
       if (currentPage === "conteudo") {
         markResponsiveDirty();
         if (state.responsive.editDevice === "base") {
-          rememberBaseSnapshot(tab);
+          // A Desktop class change is the new base. Rebase saved responsive
+          // frames from that base so an untouched tablet/mobile snapshot does
+          // not reintroduce an older color in the exported local version.
+          if (tab === "template" && previousTemplateBaseSnapshot && typeof rebaseTemplateResponsiveVersions === "function") {
+            const nextBaseSnapshot = cloneValue(getTabSnapshot("template"));
+            rebaseTemplateResponsiveVersions(previousTemplateBaseSnapshot, nextBaseSnapshot);
+            state.responsive.baseSnapshots.template = nextBaseSnapshot;
+          } else {
+            rememberBaseSnapshot(tab);
+          }
         } else {
           rememberActiveResponsiveDraft(tab);
         }
@@ -2254,11 +2272,21 @@ ${containerHtml}`;
         return;
       }
 
+      const previousTemplateBaseSnapshot = tab === "template" && state.responsive?.editDevice === "base"
+        ? cloneValue(getBaseSnapshot("template"))
+        : null;
+
       delete state.classStyles[tab][normalizedSelector.key];
       if (currentPage === "conteudo") {
         markResponsiveDirty();
         if (state.responsive.editDevice === "base") {
-          rememberBaseSnapshot(tab);
+          if (tab === "template" && previousTemplateBaseSnapshot && typeof rebaseTemplateResponsiveVersions === "function") {
+            const nextBaseSnapshot = cloneValue(getTabSnapshot("template"));
+            rebaseTemplateResponsiveVersions(previousTemplateBaseSnapshot, nextBaseSnapshot);
+            state.responsive.baseSnapshots.template = nextBaseSnapshot;
+          } else {
+            rememberBaseSnapshot(tab);
+          }
         } else {
           rememberActiveResponsiveDraft(tab);
         }
@@ -6848,22 +6876,14 @@ ${containerHtml}`;
         }
 
         faqStyle.textContent = `
-.lp-container .ll-template-faq-custom-colors #faq-section__summary.ll-template-faq-summary,
-.lp_container .ll-template-faq-custom-colors #faq-section__summary.ll-template-faq-summary,
 .lp-container .ll-template-faq-custom-colors .ll-template-faq-summary,
 .lp_container .ll-template-faq-custom-colors .ll-template-faq-summary,
-.lp-container.ll-template-faq-custom-colors #faq-section__summary.ll-template-faq-summary,
-.lp_container.ll-template-faq-custom-colors #faq-section__summary.ll-template-faq-summary,
 .lp-container.ll-template-faq-custom-colors .ll-template-faq-summary,
 .lp_container.ll-template-faq-custom-colors .ll-template-faq-summary {
   background: var(--ll-template-faq-summary-bg) !important;
 }
-.lp-container .ll-template-faq-custom-colors #faq-section__summary.ll-template-faq-summary:hover,
-.lp_container .ll-template-faq-custom-colors #faq-section__summary.ll-template-faq-summary:hover,
 .lp-container .ll-template-faq-custom-colors .ll-template-faq-summary:hover,
 .lp_container .ll-template-faq-custom-colors .ll-template-faq-summary:hover,
-.lp-container.ll-template-faq-custom-colors #faq-section__summary.ll-template-faq-summary:hover,
-.lp_container.ll-template-faq-custom-colors #faq-section__summary.ll-template-faq-summary:hover,
 .lp-container.ll-template-faq-custom-colors .ll-template-faq-summary:hover,
 .lp_container.ll-template-faq-custom-colors .ll-template-faq-summary:hover {
   background: var(--ll-template-faq-summary-hover-bg) !important;
@@ -6949,6 +6969,213 @@ ${containerHtml}`;
 
           return targets;
         }, { questions: [], answers: [] });
+      };
+
+      const getTemplateFaqSourceSelector = (element, faqRoot, fallbackSelector) => {
+        const elementId = String(element?.id || "").trim();
+        if (elementId && !/^ll-template-|^preview-|^codex-/i.test(elementId)) {
+          return `#${escapeCssClassName(elementId)}`;
+        }
+
+        const className = Array.from(element?.classList || []).find(isUsefulPreviewClass);
+        if (className) {
+          return `.${escapeCssClassName(className)}`;
+        }
+
+        const rootId = String(faqRoot?.id || "").trim();
+        if (rootId && !/^ll-template-|^preview-|^codex-/i.test(rootId)) {
+          if (element?.tagName === "SUMMARY" || element?.closest?.("summary")) {
+            return `#${escapeCssClassName(rootId)} summary`;
+          }
+          return `#${escapeCssClassName(rootId)} ${fallbackSelector}`;
+        }
+
+        return fallbackSelector;
+      };
+
+      const templateFaqStyleMarkers = {
+        visualStart: "/* Ajustes visuais do FAQ */",
+        visualEnd: "/* Fim dos ajustes visuais do FAQ */",
+        classStart: "/* Ajustes de classe/ID do FAQ */",
+        classEnd: "/* Fim dos ajustes de classe/ID do FAQ */"
+      };
+
+      const getTemplateFaqSourceStyleElement = (faqRoot, className, marker) => {
+        const localStyle = Array.from(faqRoot?.children || []).find((child) => {
+          return child.tagName === "STYLE" && child.classList.contains(className);
+        });
+        if (localStyle) {
+          return localStyle;
+        }
+
+        return Array.from(faqRoot?.ownerDocument?.head?.querySelectorAll("style") || []).find((style) => {
+          return String(style.textContent || "").includes(marker);
+        }) || null;
+      };
+
+      const replaceTemplateFaqCssBlock = (cssText, startMarker, endMarker, block) => {
+        const source = String(cssText || "");
+        const startIndex = source.indexOf(startMarker);
+        const endIndex = startIndex >= 0 ? source.indexOf(endMarker, startIndex) : -1;
+        if (startIndex >= 0 && endIndex >= 0) {
+          return `${source.slice(0, startIndex)}${block}${source.slice(endIndex + endMarker.length)}`.trim();
+        }
+        return [source.trim(), block].filter(Boolean).join("\n\n");
+      };
+
+      const getTemplateFaqCssBlock = (cssText, startMarker, endMarker) => {
+        const source = String(cssText || "");
+        const startIndex = source.indexOf(startMarker);
+        const endIndex = startIndex >= 0 ? source.indexOf(endMarker, startIndex) : -1;
+        if (startIndex < 0 || endIndex < 0) {
+          return "";
+        }
+        return source.slice(startIndex + startMarker.length, endIndex).trim();
+      };
+
+      const writeTemplateFaqSourceStyle = (faqRoot, summary, question, answer, fields) => {
+        if (!faqRoot || !summary || !fields) {
+          return;
+        }
+
+        const normalSelector = getTemplateFaqSourceSelector(summary, faqRoot, "summary");
+        const questionSelector = getTemplateFaqSourceSelector(question, faqRoot, "#faq-section__q-text");
+        const answerSelector = answer
+          ? getTemplateFaqSourceSelector(answer, faqRoot, "#faq-section__a-text")
+          : "";
+        const normalizeTextFields = (styleFields) => [
+          `color: ${styleFields.color.color.value} !important;`,
+          `font-size: ${normalizeTextStyleNumber(styleFields.fontSize.value, 16, 8, 96)}px !important;`,
+          `font-weight: ${normalizePreviewFontWeight(styleFields.fontWeight.value)} !important;`,
+          `text-align: ${normalizePreviewTextAlign(styleFields.textAlign.value)} !important;`,
+          `line-height: ${normalizeTextStyleNumber(styleFields.lineHeight.value, 1.35, 0.8, 2.6, 2)} !important;`
+        ];
+        const rules = [
+          `${normalSelector} { background: ${fields.normal.color.value} !important; }`,
+          `${normalSelector}:hover { background: ${fields.hover.color.value} !important; }`,
+          questionSelector ? `${questionSelector} { ${normalizeTextFields(fields.question).join(" ")} }` : "",
+          answerSelector ? `${answerSelector} { ${normalizeTextFields(fields.answer).join(" ")} }` : ""
+        ].filter(Boolean);
+        let style = getTemplateFaqSourceStyleElement(faqRoot, "faq-custom-style", templateFaqStyleMarkers.visualStart);
+
+        if (!style) {
+          style = faqRoot.ownerDocument.createElement("style");
+          style.className = "faq-custom-style";
+          faqRoot.insertBefore(style, faqRoot.firstChild);
+        }
+
+        const visualBlock = `${templateFaqStyleMarkers.visualStart}\n${rules.join("\n")}\n${templateFaqStyleMarkers.visualEnd}`;
+        style.textContent = replaceTemplateFaqCssBlock(
+          style.textContent,
+          templateFaqStyleMarkers.visualStart,
+          templateFaqStyleMarkers.visualEnd,
+          visualBlock
+        );
+
+        // The values above are public CSS. Clear the temporary preview-only
+        // variables so neither the source code nor the final export depends
+        // on an internal Layout Lab helper.
+        faqRoot.classList.remove("ll-template-faq-custom-colors");
+        [
+          "--ll-template-faq-summary-bg",
+          "--ll-template-faq-summary-hover-bg",
+          "--ll-template-faq-question-color",
+          "--ll-template-faq-answer-color"
+        ].forEach((property) => faqRoot.style.removeProperty(property));
+        if (!faqRoot.getAttribute("class")) {
+          faqRoot.removeAttribute("class");
+        }
+        if (!faqRoot.getAttribute("style")) {
+          faqRoot.removeAttribute("style");
+        }
+      };
+
+      const escapeTemplateFaqCssRegExp = (value) => String(value || "").replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+      const getTemplateFaqClassStyle = (faqRoot) => {
+        return getTemplateFaqSourceStyleElement(faqRoot, "faq-class-style", templateFaqStyleMarkers.classStart);
+      };
+
+      const getTemplateFaqClassRuleValue = (faqRoot, selector, property) => {
+        const style = getTemplateFaqClassStyle(faqRoot);
+        const normalizedSelector = String(selector || "").trim();
+        if (!style || !normalizedSelector || !property) {
+          return "";
+        }
+
+        const classCss = getTemplateFaqCssBlock(
+          style.textContent,
+          templateFaqStyleMarkers.classStart,
+          templateFaqStyleMarkers.classEnd
+        );
+        const ruleMatch = classCss.match(new RegExp(`${escapeTemplateFaqCssRegExp(normalizedSelector)}\\s*\\{([\\s\\S]*?)\\}`, "i"));
+        const valueMatch = ruleMatch?.[1]?.match(new RegExp(`${escapeTemplateFaqCssRegExp(property)}\\s*:\\s*([^;]+)`, "i"));
+        return String(valueMatch?.[1] || "").replace(/\\s*!important\\s*$/i, "").trim();
+      };
+
+      const updateTemplateFaqClassRule = (faqRoot, selector, property, value = "") => {
+        const normalizedSelector = String(selector || "").trim();
+        const normalizedProperty = String(property || "").trim().toLowerCase();
+        if (!faqRoot || !normalizedSelector || !normalizedProperty) {
+          return;
+        }
+
+        let style = getTemplateFaqClassStyle(faqRoot);
+        if (!style && !String(value || "").trim()) {
+          return;
+        }
+        if (!style) {
+          style = faqRoot.ownerDocument.createElement("style");
+          style.className = "faq-class-style";
+          faqRoot.appendChild(style);
+        }
+
+        const existingCss = getTemplateFaqCssBlock(
+          style.textContent,
+          templateFaqStyleMarkers.classStart,
+          templateFaqStyleMarkers.classEnd
+        );
+        const rulePattern = new RegExp(`(^|\\n)\\s*${escapeTemplateFaqCssRegExp(normalizedSelector)}\\s*\\{([\\s\\S]*?)\\}`, "i");
+        const existingRule = existingCss.match(rulePattern);
+        const declarations = String(existingRule?.[2] || "")
+          .split(";")
+          .map((declaration) => declaration.trim())
+          .filter(Boolean)
+          .filter((declaration) => !new RegExp(`^${escapeTemplateFaqCssRegExp(normalizedProperty)}\\s*:`, "i").test(declaration));
+
+        if (String(value || "").trim()) {
+          declarations.push(`${normalizedProperty}: ${String(value).trim()} !important`);
+        }
+
+        const nextRule = declarations.length
+          ? `${normalizedSelector} { ${declarations.join("; ")}; }`
+          : "";
+        const nextCss = existingRule
+          ? existingCss.replace(rulePattern, `${existingRule[1] || ""}${nextRule}`)
+          : [existingCss, nextRule].filter(Boolean).join("\n");
+        const cleanCss = nextCss.trim();
+        if (!cleanCss) {
+          const withoutClassBlock = replaceTemplateFaqCssBlock(
+            style.textContent,
+            templateFaqStyleMarkers.classStart,
+            templateFaqStyleMarkers.classEnd,
+            ""
+          );
+          if (withoutClassBlock) {
+            style.textContent = withoutClassBlock;
+          } else {
+            style.remove();
+          }
+          return;
+        }
+
+        const classBlock = `${templateFaqStyleMarkers.classStart}\n${cleanCss}\n${templateFaqStyleMarkers.classEnd}`;
+        style.textContent = replaceTemplateFaqCssBlock(
+          style.textContent,
+          templateFaqStyleMarkers.classStart,
+          templateFaqStyleMarkers.classEnd,
+          classBlock
+        );
       };
 
       const findTemplateFaqTitle = (faqRoot, fallbackRoot = null) => {
@@ -7038,8 +7265,16 @@ ${containerHtml}`;
 
       const openTemplateFaqStylePopover = (sourceEvent, faqRoot, summary) => {
         closePreviewEditPopover();
-        recordPreviewEditHistory({ scope: "template", sourceFrame: faqRoot?.ownerDocument?.defaultView?.frameElement || frame });
         ensureTemplateFaqStyle(faqRoot);
+        const sourceFrame = faqRoot?.ownerDocument?.defaultView?.frameElement || frame;
+        let faqHistoryRecorded = false;
+        const recordFaqEditHistory = () => {
+          if (faqHistoryRecorded) {
+            return;
+          }
+          recordPreviewEditHistory({ scope: "template", sourceFrame }, sourceFrame);
+          faqHistoryRecorded = true;
+        };
 
         const computed = summary.ownerDocument.defaultView.getComputedStyle(summary);
         const faqTextTargets = getTemplateFaqTextTargets(faqRoot);
@@ -7221,7 +7456,11 @@ ${containerHtml}`;
         }, []);
 
         if (classCandidates.length) {
-          const classSelect = makeSelect(classCandidates, classCandidates[0].value);
+          const summaryIdSelector = summary.id ? `#${escapeCssClassName(summary.id)}` : "";
+          const preferredClassCandidate = classCandidates.find((candidate) => candidate.value === summaryIdSelector)
+            || classCandidates.find((candidate) => candidate.value.startsWith("#"))
+            || classCandidates[0];
+          const classSelect = makeSelect(classCandidates, preferredClassCandidate.value);
           makeMiniField(classPanel, "Classe ou ID alvo", classSelect);
           const classApply = makeSelect([
             { value: "summary-bg", label: "Fundo normal do summary" },
@@ -7242,19 +7481,70 @@ ${containerHtml}`;
           resetClassButton.textContent = "Limpar classe";
           classPanel.appendChild(resetClassButton);
 
+          const getClassProperty = () => ({
+            "summary-bg": "background",
+            "summary-hover": "background",
+            text: "color",
+            border: "border-color",
+            outline: "outline-color"
+          }[classApply.value] || "background");
+
+          // This FAQ is structured around IDs. Keep the exact selected ID (or
+          // class when the person explicitly chooses one) in the source CSS,
+          // so the visible code and the exported code use the same selector.
+          const getClassTargetSelector = () => {
+            const baseSelector = String(classSelect.value || "").trim();
+            const pseudo = classApply.value === "summary-hover" ? ":hover" : "";
+            return baseSelector ? `${baseSelector}${pseudo}` : "";
+          };
+
+          const setClassColorValue = (value) => {
+            const nextValue = colorToHex(value || initialNormal, initialNormal);
+            classColor.color.value = nextValue;
+            classColor.hex.value = nextValue;
+            classColor.color.style.setProperty("--preview-edit-color", nextValue);
+          };
+
+          const getClassFallbackColor = () => {
+            const property = getClassProperty();
+            if (classApply.value === "summary-hover") {
+              return initialHover;
+            }
+
+            let target = null;
+            try {
+              target = faqRoot.querySelector(classSelect.value)
+                || summary.ownerDocument.querySelector(classSelect.value);
+            } catch (_) {}
+            const targetComputed = target?.ownerDocument?.defaultView?.getComputedStyle(target);
+            const computedValue = property === "background"
+              ? targetComputed?.backgroundColor
+              : property === "border-color"
+                ? targetComputed?.borderTopColor
+                : property === "outline-color"
+                  ? targetComputed?.outlineColor
+                  : targetComputed?.color;
+            return colorToHex(computedValue || initialNormal, initialNormal);
+          };
+
+          const refreshClassColor = () => {
+            const selector = getClassTargetSelector();
+            const property = getClassProperty();
+            const savedValue = getTemplateFaqClassRuleValue(faqRoot, selector, property)
+              || state.classStyles?.template?.[selector]?.declarations?.[property];
+            setClassColorValue(savedValue || getClassFallbackColor());
+          };
+
           const applyClassStyle = () => {
             syncPair(classColor);
-            const targetSelector = classApply.value === "summary-hover"
-              ? `${classSelect.value}:hover`
-              : classSelect.value;
-            const property = {
-              "summary-bg": "background",
-              "summary-hover": "background",
-              text: "color",
-              border: "border-color",
-              outline: "outline-color"
-            }[classApply.value] || "background";
-            setPreviewClassStyle({ scope: "template", field: "faqClass" }, targetSelector, { [property]: classColor.color.value });
+            const targetSelector = getClassTargetSelector();
+            const property = getClassProperty();
+            if (!targetSelector) {
+              return;
+            }
+            recordFaqEditHistory();
+            updateTemplateFaqClassRule(faqRoot, targetSelector, property, classColor.color.value);
+            syncTemplateHtmlFromPreview();
           };
 
           classColor.color.addEventListener("input", () => {
@@ -7271,14 +7561,21 @@ ${containerHtml}`;
             classColor.hex.value = isHexColor(classColor.hex.value) ? normalizeHexColor(classColor.hex.value) : classColor.color.value;
             applyClassStyle();
           });
-          classSelect.addEventListener("change", applyClassStyle);
-          classApply.addEventListener("change", applyClassStyle);
+          // Changing the target must only load that target's existing value.
+          // Applying the previous field value here overwrote normal/hover and
+          // text styles before the person had changed anything.
+          classSelect.addEventListener("change", refreshClassColor);
+          classApply.addEventListener("change", refreshClassColor);
           resetClassButton.addEventListener("click", () => {
-            const targetSelector = classApply.value === "summary-hover"
-              ? `${classSelect.value}:hover`
-              : classSelect.value;
-            clearPreviewClassStyle({ scope: "template", field: "faqClass" }, targetSelector);
+            const targetSelector = getClassTargetSelector();
+            if (!targetSelector) {
+              return;
+            }
+            recordFaqEditHistory();
+            updateTemplateFaqClassRule(faqRoot, targetSelector, getClassProperty());
+            syncTemplateHtmlFromPreview();
           });
+          refreshClassColor();
         } else {
           const emptyClassNote = document.createElement("p");
           emptyClassNote.className = "preview-edit-popover__note";
@@ -7306,27 +7603,16 @@ ${containerHtml}`;
         };
 
         const applyFaqStyle = () => {
+          recordFaqEditHistory();
           syncPair(normal);
           syncPair(hover);
           syncPair(questionStyle.color);
           syncPair(answerStyle.color);
-          faqRoot.classList.add("ll-template-faq-custom-colors");
-          faqRoot.style.setProperty("--ll-template-faq-summary-bg", normal.color.value);
-          faqRoot.style.setProperty("--ll-template-faq-summary-hover-bg", hover.color.value);
-          faqRoot.style.setProperty("--ll-template-faq-question-color", questionStyle.color.color.value);
-          faqRoot.style.setProperty("--ll-template-faq-answer-color", answerStyle.color.color.value);
-          const applyTextStyle = (element, fields) => {
-            element.style.color = fields.color.color.value;
-            element.style.fontSize = `${normalizeTextStyleNumber(fields.fontSize.value, 16, 8, 96)}px`;
-            element.style.fontWeight = normalizePreviewFontWeight(fields.fontWeight.value);
-            element.style.textAlign = normalizePreviewTextAlign(fields.textAlign.value);
-            element.style.lineHeight = String(normalizeTextStyleNumber(fields.lineHeight.value, 1.35, 0.8, 2.6, 2));
-          };
-          getTemplateFaqTextTargets(faqRoot).questions.forEach((element) => {
-            applyTextStyle(element, questionStyle);
-          });
-          getTemplateFaqTextTargets(faqRoot).answers.forEach((element) => {
-            applyTextStyle(element, answerStyle);
+          writeTemplateFaqSourceStyle(faqRoot, summary, firstQuestion, firstAnswer, {
+            normal,
+            hover,
+            question: questionStyle,
+            answer: answerStyle
           });
           syncTemplateHtmlFromPreview();
         };
