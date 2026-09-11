@@ -838,7 +838,16 @@
           if (data.type === "layout-lab:board-space") { space = !!data.down; return; }
           if (data.type === "layout-lab:board-frame-update" && typeof data.html === "string") syncDocument(data.html);
         });
-        window.addEventListener("keydown", function (event) { if (event.code === "Space") { space = true; event.preventDefault(); } }, true);
+        window.addEventListener("keydown", function (event) {
+          if (event.code === "Space") { space = true; event.preventDefault(); return; }
+          var shortcutKey = String(event.key || "").toLowerCase();
+          if ((event.ctrlKey || event.metaKey) && !event.altKey && (shortcutKey === "z" || shortcutKey === "y")) {
+            send("layout-lab:board-frame-history", event, 0, 0, {
+              direction: shortcutKey === "y" || event.shiftKey ? "redo" : "undo"
+            });
+            event.preventDefault(); event.stopImmediatePropagation();
+          }
+        }, true);
         window.addEventListener("keyup", function (event) { if (event.code === "Space") space = false; }, true);
         window.addEventListener("pointerdown", function (event) {
           if (event.button === 1 || space) {

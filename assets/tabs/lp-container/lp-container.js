@@ -11,8 +11,9 @@
     // Alteracoes feitas diretamente nos frames nao passam pelo historico
     // nativo do navegador. Mantemos um historico pequeno por breakpoint para
     // que Ctrl+Z/Ctrl+Shift+Z funcione tambem para texto, cor, midia e CSS.
-    const previewEditHistory = { undo: [], redo: [], restoring: false, limit: 80 };
+    const previewEditHistory = { undo: [], redo: [], pending: new Map(), restoring: false, limit: 80 };
     let previewEditHistoryParentListenerBound = false;
+    let previewEditHistoryFrameMessageBound = false;
 
     function getPreviewEditHistoryTab(meta = {}) {
       const scope = String(meta?.scope || "").trim();
@@ -52,6 +53,52 @@
       }
     }
 
+    function getPreviewEditHistoryKey(tab, device) {
+      return `${tab || "faq"}::${device || "desktop"}`;
+    }
+
+    function stagePreviewEditHistory(meta = {}, sourceFrame = null) {
+      if (previewEditHistory.restoring || currentPage !== "conteudo") {
+        return false;
+      }
+
+      const tab = getPreviewEditHistoryTab(meta);
+      const device = getPreviewEditHistoryDevice(meta, sourceFrame);
+      previewEditHistory.pending.set(getPreviewEditHistoryKey(tab, device), {
+        tab,
+        device,
+        snapshot: getPreviewEditHistorySnapshot(tab, device)
+      });
+      return true;
+    }
+
+    function commitStagedPreviewEditHistory(meta = {}, sourceFrame = null) {
+      if (previewEditHistory.restoring || currentPage !== "conteudo") {
+        return false;
+      }
+
+      const tab = getPreviewEditHistoryTab(meta);
+      const device = getPreviewEditHistoryDevice(meta, sourceFrame);
+      const key = getPreviewEditHistoryKey(tab, device);
+      const pending = previewEditHistory.pending.get(key);
+      if (!pending) {
+        return false;
+      }
+
+      const currentSnapshot = getPreviewEditHistorySnapshot(tab, device);
+      if (arePreviewEditSnapshotsEqual(pending.snapshot, currentSnapshot)) {
+        return false;
+      }
+
+      previewEditHistory.pending.delete(key);
+      previewEditHistory.undo.push(pending);
+      if (previewEditHistory.undo.length > previewEditHistory.limit) {
+        previewEditHistory.undo.shift();
+      }
+      previewEditHistory.redo = [];
+      return true;
+    }
+
     function recordPreviewEditHistory(meta = {}, sourceFrame = null) {
       if (previewEditHistory.restoring || currentPage !== "conteudo") {
         return false;
@@ -60,6 +107,7 @@
       const tab = getPreviewEditHistoryTab(meta);
       const device = getPreviewEditHistoryDevice(meta, sourceFrame);
       const snapshot = getPreviewEditHistorySnapshot(tab, device);
+      previewEditHistory.pending.delete(getPreviewEditHistoryKey(tab, device));
       previewEditHistory.undo.push({ tab, device, snapshot });
       if (previewEditHistory.undo.length > previewEditHistory.limit) {
         previewEditHistory.undo.shift();
@@ -76,6 +124,7 @@
       }
 
       const restoredSnapshot = cloneValue(snapshot);
+      previewEditHistory.pending.clear();
       state.responsive.baseSnapshots = state.responsive.baseSnapshots || {};
       state.responsive.drafts = state.responsive.drafts || {};
 
@@ -158,6 +207,24 @@
       document.addEventListener("keydown", (event) => {
         handlePreviewEditHistoryShortcut(event);
       }, true);
+    }
+
+    if (!previewEditHistoryFrameMessageBound) {
+      previewEditHistoryFrameMessageBound = true;
+      window.addEventListener("message", (event) => {
+        const data = event.data || {};
+        if (data.type !== "layout-lab:board-frame-history") {
+          return;
+        }
+
+        const isKnownBoardFrame = Array.from(document.querySelectorAll("iframe[data-ll-board-active-device], iframe[data-ll-board-document-key]"))
+          .some((frame) => frame.contentWindow === event.source);
+        if (!isKnownBoardFrame) {
+          return;
+        }
+
+        movePreviewEditHistory(data.direction === "redo" ? "redo" : "undo");
+      });
     }
 
     function getTemplateLayoutOptions() {
@@ -2328,6 +2395,7 @@ ${containerHtml}`;
           skipPreviewUpdate: Boolean(options.skipPreviewUpdate),
           preserveLiveFrame: options.preserveLiveFrame !== false
         });
+        commitStagedPreviewEditHistory({ scope: "template", sourceFrame }, sourceFrame);
         return;
       }
 
@@ -2343,6 +2411,7 @@ ${containerHtml}`;
       }
       generatedHtml.value = buildOutputHtml("html");
       copyStatus.textContent = "";
+      commitStagedPreviewEditHistory({ scope: "template", sourceFrame }, sourceFrame);
     }
 
     function getBentoPreviewRoot() {
@@ -3935,6 +4004,15 @@ ${containerHtml}`;
         }
       };
       doc.addEventListener("pointerdown", rememberTemplatePreviewSource, true);
+      doc.addEventListener("pointerdown", (event) => {
+        if (event.button !== 0) {
+          return;
+        }
+        // Pointerdown runs before labels, radios and other preview controls
+        // change the DOM. Stage this checkpoint so every direct preview edit
+        // has an undo point, even when it does not open a popover.
+        stagePreviewEditHistory({ scope: "template", sourceFrame: frame }, frame);
+      }, true);
       doc.addEventListener("focusin", rememberTemplatePreviewSource, true);
       doc.addEventListener("keydown", rememberTemplatePreviewSource, true);
       doc.addEventListener("keydown", (event) => {
