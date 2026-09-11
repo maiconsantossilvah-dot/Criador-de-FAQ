@@ -3516,16 +3516,21 @@ ${buildFaqPreviewStylePackage({ includeResponsive: true, responsiveOptions: { in
 
       if (currentEditorTab === "template") {
         if (copyMode === "css") {
-          return buildResponsiveCssPackage("template", () => {
-            const embeddedStyle = typeof buildTemplateEmbeddedStyle === "function" ? buildTemplateEmbeddedStyle() : "";
-            return [embeddedStyle, buildTabStyleWithClass("template", buildTemplateStyle)].filter(Boolean).join("\n\n");
+          const cssPackage = buildResponsiveCssPackage("template", () => {
+            return typeof buildTemplateCustomOutputStyle === "function"
+              ? buildTemplateCustomOutputStyle()
+              : "";
           }, () => buildTemplateOutputHtml("html"));
+          // Links stay with the HTML. CSS-only output contains only rules
+          // created in the preview or explicitly written in the code window.
+          return extractStylesheetLinks(cssPackage).markup;
         }
 
         if (copyMode === "full" && getResponsiveVersionList("template").length) {
           return buildResponsivePackage("template", () => buildTemplateOutputHtml("html"), () => {
-            const embeddedStyle = typeof buildTemplateEmbeddedStyle === "function" ? buildTemplateEmbeddedStyle() : "";
-            return [embeddedStyle, buildTabStyleWithClass("template", buildTemplateStyle)].filter(Boolean).join("\n\n");
+            return typeof buildTemplateCustomOutputStyle === "function"
+              ? buildTemplateCustomOutputStyle()
+              : "";
           });
         }
 

@@ -890,8 +890,27 @@ ${rules.join("\n")}
 </style>`;
     }
 
-    function buildTemplateStyle() {
-      return [buildTemplateHeaderStyle(), buildTemplateFaqCustomStyle()].filter(Boolean).join("\n\n");
+    function buildTemplateStyle(options = {}) {
+      const includeHeaderBaseStyle = options.includeHeaderBaseStyle !== false;
+      return [
+        includeHeaderBaseStyle ? buildTemplateHeaderStyle() : "",
+        buildTemplateFaqCustomStyle()
+      ].filter(Boolean).join("\n\n");
+    }
+
+    // The header stylesheet belongs to the template's own <link> tag. It is
+    // used in the preview as a safe fallback, but must never be repeated in
+    // published CSS. Export only changes made through the editor or code.
+    function buildTemplateCustomOutputStyle() {
+      const embeddedStyle = buildTemplateEmbeddedStyle();
+      const previewClassStyle = typeof buildPreviewClassStyle === "function"
+        ? buildPreviewClassStyle("template")
+        : "";
+      return [
+        embeddedStyle,
+        buildTemplateStyle({ includeHeaderBaseStyle: false }),
+        previewClassStyle
+      ].filter(Boolean).join("\n\n");
     }
 
     function buildLpContainerHtml(value = state.template.html, options = {}) {
@@ -936,13 +955,10 @@ ${buildLpContainerHtml(state.template.html, { includeLabAttrs: true })}
       const containerHtml = buildLpContainerHtml();
       const stylesheetLinks = extractTemplateStylesheetLinks();
       const includeCustomStyles = Boolean(options.includeCustomStyles);
-      const templateStyle = typeof buildTabStyleWithClass === "function"
-        ? buildTabStyleWithClass("template", buildTemplateStyle)
-        : buildTemplateStyle();
-      const embeddedStyle = buildTemplateEmbeddedStyle();
+      const customStyle = buildTemplateCustomOutputStyle();
 
       if (copyMode === "full") {
-        return `${[stylesheetLinks, embeddedStyle, templateStyle].filter(Boolean).join("\n\n")}
+        return `${[stylesheetLinks, customStyle].filter(Boolean).join("\n\n")}
 
 <!-- HTML DO LAYOUT -->
 
@@ -956,7 +972,7 @@ ${containerHtml}`;
       // are present in the final code as well.
       return [
         stylesheetLinks,
-        ...(includeCustomStyles ? [embeddedStyle, templateStyle] : []),
+        ...(includeCustomStyles ? [customStyle] : []),
         containerHtml
       ].filter(Boolean).join("\n\n");
     }
