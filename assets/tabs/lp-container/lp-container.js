@@ -7000,16 +7000,71 @@ ${containerHtml}`;
         classEnd: "/* Fim dos ajustes de classe/ID do FAQ */"
       };
 
+      // The FAQ may be made of several <details>. Styles cannot live inside
+      // one of those items: besides producing invalid-looking source, their
+      // cascade changes depending on the edited question. Keep user rules in
+      // the header of the LP fragment, before every FAQ item instead.
+      const getTemplateFaqStyleHost = (faqRoot) => {
+        return faqRoot?.closest?.(".lp-container, .lp_container")
+          || faqRoot?.parentElement
+          || faqRoot
+          || null;
+      };
+
+      const isTemplateFaqSourceStyle = (style, className, marker) => {
+        return style?.tagName === "STYLE"
+          && (style.classList.contains(className) || String(style.textContent || "").includes(marker));
+      };
+
+      const placeTemplateFaqSourceStyleAtHeader = (style, faqRoot) => {
+        const host = getTemplateFaqStyleHost(faqRoot);
+        if (!style || !host) {
+          return;
+        }
+
+        const headerStyles = Array.from(host.children || []).filter((node) => {
+          return node.tagName === "STYLE" && (
+            node.classList.contains("faq-custom-style")
+            || node.classList.contains("faq-class-style")
+            || String(node.textContent || "").includes(templateFaqStyleMarkers.visualStart)
+            || String(node.textContent || "").includes(templateFaqStyleMarkers.classStart)
+          );
+        });
+        const isClassStyle = style.classList.contains("faq-class-style")
+          || String(style.textContent || "").includes(templateFaqStyleMarkers.classStart);
+
+        if (isClassStyle) {
+          // Class/ID edits need to come after the direct FAQ visual rules so
+          // they can intentionally replace a color declared on a child node.
+          const lastVisualStyle = headerStyles.filter((node) => node !== style && !node.classList.contains("faq-class-style")
+            && !String(node.textContent || "").includes(templateFaqStyleMarkers.classStart)).at(-1);
+          if (lastVisualStyle) {
+            lastVisualStyle.insertAdjacentElement("afterend", style);
+            return;
+          }
+        }
+
+        const firstHeaderStyle = headerStyles.find((node) => node !== style) || null;
+        host.insertBefore(style, firstHeaderStyle || host.firstChild);
+      };
+
       const getTemplateFaqSourceStyleElement = (faqRoot, className, marker) => {
         const localStyle = Array.from(faqRoot?.children || []).find((child) => {
-          return child.tagName === "STYLE" && child.classList.contains(className);
+          return isTemplateFaqSourceStyle(child, className, marker);
         });
         if (localStyle) {
           return localStyle;
         }
 
+        const hostStyle = Array.from(getTemplateFaqStyleHost(faqRoot)?.children || []).find((child) => {
+          return isTemplateFaqSourceStyle(child, className, marker);
+        });
+        if (hostStyle) {
+          return hostStyle;
+        }
+
         return Array.from(faqRoot?.ownerDocument?.head?.querySelectorAll("style") || []).find((style) => {
-          return String(style.textContent || "").includes(marker);
+          return isTemplateFaqSourceStyle(style, className, marker);
         }) || null;
       };
 
@@ -7061,7 +7116,6 @@ ${containerHtml}`;
         if (!style) {
           style = faqRoot.ownerDocument.createElement("style");
           style.className = "faq-custom-style";
-          faqRoot.insertBefore(style, faqRoot.firstChild);
         }
 
         const visualBlock = `${templateFaqStyleMarkers.visualStart}\n${rules.join("\n")}\n${templateFaqStyleMarkers.visualEnd}`;
@@ -7071,6 +7125,7 @@ ${containerHtml}`;
           templateFaqStyleMarkers.visualEnd,
           visualBlock
         );
+        placeTemplateFaqSourceStyleAtHeader(style, faqRoot);
 
         // The values above are public CSS. Clear the temporary preview-only
         // variables so neither the source code nor the final export depends
@@ -7127,7 +7182,6 @@ ${containerHtml}`;
         if (!style) {
           style = faqRoot.ownerDocument.createElement("style");
           style.className = "faq-class-style";
-          faqRoot.appendChild(style);
         }
 
         const existingCss = getTemplateFaqCssBlock(
@@ -7176,6 +7230,7 @@ ${containerHtml}`;
           templateFaqStyleMarkers.classEnd,
           classBlock
         );
+        placeTemplateFaqSourceStyleAtHeader(style, faqRoot);
       };
 
       const findTemplateFaqTitle = (faqRoot, fallbackRoot = null) => {
@@ -7492,10 +7547,21 @@ ${containerHtml}`;
           // This FAQ is structured around IDs. Keep the exact selected ID (or
           // class when the person explicitly chooses one) in the source CSS,
           // so the visible code and the exported code use the same selector.
+          const getClassBaseSelector = () => String(classSelect.value || "").trim();
           const getClassTargetSelector = () => {
-            const baseSelector = String(classSelect.value || "").trim();
+            const baseSelector = getClassBaseSelector();
             const pseudo = classApply.value === "summary-hover" ? ":hover" : "";
-            return baseSelector ? `${baseSelector}${pseudo}` : "";
+            if (!baseSelector) {
+              return "";
+            }
+            // FAQ text is normally wrapped in IDs of its own. Setting color
+            // only on the selected parent would merely rely on inheritance and
+            // lose to an existing child color with !important. The exact
+            // selector plus its text descendants makes the choice visible.
+            if (classApply.value === "text") {
+              return `${baseSelector}, ${baseSelector} *`;
+            }
+            return `${baseSelector}${pseudo}`;
           };
 
           const setClassColorValue = (value) => {
@@ -7531,6 +7597,12 @@ ${containerHtml}`;
             const selector = getClassTargetSelector();
             const property = getClassProperty();
             const savedValue = getTemplateFaqClassRuleValue(faqRoot, selector, property)
+              // Rules made before text descendants were covered used the
+              // bare selector. Read it here so changing the color upgrades
+              // that rule instead of showing an unrelated fallback color.
+              || (classApply.value === "text"
+                ? getTemplateFaqClassRuleValue(faqRoot, getClassBaseSelector(), property)
+                : "")
               || state.classStyles?.template?.[selector]?.declarations?.[property];
             setClassColorValue(savedValue || getClassFallbackColor());
           };
@@ -7543,6 +7615,11 @@ ${containerHtml}`;
               return;
             }
             recordFaqEditHistory();
+            if (classApply.value === "text") {
+              // Replace an older parent-only text rule instead of leaving an
+              // invisible duplicate alongside the new descendant-aware one.
+              updateTemplateFaqClassRule(faqRoot, getClassBaseSelector(), property);
+            }
             updateTemplateFaqClassRule(faqRoot, targetSelector, property, classColor.color.value);
             syncTemplateHtmlFromPreview();
           };
