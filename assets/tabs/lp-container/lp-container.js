@@ -190,7 +190,13 @@
       const target = event.target;
       const isNativeField = target instanceof Element
         && Boolean(target.closest("input, textarea, select, [contenteditable='true']"));
-      if (!options.insidePreview && isNativeField) {
+      // The floating editor is part of the preview workflow. Keep its
+      // shortcut tied to the preview history even while a color/text field
+      // has focus; otherwise Ctrl+Z only changes that native input and the
+      // visual change already applied to the layout is left behind.
+      const isPreviewEditField = target instanceof Element
+        && Boolean(target.closest(".preview-edit-popover"));
+      if (!options.insidePreview && isNativeField && !isPreviewEditField) {
         return false;
       }
 
@@ -926,16 +932,16 @@ ${buildLpContainerHtml(state.template.html, { includeLabAttrs: true })}
 </html>`;
     }
 
-    function buildTemplateOutputHtml(copyMode = "html") {
+    function buildTemplateOutputHtml(copyMode = "html", options = {}) {
       const containerHtml = buildLpContainerHtml();
       const stylesheetLinks = extractTemplateStylesheetLinks();
+      const includeCustomStyles = Boolean(options.includeCustomStyles);
+      const templateStyle = typeof buildTabStyleWithClass === "function"
+        ? buildTabStyleWithClass("template", buildTemplateStyle)
+        : buildTemplateStyle();
+      const embeddedStyle = buildTemplateEmbeddedStyle();
 
       if (copyMode === "full") {
-        const templateStyle = typeof buildTabStyleWithClass === "function"
-          ? buildTabStyleWithClass("template", buildTemplateStyle)
-          : buildTemplateStyle();
-        const embeddedStyle = buildTemplateEmbeddedStyle();
-
         return `${[stylesheetLinks, embeddedStyle, templateStyle].filter(Boolean).join("\n\n")}
 
 <!-- HTML DO LAYOUT -->
@@ -943,7 +949,16 @@ ${buildLpContainerHtml(state.template.html, { includeLabAttrs: true })}
 ${containerHtml}`;
       }
 
-      return [stylesheetLinks, containerHtml].filter(Boolean).join("\n\n");
+      // The code editor / HTML copy must remain self-contained. The preview
+      // keeps these rules in its document head, but the serialized markup
+      // deliberately strips style tags from the container. Put the public
+      // custom rules back before the markup so FAQ and section 35 changes
+      // are present in the final code as well.
+      return [
+        stylesheetLinks,
+        ...(includeCustomStyles ? [embeddedStyle, templateStyle] : []),
+        containerHtml
+      ].filter(Boolean).join("\n\n");
     }
 
     function getPreviewDocument(frame = previewFrame) {
@@ -2309,7 +2324,7 @@ ${containerHtml}`;
         return "";
       }
 
-      return `<style>\n/* Ajustes por classe feitos no preview */\n${rules.join("\n\n")}\n</style>`;
+      return `<style>\n/* Ajustes visuais personalizados */\n${rules.join("\n\n")}\n</style>`;
     }
 
     function getTemplatePreviewNode(meta, sourceElement = null) {

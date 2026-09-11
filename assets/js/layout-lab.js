@@ -3530,7 +3530,7 @@ ${buildFaqPreviewStylePackage({ includeResponsive: true, responsiveOptions: { in
         }
 
         return copyMode === "html"
-          ? buildResponsiveMarkup("template", () => buildTemplateOutputHtml("html"))
+          ? buildResponsiveMarkup("template", () => buildTemplateOutputHtml("html", { includeCustomStyles: true }))
           : buildTemplateOutputHtml(copyMode);
       }
 
