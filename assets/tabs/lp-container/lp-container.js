@@ -6103,6 +6103,224 @@ ${containerHtml}`;
         }, true);
       };
 
+      const section8SlideTokens = ["protection", "care", "fragrance", "application"];
+
+      const getSection8SlideToken = (element, role) => {
+        if (!element || !role) {
+          return "";
+        }
+        const matcher = new RegExp(`^section[-_](?:8|28)(?:__|-)${role}--(.+)$`, "i");
+        const match = Array.from(element.classList || [])
+          .map((className) => String(className).match(matcher))
+          .find(Boolean);
+        return match ? String(match[1] || "").trim() : "";
+      };
+
+      const getSection8Slides = (section) => {
+        if (!section) {
+          return [];
+        }
+
+        const slidesByToken = new Map();
+        const ensureSlide = (token) => {
+          const key = String(token || "").trim();
+          if (!key) {
+            return null;
+          }
+          if (!slidesByToken.has(key)) {
+            slidesByToken.set(key, { token: key, control: null, tab: null, panel: null, dot: null });
+          }
+          return slidesByToken.get(key);
+        };
+
+        section.querySelectorAll('input[type="radio"], input[type="checkbox"]').forEach((control) => {
+          const token = getSection8SlideToken(control, "control");
+          const slide = ensureSlide(token);
+          if (slide) {
+            slide.control = control;
+          }
+        });
+
+        ["tab", "panel", "dot"].forEach((role) => {
+          section.querySelectorAll("*").forEach((element) => {
+            const token = getSection8SlideToken(element, role);
+            const slide = ensureSlide(token);
+            if (slide && !slide[role]) {
+              slide[role] = element;
+            }
+          });
+        });
+
+        slidesByToken.forEach((slide) => {
+          if (!slide.tab && slide.control) {
+            slide.tab = Array.from(slide.control.labels || [])
+              .find((label) => section.contains(label)) || null;
+          }
+        });
+
+        return Array.from(slidesByToken.values()).filter((slide) => {
+          return slide.control && slide.tab && slide.panel && slide.dot;
+        });
+      };
+
+      const replaceSection8SlideToken = (node, previousToken, nextToken) => {
+        if (!node || !previousToken || !nextToken) {
+          return;
+        }
+        const escapedToken = String(previousToken).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+        const tokenMatcher = new RegExp(escapedToken, "gi");
+        [node, ...node.querySelectorAll("*")].forEach((element) => {
+          Array.from(element.classList || []).forEach((className) => {
+            if (new RegExp(`^section[-_](?:8|28)(?:__|-)(?:control|tab|panel|dot)--${escapedToken}$`, "i").test(className)) {
+              element.classList.replace(className, className.replace(tokenMatcher, nextToken));
+            }
+          });
+          ["id", "for", "aria-controls", "aria-labelledby", "data-target", "data-slide"].forEach((attribute) => {
+            const value = element.getAttribute(attribute);
+            if (value && tokenMatcher.test(value)) {
+              element.setAttribute(attribute, value.replace(tokenMatcher, nextToken));
+            }
+            tokenMatcher.lastIndex = 0;
+          });
+        });
+      };
+
+      const insertSection8SlideAfter = (reference, node) => {
+        if (!reference?.parentElement || !node) {
+          return;
+        }
+        reference.parentElement.insertBefore(node, reference.nextSibling);
+      };
+
+      const setSection8ActiveSlide = (section, slide) => {
+        if (!section || !slide?.control) {
+          return;
+        }
+        const { control } = slide;
+        section.querySelectorAll('input[type="radio"], input[type="checkbox"]').forEach((candidate) => {
+          if (candidate.type === "radio" && candidate.name && candidate.name !== control.name) {
+            return;
+          }
+          const isActive = candidate === control;
+          candidate.checked = isActive;
+          candidate.toggleAttribute("checked", isActive);
+        });
+      };
+
+      const ensureSection8SlideTools = (root) => {
+        const sectionRoots = new Set(
+          Array.from(root.querySelectorAll("[class*='section-8'], [class*='section_8'], [class*='section-28'], [class*='section_28']"))
+            .map((element) => getTemplateOptionRoot(element))
+            .filter((element) => element && root.contains(element))
+        );
+
+        sectionRoots.forEach((section) => {
+          const slides = getSection8Slides(section);
+          if (!slides.length || section.querySelector("[data-ll-section8-slide-tools]")) {
+            return;
+          }
+
+          const toolbar = doc.createElement("div");
+          toolbar.dataset.llTemplateHelper = "true";
+          toolbar.dataset.llSection8SlideTools = "true";
+          toolbar.setAttribute("aria-label", "Gerenciar slides da seção 8");
+          toolbar.style.cssText = "display:flex; align-items:center; justify-content:center; gap:7px; width:max-content; max-width:100%; margin:10px auto 0; padding:6px 8px; border:1px solid #d7e3fb; border-radius:999px; background:#ffffff; box-shadow:0 4px 12px rgba(15, 62, 135, .10); font:600 12px/1 Arial,sans-serif;";
+
+          const count = doc.createElement("span");
+          count.textContent = `${slides.length}/4 slides`;
+          count.style.cssText = "padding:0 2px; color:#164ea8; white-space:nowrap;";
+
+          const makeButton = (label, title, muted = false) => {
+            const button = doc.createElement("button");
+            button.type = "button";
+            button.textContent = label;
+            button.title = title;
+            button.setAttribute("aria-label", title);
+            button.style.cssText = `border:1px solid ${muted ? "#cfd8e8" : "#0b4bb6"}; border-radius:999px; padding:5px 9px; background:${muted ? "#ffffff" : "#0b4bb6"}; color:${muted ? "#164ea8" : "#ffffff"}; font:inherit; cursor:pointer;`;
+            return button;
+          };
+
+          const removeButton = makeButton("− Slide", "Remover slide selecionado", true);
+          const addButton = makeButton("+ Slide", "Adicionar slide e indicador");
+          removeButton.disabled = slides.length <= 1;
+          addButton.disabled = slides.length >= 4;
+          [removeButton, addButton].forEach((button) => {
+            if (button.disabled) {
+              button.style.opacity = ".45";
+              button.style.cursor = "not-allowed";
+            }
+          });
+
+          const persistChange = () => {
+            recordPreviewEditHistory({ scope: "template", sourceFrame: frame }, frame);
+            syncTemplateHtmlFromPreview({ container: root, preserveLiveFrame: false });
+          };
+
+          addButton.addEventListener("click", (event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            const currentSlides = getSection8Slides(section);
+            if (currentSlides.length >= 4) {
+              return;
+            }
+            const sourceSlide = currentSlides.find((slide) => slide.control.checked) || currentSlides[currentSlides.length - 1];
+            const usedTokens = new Set(currentSlides.map((slide) => slide.token.toLowerCase()));
+            const nextToken = section8SlideTokens.find((token) => !usedTokens.has(token)) || `slide-${currentSlides.length + 1}`;
+            if (!sourceSlide) {
+              return;
+            }
+
+            const lastByRole = (role) => currentSlides.map((slide) => slide[role]).filter(Boolean).pop();
+            const newTab = sourceSlide.tab.cloneNode(true);
+            const nestedControl = sourceSlide.tab.contains(sourceSlide.control);
+            const newControl = nestedControl ? newTab.querySelector('input[type="radio"], input[type="checkbox"]') : sourceSlide.control.cloneNode(true);
+            const newPanel = sourceSlide.panel.cloneNode(true);
+            const newDot = sourceSlide.dot.cloneNode(true);
+            [newTab, newControl, newPanel, newDot].forEach((node) => replaceSection8SlideToken(node, sourceSlide.token, nextToken));
+            if (!nestedControl) {
+              insertSection8SlideAfter(lastByRole("control"), newControl);
+            }
+            insertSection8SlideAfter(lastByRole("tab"), newTab);
+            insertSection8SlideAfter(lastByRole("panel"), newPanel);
+            insertSection8SlideAfter(lastByRole("dot"), newDot);
+            if (newControl) {
+              newControl.name = sourceSlide.control.name;
+              setSection8ActiveSlide(section, { control: newControl });
+            }
+            persistChange();
+          });
+
+          removeButton.addEventListener("click", (event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            const currentSlides = getSection8Slides(section);
+            if (currentSlides.length <= 1) {
+              return;
+            }
+            const activeIndex = Math.max(0, currentSlides.findIndex((slide) => slide.control.checked));
+            const removedSlide = currentSlides[activeIndex] || currentSlides[currentSlides.length - 1];
+            const nextSlide = currentSlides[activeIndex + 1] || currentSlides[activeIndex - 1];
+            const nodes = [removedSlide.control, removedSlide.tab, removedSlide.panel, removedSlide.dot];
+            nodes.forEach((node) => {
+              const nestedInAnotherNode = nodes.some((candidate) => candidate !== node && candidate?.contains?.(node));
+              if (!nestedInAnotherNode && node?.isConnected) {
+                node.remove();
+              }
+            });
+            setSection8ActiveSlide(section, nextSlide);
+            persistChange();
+          });
+
+          toolbar.append(removeButton, count, addButton);
+          const dotHost = slides[slides.length - 1].dot?.parentElement;
+          if (dotHost?.parentElement) {
+            dotHost.insertAdjacentElement("afterend", toolbar);
+          } else {
+            section.appendChild(toolbar);
+          }
+        });
+      };
+
       const normalizeTemplateOverlayHorizontal = (value) => {
         return ["left", "center", "right"].includes(value) ? value : "center";
       };
@@ -9009,6 +9227,11 @@ ${containerHtml}`;
             }, "cor de fundo", { allowOnMedia: true, triggerEvent: "dblclick" });
           }
         });
+
+        // These controls exist only inside the Lab preview. They are removed
+        // before serialization; the added/removed slide structure itself is
+        // what remains in the published HTML.
+        ensureSection8SlideTools(root);
       };
 
       const tab = getPreviewEditTab(frame);
