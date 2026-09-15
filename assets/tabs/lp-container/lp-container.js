@@ -3268,6 +3268,19 @@ ${containerHtml}`;
       altInput.value = headerBadge?.getAttribute("aria-label") || element.getAttribute("alt") || "";
       createField("Alt text", altInput);
 
+      // Promotional banners such as manuals and nutrition tables usually
+      // wrap their image in a link. Keep the destination editable beside the
+      // image URL instead of forcing a separate code-editor pass.
+      const linkElement = element.closest?.("a");
+      let hrefInput = null;
+      if (linkElement) {
+        hrefInput = document.createElement("input");
+        hrefInput.type = "text";
+        hrefInput.placeholder = "https://exemplo.com/destino";
+        hrefInput.value = linkElement.getAttribute("href") || "";
+        createField("URL de destino (href)", hrefInput);
+      }
+
       const actions = document.createElement("div");
       actions.className = "preview-edit-popover__actions";
       const closeButton = document.createElement("button");
@@ -3287,6 +3300,19 @@ ${containerHtml}`;
         } else {
           element.setAttribute("alt", altInput.value);
         }
+        if (linkElement && hrefInput) {
+          const nextHref = String(hrefInput.value || "").trim();
+          // Prevent executable URL schemes from entering published HTML while
+          // preserving regular relative, anchor, mailto and HTTPS links.
+          if (/^(?:javascript|vbscript|data):/i.test(nextHref)) {
+            hrefInput.value = "";
+            linkElement.removeAttribute("href");
+          } else if (nextHref) {
+            linkElement.setAttribute("href", nextHref);
+          } else {
+            linkElement.removeAttribute("href");
+          }
+        }
         syncTemplateHtmlFromPreview();
       };
 
@@ -3296,6 +3322,8 @@ ${containerHtml}`;
       urlInput.addEventListener("change", applyImage);
       altInput.addEventListener("input", applyImage);
       altInput.addEventListener("change", applyImage);
+      hrefInput?.addEventListener("input", applyImage);
+      hrefInput?.addEventListener("change", applyImage);
 
       form.addEventListener("submit", (event) => {
         event.preventDefault();
