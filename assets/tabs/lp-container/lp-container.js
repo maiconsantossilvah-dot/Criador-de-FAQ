@@ -6207,6 +6207,39 @@ ${containerHtml}`;
         });
       };
 
+      const normalizeSection8SlideLayout = (section, slides) => {
+        if (!section || !slides.length) {
+          return false;
+        }
+
+        let changed = false;
+        const setInlineStyle = (element, property, value) => {
+          if (!element || element.style.getPropertyValue(property).trim() === value
+            && element.style.getPropertyPriority(property) === "important") {
+            return;
+          }
+          element?.style.setProperty(property, value, "important");
+          changed = true;
+        };
+
+        const tabHost = slides[0].tab?.parentElement;
+        const dotHost = slides[0].dot?.parentElement;
+        if (tabHost) {
+          const display = tabHost.ownerDocument.defaultView?.getComputedStyle(tabHost).display || "";
+          if (display.includes("grid")) {
+            // The original structural stylesheet uses four columns. Once a
+            // slide is removed, replace that fixed count with the number of
+            // actual tabs so no blank fourth column remains on the right.
+            setInlineStyle(tabHost, "grid-template-columns", `repeat(${slides.length}, minmax(0, 1fr))`);
+          } else if (display.includes("flex")) {
+            setInlineStyle(tabHost, "justify-content", "center");
+            slides.forEach((slide) => setInlineStyle(slide.tab, "flex", "1 1 0"));
+          }
+        }
+        setInlineStyle(dotHost, "justify-content", "center");
+        return changed;
+      };
+
       const ensureSection8SlideTools = (root) => {
         const sectionRoots = new Set(
           Array.from(root.querySelectorAll("[class*='section-8'], [class*='section_8'], [class*='section-28'], [class*='section_28']"))
@@ -6219,6 +6252,7 @@ ${containerHtml}`;
           if (!slides.length || section.querySelector("[data-ll-section8-slide-tools]")) {
             return;
           }
+          const layoutWasNormalized = normalizeSection8SlideLayout(section, slides);
 
           const toolbar = doc.createElement("div");
           toolbar.dataset.llTemplateHelper = "true";
@@ -6287,6 +6321,7 @@ ${containerHtml}`;
               newControl.name = sourceSlide.control.name;
               setSection8ActiveSlide(section, { control: newControl });
             }
+            normalizeSection8SlideLayout(section, getSection8Slides(section));
             persistChange();
           });
 
@@ -6308,6 +6343,7 @@ ${containerHtml}`;
               }
             });
             setSection8ActiveSlide(section, nextSlide);
+            normalizeSection8SlideLayout(section, getSection8Slides(section));
             persistChange();
           });
 
@@ -6317,6 +6353,13 @@ ${containerHtml}`;
             dotHost.insertAdjacentElement("afterend", toolbar);
           } else {
             section.appendChild(toolbar);
+          }
+
+          // Correct sections that were saved with fewer than four slides by
+          // earlier versions of the editor. This only serializes a layout
+          // correction; the toolbar itself is removed from the final HTML.
+          if (layoutWasNormalized) {
+            syncTemplateHtmlFromPreview({ container: root, preserveLiveFrame: false });
           }
         });
       };
