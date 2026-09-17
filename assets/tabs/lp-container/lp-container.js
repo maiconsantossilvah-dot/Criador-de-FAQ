@@ -8084,69 +8084,81 @@ ${containerHtml}`;
               return null;
             }
           };
-          const getClassCandidateLabel = (candidate) => {
-            const target = getClassCandidateElement(candidate.value);
-            let role = "Grupo compartilhado";
-            if (target === faqRoot) {
-              role = "Bloco do FAQ";
-            } else if (target?.matches?.("summary")) {
-              role = "Caixa da pergunta";
-            } else if (target === firstQuestion || target?.closest?.("summary")) {
-              role = "Texto da pergunta";
-            } else if (target === firstAnswer || target?.closest?.("details")) {
-              role = "Item do FAQ";
-            }
-            return `${role} — ${candidate.label}`;
-          };
-          const classSelect = makeSelect(
-            classCandidates.map((candidate) => ({
-              ...candidate,
-              label: getClassCandidateLabel(candidate)
-            })),
-            preferredClassCandidate.value
-          );
-          makeMiniField(classPanel, "Grupo que será alterado", classSelect);
-          const classApply = makeSelect([
-            { value: "summary-bg", label: "Fundo da caixa da pergunta" },
-            { value: "summary-hover", label: "Fundo da caixa ao passar o mouse" },
-            { value: "text", label: "Texto e ícones" },
-            { value: "border", label: "Borda da caixa (1 px)" },
-            { value: "outline", label: "Contorno da caixa (2 px)" }
-          ], "summary-bg");
-          makeMiniField(classPanel, "O que mudar", classApply);
-          const classColor = makeColorField(classPanel, "Nova cor", initialNormal);
+          const classSelect = makeSelect(classCandidates, preferredClassCandidate.value);
+          makeMiniField(classPanel, "Classe ou ID", classSelect);
+
+          // A aba de classe segue o mesmo modelo do editor de texto: um
+          // único seletor e todos os campos visuais disponíveis ao mesmo
+          // tempo. Assim não há um segundo seletor ambíguo para decidir
+          // qual parte do FAQ será alterada.
+          const classGrid = document.createElement("div");
+          classGrid.className = "preview-edit-popover__grid";
+          const classTextColor = makeColorField(classGrid, "Cor do texto", initialQuestionColor);
+          const classBackground = makeColorField(classGrid, "Fundo", initialNormal);
+          const classHoverBackground = makeColorField(classGrid, "Fundo hover", initialHover);
+          const classBorderColor = makeColorField(classGrid, "Borda", colorToHex(computed.borderTopColor || "#e5e5e5", "#e5e5e5"));
+
+          const classBorderWidth = document.createElement("input");
+          classBorderWidth.type = "number";
+          classBorderWidth.min = "0";
+          classBorderWidth.max = "24";
+          classBorderWidth.step = "1";
+          classBorderWidth.value = String(Math.max(0, Number.parseFloat(computed.borderTopWidth) || 0));
+          makeMiniField(classGrid, "Largura da borda", classBorderWidth);
+
+          const classFontSize = document.createElement("input");
+          classFontSize.type = "number";
+          classFontSize.min = "8";
+          classFontSize.max = "96";
+          classFontSize.step = "1";
+          classFontSize.value = String(normalizeTextStyleNumber(firstQuestion?.ownerDocument.defaultView.getComputedStyle(firstQuestion).fontSize, 16, 8, 96));
+          makeMiniField(classGrid, "Tamanho", classFontSize);
+
+          const classFontWeight = makeSelect([
+            { value: "300", label: "Leve" },
+            { value: "400", label: "Normal" },
+            { value: "500", label: "Medio" },
+            { value: "600", label: "Semibold" },
+            { value: "700", label: "Bold" },
+            { value: "800", label: "Extra bold" },
+            { value: "900", label: "Black" }
+          ], normalizePreviewFontWeight(firstQuestion?.ownerDocument.defaultView.getComputedStyle(firstQuestion).fontWeight));
+          makeMiniField(classGrid, "Peso", classFontWeight);
+
+          const classTextAlign = makeSelect([
+            { value: "left", label: "Esquerda" },
+            { value: "center", label: "Centro" },
+            { value: "right", label: "Direita" },
+            { value: "justify", label: "Justificado" }
+          ], normalizePreviewTextAlign(firstQuestion?.ownerDocument.defaultView.getComputedStyle(firstQuestion).textAlign));
+          makeMiniField(classGrid, "Alinhamento", classTextAlign);
+
+          const classFontStyle = makeSelect([
+            { value: "normal", label: "Normal" },
+            { value: "italic", label: "Itálico" }
+          ], firstQuestion?.ownerDocument.defaultView.getComputedStyle(firstQuestion).fontStyle === "italic" ? "italic" : "normal");
+          makeMiniField(classGrid, "Estilo", classFontStyle);
+
+          const classLineHeight = document.createElement("input");
+          classLineHeight.type = "number";
+          classLineHeight.min = "0.8";
+          classLineHeight.max = "2.6";
+          classLineHeight.step = "0.05";
+          classLineHeight.value = String(normalizeTextStyleNumber(firstQuestion?.ownerDocument.defaultView.getComputedStyle(firstQuestion).lineHeight, 1.35, 0.8, 2.6, 2));
+          makeMiniField(classGrid, "Altura da linha", classLineHeight);
+          classPanel.appendChild(classGrid);
+
           const classNote = document.createElement("p");
           classNote.className = "preview-edit-popover__note";
           classPanel.appendChild(classNote);
           const classActions = document.createElement("div");
           classActions.className = "preview-edit-popover__actions";
-          const classSaveButton = document.createElement("button");
-          classSaveButton.type = "button";
-          classSaveButton.className = "button preview-edit-popover__option-save";
-          classSaveButton.textContent = "✓ Aplicar à classe";
           const resetClassButton = document.createElement("button");
           resetClassButton.type = "button";
           resetClassButton.className = "button button--soft";
-          resetClassButton.textContent = "Limpar ajuste";
-          classActions.append(resetClassButton, classSaveButton);
+          resetClassButton.textContent = "Limpar estilo da classe";
+          classActions.append(resetClassButton);
           classPanel.appendChild(classActions);
-
-          const setClassSaveButtonState = (saved = false) => {
-            classSaveButton.classList.toggle("is-saved", saved);
-            classSaveButton.textContent = saved ? "✓ Classe atualizada" : "✓ Aplicar à classe";
-          };
-
-          const getClassProperty = () => ({
-            "summary-bg": "background",
-            "summary-hover": "background",
-            text: "color",
-            border: "border-color",
-            outline: "outline-color"
-          }[classApply.value] || "background");
-
-          // This FAQ is structured around IDs. Keep the exact selected ID (or
-          // class when the person explicitly chooses one) in the source CSS,
-          // so the visible code and the exported code use the same selector.
           const getClassBaseSelector = () => String(classSelect.value || "").trim();
           const getClassScopedBaseSelector = () => {
             const baseSelector = getClassBaseSelector();
@@ -8159,31 +8171,17 @@ ${containerHtml}`;
             }
             return baseSelector;
           };
-          const getClassTargetSelector = () => {
+          const getClassSurfaceSelector = () => {
             const baseSelector = getClassScopedBaseSelector();
-            if (!baseSelector) {
-              return "";
-            }
-            // FAQ text is normally wrapped in IDs of its own. Setting color
-            // only on the selected parent would merely rely on inheritance and
-            // lose to an existing child color with !important. The exact
-            // selector plus its text descendants makes the choice visible.
-            if (classApply.value === "text") {
-              return `${baseSelector}, ${baseSelector} *`;
-            }
-
-            // The most common shared target is #faq-section__item (the LI).
-            // Its visible fill is nevertheless on the nested summary. Route
-            // background rules there so the selected color is never hidden by
-            // a previous direct summary rule with !important.
-            if (["summary-bg", "summary-hover"].includes(classApply.value)) {
-              const selectedElement = getClassCandidateElement(baseSelector);
-              const summarySelector = selectedElement?.matches?.("summary")
-                ? baseSelector
-                : `${baseSelector} summary`;
-              return `${summarySelector}${classApply.value === "summary-hover" ? ":hover" : ""}`;
-            }
-            return baseSelector;
+            return baseSelector ? `${baseSelector}, ${baseSelector} summary` : "";
+          };
+          const getClassHoverSelector = () => {
+            const baseSelector = getClassScopedBaseSelector();
+            return baseSelector ? `${baseSelector}:hover, ${baseSelector} summary:hover` : "";
+          };
+          const getClassTextSelector = () => {
+            const baseSelector = getClassScopedBaseSelector();
+            return baseSelector ? `${baseSelector}, ${baseSelector} *` : "";
           };
 
           const getClassIconSelector = () => {
@@ -8203,145 +8201,152 @@ ${containerHtml}`;
             ].join(", ");
           };
 
-          const getClassStyleDeclarations = (color) => {
-            if (classApply.value === "border") {
-              return [
-                ["border-color", color],
-                ["border-style", "solid"],
-                ["border-width", "1px"]
-              ];
-            }
-            if (classApply.value === "outline") {
-              return [
-                ["outline-color", color],
-                ["outline-style", "solid"],
-                ["outline-width", "2px"]
-              ];
-            }
-            return [[getClassProperty(), color]];
-          };
-
-          const getClassStyleProperties = () => getClassStyleDeclarations(classColor.color.value)
-            .map(([property]) => property);
-
-          const setClassColorValue = (value) => {
-            const nextValue = colorToHex(value || initialNormal, initialNormal);
-            classColor.color.value = nextValue;
-            classColor.hex.value = nextValue;
-            classColor.color.style.setProperty("--preview-edit-color", nextValue);
-          };
-
+          const classChangedFields = new Set();
           const getClassVisualTarget = () => {
             const target = getClassCandidateElement(getClassBaseSelector());
-            if (["summary-bg", "summary-hover"].includes(classApply.value) && !target?.matches?.("summary")) {
-              return target?.querySelector?.("summary") || summary;
-            }
-            return target;
+            return target?.matches?.("summary") ? target : target?.querySelector?.("summary") || target || summary;
           };
-
-          const getClassFallbackColor = () => {
-            const property = getClassProperty();
-            if (classApply.value === "summary-hover") {
-              return initialHover;
-            }
-
-            const target = getClassVisualTarget();
-            const targetComputed = target?.ownerDocument?.defaultView?.getComputedStyle(target);
-            const computedValue = property === "background"
-              ? targetComputed?.backgroundColor
-              : property === "border-color"
-                ? targetComputed?.borderTopColor
-                : property === "outline-color"
-                  ? targetComputed?.outlineColor
-                  : targetComputed?.color;
-            return colorToHex(computedValue || initialNormal, initialNormal);
+          const getClassTextTarget = () => {
+            const target = getClassCandidateElement(getClassBaseSelector());
+            return target?.querySelector?.('[id*="q-text"], [class*="question" i], [class*="pergunta" i], h1, h2, h3, h4, p')
+              || target
+              || firstQuestion;
           };
-
-          const refreshClassColor = () => {
-            const selector = getClassTargetSelector();
-            const property = getClassProperty();
-            const savedValue = getTemplateFaqClassRuleValue(faqRoot, selector, property)
-              // Rules made before text descendants were covered used the
-              // bare selector. Read it here so changing the color upgrades
-              // that rule instead of showing an unrelated fallback color.
-              || (classApply.value === "text"
-                ? getTemplateFaqClassRuleValue(faqRoot, getClassBaseSelector(), property)
-                : "")
-              || state.classStyles?.template?.[selector]?.declarations?.[property];
-            setClassColorValue(savedValue || getClassFallbackColor());
+          const getClassRuleValue = (selectors, property, fallback = "") => {
+            return selectors.map((selector) => getTemplateFaqClassRuleValue(faqRoot, selector, property))
+              .find(Boolean) || fallback;
+          };
+          const setColorPairValue = (pair, value, fallback) => {
+            const nextValue = colorToHex(value || fallback, fallback);
+            pair.color.value = nextValue;
+            pair.hex.value = nextValue;
+            pair.color.style.setProperty("--preview-edit-color", nextValue);
+          };
+          const refreshClassFields = () => {
+            const baseSelector = getClassScopedBaseSelector();
+            const surfaceSelector = getClassSurfaceSelector();
+            const hoverSelector = getClassHoverSelector();
+            const textSelector = getClassTextSelector();
+            const surfaceComputed = getClassVisualTarget()?.ownerDocument?.defaultView?.getComputedStyle(getClassVisualTarget()) || computed;
+            const textComputed = getClassTextTarget()?.ownerDocument?.defaultView?.getComputedStyle(getClassTextTarget()) || computed;
+            const baseComputed = getClassCandidateElement(getClassBaseSelector())?.ownerDocument?.defaultView?.getComputedStyle(getClassCandidateElement(getClassBaseSelector())) || computed;
+            setColorPairValue(classBackground, getClassRuleValue([surfaceSelector, `${baseSelector} summary`, baseSelector], "background", surfaceComputed.backgroundColor), colorToHex(surfaceComputed.backgroundColor || initialNormal, initialNormal));
+            setColorPairValue(classHoverBackground, getClassRuleValue([hoverSelector, `${baseSelector} summary:hover`, `${baseSelector}:hover`], "background", initialHover), initialHover);
+            setColorPairValue(classTextColor, getClassRuleValue([textSelector, baseSelector], "color", textComputed.color), colorToHex(textComputed.color || initialQuestionColor, initialQuestionColor));
+            setColorPairValue(classBorderColor, getClassRuleValue([baseSelector], "border-color", baseComputed.borderTopColor), colorToHex(baseComputed.borderTopColor || "#e5e5e5", "#e5e5e5"));
+            classBorderWidth.value = String(Math.max(0, Number.parseFloat(getClassRuleValue([baseSelector], "border-width", baseComputed.borderTopWidth)) || 0));
+            classFontSize.value = String(normalizeTextStyleNumber(getClassRuleValue([textSelector, baseSelector], "font-size", textComputed.fontSize), 16, 8, 96));
+            classFontWeight.value = normalizePreviewFontWeight(getClassRuleValue([textSelector, baseSelector], "font-weight", textComputed.fontWeight));
+            classTextAlign.value = normalizePreviewTextAlign(getClassRuleValue([textSelector, baseSelector], "text-align", textComputed.textAlign));
+            classFontStyle.value = String(getClassRuleValue([textSelector, baseSelector], "font-style", textComputed.fontStyle)).toLowerCase() === "italic" ? "italic" : "normal";
+            classLineHeight.value = String(normalizeTextStyleNumber(getClassRuleValue([textSelector, baseSelector], "line-height", textComputed.lineHeight), 1.35, 0.8, 2.6, 2));
+            classChangedFields.clear();
             const candidate = classCandidates.find((item) => item.value === getClassBaseSelector());
             const total = Number(candidate?.count || 1);
-            classNote.textContent = `Este ajuste será aplicado a ${total} ${total === 1 ? "elemento" : "elementos"} do grupo selecionado. Escolha a cor e clique em “Aplicar à classe”.`;
-            setClassSaveButtonState(Boolean(savedValue));
+            classNote.textContent = `As mudanças valem para todos os ${total} ${total === 1 ? "elemento" : "elementos"} com ${candidate?.label || getClassBaseSelector()} e são aplicadas na hora.`;
           };
 
           const applyClassStyle = () => {
-            syncPair(classColor);
-            const targetSelector = getClassTargetSelector();
-            if (!targetSelector) {
+            const baseSelector = getClassScopedBaseSelector();
+            const surfaceSelector = getClassSurfaceSelector();
+            const hoverSelector = getClassHoverSelector();
+            const textSelector = getClassTextSelector();
+            if (!baseSelector || !classChangedFields.size) {
               return;
             }
+            syncPair(classTextColor);
+            syncPair(classBackground);
+            syncPair(classHoverBackground);
+            syncPair(classBorderColor);
             recordFaqEditHistory();
-            if (classApply.value === "text") {
-              // Replace an older parent-only text rule instead of leaving an
-              // invisible duplicate alongside the new descendant-aware one.
-              updateTemplateFaqClassRule(faqRoot, getClassBaseSelector(), getClassProperty());
+            if (classChangedFields.has("background")) {
+              updateTemplateFaqClassRule(faqRoot, surfaceSelector, "background", classBackground.color.value);
+              updateTemplateFaqClassRule(faqRoot, `${baseSelector} summary`, "background");
             }
-            getClassStyleDeclarations(classColor.color.value).forEach(([property, value]) => {
-              updateTemplateFaqClassRule(faqRoot, targetSelector, property, value);
-            });
-            if (classApply.value === "text") {
+            if (classChangedFields.has("hoverBackground")) {
+              updateTemplateFaqClassRule(faqRoot, hoverSelector, "background", classHoverBackground.color.value);
+              updateTemplateFaqClassRule(faqRoot, `${baseSelector} summary:hover`, "background");
+              updateTemplateFaqClassRule(faqRoot, `${baseSelector}:hover`, "background");
+            }
+            if (classChangedFields.has("textColor")) {
+              updateTemplateFaqClassRule(faqRoot, textSelector, "color", classTextColor.color.value);
               const iconSelector = getClassIconSelector();
-              if (iconSelector) {
-                updateTemplateFaqClassRule(faqRoot, iconSelector, "background", classColor.color.value);
-              }
+              if (iconSelector) updateTemplateFaqClassRule(faqRoot, iconSelector, "background", classTextColor.color.value);
             }
+            if (classChangedFields.has("borderColor")) updateTemplateFaqClassRule(faqRoot, baseSelector, "border-color", classBorderColor.color.value);
+            if (classChangedFields.has("borderWidth")) {
+              const width = Math.max(0, Number.parseFloat(classBorderWidth.value) || 0);
+              updateTemplateFaqClassRule(faqRoot, baseSelector, "border-width", `${width}px`);
+              updateTemplateFaqClassRule(faqRoot, baseSelector, "border-style", width > 0 ? "solid" : "none");
+            }
+            if (classChangedFields.has("fontSize")) updateTemplateFaqClassRule(faqRoot, textSelector, "font-size", `${normalizeTextStyleNumber(classFontSize.value, 16, 8, 96)}px`);
+            if (classChangedFields.has("fontWeight")) updateTemplateFaqClassRule(faqRoot, textSelector, "font-weight", normalizePreviewFontWeight(classFontWeight.value));
+            if (classChangedFields.has("textAlign")) updateTemplateFaqClassRule(faqRoot, textSelector, "text-align", normalizePreviewTextAlign(classTextAlign.value));
+            if (classChangedFields.has("fontStyle")) updateTemplateFaqClassRule(faqRoot, textSelector, "font-style", classFontStyle.value === "italic" ? "italic" : "normal");
+            if (classChangedFields.has("lineHeight")) updateTemplateFaqClassRule(faqRoot, textSelector, "line-height", normalizeTextStyleNumber(classLineHeight.value, 1.35, 0.8, 2.6, 2));
             syncTemplateHtmlFromPreview();
-            setClassSaveButtonState(true);
           };
 
-          classColor.color.addEventListener("input", () => {
-            classColor.hex.value = normalizeHexColor(classColor.color.value);
-            classColor.color.style.setProperty("--preview-edit-color", classColor.hex.value);
-            setClassSaveButtonState(false);
+          const markClassFieldChanged = (field) => {
+            classChangedFields.add(field);
+            applyClassStyle();
+          };
+          const bindClassColorField = (pair, field) => {
+            pair.color.addEventListener("input", () => {
+              pair.hex.value = normalizeHexColor(pair.color.value);
+              pair.color.style.setProperty("--preview-edit-color", pair.hex.value);
+              markClassFieldChanged(field);
+            });
+            pair.hex.addEventListener("input", () => {
+              if (isHexColor(pair.hex.value)) {
+                syncPair(pair);
+                markClassFieldChanged(field);
+              }
+            });
+            pair.hex.addEventListener("change", () => {
+              pair.hex.value = isHexColor(pair.hex.value) ? normalizeHexColor(pair.hex.value) : pair.color.value;
+              syncPair(pair);
+              markClassFieldChanged(field);
+            });
+          };
+          bindClassColorField(classTextColor, "textColor");
+          bindClassColorField(classBackground, "background");
+          bindClassColorField(classHoverBackground, "hoverBackground");
+          bindClassColorField(classBorderColor, "borderColor");
+          [
+            [classBorderWidth, "borderWidth"],
+            [classFontSize, "fontSize"],
+            [classFontWeight, "fontWeight"],
+            [classTextAlign, "textAlign"],
+            [classFontStyle, "fontStyle"],
+            [classLineHeight, "lineHeight"]
+          ].forEach(([input, field]) => {
+            input.addEventListener("input", () => markClassFieldChanged(field));
+            input.addEventListener("change", () => markClassFieldChanged(field));
           });
-          classColor.hex.addEventListener("input", () => {
-            if (isHexColor(classColor.hex.value)) {
-              syncPair(classColor);
-              setClassSaveButtonState(false);
-            }
-          });
-          classColor.hex.addEventListener("change", () => {
-            classColor.hex.value = isHexColor(classColor.hex.value) ? normalizeHexColor(classColor.hex.value) : classColor.color.value;
-            syncPair(classColor);
-            setClassSaveButtonState(false);
-          });
-          // Changing the target must only load that target's existing value.
-          // Applying the previous field value here overwrote normal/hover and
-          // text styles before the person had changed anything.
-          classSelect.addEventListener("change", refreshClassColor);
-          classApply.addEventListener("change", refreshClassColor);
-          classSaveButton.addEventListener("click", applyClassStyle);
+          classSelect.addEventListener("change", refreshClassFields);
           resetClassButton.addEventListener("click", () => {
-            const targetSelector = getClassTargetSelector();
-            if (!targetSelector) {
+            const baseSelector = getClassScopedBaseSelector();
+            const surfaceSelector = getClassSurfaceSelector();
+            const hoverSelector = getClassHoverSelector();
+            const textSelector = getClassTextSelector();
+            if (!baseSelector) {
               return;
             }
             recordFaqEditHistory();
-            getClassStyleProperties().forEach((property) => {
-              updateTemplateFaqClassRule(faqRoot, targetSelector, property);
-            });
-            if (classApply.value === "text") {
-              const iconSelector = getClassIconSelector();
-              if (iconSelector) {
-                updateTemplateFaqClassRule(faqRoot, iconSelector, "background");
-              }
-            }
+            updateTemplateFaqClassRule(faqRoot, surfaceSelector, "background");
+            updateTemplateFaqClassRule(faqRoot, `${baseSelector} summary`, "background");
+            updateTemplateFaqClassRule(faqRoot, hoverSelector, "background");
+            updateTemplateFaqClassRule(faqRoot, `${baseSelector} summary:hover`, "background");
+            updateTemplateFaqClassRule(faqRoot, `${baseSelector}:hover`, "background");
+            ["border-color", "border-width", "border-style"].forEach((property) => updateTemplateFaqClassRule(faqRoot, baseSelector, property));
+            ["color", "font-size", "font-weight", "text-align", "font-style", "line-height"].forEach((property) => updateTemplateFaqClassRule(faqRoot, textSelector, property));
+            const iconSelector = getClassIconSelector();
+            if (iconSelector) updateTemplateFaqClassRule(faqRoot, iconSelector, "background");
             syncTemplateHtmlFromPreview();
-            refreshClassColor();
-            setClassSaveButtonState(false);
+            refreshClassFields();
           });
-          refreshClassColor();
+          refreshClassFields();
         } else {
           const emptyClassNote = document.createElement("p");
           emptyClassNote.className = "preview-edit-popover__note";
