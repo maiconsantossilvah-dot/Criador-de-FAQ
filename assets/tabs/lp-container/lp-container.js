@@ -494,7 +494,10 @@
         return [...externalResources, responsiveOutput.outerHTML.trim()].filter(Boolean).join("\n\n");
       }
 
-      return [...externalResources, container.innerHTML.trim()].filter(Boolean).join("\n\n");
+      // O FrameWork tambem aceita a LP completa, ja envolvida pela
+      // `.lp-container`. Preservar a casca evita perder classes, IDs ou
+      // atributos quando a pessoa edita no preview e copia o HTML de volta.
+      return [...externalResources, container.outerHTML.trim()].filter(Boolean).join("\n\n");
     }
 
     function repairLegacyOptionStateCss(value) {
@@ -1238,6 +1241,15 @@ ${rules.join("\n")}
       const isResponsiveOutput = /class\s*=\s*["'][^"']*\b(?:ll|pdp)-responsive-output\b/i.test(innerHtml);
       if (isResponsiveOutput) {
         return innerHtml;
+      }
+      // Conteudo novo pode ser colado sem wrapper; nesse caso, criamos a
+      // lp-container. Quando ela ja veio no HTML, devolvemos a mesma div em
+      // vez de descascá-la e recriar uma versao reduzida.
+      const parsedDocument = new DOMParser().parseFromString(`<div data-ll-container-root>${innerHtml}</div>`, "text/html");
+      const parsedRoot = parsedDocument.querySelector("[data-ll-container-root]");
+      const existingContainer = Array.from(parsedRoot?.children || []).find((element) => element.matches?.(".lp-container, .lp_container"));
+      if (existingContainer) {
+        return existingContainer.outerHTML.trim();
       }
       return `<div class="lp-container">
 ${innerHtml}
@@ -2113,7 +2125,10 @@ ${containerHtml}`;
           updatePreviewEditValue({ ...meta, type: "textStyle", multiline: applyOptions.multiline, allowBackgroundStyle: Boolean(styleInputs.backgroundColor) }, {
             text: nextText,
             style: nextStyle
-          }, { skipPreviewUpdate: Boolean(applyOptions.skipPreviewUpdate) });
+          }, {
+            skipPreviewUpdate: Boolean(applyOptions.skipPreviewUpdate),
+            sourceElement
+          });
           return;
         }
 
@@ -2668,6 +2683,16 @@ ${containerHtml}`;
         return null;
       }
 
+      // Durante a digitação, o próprio nó do frame é a fonte mais confiável.
+      // Uma sincronização incremental pode remover os atributos auxiliares do
+      // clone seguinte; sem este atalho, uma tecla como Backspace deixava de
+      // atingir o título e a alteração parecia não funcionar.
+      if (sourceElement?.isConnected
+        && sourceElement.ownerDocument === doc
+        && sourceElement.dataset?.llTemplateNode === meta.templateNodeId) {
+        return sourceElement;
+      }
+
       return doc.querySelector(`[data-ll-template-node="${meta.templateNodeId}"]`);
     }
 
@@ -2750,7 +2775,10 @@ ${containerHtml}`;
       // edit serializes the frame back into the template, otherwise one edit
       // would silently make a later preview/export lose its external CSS.
       const preservedStylesheetLinks = extractTemplateStylesheetLinks(state.template.html);
-      const nextHtml = [preservedStylesheetLinks, clone.innerHTML.trim()]
+      // Mantenha a própria lp-container na fonte. Antes, serializar somente
+      // `innerHTML` apagava a div que a pessoa havia colado para envolver a
+      // LP e o HTML copiado deixava de ter essa estrutura.
+      const nextHtml = [preservedStylesheetLinks, clone.outerHTML.trim()]
         .filter(Boolean)
         .join("\n\n");
       // `container` can come from any live artboard. Resolve its owning
@@ -11199,7 +11227,7 @@ ${containerHtml}`;
         const rawValue = String(reader.result || "");
         const extractedValue = extractLpContainerHtml(rawValue);
         const nextStatus = rawValue.trim() && extractedValue !== rawValue.trim()
-          ? "HTML importado. Encontrei a lp-container e trouxe só o conteúdo interno."
+          ? "HTML importado. Encontrei e preservei a lp-container."
           : "HTML importado para a lp-container.";
         if (state.responsive?.editDevice === "base" && typeof updateTemplateBaseHtml === "function") {
           updateTemplateBaseHtml(extractedValue, nextStatus);
