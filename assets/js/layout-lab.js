@@ -3166,6 +3166,18 @@ ${itemMarkup}
     }
 
     function returnToHubFromLpBoard() {
+      if (fixedStartPage === "conteudo") {
+        if (!returnToBaseVersion()) {
+          return false;
+        }
+
+        if (window.LpBoard && typeof window.LpBoard.close === "function") {
+          window.LpBoard.close();
+        }
+        window.location.assign("index.html");
+        return true;
+      }
+
       return returnDashboardHome({ closeBoard: true });
     }
 

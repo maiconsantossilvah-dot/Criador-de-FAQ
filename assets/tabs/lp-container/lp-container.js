@@ -4157,6 +4157,11 @@ ${containerHtml}`;
       let boardFramePanPointer = null;
       let boardFramePanLastPoint = null;
 
+      const isPreviewTypingTarget = (target) => Boolean(
+        target?.isContentEditable
+        || target?.closest?.("input, textarea, select, [contenteditable='true'], [contenteditable='plaintext-only']")
+      );
+
       const getBoardFrame = () => doc.defaultView?.frameElement || null;
       const postBoardFrameEvent = (type, event, movement = {}) => {
         const frame = getBoardFrame();
@@ -4179,7 +4184,7 @@ ${containerHtml}`;
       });
 
       doc.addEventListener("keydown", (event) => {
-        if (event.code === "Space" && getBoardFrame()?.dataset?.llBoardInteractionScale) {
+        if (event.code === "Space" && getBoardFrame()?.dataset?.llBoardInteractionScale && !isPreviewTypingTarget(event.target)) {
           boardFrameSpaceDown = true;
           event.preventDefault();
         }

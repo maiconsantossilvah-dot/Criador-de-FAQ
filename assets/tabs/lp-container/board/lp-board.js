@@ -799,6 +799,9 @@
           if (extra) Object.keys(extra).forEach(function (name) { message[name] = extra[name]; });
           parent.postMessage(message, "*");
         }
+        function isTypingTarget(target) {
+          return Boolean(target && (target.isContentEditable || (typeof target.closest === "function" && target.closest("input, textarea, select, [contenteditable='true'], [contenteditable='plaintext-only']"))));
+        }
         function getSourceAnchors(target) {
           var root = document.querySelector(".lp-container, .lp_container") || document.body;
           var node = target && target.nodeType === 1 ? target : target && target.parentElement;
@@ -839,7 +842,7 @@
           if (data.type === "layout-lab:board-frame-update" && typeof data.html === "string") syncDocument(data.html);
         });
         window.addEventListener("keydown", function (event) {
-          if (event.code === "Space") { space = true; event.preventDefault(); return; }
+          if (event.code === "Space" && !isTypingTarget(event.target)) { space = true; event.preventDefault(); return; }
           var shortcutKey = String(event.key || "").toLowerCase();
           if ((event.ctrlKey || event.metaKey) && !event.altKey && (shortcutKey === "z" || shortcutKey === "y")) {
             send("layout-lab:board-frame-history", event, 0, 0, {
@@ -1765,7 +1768,7 @@
         resetArtboardDimensions();
         return;
       }
-      if (event.target.matches?.("input, textarea, select")) return;
+      if (event.target.matches?.("input, textarea, select, [contenteditable='true'], [contenteditable='plaintext-only']") || event.target.isContentEditable) return;
       if ((event.ctrlKey || event.metaKey) && (event.key.toLowerCase() === "z" || event.key.toLowerCase() === "y")) {
         event.preventDefault();
         restoreBoardHistory(event.key.toLowerCase() === "y" || event.shiftKey ? 1 : -1);
