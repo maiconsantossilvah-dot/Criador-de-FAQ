@@ -7705,8 +7705,117 @@ ${containerHtml}`;
 
       const escapeTemplateFaqCssRegExp = (value) => String(value || "").replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
+      const getTemplateFaqCssBlocks = (cssText, startMarker, endMarker) => {
+        const source = String(cssText || "");
+        const blocks = [];
+        let cursor = 0;
+        while (cursor < source.length) {
+          const startIndex = source.indexOf(startMarker, cursor);
+          if (startIndex < 0) {
+            break;
+          }
+          const endIndex = source.indexOf(endMarker, startIndex + startMarker.length);
+          if (endIndex < 0) {
+            break;
+          }
+          blocks.push(source.slice(startIndex + startMarker.length, endIndex).trim());
+          cursor = endIndex + endMarker.length;
+        }
+        return blocks;
+      };
+
+      const removeTemplateFaqCssBlocks = (cssText, startMarker, endMarker) => {
+        let source = String(cssText || "");
+        let startIndex = source.indexOf(startMarker);
+        while (startIndex >= 0) {
+          const endIndex = source.indexOf(endMarker, startIndex + startMarker.length);
+          if (endIndex < 0) {
+            break;
+          }
+          source = `${source.slice(0, startIndex)}${source.slice(endIndex + endMarker.length)}`;
+          startIndex = source.indexOf(startMarker);
+        }
+        return source.trim();
+      };
+
+      const mergeTemplateFaqClassCssBlocks = (blocks) => {
+        const rules = new Map();
+        blocks.filter(Boolean).forEach((block) => {
+          String(block).replace(/([^{}]+)\{([^{}]*)\}/g, (_, rawSelector, rawDeclarations) => {
+            const selector = String(rawSelector || "").trim();
+            if (!selector) {
+              return "";
+            }
+            const declarations = rules.get(selector) || new Map();
+            String(rawDeclarations || "").split(";").forEach((rawDeclaration) => {
+              const separator = rawDeclaration.indexOf(":");
+              if (separator < 0) {
+                return;
+              }
+              const property = rawDeclaration.slice(0, separator).trim().toLowerCase();
+              const value = rawDeclaration.slice(separator + 1).trim();
+              if (property && value) {
+                declarations.set(property, value);
+              }
+            });
+            rules.set(selector, declarations);
+            return "";
+          });
+        });
+
+        return Array.from(rules.entries())
+          .map(([selector, declarations]) => declarations.size
+            ? `${selector} { ${Array.from(declarations.entries()).map(([property, value]) => `${property}: ${value}`).join("; ")}; }`
+            : "")
+          .filter(Boolean)
+          .join("\n");
+      };
+
+      const normalizeTemplateFaqClassStyles = (faqRoot) => {
+        const documentStyles = Array.from(faqRoot?.ownerDocument?.querySelectorAll("style") || []);
+        const sources = documentStyles.filter((style) => isTemplateFaqSourceStyle(
+          style,
+          "faq-class-style",
+          templateFaqStyleMarkers.classStart
+        ));
+        const blocks = sources.flatMap((style) => getTemplateFaqCssBlocks(
+          style.textContent,
+          templateFaqStyleMarkers.classStart,
+          templateFaqStyleMarkers.classEnd
+        ));
+
+        if (blocks.length <= 1) {
+          return sources[0] || null;
+        }
+
+        const mergedCss = mergeTemplateFaqClassCssBlocks(blocks);
+        sources.forEach((style) => {
+          const remainingCss = removeTemplateFaqCssBlocks(
+            style.textContent,
+            templateFaqStyleMarkers.classStart,
+            templateFaqStyleMarkers.classEnd
+          );
+          if (remainingCss) {
+            style.textContent = remainingCss;
+          } else {
+            style.remove();
+          }
+        });
+
+        if (!mergedCss) {
+          return null;
+        }
+
+        const style = faqRoot.ownerDocument.createElement("style");
+        style.className = "faq-class-style";
+        style.textContent = `${templateFaqStyleMarkers.classStart}\n${mergedCss}\n${templateFaqStyleMarkers.classEnd}`;
+        placeTemplateFaqSourceStyleAtHeader(style, faqRoot);
+        return style;
+      };
+
       const getTemplateFaqClassStyle = (faqRoot) => {
-        return getTemplateFaqSourceStyleElement(faqRoot, "faq-class-style", templateFaqStyleMarkers.classStart);
+        return normalizeTemplateFaqClassStyles(faqRoot)
+          || getTemplateFaqSourceStyleElement(faqRoot, "faq-class-style", templateFaqStyleMarkers.classStart);
       };
 
       const getTemplateFaqClassRuleValue = (faqRoot, selector, property) => {
