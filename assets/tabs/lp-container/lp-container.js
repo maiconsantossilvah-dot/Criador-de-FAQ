@@ -7448,7 +7448,10 @@ ${containerHtml}`;
       };
 
       const getTemplateFaqRoot = (details, root) => {
-        return details.closest?.("#faq-section, [id*='faq' i], [class*='faq' i], section, article")
+        // `details` e cada item também carregam IDs com "faq". Eles não
+        // podem ser a raiz: a edição por classe precisa enxergar todos os
+        // itens da seção e gerar um seletor que exista no documento.
+        return details.closest?.("#faq-section, .faq-section, section[id*='faq' i], section[class*='faq' i], article[id*='faq' i], article[class*='faq' i]")
           || details.parentElement
           || root;
       };
@@ -8163,11 +8166,13 @@ ${containerHtml}`;
           const getClassScopedBaseSelector = () => {
             const baseSelector = getClassBaseSelector();
             const faqId = String(faqRoot?.id || "").trim();
-            // A class rule needs to beat a direct FAQ ID rule already present
-            // in the source. Scoping it to the FAQ root adds only the
-            // specificity required for the class-wide change to be visible.
-            if (baseSelector.startsWith(".") && faqId) {
-              return `#${escapeCssClassName(faqId)} ${baseSelector}`;
+            const faqSelector = faqId ? `#${escapeCssClassName(faqId)}` : "";
+            // O CSS público do FAQ usa IDs e !important. Sempre que o alvo
+            // estiver dentro do FAQ, prefixar pelo próprio FAQ faz a regra
+            // personalizada ganhar em especificidade — tanto para classes
+            // quanto para os IDs repetidos de cada item.
+            if (faqSelector && baseSelector && baseSelector !== faqSelector && !baseSelector.startsWith(`${faqSelector} `)) {
+              return `${faqSelector} ${baseSelector}`;
             }
             return baseSelector;
           };
