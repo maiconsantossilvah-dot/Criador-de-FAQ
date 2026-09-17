@@ -372,6 +372,31 @@
       return Boolean(element?.matches?.("style[data-ll-template-option-state-style], style.template-option-state-styles"));
     }
 
+    function protectTemplateOptionStateColors(value = "") {
+      return String(value || "").replace(/([^{}]+)\{([^{}]*)\}/g, (rule, selectors, declarations) => {
+        const isOptionState = /:(?:checked|not\(\s*:checked\s*\))/i.test(selectors)
+          && /section[-_](?:8|28)/i.test(selectors);
+        const customizesColor = /(?:background(?:-color)?|border-color|color)\s*:/i.test(declarations);
+        if (!isOptionState || !customizesColor) {
+          return rule;
+        }
+
+        const guards = [];
+        if (!/transition-property\s*:/i.test(declarations)) {
+          guards.push("transition-property: transform, opacity !important");
+        }
+        if (!/(?:^|;)\s*animation\s*:/i.test(declarations)) {
+          guards.push("animation: none !important");
+        }
+        if (!guards.length) {
+          return rule;
+        }
+
+        const trimmedDeclarations = declarations.trim().replace(/;\s*$/, "");
+        return `${selectors}{ ${[trimmedDeclarations, ...guards].filter(Boolean).join("; ")}; }`;
+      });
+    }
+
     function extractTemplateEmbeddedCss(value = state.template.html) {
       const rawValue = String(value || "").trim();
       if (!rawValue || !/<style\b/i.test(rawValue)) {
@@ -444,7 +469,9 @@
       }
 
       wrapper.querySelectorAll("style").forEach((element) => {
-        if (!isTemplateOptionStateStyle(element)) {
+        if (isTemplateOptionStateStyle(element)) {
+          element.textContent = protectTemplateOptionStateColors(element.textContent || "");
+        } else {
           element.remove();
         }
       });
@@ -5978,6 +6005,15 @@ ${containerHtml}`;
             }
             if (optionCardChangedFields.has("textColor") && (!textSelector || textSelector === stateSelector)) {
               stateDeclarations.color = textColor;
+            }
+            if (["background", "borderColor", "textColor"].some((field) => optionCardChangedFields.has(field))) {
+              // The external section-28 stylesheet animates the controls with
+              // its original blue palette. Keep the slide transition itself,
+              // but never animate colour on an option whose appearance was
+              // customized here; it must remain in its saved palette while
+              // the checked state switches.
+              stateDeclarations["transition-property"] = "transform, opacity";
+              stateDeclarations.animation = "none";
             }
             // A class-wide edit replaces obsolete per-card rules. An edit of
             // one card keeps its earlier compact declarations and changes
