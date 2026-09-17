@@ -243,7 +243,10 @@
     textarea.scrollTop = snapshot.scrollTop;
     textarea.scrollLeft = snapshot.scrollLeft;
     syncCodeHighlight(textarea);
-    queueCodeUpdate(textarea.value, textarea.dataset.boardCodeDevice || "desktop");
+    // Ctrl+Z/Ctrl+Shift+Z já muda o conteúdo do editor aqui. A sincronização
+    // precisa ser imediata, pois o timer de digitação pode deixar o frame
+    // mostrando uma versão anterior mesmo com o código já desfeito na tela.
+    commitCodeUpdate(textarea.value, textarea.dataset.boardCodeDevice || "desktop");
     return true;
   }
 
