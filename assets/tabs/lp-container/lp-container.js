@@ -556,6 +556,100 @@
       });
     }
 
+    // A janela do FAQ grava regras num bloco marcado. Versoes antigas podiam
+    // deixar varios desses blocos no HTML a cada ajuste. Antes de exibir ou
+    // exportar, juntamos tudo em um unico bloco e conservamos somente a ultima
+    // definicao de cada propriedade.
+    function compactTemplateFaqClassCss(value = "") {
+      const classStart = "/* Ajustes de classe/ID do FAQ */";
+      const classEnd = "/* Fim dos ajustes de classe/ID do FAQ */";
+      const source = String(value || "");
+      const blocks = [];
+      let cursor = 0;
+
+      while (cursor < source.length) {
+        const startIndex = source.indexOf(classStart, cursor);
+        if (startIndex < 0) {
+          break;
+        }
+        const endIndex = source.indexOf(classEnd, startIndex + classStart.length);
+        if (endIndex < 0) {
+          break;
+        }
+        blocks.push(source.slice(startIndex + classStart.length, endIndex).trim());
+        cursor = endIndex + classEnd.length;
+      }
+
+      if (!blocks.length) {
+        return source.trim();
+      }
+
+      const faqSummarySelector = "#faq-section #faq-section__summary";
+      const canonicalizeSelector = (rawSelector) => {
+        const selector = String(rawSelector || "").replace(/\s+/g, " ").trim();
+        if (!selector.includes(faqSummarySelector)) {
+          return selector;
+        }
+        if (/(?:\[id\*=["']icon|\[class\*=["']icon)/i.test(selector)) {
+          return `${faqSummarySelector} #faq-section__icon::before, ${faqSummarySelector} #faq-section__icon::after`;
+        }
+        if (selector === `${faqSummarySelector}, ${faqSummarySelector} *`) {
+          return `${faqSummarySelector} #faq-section__q-text`;
+        }
+        if (selector === `${faqSummarySelector}, ${faqSummarySelector} summary`) {
+          return faqSummarySelector;
+        }
+        if (selector === `${faqSummarySelector}:hover, ${faqSummarySelector} summary:hover`) {
+          return `${faqSummarySelector}:hover`;
+        }
+        return selector;
+      };
+
+      const rules = new Map();
+      blocks.filter(Boolean).forEach((block) => {
+        String(block).replace(/([^{}]+)\{([^{}]*)\}/g, (_, rawSelector, rawDeclarations) => {
+          const selector = canonicalizeSelector(rawSelector);
+          if (!selector) {
+            return "";
+          }
+          const declarations = rules.get(selector) || new Map();
+          String(rawDeclarations || "").split(";").forEach((rawDeclaration) => {
+            const separator = rawDeclaration.indexOf(":");
+            if (separator < 0) {
+              return;
+            }
+            const property = rawDeclaration.slice(0, separator).trim().toLowerCase();
+            const declarationValue = rawDeclaration.slice(separator + 1).trim();
+            if (property && declarationValue) {
+              declarations.set(property, declarationValue);
+            }
+          });
+          rules.set(selector, declarations);
+          return "";
+        });
+      });
+
+      let remaining = source;
+      let startIndex = remaining.indexOf(classStart);
+      while (startIndex >= 0) {
+        const endIndex = remaining.indexOf(classEnd, startIndex + classStart.length);
+        if (endIndex < 0) {
+          break;
+        }
+        remaining = `${remaining.slice(0, startIndex)}${remaining.slice(endIndex + classEnd.length)}`;
+        startIndex = remaining.indexOf(classStart);
+      }
+
+      const compactRules = Array.from(rules.entries())
+        .map(([selector, declarations]) => declarations.size
+          ? `${selector} { ${Array.from(declarations.entries()).map(([property, declarationValue]) => `${property}: ${declarationValue}`).join("; ")}; }`
+          : "")
+        .filter(Boolean)
+        .join("\n");
+      const compactBlock = compactRules ? `${classStart}\n${compactRules}\n${classEnd}` : "";
+      return [remaining.trim(), compactBlock].filter(Boolean).join("\n\n").trim();
+    }
+
     function extractTemplateEmbeddedCss(value = state.template.html) {
       const rawValue = String(value || "").trim();
       if (!rawValue || !/<style\b/i.test(rawValue)) {
@@ -568,13 +662,14 @@
         return "";
       }
 
-      return Array.from(wrapper.querySelectorAll("style"))
+      const css = Array.from(wrapper.querySelectorAll("style"))
         .filter((element) => !isTemplateOptionStateStyle(element))
         .map((element) => element.textContent || "")
         .map(repairLegacyOptionStateCss)
         .map((css) => css.trim())
         .filter(Boolean)
         .join("\n\n");
+      return compactTemplateFaqClassCss(css);
     }
 
     function isTemplateStylesheetLink(element) {
@@ -2635,7 +2730,7 @@ ${containerHtml}`;
       // document head. Preserve that CSS before cloning the next edit, or a
       // second option-state edit would serialize only its newest rule and
       // silently discard the colors already chosen for the other states.
-      const embeddedCss = repairLegacyOptionStateCss(
+      const embeddedCss = compactTemplateFaqClassCss(repairLegacyOptionStateCss(
         Array.from(sourceDocument?.head?.querySelectorAll("style") || [])
           .filter((style) => style.hasAttribute("data-ll-template-embedded-style")
             || /\/\*\s*Layout Lab: estilos embutidos do conteúdo\s*\*\//.test(style.textContent || ""))
@@ -2644,7 +2739,7 @@ ${containerHtml}`;
             .trim())
           .filter(Boolean)
           .join("\n\n")
-      );
+      ));
       if (embeddedCss) {
         const preservedStyle = sourceDocument.createElement("style");
         preservedStyle.textContent = embeddedCss;
@@ -7739,36 +7834,16 @@ ${containerHtml}`;
       };
 
       const mergeTemplateFaqClassCssBlocks = (blocks) => {
-        const rules = new Map();
-        blocks.filter(Boolean).forEach((block) => {
-          String(block).replace(/([^{}]+)\{([^{}]*)\}/g, (_, rawSelector, rawDeclarations) => {
-            const selector = String(rawSelector || "").trim();
-            if (!selector) {
-              return "";
-            }
-            const declarations = rules.get(selector) || new Map();
-            String(rawDeclarations || "").split(";").forEach((rawDeclaration) => {
-              const separator = rawDeclaration.indexOf(":");
-              if (separator < 0) {
-                return;
-              }
-              const property = rawDeclaration.slice(0, separator).trim().toLowerCase();
-              const value = rawDeclaration.slice(separator + 1).trim();
-              if (property && value) {
-                declarations.set(property, value);
-              }
-            });
-            rules.set(selector, declarations);
-            return "";
-          });
-        });
-
-        return Array.from(rules.entries())
-          .map(([selector, declarations]) => declarations.size
-            ? `${selector} { ${Array.from(declarations.entries()).map(([property, value]) => `${property}: ${value}`).join("; ")}; }`
-            : "")
-          .filter(Boolean)
-          .join("\n");
+        const markedCss = [
+          templateFaqStyleMarkers.classStart,
+          ...blocks.filter(Boolean),
+          templateFaqStyleMarkers.classEnd
+        ].join("\n");
+        return getTemplateFaqCssBlock(
+          compactTemplateFaqClassCss(markedCss),
+          templateFaqStyleMarkers.classStart,
+          templateFaqStyleMarkers.classEnd
+        );
       };
 
       const normalizeTemplateFaqClassStyles = (faqRoot) => {
@@ -7784,11 +7859,15 @@ ${containerHtml}`;
           templateFaqStyleMarkers.classEnd
         ));
 
-        if (blocks.length <= 1) {
+        const currentCss = blocks.filter(Boolean).join("\n").trim();
+        const mergedCss = mergeTemplateFaqClassCssBlocks(blocks);
+        const needsNormalization = sources.length !== 1
+          || blocks.length !== 1
+          || currentCss !== mergedCss;
+        if (!needsNormalization) {
           return sources[0] || null;
         }
 
-        const mergedCss = mergeTemplateFaqClassCssBlocks(blocks);
         sources.forEach((style) => {
           const remainingCss = removeTemplateFaqCssBlocks(
             style.textContent,
@@ -7810,6 +7889,7 @@ ${containerHtml}`;
         style.className = "faq-class-style";
         style.textContent = `${templateFaqStyleMarkers.classStart}\n${mergedCss}\n${templateFaqStyleMarkers.classEnd}`;
         placeTemplateFaqSourceStyleAtHeader(style, faqRoot);
+        faqRoot.dataset.llTemplateFaqClassStylesCompacted = "true";
         return style;
       };
 
@@ -8296,16 +8376,28 @@ ${containerHtml}`;
             return baseSelector;
           };
           const getClassSurfaceSelector = () => {
-            const baseSelector = getClassScopedBaseSelector();
-            return baseSelector ? `${baseSelector}, ${baseSelector} summary` : "";
+            // O alvo escolhido ja representa o grupo a ser alterado. Nao
+            // replique a mesma regra no elemento e em um `summary` filho:
+            // isso gerava CSS longo e, em alguns layouts, invalido.
+            return getClassScopedBaseSelector();
           };
           const getClassHoverSelector = () => {
-            const baseSelector = getClassScopedBaseSelector();
-            return baseSelector ? `${baseSelector}:hover, ${baseSelector} summary:hover` : "";
+            const surfaceSelector = getClassSurfaceSelector();
+            return surfaceSelector ? `${surfaceSelector}:hover` : "";
           };
           const getClassTextSelector = () => {
             const baseSelector = getClassScopedBaseSelector();
-            return baseSelector ? `${baseSelector}, ${baseSelector} *` : "";
+            const target = getClassCandidateElement(getClassBaseSelector());
+            const textTarget = getClassTextTarget();
+            if (!baseSelector || !textTarget || textTarget === target) {
+              return baseSelector;
+            }
+            const textId = String(textTarget.id || "").trim();
+            if (textId) {
+              return `${baseSelector} #${escapeCssClassName(textId)}`;
+            }
+            const textClass = Array.from(textTarget.classList || []).find((className) => !/^ll-template-|^preview-|^codex-/i.test(className));
+            return textClass ? `${baseSelector} .${escapeCssClassName(textClass)}` : baseSelector;
           };
 
           const getClassIconSelector = () => {
@@ -8313,16 +8405,23 @@ ${containerHtml}`;
             if (!baseSelector) {
               return "";
             }
-            return [
-              `${baseSelector}[id*="icon" i]::before`,
-              `${baseSelector}[id*="icon" i]::after`,
-              `${baseSelector}[class*="icon" i]::before`,
-              `${baseSelector}[class*="icon" i]::after`,
-              `${baseSelector} [id*="icon" i]::before`,
-              `${baseSelector} [id*="icon" i]::after`,
-              `${baseSelector} [class*="icon" i]::before`,
-              `${baseSelector} [class*="icon" i]::after`
-            ].join(", ");
+            const target = getClassCandidateElement(getClassBaseSelector());
+            const iconTarget = target?.matches?.('[id*="icon" i], [class*="icon" i]')
+              ? target
+              : target?.querySelector?.('[id*="icon" i], [class*="icon" i]');
+            if (!iconTarget) {
+              return "";
+            }
+            const iconId = String(iconTarget.id || "").trim();
+            const iconClass = Array.from(iconTarget.classList || []).find((className) => !/^ll-template-|^preview-|^codex-/i.test(className));
+            const iconSelector = iconTarget === target
+              ? baseSelector
+              : iconId
+                ? `${baseSelector} #${escapeCssClassName(iconId)}`
+                : iconClass
+                  ? `${baseSelector} .${escapeCssClassName(iconClass)}`
+                  : "";
+            return iconSelector ? `${iconSelector}::before, ${iconSelector}::after` : "";
           };
 
           const classChangedFields = new Set();
@@ -8390,7 +8489,6 @@ ${containerHtml}`;
             if (classChangedFields.has("hoverBackground")) {
               updateTemplateFaqClassRule(faqRoot, hoverSelector, "background", classHoverBackground.color.value);
               updateTemplateFaqClassRule(faqRoot, `${baseSelector} summary:hover`, "background");
-              updateTemplateFaqClassRule(faqRoot, `${baseSelector}:hover`, "background");
             }
             if (classChangedFields.has("textColor")) {
               updateTemplateFaqClassRule(faqRoot, textSelector, "color", classTextColor.color.value);
@@ -8469,7 +8567,6 @@ ${containerHtml}`;
             updateTemplateFaqClassRule(faqRoot, `${baseSelector} summary`, "background");
             updateTemplateFaqClassRule(faqRoot, hoverSelector, "background");
             updateTemplateFaqClassRule(faqRoot, `${baseSelector} summary:hover`, "background");
-            updateTemplateFaqClassRule(faqRoot, `${baseSelector}:hover`, "background");
             ["border-color", "border-width", "border-style"].forEach((property) => updateTemplateFaqClassRule(faqRoot, baseSelector, property));
             ["color", "font-size", "font-weight", "text-align", "font-style", "line-height"].forEach((property) => updateTemplateFaqClassRule(faqRoot, textSelector, property));
             const iconSelector = getClassIconSelector();
@@ -8478,6 +8575,13 @@ ${containerHtml}`;
             refreshClassFields();
           });
           refreshClassFields();
+          // Se este FAQ veio de uma versao que acumulou blocos, a leitura
+          // acima ja os reduziu a um unico bloco. Serialize uma vez para que
+          // a janela de codigo geral e a exportacao recebam a limpeza tambem.
+          if (faqRoot.dataset.llTemplateFaqClassStylesCompacted === "true") {
+            delete faqRoot.dataset.llTemplateFaqClassStylesCompacted;
+            syncFaqTemplateHtml();
+          }
         } else {
           const emptyClassNote = document.createElement("p");
           emptyClassNote.className = "preview-edit-popover__note";
