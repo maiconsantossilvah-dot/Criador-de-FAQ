@@ -7880,6 +7880,16 @@ ${containerHtml}`;
         closePreviewEditPopover();
         ensureTemplateFaqStyle(faqRoot);
         const sourceFrame = faqRoot?.ownerDocument?.defaultView?.frameElement || frame;
+        const faqContainer = faqRoot?.closest?.(".lp-container, .lp_container") || null;
+        // O board possui varios frames vivos. Sempre serialize o container
+        // que abriu esta janela; sem isso, a segunda alteração podia ser
+        // gravada a partir de outro frame ainda desatualizado e apagar a cor
+        // escolhida na primeira edição.
+        const syncFaqTemplateHtml = (options = {}) => syncTemplateHtmlFromPreview({
+          ...options,
+          sourceFrame,
+          container: faqContainer || undefined
+        });
         let faqHistoryRecorded = false;
         const recordFaqEditHistory = () => {
           if (faqHistoryRecorded) {
@@ -8289,10 +8299,17 @@ ${containerHtml}`;
             if (classChangedFields.has("textAlign")) updateTemplateFaqClassRule(faqRoot, textSelector, "text-align", normalizePreviewTextAlign(classTextAlign.value));
             if (classChangedFields.has("fontStyle")) updateTemplateFaqClassRule(faqRoot, textSelector, "font-style", classFontStyle.value === "italic" ? "italic" : "normal");
             if (classChangedFields.has("lineHeight")) updateTemplateFaqClassRule(faqRoot, textSelector, "line-height", normalizeTextStyleNumber(classLineHeight.value, 1.35, 0.8, 2.6, 2));
-            syncTemplateHtmlFromPreview();
+            syncFaqTemplateHtml();
           };
 
           const markClassFieldChanged = (field) => {
+            // Um summary normalmente não possui borda própria. Ao escolher
+            // uma cor de borda, tornar a espessura mínima visível evita a
+            // sensação de que o controle "não funcionou".
+            if (field === "borderColor" && (Number.parseFloat(classBorderWidth.value) || 0) <= 0) {
+              classBorderWidth.value = "1";
+              classChangedFields.add("borderWidth");
+            }
             classChangedFields.add(field);
             applyClassStyle();
           };
@@ -8348,7 +8365,7 @@ ${containerHtml}`;
             ["color", "font-size", "font-weight", "text-align", "font-style", "line-height"].forEach((property) => updateTemplateFaqClassRule(faqRoot, textSelector, property));
             const iconSelector = getClassIconSelector();
             if (iconSelector) updateTemplateFaqClassRule(faqRoot, iconSelector, "background");
-            syncTemplateHtmlFromPreview();
+            syncFaqTemplateHtml();
             refreshClassFields();
           });
           refreshClassFields();
@@ -8390,7 +8407,7 @@ ${containerHtml}`;
             question: questionStyle,
             answer: answerStyle
           });
-          syncTemplateHtmlFromPreview();
+          syncFaqTemplateHtml();
         };
 
         [normal, hover, questionStyle.color, answerStyle.color].forEach((pair) => {
