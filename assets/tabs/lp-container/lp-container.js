@@ -477,27 +477,36 @@
         return rawValue;
       }
 
-      // Ao recolar HTML/CSS no FrameWork, preserve os recursos externos sem
-      // colocá-los antes da própria LP. A `.lp-container` é sempre o começo
-      // do conteúdo serializado.
-      const externalResources = Array.from(parsedDocument.querySelectorAll("style, link"))
+      // Ao recolar HTML/CSS no FrameWork, a `.lp-container` continua sendo
+      // a primeira estrutura. Os stylesheets entram logo após sua abertura,
+      // antes do conteúdo da LP; estilos personalizados continuam separados
+      // para que possam ser compactados normalmente na exportação.
+      const externalStylesheetLinks = Array.from(parsedDocument.querySelectorAll("link"))
         .filter((element) => {
           if (container.contains(element)) {
             return false;
           }
 
-          return element.tagName === "STYLE" || isTemplateStylesheetLink(element);
+          return isTemplateStylesheetLink(element);
         })
         .map((element) => element.outerHTML.trim())
         .filter(Boolean);
+      const externalStyles = Array.from(parsedDocument.querySelectorAll("style"))
+        .filter((element) => !container.contains(element))
+        .map((element) => element.outerHTML.trim())
+        .filter(Boolean);
       if (responsiveOutput) {
-        return [responsiveOutput.outerHTML.trim(), ...externalResources].filter(Boolean).join("\n\n");
+        return [responsiveOutput.outerHTML.trim(), ...externalStylesheetLinks, ...externalStyles].filter(Boolean).join("\n\n");
       }
 
       // O FrameWork tambem aceita a LP completa, ja envolvida pela
       // `.lp-container`. Preservar a casca evita perder classes, IDs ou
       // atributos quando a pessoa edita no preview e copia o HTML de volta.
-      return [container.outerHTML.trim(), ...externalResources].filter(Boolean).join("\n\n");
+      const containerCopy = container.cloneNode(true);
+      if (externalStylesheetLinks.length) {
+        containerCopy.insertAdjacentHTML("afterbegin", `${externalStylesheetLinks.join("\n")}\n`);
+      }
+      return [containerCopy.outerHTML.trim(), ...externalStyles].filter(Boolean).join("\n\n");
     }
 
     function repairLegacyOptionStateCss(value) {
@@ -1331,11 +1340,20 @@ ${rules.join("\n")}
       const parsedDocument = new DOMParser().parseFromString(`<div data-ll-container-root>${innerHtml}</div>`, "text/html");
       const parsedRoot = parsedDocument.querySelector("[data-ll-container-root]");
       const existingContainer = Array.from(parsedRoot?.children || []).find((element) => element.matches?.(".lp-container, .lp_container"));
+      const stylesheetLinks = options.includeStylesheetLinks === false
+        ? ""
+        : extractTemplateStylesheetLinks(value);
       if (existingContainer) {
+        if (stylesheetLinks) {
+          // Keep the public stylesheet links at the very start of the LP
+          // wrapper. They must not be appended after `</div>`, where a pasted
+          // LP is harder to read and can be moved by the host parser.
+          existingContainer.insertAdjacentHTML("afterbegin", `${stylesheetLinks}\n`);
+        }
         return existingContainer.outerHTML.trim();
       }
       return `<div class="lp-container">
-${innerHtml}
+${stylesheetLinks ? `${stylesheetLinks}\n` : ""}${innerHtml}
 </div>`;
     }
 
@@ -1356,14 +1374,13 @@ ${innerHtml}
   ${templateStyle}
 </head>
 <body>
-${buildLpContainerHtml(state.template.html, { includeLabAttrs: true })}
+${buildLpContainerHtml(state.template.html, { includeLabAttrs: true, includeStylesheetLinks: false })}
 </body>
 </html>`;
     }
 
     function buildTemplateOutputHtml(copyMode = "html", options = {}) {
       const containerHtml = buildLpContainerHtml();
-      const stylesheetLinks = extractTemplateStylesheetLinks();
       // O HTML copiado precisa funcionar sozinho no reprodutor local. Leve
       // apenas o CSS criado no FrameWork (classe/ID, preview ou código),
       // nunca a folha estrutural/base da LP.
@@ -1373,7 +1390,6 @@ ${buildLpContainerHtml(state.template.html, { includeLabAttrs: true })}
       if (copyMode === "full") {
         return [
           containerHtml,
-          stylesheetLinks,
           customStyle
         ].filter(Boolean).join("\n\n");
       }
@@ -1382,7 +1398,6 @@ ${buildLpContainerHtml(state.template.html, { includeLabAttrs: true })}
       // personalizadas continuam presentes, mas vêm depois dela.
       return [
         containerHtml,
-        stylesheetLinks,
         ...(includeCustomStyles ? [customStyle] : [])
       ].filter(Boolean).join("\n\n");
     }
@@ -2941,15 +2956,21 @@ ${buildLpContainerHtml(state.template.html, { includeLabAttrs: true })}
       }
       // Stylesheet links are moved to the preview document head so the
       // browser applies them correctly. Keep those original links when an
-      // edit serializes the frame back into the template, otherwise one edit
-      // would silently make a later preview/export lose its external CSS.
+      // edit serializes the frame back into the template. They belong right
+      // after the `.lp-container` opening tag, not after the closing tag.
       const preservedStylesheetLinks = extractTemplateStylesheetLinks(state.template.html);
+      clone.querySelectorAll("link").forEach((link) => {
+        if (isTemplateStylesheetLink(link)) {
+          link.remove();
+        }
+      });
+      if (preservedStylesheetLinks) {
+        clone.insertAdjacentHTML("afterbegin", `${preservedStylesheetLinks}\n`);
+      }
       // Mantenha a própria lp-container na fonte. Antes, serializar somente
       // `innerHTML` apagava a div que a pessoa havia colado para envolver a
       // LP e o HTML copiado deixava de ter essa estrutura.
-      const nextHtml = [clone.outerHTML.trim(), preservedStylesheetLinks]
-        .filter(Boolean)
-        .join("\n\n");
+      const nextHtml = clone.outerHTML.trim();
       // `container` can come from any live artboard. Resolve its owning
       // iframe first, otherwise an edit in one responsive frame may be saved
       // against whichever frame happened to be active most recently.
