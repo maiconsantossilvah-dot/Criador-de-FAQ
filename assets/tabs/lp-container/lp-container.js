@@ -12,6 +12,11 @@
     // nativo do navegador. Mantemos um historico pequeno por breakpoint para
     // que Ctrl+Z/Ctrl+Shift+Z funcione tambem para texto, cor, midia e CSS.
     const previewEditHistory = { undo: [], redo: [], pending: new Map(), restoring: false, limit: 80 };
+    // A janela flutuante ainda nao alterou o layout enquanto a pessoa digita.
+    // Por isso ela precisa de um rascunho proprio: Ctrl+Z primeiro volta os
+    // campos dela e, depois de salvar, volta a usar o historico do preview.
+    const previewEditPopoverHistory = new WeakMap();
+    let previewEditPopoverHistoryRestoring = false;
     let previewEditHistoryParentListenerBound = false;
     let previewEditHistoryFrameMessageBound = false;
 
@@ -185,6 +190,123 @@
       return options.details ? { handled: false } : false;
     }
 
+    function getPreviewEditPopoverFromTarget(target) {
+      return target instanceof Element ? target.closest(".preview-edit-popover") : null;
+    }
+
+    function getPreviewEditPopoverFields(popover) {
+      if (!popover?.isConnected) {
+        return [];
+      }
+
+      return Array.from(popover.querySelectorAll("input, textarea, select"))
+        .filter((field) => !field.disabled
+          && !["button", "submit", "reset", "file", "hidden"].includes(String(field.type || "").toLowerCase()));
+    }
+
+    function getPreviewEditPopoverSnapshot(popover) {
+      return getPreviewEditPopoverFields(popover).map((field) => ({
+        field,
+        value: field.value,
+        checked: Boolean(field.checked),
+        selectedIndex: field instanceof HTMLSelectElement ? field.selectedIndex : null
+      }));
+    }
+
+    function arePreviewEditPopoverSnapshotsEqual(first = [], second = []) {
+      return first.length === second.length && first.every((entry, index) => {
+        const candidate = second[index];
+        return candidate
+          && entry.field === candidate.field
+          && entry.value === candidate.value
+          && entry.checked === candidate.checked
+          && entry.selectedIndex === candidate.selectedIndex;
+      });
+    }
+
+    function preparePreviewEditPopoverHistory(popover) {
+      if (!popover?.isConnected || previewEditPopoverHistoryRestoring) {
+        return null;
+      }
+
+      let history = previewEditPopoverHistory.get(popover);
+      if (!history) {
+        history = { entries: [getPreviewEditPopoverSnapshot(popover)], index: 0 };
+        previewEditPopoverHistory.set(popover, history);
+      }
+      return history;
+    }
+
+    function recordPreviewEditPopoverHistory(popover) {
+      if (previewEditPopoverHistoryRestoring) {
+        return false;
+      }
+
+      const history = preparePreviewEditPopoverHistory(popover);
+      if (!history) {
+        return false;
+      }
+
+      const snapshot = getPreviewEditPopoverSnapshot(popover);
+      const current = history.entries[history.index];
+      if (arePreviewEditPopoverSnapshotsEqual(current, snapshot)) {
+        return false;
+      }
+
+      history.entries.splice(history.index + 1);
+      history.entries.push(snapshot);
+      if (history.entries.length > 100) {
+        history.entries.shift();
+      }
+      history.index = history.entries.length - 1;
+      return true;
+    }
+
+    function clearPreviewEditPopoverHistory(popover) {
+      if (popover) {
+        previewEditPopoverHistory.delete(popover);
+      }
+    }
+
+    function movePreviewEditPopoverHistory(popover, direction) {
+      const history = previewEditPopoverHistory.get(popover);
+      if (!history) {
+        return false;
+      }
+
+      const nextIndex = direction === "redo" ? history.index + 1 : history.index - 1;
+      if (nextIndex < 0 || nextIndex >= history.entries.length) {
+        return false;
+      }
+
+      const snapshot = history.entries[nextIndex];
+      previewEditPopoverHistoryRestoring = true;
+      snapshot.forEach((entry) => {
+        const field = entry.field;
+        if (!field?.isConnected) {
+          return;
+        }
+
+        if (field instanceof HTMLSelectElement && Number.isInteger(entry.selectedIndex)) {
+          field.selectedIndex = entry.selectedIndex;
+        } else {
+          field.value = entry.value;
+        }
+        if (field instanceof HTMLInputElement && /^(checkbox|radio)$/i.test(field.type)) {
+          field.checked = entry.checked;
+        }
+
+        // Cada janela possui pequenos controles derivados (cor + amostra,
+        // estado selecionado etc.). Repassar os eventos deixa esses controles
+        // e qualquer atualizacao visual imediata iguais ao que a pessoa editou.
+        field.dispatchEvent(new Event("input", { bubbles: true }));
+        field.dispatchEvent(new Event("change", { bubbles: true }));
+      });
+      previewEditPopoverHistoryRestoring = false;
+      history.index = nextIndex;
+      return true;
+    }
+
     function handlePreviewEditHistoryShortcut(event, options = {}) {
       if (!(event.ctrlKey || event.metaKey) || event.altKey) {
         return false;
@@ -210,6 +332,13 @@
         return false;
       }
 
+      const popover = getPreviewEditPopoverFromTarget(target);
+      if (popover && movePreviewEditPopoverHistory(popover, wantsRedo ? "redo" : "undo")) {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        return true;
+      }
+
       const handled = movePreviewEditHistory(wantsRedo ? "redo" : "undo");
       if (handled) {
         event.preventDefault();
@@ -220,8 +349,38 @@
 
     if (!previewEditHistoryParentListenerBound) {
       previewEditHistoryParentListenerBound = true;
+      const preparePopoverHistoryFromEvent = (event) => {
+        preparePreviewEditPopoverHistory(getPreviewEditPopoverFromTarget(event.target));
+      };
+      const recordPopoverHistoryFromEvent = (event) => {
+        recordPreviewEditPopoverHistory(getPreviewEditPopoverFromTarget(event.target));
+      };
+      document.addEventListener("pointerdown", preparePopoverHistoryFromEvent, true);
+      document.addEventListener("focusin", preparePopoverHistoryFromEvent, true);
+      // Registrar no fim da propagacao garante que campos acoplados (o texto
+      // e a amostra de cor, por exemplo) ja tenham sido sincronizados.
+      document.addEventListener("input", recordPopoverHistoryFromEvent);
+      document.addEventListener("change", recordPopoverHistoryFromEvent);
       document.addEventListener("keydown", (event) => {
         handlePreviewEditHistoryShortcut(event);
+      }, true);
+      document.addEventListener("submit", (event) => {
+        const popover = getPreviewEditPopoverFromTarget(event.target);
+        if (popover) {
+          window.queueMicrotask(() => clearPreviewEditPopoverHistory(popover));
+        }
+      }, true);
+      document.addEventListener("click", (event) => {
+        const button = event.target instanceof Element ? event.target.closest("button") : null;
+        const popover = getPreviewEditPopoverFromTarget(button);
+        if (!button || !popover || button.matches("[data-option-close]")) {
+          return;
+        }
+
+        const action = String(button.textContent || "").trim();
+        if (button.type === "submit" || /\b(?:salvar|aplicar|confirmar|concluir)\b/i.test(action)) {
+          window.queueMicrotask(() => clearPreviewEditPopoverHistory(popover));
+        }
       }, true);
     }
 
@@ -1092,6 +1251,7 @@ ${containerHtml}`;
       }
 
       if (previewEditPopover) {
+        clearPreviewEditPopoverHistory(previewEditPopover);
         previewEditPopover.remove();
         previewEditPopover = null;
       }
