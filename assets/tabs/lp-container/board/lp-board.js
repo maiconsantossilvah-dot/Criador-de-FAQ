@@ -246,8 +246,31 @@
     // Ctrl+Z/Ctrl+Shift+Z já muda o conteúdo do editor aqui. A sincronização
     // precisa ser imediata, pois o timer de digitação pode deixar o frame
     // mostrando uma versão anterior mesmo com o código já desfeito na tela.
-    commitCodeUpdate(textarea.value, textarea.dataset.boardCodeDevice || "desktop");
+    commitCodeUpdate(textarea.value, textarea.dataset.boardCodeDevice || "desktop", {
+      immediatePreview: true,
+      preserveLiveFrame: false
+    });
     return true;
+  }
+
+  function stageFrameworkHistory(device) {
+    return Boolean(state.callbacks.onHistoryStage?.({ device }));
+  }
+
+  function commitFrameworkHistory(device) {
+    return Boolean(state.callbacks.onHistoryCommit?.({ device }));
+  }
+
+  function moveFrameworkHistory(direction, device) {
+    return state.callbacks.onHistoryMove?.({ direction, device }) || { handled: false };
+  }
+
+  function applyFrameworkHistoryCode(textarea, result) {
+    if (!textarea || typeof result?.code !== "string") return;
+    textarea.value = result.code;
+    textarea.dataset.boardCodeDirty = "false";
+    syncCodeHighlight(textarea);
+    resetCodeHistory(textarea);
   }
 
   function updateCodeStatus(textarea) {
@@ -406,7 +429,10 @@
   }
 
   function syncCodeEditor(textarea, device) {
-    if (textarea) textarea.dataset.boardCodeDirty = "true";
+    if (textarea) {
+      textarea.dataset.boardCodeDirty = "true";
+      stageFrameworkHistory(device || textarea.dataset.boardCodeDevice || "desktop");
+    }
     syncCodeHighlight(textarea);
     updateCodeStatus(textarea);
     recordCodeHistory(textarea);
@@ -1160,7 +1186,7 @@
     }, 180);
   }
 
-  function commitCodeUpdate(value = (document.activeElement?.matches?.("[data-board-code]") ? document.activeElement.value : state.code?.value || ""), device = document.activeElement?.dataset?.boardCodeDevice || "desktop") {
+  function commitCodeUpdate(value = (document.activeElement?.matches?.("[data-board-code]") ? document.activeElement.value : state.code?.value || ""), device = document.activeElement?.dataset?.boardCodeDevice || "desktop", options = {}) {
     window.clearTimeout(codeUpdateTimer);
     codeUpdateTimer = 0;
     state.pendingCodeUpdate = null;
@@ -1169,8 +1195,9 @@
       if (textarea.value === value) textarea.dataset.boardCodeDirty = "false";
     });
     if (typeof state.callbacks.onCodeChange === "function") {
-      state.callbacks.onCodeChange(value, device);
+      state.callbacks.onCodeChange(value, device, options);
     }
+    commitFrameworkHistory(device);
   }
 
   function commitPendingCodeUpdate() {
@@ -1509,7 +1536,16 @@
         const key = event.key.toLowerCase();
         if ((event.ctrlKey || event.metaKey) && (key === "z" || key === "y")) {
           event.preventDefault();
-          restoreCodeHistory(textarea, key === "y" || event.shiftKey ? 1 : -1);
+          const device = textarea.dataset.boardCodeDevice || "desktop";
+          const direction = key === "y" || event.shiftKey ? 1 : -1;
+          const hasPendingCodeChange = state.pendingCodeUpdate?.device === device
+            || (textarea.dataset.boardCodeDirty === "true" && textarea.value !== getCodeSource(device));
+          const historyResult = hasPendingCodeChange ? { handled: false } : moveFrameworkHistory(direction, device);
+          if (historyResult?.handled) {
+            applyFrameworkHistoryCode(textarea, historyResult);
+            return;
+          }
+          restoreCodeHistory(textarea, direction);
           return;
         }
         if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "f") {

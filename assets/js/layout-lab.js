@@ -3998,6 +3998,17 @@ ${buildFaqPreviewStylePackage({ includeResponsive: true, responsiveOptions: { in
         }
       }
       if (shouldUpdatePreview) {
+        if (options.immediatePreview) {
+          window.clearTimeout(templatePreviewUpdateTimer);
+          templatePreviewUpdateTimer = 0;
+          window.clearTimeout(lpBoardIncrementalSyncTimer);
+          lpBoardIncrementalSyncTimer = 0;
+          // Ao desfazer/refazer no editor de código, o conteúdo que aparece
+          // nele já mudou. Recrie os frames agora, sem preservar o frame
+          // ativo nem esperar o debounce usado para digitação contínua.
+          updateOutput({ preserveLiveFrame: false });
+          return;
+        }
         updatePreviewNaturally();
       }
     }
@@ -4035,6 +4046,20 @@ ${buildFaqPreviewStylePackage({ includeResponsive: true, responsiveOptions: { in
       }, {});
     }
 
+    function getLpBoardHistoryCallbacks() {
+      return {
+        onHistoryStage({ device } = {}) {
+          return window.LpContainerHistory?.stageCodeChange?.(device) || false;
+        },
+        onHistoryCommit({ device } = {}) {
+          return window.LpContainerHistory?.commitCodeChange?.(device) || false;
+        },
+        onHistoryMove({ direction, device } = {}) {
+          return window.LpContainerHistory?.move?.(direction, device) || { handled: false };
+        }
+      };
+    }
+
     function syncLpBoardIncrementally() {
       const board = window.LpBoard;
       const canSync = currentPage === "conteudo"
@@ -4060,6 +4085,7 @@ ${buildFaqPreviewStylePackage({ includeResponsive: true, responsiveOptions: { in
         onSaveDevice: saveLpBoardResponsiveVersion,
         onExport: handleLpBoardExport,
         onHub: returnToHubFromLpBoard,
+        ...getLpBoardHistoryCallbacks(),
         onFrameMounted(frame) {
           setupPreviewEditing(frame);
         },
@@ -4330,6 +4356,7 @@ ${buildFaqPreviewStylePackage({ includeResponsive: true, responsiveOptions: { in
           onSaveDevice: saveLpBoardResponsiveVersion,
           onExport: handleLpBoardExport,
           onHub: returnToHubFromLpBoard,
+          ...getLpBoardHistoryCallbacks(),
           onFrameMounted(frame) {
             setupPreviewEditing(frame);
           },

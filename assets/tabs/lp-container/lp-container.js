@@ -27,6 +27,11 @@
     }
 
     function getPreviewEditHistoryDevice(meta = {}, sourceFrame = null) {
+      const requestedDevice = String(meta?.device || "").trim();
+      if (requestedDevice) {
+        return requestedDevice === "base" ? "desktop" : requestedDevice;
+      }
+
       const frame = meta?.sourceFrame || sourceFrame;
       const frameDevice = frame?.dataset?.llBoardActiveDevice;
       if (frameDevice) {
@@ -64,7 +69,12 @@
 
       const tab = getPreviewEditHistoryTab(meta);
       const device = getPreviewEditHistoryDevice(meta, sourceFrame);
-      previewEditHistory.pending.set(getPreviewEditHistoryKey(tab, device), {
+      const key = getPreviewEditHistoryKey(tab, device);
+      if (previewEditHistory.pending.has(key)) {
+        return true;
+      }
+
+      previewEditHistory.pending.set(key, {
         tab,
         device,
         snapshot: getPreviewEditHistorySnapshot(tab, device)
@@ -87,6 +97,7 @@
 
       const currentSnapshot = getPreviewEditHistorySnapshot(tab, device);
       if (arePreviewEditSnapshotsEqual(pending.snapshot, currentSnapshot)) {
+        previewEditHistory.pending.delete(key);
         return false;
       }
 
@@ -142,19 +153,15 @@
         state.responsive.dirty = true;
       }
 
-      // No FrameWork, atualizar os iframes incrementalmente evita desmontar o
-      // frame em que o atalho foi usado. Nas outras abas, o preview comum e
-      // recomposto a partir do mesmo snapshot restaurado.
-      if (tab === "template" && typeof scheduleLpBoardIncrementalSync === "function" && scheduleLpBoardIncrementalSync(0)) {
-        generatedHtml.value = buildOutputHtml("html");
-      } else {
-        updateOutput({ preservePreviewScroll: true, preserveLiveFrame: true });
-      }
+      // O estado restaurado precisa chegar a todos os frames, inclusive ao
+      // que estava aberto no momento do Ctrl+Z. A sincronização incremental
+      // preserva justamente esse frame e deixa uma prévia antiga visível.
+      updateOutput({ preservePreviewScroll: true, preserveLiveFrame: false });
 
       return true;
     }
 
-    function movePreviewEditHistory(direction) {
+    function movePreviewEditHistory(direction, options = {}) {
       const source = direction === "redo" ? previewEditHistory.redo : previewEditHistory.undo;
       const destination = direction === "redo" ? previewEditHistory.undo : previewEditHistory.redo;
 
@@ -169,10 +176,13 @@
         previewEditHistory.restoring = true;
         const restored = applyPreviewEditHistorySnapshot(entry, entry.snapshot);
         previewEditHistory.restoring = false;
+        if (options.details) {
+          return { handled: restored, tab: entry.tab, device: entry.device, snapshot: cloneValue(entry.snapshot) };
+        }
         return restored;
       }
 
-      return false;
+      return options.details ? { handled: false } : false;
     }
 
     function handlePreviewEditHistoryShortcut(event, options = {}) {
@@ -232,6 +242,30 @@
         movePreviewEditHistory(data.direction === "redo" ? "redo" : "undo");
       });
     }
+
+    // O board usa este mesmo histórico para alterações feitas nas janelas de
+    // código. Assim, Ctrl+Z sempre restaura a última ação do FrameWork, não
+    // importa se ela veio do preview ou de um editor de código.
+    window.LpContainerHistory = {
+      stageCodeChange(device) {
+        return stagePreviewEditHistory({ scope: "template", device });
+      },
+      commitCodeChange(device) {
+        return commitStagedPreviewEditHistory({ scope: "template", device });
+      },
+      move(direction, device) {
+        const result = movePreviewEditHistory(direction, { details: true });
+        if (!result.handled) {
+          return result;
+        }
+
+        const targetSnapshot = getResponsiveSnapshot("template", device || result.device);
+        return {
+          ...result,
+          code: String(targetSnapshot?.template?.html || "")
+        };
+      }
+    };
 
     function getTemplateLayoutOptions() {
       return [
