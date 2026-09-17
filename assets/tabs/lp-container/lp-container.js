@@ -477,9 +477,9 @@
         return rawValue;
       }
 
-      // O resultado de “Copiar HTML/CSS” deixa os estilos antes do markup.
-      // Ao recolar esse resultado no FrameWork, mantenha esses estilos e a
-      // casca responsiva; antes eles eram descartados junto com o container.
+      // Ao recolar HTML/CSS no FrameWork, preserve os recursos externos sem
+      // colocá-los antes da própria LP. A `.lp-container` é sempre o começo
+      // do conteúdo serializado.
       const externalResources = Array.from(parsedDocument.querySelectorAll("style, link"))
         .filter((element) => {
           if (container.contains(element)) {
@@ -491,13 +491,13 @@
         .map((element) => element.outerHTML.trim())
         .filter(Boolean);
       if (responsiveOutput) {
-        return [...externalResources, responsiveOutput.outerHTML.trim()].filter(Boolean).join("\n\n");
+        return [responsiveOutput.outerHTML.trim(), ...externalResources].filter(Boolean).join("\n\n");
       }
 
       // O FrameWork tambem aceita a LP completa, ja envolvida pela
       // `.lp-container`. Preservar a casca evita perder classes, IDs ou
       // atributos quando a pessoa edita no preview e copia o HTML de volta.
-      return [...externalResources, container.outerHTML.trim()].filter(Boolean).join("\n\n");
+      return [container.outerHTML.trim(), ...externalResources].filter(Boolean).join("\n\n");
     }
 
     function repairLegacyOptionStateCss(value) {
@@ -1216,12 +1216,95 @@ ${rules.join("\n")}
       ].filter(Boolean).join("\n\n");
     }
 
+    const templateClassStyleStart = "/* Ajustes de classe/ID da LP */";
+    const templateClassStyleEnd = "/* Fim dos ajustes de classe/ID da LP */";
+
+    function splitTemplateClassCss(value) {
+      let remaining = String(value || "");
+      const blocks = [];
+      let startIndex = remaining.indexOf(templateClassStyleStart);
+
+      while (startIndex >= 0) {
+        const endIndex = remaining.indexOf(templateClassStyleEnd, startIndex + templateClassStyleStart.length);
+        if (endIndex < 0) {
+          break;
+        }
+        blocks.push(remaining.slice(startIndex + templateClassStyleStart.length, endIndex));
+        remaining = `${remaining.slice(0, startIndex)}${remaining.slice(endIndex + templateClassStyleEnd.length)}`;
+        startIndex = remaining.indexOf(templateClassStyleStart);
+      }
+
+      return { remaining: remaining.trim(), blocks };
+    }
+
+    function extractTemplateClassCss(value = state.template.html) {
+      return splitTemplateClassCss(value).blocks.join("\n\n").trim();
+    }
+
+    function compactTemplateClassCss(value) {
+      const blocks = splitTemplateClassCss(value).blocks;
+      const rules = new Map();
+
+      blocks.filter(Boolean).forEach((block) => {
+        String(block).replace(/([^{}]+)\{([^{}]*)\}/g, (_, rawSelector, rawDeclarations) => {
+          const selector = String(rawSelector || "").trim().replace(/\s+/g, " ");
+          if (!selector) {
+            return "";
+          }
+          const declarations = rules.get(selector) || new Map();
+          String(rawDeclarations || "").split(";").forEach((rawDeclaration) => {
+            const separator = rawDeclaration.indexOf(":");
+            if (separator < 0) {
+              return;
+            }
+            const property = rawDeclaration.slice(0, separator).trim().toLowerCase();
+            const declarationValue = rawDeclaration.slice(separator + 1).trim();
+            if (property && declarationValue) {
+              declarations.set(property, declarationValue);
+            }
+          });
+          rules.set(selector, declarations);
+          return "";
+        });
+      });
+
+      const compactRules = Array.from(rules.entries())
+        .map(([selector, declarations]) => declarations.size
+          ? `${selector} {\n${Array.from(declarations.entries()).map(([property, declarationValue]) => `  ${property}: ${declarationValue};`).join("\n")}\n}`
+          : "")
+        .filter(Boolean)
+        .join("\n\n");
+
+      return compactRules
+        ? `${templateClassStyleStart}\n${compactRules}\n${templateClassStyleEnd}`
+        : "";
+    }
+
+    function removeTemplateClassSelector(css, selector) {
+      const normalizedSelector = String(selector || "").trim().replace(/\s+/g, " ");
+      if (!normalizedSelector) {
+        return compactTemplateClassCss(css);
+      }
+      const escapedSelector = normalizedSelector.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      const source = String(css || "").replace(new RegExp(`(^|\\n)\\s*${escapedSelector}\\s*\\{[^{}]*\\}\\s*`, "g"), "$1");
+      return compactTemplateClassCss(source);
+    }
+
+    function buildTemplateClassStyleElement(css) {
+      const compactCss = compactTemplateClassCss(css);
+      return compactCss ? `<style>\n${compactCss}\n</style>` : "";
+    }
+
     // The header stylesheet belongs to the template's own <link> tag. It is
     // used in the preview as a safe fallback, but must never be repeated in
     // published CSS. Export only changes made through the editor or code.
     function buildTemplateCustomOutputStyle() {
       const embeddedStyle = buildTemplateEmbeddedStyle();
-      const previewClassStyle = typeof buildPreviewClassStyle === "function"
+      // Once a class/ID edit has been persisted in the source it already
+      // arrives through `embeddedStyle`; adding it again would duplicate the
+      // same selector in the copied HTML.
+      const previewClassStyle = !extractTemplateClassCss()
+        && typeof buildPreviewClassStyle === "function"
         ? buildPreviewClassStyle("template")
         : "";
       return [
@@ -1281,26 +1364,26 @@ ${buildLpContainerHtml(state.template.html, { includeLabAttrs: true })}
     function buildTemplateOutputHtml(copyMode = "html", options = {}) {
       const containerHtml = buildLpContainerHtml();
       const stylesheetLinks = extractTemplateStylesheetLinks();
-      const includeCustomStyles = Boolean(options.includeCustomStyles);
+      // O HTML copiado precisa funcionar sozinho no reprodutor local. Leve
+      // apenas o CSS criado no FrameWork (classe/ID, preview ou código),
+      // nunca a folha estrutural/base da LP.
+      const includeCustomStyles = options.includeCustomStyles !== false;
       const customStyle = buildTemplateCustomOutputStyle();
 
       if (copyMode === "full") {
-        return `${[stylesheetLinks, customStyle].filter(Boolean).join("\n\n")}
-
-<!-- HTML DO LAYOUT -->
-
-${containerHtml}`;
+        return [
+          containerHtml,
+          stylesheetLinks,
+          customStyle
+        ].filter(Boolean).join("\n\n");
       }
 
-      // The code editor / HTML copy must remain self-contained. The preview
-      // keeps these rules in its document head, but the serialized markup
-      // deliberately strips style tags from the container. Put the public
-      // custom rules back before the markup so FAQ and section 35 changes
-      // are present in the final code as well.
+      // A LP deve aparecer primeiro no código copiado. Os links e as regras
+      // personalizadas continuam presentes, mas vêm depois dela.
       return [
+        containerHtml,
         stylesheetLinks,
-        ...(includeCustomStyles ? [customStyle] : []),
-        containerHtml
+        ...(includeCustomStyles ? [customStyle] : [])
       ].filter(Boolean).join("\n\n");
     }
 
@@ -2606,6 +2689,14 @@ ${containerHtml}`;
         }
       };
 
+      // No template, the generic class/ID editor cannot live only in the
+      // transient iframe stylesheet. Persist one compact block in the source
+      // before rebuilding the frames so the general code and local player
+      // receive exactly the same rule as the preview.
+      if (tab === "template") {
+        persistTemplateClassStyle(meta, normalizedSelector.selector);
+      }
+
       if (currentPage === "conteudo") {
         markResponsiveDirty();
         if (state.responsive.editDevice === "base") {
@@ -2639,6 +2730,9 @@ ${containerHtml}`;
         : null;
 
       delete state.classStyles[tab][normalizedSelector.key];
+      if (tab === "template") {
+        persistTemplateClassStyle(meta, normalizedSelector.selector, { removeSelector: true });
+      }
       if (currentPage === "conteudo") {
         markResponsiveDirty();
         if (state.responsive.editDevice === "base") {
@@ -2656,7 +2750,7 @@ ${containerHtml}`;
       renderEditor(true);
     }
 
-    function buildPreviewClassStyle(tab) {
+    function buildPreviewClassCss(tab) {
       const styles = state.classStyles?.[tab] || {};
       const rules = Object.values(styles).map((entry) => {
         const selector = entry?.selector || (entry?.className ? `.${escapeCssClassName(entry.className)}` : "");
@@ -2671,7 +2765,53 @@ ${containerHtml}`;
         return "";
       }
 
-      return `<style>\n/* Ajustes visuais personalizados */\n${rules.join("\n\n")}\n</style>`;
+      return rules.join("\n\n");
+    }
+
+    function buildPreviewClassStyle(tab) {
+      const css = buildPreviewClassCss(tab);
+      return css ? `<style>\n/* Ajustes visuais personalizados */\n${css}\n</style>` : "";
+    }
+
+    function persistTemplateClassStyle(meta, selector, options = {}) {
+      const sourceFrame = meta?.sourceFrame || templatePreviewSourceFrame || previewFrame;
+      const doc = getPreviewDocument(sourceFrame);
+      const container = doc?.querySelector(".lp-container, .lp_container");
+      if (!container) {
+        return;
+      }
+
+      // Merge the newly chosen declarations with any class rules already in
+      // the general code. Clearing one selector removes just that selector,
+      // without touching independent class edits.
+      const currentCss = extractTemplateClassCss(state.template.html);
+      const nextCss = compactTemplateClassCss([currentCss, buildPreviewClassCss("template")]
+        .filter(Boolean)
+        .map((css) => `${templateClassStyleStart}\n${css}\n${templateClassStyleEnd}`)
+        .join("\n\n"));
+      const persistedCss = options.removeSelector
+        ? removeTemplateClassSelector(nextCss, selector)
+        : nextCss;
+
+      Array.from(container.querySelectorAll("style")).forEach((style) => {
+        if (String(style.textContent || "").includes(templateClassStyleStart)) {
+          style.remove();
+        }
+      });
+
+      if (persistedCss) {
+        const style = doc.createElement("style");
+        style.textContent = persistedCss;
+        container.insertBefore(style, container.firstChild);
+      }
+
+      syncTemplateHtmlFromPreview({
+        sourceFrame,
+        container,
+        templateClassCss: persistedCss,
+        skipPreviewUpdate: true,
+        preserveLiveFrame: true
+      });
     }
 
     function getTemplatePreviewNode(meta, sourceElement = null) {
@@ -2751,24 +2891,53 @@ ${containerHtml}`;
 
       const clone = cleanTemplatePreviewClone(container);
       const sourceDocument = container.ownerDocument || doc;
+      const cloneClassCss = extractTemplateClassCss(clone.innerHTML);
+      // The preview applies source CSS in <head>. Remove only our persisted
+      // class block from the cloned HTML now; it is restored as one canonical
+      // block below together with anything currently held in the preview head.
+      clone.querySelectorAll("style").forEach((style) => {
+        const parts = splitTemplateClassCss(style.textContent || "");
+        if (!parts.blocks.length) {
+          return;
+        }
+        if (parts.remaining) {
+          style.textContent = parts.remaining;
+        } else {
+          style.remove();
+        }
+      });
       // Preview rendering moves user CSS out of `.lp-container` and into the
       // document head. Preserve that CSS before cloning the next edit, or a
       // second option-state edit would serialize only its newest rule and
       // silently discard the colors already chosen for the other states.
-      const embeddedCss = compactTemplateFaqClassCss(repairLegacyOptionStateCss(
+      const embeddedCssSource = repairLegacyOptionStateCss(
         Array.from(sourceDocument?.head?.querySelectorAll("style") || [])
           .filter((style) => style.hasAttribute("data-ll-template-embedded-style")
             || /\/\*\s*Layout Lab: estilos embutidos do conteúdo\s*\*\//.test(style.textContent || ""))
           .map((style) => (style.textContent || "")
             .replace(/\/\*\s*Layout Lab: estilos embutidos do conteúdo\s*\*\/\s*/g, "")
-            .trim())
+          .trim())
           .filter(Boolean)
           .join("\n\n")
-      ));
+      );
+      const headClassCss = extractTemplateClassCss(embeddedCssSource);
+      const embeddedCss = compactTemplateFaqClassCss(splitTemplateClassCss(embeddedCssSource).remaining);
+      const hasRequestedTemplateClassCss = Object.prototype.hasOwnProperty.call(options, "templateClassCss");
+      const templateClassCss = hasRequestedTemplateClassCss
+        ? compactTemplateClassCss(options.templateClassCss)
+        : compactTemplateClassCss([cloneClassCss, headClassCss]
+          .filter(Boolean)
+          .map((css) => `${templateClassStyleStart}\n${css}\n${templateClassStyleEnd}`)
+          .join("\n\n"));
       if (embeddedCss) {
         const preservedStyle = sourceDocument.createElement("style");
         preservedStyle.textContent = embeddedCss;
         clone.insertBefore(preservedStyle, clone.firstChild);
+      }
+      if (templateClassCss) {
+        const classStyle = sourceDocument.createElement("style");
+        classStyle.textContent = templateClassCss;
+        clone.insertBefore(classStyle, clone.firstChild);
       }
       // Stylesheet links are moved to the preview document head so the
       // browser applies them correctly. Keep those original links when an
@@ -2778,7 +2947,7 @@ ${containerHtml}`;
       // Mantenha a própria lp-container na fonte. Antes, serializar somente
       // `innerHTML` apagava a div que a pessoa havia colado para envolver a
       // LP e o HTML copiado deixava de ter essa estrutura.
-      const nextHtml = [preservedStylesheetLinks, clone.outerHTML.trim()]
+      const nextHtml = [clone.outerHTML.trim(), preservedStylesheetLinks]
         .filter(Boolean)
         .join("\n\n");
       // `container` can come from any live artboard. Resolve its owning
