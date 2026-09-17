@@ -8061,7 +8061,11 @@ ${containerHtml}`;
           if (!candidate || items.some((item) => item.value === candidate.selector)) {
             return items;
           }
-          items.push({ value: candidate.selector, label: candidate.label });
+          items.push({
+            value: candidate.selector,
+            label: candidate.label,
+            count: candidate.count || 1
+          });
           return items;
         }, []);
 
@@ -8070,26 +8074,67 @@ ${containerHtml}`;
           const preferredClassCandidate = classCandidates.find((candidate) => candidate.value === summaryIdSelector)
             || classCandidates.find((candidate) => candidate.value.startsWith("#"))
             || classCandidates[0];
-          const classSelect = makeSelect(classCandidates, preferredClassCandidate.value);
-          makeMiniField(classPanel, "Classe ou ID alvo", classSelect);
+          const getClassCandidateElement = (selector) => {
+            try {
+              if (faqRoot.matches?.(selector)) {
+                return faqRoot;
+              }
+              return faqRoot.querySelector(selector) || summary.ownerDocument.querySelector(selector);
+            } catch (_) {
+              return null;
+            }
+          };
+          const getClassCandidateLabel = (candidate) => {
+            const target = getClassCandidateElement(candidate.value);
+            let role = "Grupo compartilhado";
+            if (target === faqRoot) {
+              role = "Bloco do FAQ";
+            } else if (target?.matches?.("summary")) {
+              role = "Caixa da pergunta";
+            } else if (target === firstQuestion || target?.closest?.("summary")) {
+              role = "Texto da pergunta";
+            } else if (target === firstAnswer || target?.closest?.("details")) {
+              role = "Item do FAQ";
+            }
+            return `${role} — ${candidate.label}`;
+          };
+          const classSelect = makeSelect(
+            classCandidates.map((candidate) => ({
+              ...candidate,
+              label: getClassCandidateLabel(candidate)
+            })),
+            preferredClassCandidate.value
+          );
+          makeMiniField(classPanel, "Grupo que será alterado", classSelect);
           const classApply = makeSelect([
-            { value: "summary-bg", label: "Fundo normal do summary" },
-            { value: "summary-hover", label: "Fundo hover do summary" },
-            { value: "text", label: "Texto" },
-            { value: "border", label: "Borda" },
-            { value: "outline", label: "Contorno" }
+            { value: "summary-bg", label: "Fundo da caixa da pergunta" },
+            { value: "summary-hover", label: "Fundo da caixa ao passar o mouse" },
+            { value: "text", label: "Texto e ícones" },
+            { value: "border", label: "Borda da caixa (1 px)" },
+            { value: "outline", label: "Contorno da caixa (2 px)" }
           ], "summary-bg");
-          makeMiniField(classPanel, "Aplicar em", classApply);
-          const classColor = makeColorField(classPanel, "Cor da classe", initialNormal);
+          makeMiniField(classPanel, "O que mudar", classApply);
+          const classColor = makeColorField(classPanel, "Nova cor", initialNormal);
           const classNote = document.createElement("p");
           classNote.className = "preview-edit-popover__note";
-          classNote.textContent = "Use esta aba para afetar todos os elementos com a mesma classe ou ID.";
           classPanel.appendChild(classNote);
+          const classActions = document.createElement("div");
+          classActions.className = "preview-edit-popover__actions";
+          const classSaveButton = document.createElement("button");
+          classSaveButton.type = "button";
+          classSaveButton.className = "button preview-edit-popover__option-save";
+          classSaveButton.textContent = "✓ Aplicar à classe";
           const resetClassButton = document.createElement("button");
           resetClassButton.type = "button";
           resetClassButton.className = "button button--soft";
-          resetClassButton.textContent = "Limpar classe";
-          classPanel.appendChild(resetClassButton);
+          resetClassButton.textContent = "Limpar ajuste";
+          classActions.append(resetClassButton, classSaveButton);
+          classPanel.appendChild(classActions);
+
+          const setClassSaveButtonState = (saved = false) => {
+            classSaveButton.classList.toggle("is-saved", saved);
+            classSaveButton.textContent = saved ? "✓ Classe atualizada" : "✓ Aplicar à classe";
+          };
 
           const getClassProperty = () => ({
             "summary-bg": "background",
@@ -8103,9 +8148,19 @@ ${containerHtml}`;
           // class when the person explicitly chooses one) in the source CSS,
           // so the visible code and the exported code use the same selector.
           const getClassBaseSelector = () => String(classSelect.value || "").trim();
-          const getClassTargetSelector = () => {
+          const getClassScopedBaseSelector = () => {
             const baseSelector = getClassBaseSelector();
-            const pseudo = classApply.value === "summary-hover" ? ":hover" : "";
+            const faqId = String(faqRoot?.id || "").trim();
+            // A class rule needs to beat a direct FAQ ID rule already present
+            // in the source. Scoping it to the FAQ root adds only the
+            // specificity required for the class-wide change to be visible.
+            if (baseSelector.startsWith(".") && faqId) {
+              return `#${escapeCssClassName(faqId)} ${baseSelector}`;
+            }
+            return baseSelector;
+          };
+          const getClassTargetSelector = () => {
+            const baseSelector = getClassScopedBaseSelector();
             if (!baseSelector) {
               return "";
             }
@@ -8116,8 +8171,58 @@ ${containerHtml}`;
             if (classApply.value === "text") {
               return `${baseSelector}, ${baseSelector} *`;
             }
-            return `${baseSelector}${pseudo}`;
+
+            // The most common shared target is #faq-section__item (the LI).
+            // Its visible fill is nevertheless on the nested summary. Route
+            // background rules there so the selected color is never hidden by
+            // a previous direct summary rule with !important.
+            if (["summary-bg", "summary-hover"].includes(classApply.value)) {
+              const selectedElement = getClassCandidateElement(baseSelector);
+              const summarySelector = selectedElement?.matches?.("summary")
+                ? baseSelector
+                : `${baseSelector} summary`;
+              return `${summarySelector}${classApply.value === "summary-hover" ? ":hover" : ""}`;
+            }
+            return baseSelector;
           };
+
+          const getClassIconSelector = () => {
+            const baseSelector = getClassScopedBaseSelector();
+            if (!baseSelector) {
+              return "";
+            }
+            return [
+              `${baseSelector}[id*="icon" i]::before`,
+              `${baseSelector}[id*="icon" i]::after`,
+              `${baseSelector}[class*="icon" i]::before`,
+              `${baseSelector}[class*="icon" i]::after`,
+              `${baseSelector} [id*="icon" i]::before`,
+              `${baseSelector} [id*="icon" i]::after`,
+              `${baseSelector} [class*="icon" i]::before`,
+              `${baseSelector} [class*="icon" i]::after`
+            ].join(", ");
+          };
+
+          const getClassStyleDeclarations = (color) => {
+            if (classApply.value === "border") {
+              return [
+                ["border-color", color],
+                ["border-style", "solid"],
+                ["border-width", "1px"]
+              ];
+            }
+            if (classApply.value === "outline") {
+              return [
+                ["outline-color", color],
+                ["outline-style", "solid"],
+                ["outline-width", "2px"]
+              ];
+            }
+            return [[getClassProperty(), color]];
+          };
+
+          const getClassStyleProperties = () => getClassStyleDeclarations(classColor.color.value)
+            .map(([property]) => property);
 
           const setClassColorValue = (value) => {
             const nextValue = colorToHex(value || initialNormal, initialNormal);
@@ -8126,17 +8231,21 @@ ${containerHtml}`;
             classColor.color.style.setProperty("--preview-edit-color", nextValue);
           };
 
+          const getClassVisualTarget = () => {
+            const target = getClassCandidateElement(getClassBaseSelector());
+            if (["summary-bg", "summary-hover"].includes(classApply.value) && !target?.matches?.("summary")) {
+              return target?.querySelector?.("summary") || summary;
+            }
+            return target;
+          };
+
           const getClassFallbackColor = () => {
             const property = getClassProperty();
             if (classApply.value === "summary-hover") {
               return initialHover;
             }
 
-            let target = null;
-            try {
-              target = faqRoot.querySelector(classSelect.value)
-                || summary.ownerDocument.querySelector(classSelect.value);
-            } catch (_) {}
+            const target = getClassVisualTarget();
             const targetComputed = target?.ownerDocument?.defaultView?.getComputedStyle(target);
             const computedValue = property === "background"
               ? targetComputed?.backgroundColor
@@ -8160,12 +8269,15 @@ ${containerHtml}`;
                 : "")
               || state.classStyles?.template?.[selector]?.declarations?.[property];
             setClassColorValue(savedValue || getClassFallbackColor());
+            const candidate = classCandidates.find((item) => item.value === getClassBaseSelector());
+            const total = Number(candidate?.count || 1);
+            classNote.textContent = `Este ajuste será aplicado a ${total} ${total === 1 ? "elemento" : "elementos"} do grupo selecionado. Escolha a cor e clique em “Aplicar à classe”.`;
+            setClassSaveButtonState(Boolean(savedValue));
           };
 
           const applyClassStyle = () => {
             syncPair(classColor);
             const targetSelector = getClassTargetSelector();
-            const property = getClassProperty();
             if (!targetSelector) {
               return;
             }
@@ -8173,39 +8285,61 @@ ${containerHtml}`;
             if (classApply.value === "text") {
               // Replace an older parent-only text rule instead of leaving an
               // invisible duplicate alongside the new descendant-aware one.
-              updateTemplateFaqClassRule(faqRoot, getClassBaseSelector(), property);
+              updateTemplateFaqClassRule(faqRoot, getClassBaseSelector(), getClassProperty());
             }
-            updateTemplateFaqClassRule(faqRoot, targetSelector, property, classColor.color.value);
+            getClassStyleDeclarations(classColor.color.value).forEach(([property, value]) => {
+              updateTemplateFaqClassRule(faqRoot, targetSelector, property, value);
+            });
+            if (classApply.value === "text") {
+              const iconSelector = getClassIconSelector();
+              if (iconSelector) {
+                updateTemplateFaqClassRule(faqRoot, iconSelector, "background", classColor.color.value);
+              }
+            }
             syncTemplateHtmlFromPreview();
+            setClassSaveButtonState(true);
           };
 
           classColor.color.addEventListener("input", () => {
             classColor.hex.value = normalizeHexColor(classColor.color.value);
             classColor.color.style.setProperty("--preview-edit-color", classColor.hex.value);
-            applyClassStyle();
+            setClassSaveButtonState(false);
           });
           classColor.hex.addEventListener("input", () => {
             if (isHexColor(classColor.hex.value)) {
-              applyClassStyle();
+              syncPair(classColor);
+              setClassSaveButtonState(false);
             }
           });
           classColor.hex.addEventListener("change", () => {
             classColor.hex.value = isHexColor(classColor.hex.value) ? normalizeHexColor(classColor.hex.value) : classColor.color.value;
-            applyClassStyle();
+            syncPair(classColor);
+            setClassSaveButtonState(false);
           });
           // Changing the target must only load that target's existing value.
           // Applying the previous field value here overwrote normal/hover and
           // text styles before the person had changed anything.
           classSelect.addEventListener("change", refreshClassColor);
           classApply.addEventListener("change", refreshClassColor);
+          classSaveButton.addEventListener("click", applyClassStyle);
           resetClassButton.addEventListener("click", () => {
             const targetSelector = getClassTargetSelector();
             if (!targetSelector) {
               return;
             }
             recordFaqEditHistory();
-            updateTemplateFaqClassRule(faqRoot, targetSelector, getClassProperty());
+            getClassStyleProperties().forEach((property) => {
+              updateTemplateFaqClassRule(faqRoot, targetSelector, property);
+            });
+            if (classApply.value === "text") {
+              const iconSelector = getClassIconSelector();
+              if (iconSelector) {
+                updateTemplateFaqClassRule(faqRoot, iconSelector, "background");
+              }
+            }
             syncTemplateHtmlFromPreview();
+            refreshClassColor();
+            setClassSaveButtonState(false);
           });
           refreshClassColor();
         } else {

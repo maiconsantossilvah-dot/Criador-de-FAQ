@@ -3199,6 +3199,13 @@
       background: var(--field-bg);
     }
 
+    /* O editor do FAQ possui tres areas (caixa, texto e classe/ID).
+       Mantê-las na mesma linha deixa a escolha de modo clara e evita que
+       Classe/ID pareça uma opcao perdida numa segunda linha. */
+    .preview-edit-popover--faq .preview-edit-popover__tabs {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
     .preview-edit-popover__tabs button {
       min-height: 32px;
       border-radius: 6px;
