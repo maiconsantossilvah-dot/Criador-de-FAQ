@@ -1160,11 +1160,21 @@
 
     function updateTemplateBaseHtml(value, status = "") {
       const baseSnapshot = getBaseSnapshot("template");
+      const nextHtml = String(value || "");
+      const nextStatus = String(status || "");
+      // A prévia responsiva pode pedir uma sincronização depois que um frame
+      // termina de montar. Se o código não mudou, rebater as versões aqui
+      // recriava os mesmos frames e iniciava outro ciclo de atualizações.
+      // Uma escrita idêntica precisa ser realmente uma operação nula.
+      if (getTemplateSnapshotHtml(baseSnapshot) === nextHtml
+        && String(baseSnapshot?.template?.status || "") === nextStatus) {
+        return baseSnapshot;
+      }
       const nextBaseSnapshot = cloneValue(baseSnapshot);
       nextBaseSnapshot.template = {
         ...(nextBaseSnapshot.template || {}),
-        html: String(value || ""),
-        status: String(status || "")
+        html: nextHtml,
+        status: nextStatus
       };
       rebaseTemplateResponsiveVersions(baseSnapshot, nextBaseSnapshot);
       state.responsive.baseSnapshots.template = nextBaseSnapshot;
@@ -3968,6 +3978,19 @@ ${buildFaqPreviewStylePackage({ includeResponsive: true, responsiveOptions: { in
         ? "desktop"
         : state.responsive.editDevice;
       const appliesToActiveSnapshot = activeDevice === targetDevice;
+
+      // Ignora avisos repetidos de um mesmo frame. Sem esta barreira, uma
+      // montagem que reenviava o próprio HTML iniciava rebases responsivos e
+      // novos renders mesmo sem qualquer edição da pessoa.
+      const currentSnapshot = isDesktopGeneral
+        ? getBaseSnapshot("template")
+        : appliesToActiveSnapshot
+          ? { template: state.template }
+          : getResponsiveSnapshot("template", targetDevice);
+      if (getTemplateSnapshotHtml(currentSnapshot) === nextValue
+        && String(currentSnapshot?.template?.status || "") === "") {
+        return;
+      }
 
       if (isDesktopGeneral) {
         // A responsive frame is an overlay, not an older independent copy of

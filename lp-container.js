@@ -6635,10 +6635,9 @@ ${buildLpContainerHtml(state.template.html, { includeLabAttrs: true })}
           if (!slides.length || section.querySelector("[data-ll-section8-slide-tools]")) {
             return;
           }
-          // Cada frame responsivo monta esta barra. A normalização é apenas
-          // visual durante a prévia; persistir daqui reiniciava todos os
-          // frames e criava um ciclo de recargas sem nenhuma ação da pessoa.
-          normalizeSection8SlideLayout(section, slides);
+          // A montagem dos frames é estritamente de leitura: não ajustamos
+          // nem estilos inline aqui. A normalização estrutural acontece só
+          // quando a pessoa adiciona ou remove um slide abaixo.
 
           const toolbar = doc.createElement("div");
           toolbar.dataset.llTemplateHelper = "true";
@@ -9691,7 +9690,10 @@ ${buildLpContainerHtml(state.template.html, { includeLabAttrs: true })}
             if (interactionRoot.isConnected) {
               syncTemplateHtmlFromPreview({
                 container: interactionRoot,
-                preserveLiveFrame: false
+                // O estado já foi aplicado neste frame. Atualizar o próprio
+                // documento depois do atraso desmontava e remontava as barras
+                // de slides sem necessidade, causando o flicker visível.
+                preserveLiveFrame: true
               });
             }
           }, 220);
