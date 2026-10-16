@@ -4,6 +4,428 @@
  * Este arquivo contem a logica que antes ficava direto no motor central.
  */
 
+    // O board deixa mais de um preview aberto; guardar a origem impede que
+    // uma alteracao do celular seja aplicada por engano no frame principal.
+    let templatePreviewSourceFrame = null;
+
+    // Alteracoes feitas diretamente nos frames nao passam pelo historico
+    // nativo do navegador. Mantemos um historico pequeno por breakpoint para
+    // que Ctrl+Z/Ctrl+Shift+Z funcione tambem para texto, cor, midia e CSS.
+    const previewEditHistory = { undo: [], redo: [], pending: new Map(), restoring: false, limit: 80 };
+    // A janela flutuante ainda nao alterou o layout enquanto a pessoa digita.
+    // Por isso ela precisa de um rascunho proprio: Ctrl+Z primeiro volta os
+    // campos dela e, depois de salvar, volta a usar o historico do preview.
+    const previewEditPopoverHistory = new WeakMap();
+    let previewEditPopoverHistoryRestoring = false;
+    let previewEditHistoryParentListenerBound = false;
+    let previewEditHistoryFrameMessageBound = false;
+
+    function getPreviewEditHistoryTab(meta = {}) {
+      const scope = String(meta?.scope || "").trim();
+      const supportedTabs = ["faq", "table", "stories", "article", "carousel", "bento", "labbridge", "template"];
+      if (supportedTabs.includes(scope)) {
+        return scope;
+      }
+
+      const activeTab = currentPage === "conteudo" ? currentEditorTab : "faq";
+      return supportedTabs.includes(activeTab) ? activeTab : "faq";
+    }
+
+    function getPreviewEditHistoryDevice(meta = {}, sourceFrame = null) {
+      const requestedDevice = String(meta?.device || "").trim();
+      if (requestedDevice) {
+        return requestedDevice === "base" ? "desktop" : requestedDevice;
+      }
+
+      const frame = meta?.sourceFrame || sourceFrame;
+      const frameDevice = frame?.dataset?.llBoardActiveDevice;
+      if (frameDevice) {
+        return frameDevice === "base" ? "desktop" : frameDevice;
+      }
+
+      const editDevice = state.responsive?.editDevice || "base";
+      return editDevice === "base" ? "desktop" : editDevice;
+    }
+
+    function getPreviewEditHistorySnapshot(tab, device) {
+      if (device === "desktop") {
+        return cloneValue(getBaseSnapshot(tab));
+      }
+
+      return cloneValue(getResponsiveSnapshot(tab, device));
+    }
+
+    function arePreviewEditSnapshotsEqual(first, second) {
+      try {
+        return JSON.stringify(first) === JSON.stringify(second);
+      } catch (_) {
+        return false;
+      }
+    }
+
+    function getPreviewEditHistoryKey(tab, device) {
+      return `${tab || "faq"}::${device || "desktop"}`;
+    }
+
+    function stagePreviewEditHistory(meta = {}, sourceFrame = null) {
+      if (previewEditHistory.restoring || currentPage !== "conteudo") {
+        return false;
+      }
+
+      const tab = getPreviewEditHistoryTab(meta);
+      const device = getPreviewEditHistoryDevice(meta, sourceFrame);
+      const key = getPreviewEditHistoryKey(tab, device);
+      if (previewEditHistory.pending.has(key)) {
+        return true;
+      }
+
+      previewEditHistory.pending.set(key, {
+        tab,
+        device,
+        snapshot: getPreviewEditHistorySnapshot(tab, device)
+      });
+      return true;
+    }
+
+    function commitStagedPreviewEditHistory(meta = {}, sourceFrame = null) {
+      if (previewEditHistory.restoring || currentPage !== "conteudo") {
+        return false;
+      }
+
+      const tab = getPreviewEditHistoryTab(meta);
+      const device = getPreviewEditHistoryDevice(meta, sourceFrame);
+      const key = getPreviewEditHistoryKey(tab, device);
+      const pending = previewEditHistory.pending.get(key);
+      if (!pending) {
+        return false;
+      }
+
+      const currentSnapshot = getPreviewEditHistorySnapshot(tab, device);
+      if (arePreviewEditSnapshotsEqual(pending.snapshot, currentSnapshot)) {
+        previewEditHistory.pending.delete(key);
+        return false;
+      }
+
+      previewEditHistory.pending.delete(key);
+      previewEditHistory.undo.push(pending);
+      if (previewEditHistory.undo.length > previewEditHistory.limit) {
+        previewEditHistory.undo.shift();
+      }
+      previewEditHistory.redo = [];
+      return true;
+    }
+
+    function recordPreviewEditHistory(meta = {}, sourceFrame = null) {
+      if (previewEditHistory.restoring || currentPage !== "conteudo") {
+        return false;
+      }
+
+      const tab = getPreviewEditHistoryTab(meta);
+      const device = getPreviewEditHistoryDevice(meta, sourceFrame);
+      const snapshot = getPreviewEditHistorySnapshot(tab, device);
+      previewEditHistory.pending.delete(getPreviewEditHistoryKey(tab, device));
+      previewEditHistory.undo.push({ tab, device, snapshot });
+      if (previewEditHistory.undo.length > previewEditHistory.limit) {
+        previewEditHistory.undo.shift();
+      }
+      previewEditHistory.redo = [];
+      return true;
+    }
+
+    function applyPreviewEditHistorySnapshot(entry, snapshot) {
+      const tab = entry?.tab;
+      const device = entry?.device;
+      if (!tab || !device || !snapshot) {
+        return false;
+      }
+
+      const restoredSnapshot = cloneValue(snapshot);
+      previewEditHistory.pending.clear();
+      state.responsive.baseSnapshots = state.responsive.baseSnapshots || {};
+      state.responsive.drafts = state.responsive.drafts || {};
+
+      if (device === "desktop") {
+        state.responsive.baseSnapshots[tab] = cloneValue(restoredSnapshot);
+        if (getResponsiveTab() === tab && state.responsive.editDevice === "base") {
+          applyTabSnapshot(tab, restoredSnapshot);
+        }
+      } else {
+        state.responsive.drafts[tab] = state.responsive.drafts[tab] || {};
+        state.responsive.drafts[tab][device] = cloneValue(restoredSnapshot);
+        if (getResponsiveTab() === tab && state.responsive.editDevice === device) {
+          applyTabSnapshot(tab, restoredSnapshot);
+        }
+        state.responsive.dirty = true;
+      }
+
+      // O estado restaurado precisa chegar a todos os frames, inclusive ao
+      // que estava aberto no momento do Ctrl+Z. A sincronização incremental
+      // preserva justamente esse frame e deixa uma prévia antiga visível.
+      updateOutput({ preservePreviewScroll: true, preserveLiveFrame: false });
+
+      return true;
+    }
+
+    function movePreviewEditHistory(direction, options = {}) {
+      const source = direction === "redo" ? previewEditHistory.redo : previewEditHistory.undo;
+      const destination = direction === "redo" ? previewEditHistory.undo : previewEditHistory.redo;
+
+      while (source.length) {
+        const entry = source.pop();
+        const currentSnapshot = getPreviewEditHistorySnapshot(entry.tab, entry.device);
+        if (arePreviewEditSnapshotsEqual(currentSnapshot, entry.snapshot)) {
+          continue;
+        }
+
+        destination.push({ tab: entry.tab, device: entry.device, snapshot: currentSnapshot });
+        previewEditHistory.restoring = true;
+        const restored = applyPreviewEditHistorySnapshot(entry, entry.snapshot);
+        previewEditHistory.restoring = false;
+        if (options.details) {
+          return { handled: restored, tab: entry.tab, device: entry.device, snapshot: cloneValue(entry.snapshot) };
+        }
+        return restored;
+      }
+
+      return options.details ? { handled: false } : false;
+    }
+
+    function getPreviewEditPopoverFromTarget(target) {
+      return target instanceof Element ? target.closest(".preview-edit-popover") : null;
+    }
+
+    function getPreviewEditPopoverFields(popover) {
+      if (!popover?.isConnected) {
+        return [];
+      }
+
+      return Array.from(popover.querySelectorAll("input, textarea, select"))
+        .filter((field) => !field.disabled
+          && !["button", "submit", "reset", "file", "hidden"].includes(String(field.type || "").toLowerCase()));
+    }
+
+    function getPreviewEditPopoverSnapshot(popover) {
+      return getPreviewEditPopoverFields(popover).map((field) => ({
+        field,
+        value: field.value,
+        checked: Boolean(field.checked),
+        selectedIndex: field instanceof HTMLSelectElement ? field.selectedIndex : null
+      }));
+    }
+
+    function arePreviewEditPopoverSnapshotsEqual(first = [], second = []) {
+      return first.length === second.length && first.every((entry, index) => {
+        const candidate = second[index];
+        return candidate
+          && entry.field === candidate.field
+          && entry.value === candidate.value
+          && entry.checked === candidate.checked
+          && entry.selectedIndex === candidate.selectedIndex;
+      });
+    }
+
+    function preparePreviewEditPopoverHistory(popover) {
+      if (!popover?.isConnected || previewEditPopoverHistoryRestoring) {
+        return null;
+      }
+
+      let history = previewEditPopoverHistory.get(popover);
+      if (!history) {
+        history = { entries: [getPreviewEditPopoverSnapshot(popover)], index: 0 };
+        previewEditPopoverHistory.set(popover, history);
+      }
+      return history;
+    }
+
+    function recordPreviewEditPopoverHistory(popover) {
+      if (previewEditPopoverHistoryRestoring) {
+        return false;
+      }
+
+      const history = preparePreviewEditPopoverHistory(popover);
+      if (!history) {
+        return false;
+      }
+
+      const snapshot = getPreviewEditPopoverSnapshot(popover);
+      const current = history.entries[history.index];
+      if (arePreviewEditPopoverSnapshotsEqual(current, snapshot)) {
+        return false;
+      }
+
+      history.entries.splice(history.index + 1);
+      history.entries.push(snapshot);
+      if (history.entries.length > 100) {
+        history.entries.shift();
+      }
+      history.index = history.entries.length - 1;
+      return true;
+    }
+
+    function clearPreviewEditPopoverHistory(popover) {
+      if (popover) {
+        previewEditPopoverHistory.delete(popover);
+      }
+    }
+
+    function movePreviewEditPopoverHistory(popover, direction) {
+      const history = previewEditPopoverHistory.get(popover);
+      if (!history) {
+        return false;
+      }
+
+      const nextIndex = direction === "redo" ? history.index + 1 : history.index - 1;
+      if (nextIndex < 0 || nextIndex >= history.entries.length) {
+        return false;
+      }
+
+      const snapshot = history.entries[nextIndex];
+      previewEditPopoverHistoryRestoring = true;
+      snapshot.forEach((entry) => {
+        const field = entry.field;
+        if (!field?.isConnected) {
+          return;
+        }
+
+        if (field instanceof HTMLSelectElement && Number.isInteger(entry.selectedIndex)) {
+          field.selectedIndex = entry.selectedIndex;
+        } else {
+          field.value = entry.value;
+        }
+        if (field instanceof HTMLInputElement && /^(checkbox|radio)$/i.test(field.type)) {
+          field.checked = entry.checked;
+        }
+
+        // Cada janela possui pequenos controles derivados (cor + amostra,
+        // estado selecionado etc.). Repassar os eventos deixa esses controles
+        // e qualquer atualizacao visual imediata iguais ao que a pessoa editou.
+        field.dispatchEvent(new Event("input", { bubbles: true }));
+        field.dispatchEvent(new Event("change", { bubbles: true }));
+      });
+      previewEditPopoverHistoryRestoring = false;
+      history.index = nextIndex;
+      return true;
+    }
+
+    function handlePreviewEditHistoryShortcut(event, options = {}) {
+      if (!(event.ctrlKey || event.metaKey) || event.altKey) {
+        return false;
+      }
+
+      const key = String(event.key || "").toLowerCase();
+      const wantsUndo = key === "z" && !event.shiftKey;
+      const wantsRedo = (key === "z" && event.shiftKey) || key === "y";
+      if (!wantsUndo && !wantsRedo) {
+        return false;
+      }
+
+      const target = event.target;
+      const isNativeField = target instanceof Element
+        && Boolean(target.closest("input, textarea, select, [contenteditable='true']"));
+      // The floating editor is part of the preview workflow. Keep its
+      // shortcut tied to the preview history even while a color/text field
+      // has focus; otherwise Ctrl+Z only changes that native input and the
+      // visual change already applied to the layout is left behind.
+      const isPreviewEditField = target instanceof Element
+        && Boolean(target.closest(".preview-edit-popover"));
+      if (!options.insidePreview && isNativeField && !isPreviewEditField) {
+        return false;
+      }
+
+      const popover = getPreviewEditPopoverFromTarget(target);
+      if (popover && movePreviewEditPopoverHistory(popover, wantsRedo ? "redo" : "undo")) {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        return true;
+      }
+
+      const handled = movePreviewEditHistory(wantsRedo ? "redo" : "undo");
+      if (handled) {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+      }
+      return handled;
+    }
+
+    if (!previewEditHistoryParentListenerBound) {
+      previewEditHistoryParentListenerBound = true;
+      const preparePopoverHistoryFromEvent = (event) => {
+        preparePreviewEditPopoverHistory(getPreviewEditPopoverFromTarget(event.target));
+      };
+      const recordPopoverHistoryFromEvent = (event) => {
+        recordPreviewEditPopoverHistory(getPreviewEditPopoverFromTarget(event.target));
+      };
+      document.addEventListener("pointerdown", preparePopoverHistoryFromEvent, true);
+      document.addEventListener("focusin", preparePopoverHistoryFromEvent, true);
+      // Registrar no fim da propagacao garante que campos acoplados (o texto
+      // e a amostra de cor, por exemplo) ja tenham sido sincronizados.
+      document.addEventListener("input", recordPopoverHistoryFromEvent);
+      document.addEventListener("change", recordPopoverHistoryFromEvent);
+      document.addEventListener("keydown", (event) => {
+        handlePreviewEditHistoryShortcut(event);
+      }, true);
+      document.addEventListener("submit", (event) => {
+        const popover = getPreviewEditPopoverFromTarget(event.target);
+        if (popover) {
+          window.queueMicrotask(() => clearPreviewEditPopoverHistory(popover));
+        }
+      }, true);
+      document.addEventListener("click", (event) => {
+        const button = event.target instanceof Element ? event.target.closest("button") : null;
+        const popover = getPreviewEditPopoverFromTarget(button);
+        if (!button || !popover || button.matches("[data-option-close]")) {
+          return;
+        }
+
+        const action = String(button.textContent || "").trim();
+        if (button.type === "submit" || /\b(?:salvar|aplicar|confirmar|concluir)\b/i.test(action)) {
+          window.queueMicrotask(() => clearPreviewEditPopoverHistory(popover));
+        }
+      }, true);
+    }
+
+    if (!previewEditHistoryFrameMessageBound) {
+      previewEditHistoryFrameMessageBound = true;
+      window.addEventListener("message", (event) => {
+        const data = event.data || {};
+        if (data.type !== "layout-lab:board-frame-history") {
+          return;
+        }
+
+        const isKnownBoardFrame = Array.from(document.querySelectorAll("iframe[data-ll-board-active-device], iframe[data-ll-board-document-key]"))
+          .some((frame) => frame.contentWindow === event.source);
+        if (!isKnownBoardFrame) {
+          return;
+        }
+
+        movePreviewEditHistory(data.direction === "redo" ? "redo" : "undo");
+      });
+    }
+
+    // O board usa este mesmo histórico para alterações feitas nas janelas de
+    // código. Assim, Ctrl+Z sempre restaura a última ação do FrameWork, não
+    // importa se ela veio do preview ou de um editor de código.
+    window.LpContainerHistory = {
+      stageCodeChange(device) {
+        return stagePreviewEditHistory({ scope: "template", device });
+      },
+      commitCodeChange(device) {
+        return commitStagedPreviewEditHistory({ scope: "template", device });
+      },
+      move(direction, device) {
+        const result = movePreviewEditHistory(direction, { details: true });
+        if (!result.handled) {
+          return result;
+        }
+
+        const targetSnapshot = getResponsiveSnapshot("template", device || result.device);
+        return {
+          ...result,
+          code: String(targetSnapshot?.template?.html || "")
+        };
+      }
+    };
+
     function getTemplateLayoutOptions() {
       return [
         ["faq", "FAQ"],
@@ -16,22 +438,24 @@
 
     function buildTemplateLayoutPackage(tab = state.template.sourceLayout) {
       if (tab === "table") {
-        return buildResponsivePackage("table", () => buildTableSectionHtml(true), buildTableStyle);
+        return buildResponsivePackage("table", () => buildTableSectionHtml(true), () => buildTabStyleWithClass("table", buildTableStyle));
       }
 
       if (tab === "stories") {
-        return buildResponsivePackage("stories", () => buildStoriesSectionHtml(), buildStoriesStyle);
+        return buildResponsivePackage("stories", () => buildStoriesSectionHtml(), () => buildTabStyleWithClass("stories", buildStoriesStyle));
       }
 
       if (tab === "article") {
-        return buildResponsivePackage("article", () => buildArticleSectionHtml(), buildArticleStyle);
+        return buildResponsivePackage("article", () => buildArticleSectionHtml(), () => buildTabStyleWithClass("article", buildArticleStyle));
       }
 
       if (tab === "carousel") {
-        return buildResponsivePackage("carousel", () => buildCarouselSectionHtml(), buildCarouselStyle);
+        return buildResponsivePackage("carousel", () => buildCarouselSectionHtml(), () => buildTabStyleWithClass("carousel", buildCarouselStyle));
       }
 
-      return buildResponsivePackage("faq", () => buildFaqSectionHtml(), buildFaqStyle);
+      return typeof buildFaqOutputPackage === "function"
+        ? buildFaqOutputPackage()
+        : `<link rel="stylesheet" href="https://imgprd.martinsatacado.com.br/catalogoimg/catalogo/style-faq-padrao-conteudo.css">\n\n${buildFaqSectionHtml()}`;
     }
 
     function extractLpContainerHtml(value) {
@@ -45,23 +469,406 @@
       }
 
       const parsedDocument = new DOMParser().parseFromString(rawValue, "text/html");
+      // Accept older copies as well as the neutral public wrapper used by
+      // current exports, so a saved output can be brought back to the Lab.
+      const responsiveOutput = parsedDocument.querySelector(".ll-responsive-output, .pdp-responsive-output");
       const container = parsedDocument.querySelector(".lp-container, .lp_container");
-      return container ? container.innerHTML.trim() : rawValue;
+      if (!container) {
+        return rawValue;
+      }
+
+      // Ao recolar HTML/CSS no FrameWork, preserve os recursos externos sem
+      // colocá-los antes da própria LP. A `.lp-container` é sempre o começo
+      // do conteúdo serializado.
+      const externalResources = Array.from(parsedDocument.querySelectorAll("style, link"))
+        .filter((element) => {
+          if (container.contains(element)) {
+            return false;
+          }
+
+          return element.tagName === "STYLE" || isTemplateStylesheetLink(element);
+        })
+        .map((element) => element.outerHTML.trim())
+        .filter(Boolean);
+      if (responsiveOutput) {
+        return [responsiveOutput.outerHTML.trim(), ...externalResources].filter(Boolean).join("\n\n");
+      }
+
+      // O FrameWork tambem aceita a LP completa, ja envolvida pela
+      // `.lp-container`. Preservar a casca evita perder classes, IDs ou
+      // atributos quando a pessoa edita no preview e copia o HTML de volta.
+      return [container.outerHTML.trim(), ...externalResources].filter(Boolean).join("\n\n");
     }
 
-    function getTemplateHeaderDefaults() {
-      return {
-        type: "none",
-        imageUrl: "https://imgprd.martinsatacado.com.br/catalogoimg/catalogo/header.jpg",
-        imageAlt: "",
-        videoUrl: "https://imgprd.martinsatacado.com.br/catalogoimg/catalogo/header-precon.webm",
-        posterUrl: "https://imgprd.martinsatacado.com.br/catalogoimg/catalogo/header_precon.webp",
-        logoUrl: "https://static1.efacil.com.br/wcsstore//AuroraStorefrontAssetStore/PDP/precon/logo-precon.png",
-        logoLabel: "Logo da marca dentro de um circulo laranja",
-        brand: "marca",
-        title: "Titulo curto do produto",
-        subtitle: "Descricao breve do produto, destacando os principais atributos de forma clara."
+    function repairLegacyOptionStateCss(value) {
+      const rawValue = String(value || "");
+      const optionChildPattern = /\s+(\.(?:section[-_](?:8|28)__tab-(?:icon|text)[\w-]*))$/i;
+
+      return rawValue.replace(/([^{}]+)\{([^{}]*)\}/g, (rule, rawSelector, declarations) => {
+        const selectors = rawSelector.split(",").map((selector) => selector.trim()).filter(Boolean);
+        if (selectors.length < 2) {
+          return rule;
+        }
+
+        const lastSelector = selectors.at(-1) || "";
+        const childMatch = lastSelector.match(optionChildPattern);
+        const earlierSelectors = selectors.slice(0, -1);
+        if (!childMatch || earlierSelectors.some((selector) => optionChildPattern.test(selector))) {
+          return rule;
+        }
+
+        const parentSelector = lastSelector.slice(0, lastSelector.length - childMatch[0].length).trim();
+        if (!parentSelector || !earlierSelectors.every((selector) => /section[-_](?:8|28)__tab/i.test(selector))) {
+          return rule;
+        }
+
+        const childSelector = childMatch[1];
+        const repairedSelectors = [...earlierSelectors, parentSelector]
+          .map((selector) => `${selector} ${childSelector}`)
+          .join(", ");
+        return `${repairedSelectors} {${declarations}}`;
+      });
+    }
+
+    function isTemplateOptionStateStyle(element) {
+      return Boolean(element?.matches?.("style[data-ll-template-option-state-style], style.template-option-state-styles"));
+    }
+
+    function protectTemplateOptionStateColors(value = "") {
+      return String(value || "").replace(/([^{}]+)\{([^{}]*)\}/g, (rule, selectors, declarations) => {
+        const isOptionState = /:(?:checked|not\(\s*:checked\s*\))/i.test(selectors)
+          && /section[-_](?:8|28)/i.test(selectors);
+        const customizesColor = /(?:background(?:-color)?|border-color|color)\s*:/i.test(declarations);
+        if (!isOptionState || !customizesColor) {
+          return rule;
+        }
+
+        const guards = [];
+        if (!/transition-property\s*:/i.test(declarations)) {
+          guards.push("transition-property: transform, opacity !important");
+        }
+        if (!/(?:^|;)\s*animation\s*:/i.test(declarations)) {
+          guards.push("animation: none !important");
+        }
+        if (!guards.length) {
+          return rule;
+        }
+
+        const trimmedDeclarations = declarations.trim().replace(/;\s*$/, "");
+        return `${selectors}{ ${[trimmedDeclarations, ...guards].filter(Boolean).join("; ")}; }`;
+      });
+    }
+
+    // A janela do FAQ grava regras num bloco marcado. Versoes antigas podiam
+    // deixar varios desses blocos no HTML a cada ajuste. Antes de exibir ou
+    // exportar, juntamos tudo em um unico bloco e conservamos somente a ultima
+    // definicao de cada propriedade.
+    function compactTemplateFaqClassCss(value = "") {
+      const classStart = "/* Ajustes de classe/ID do FAQ */";
+      const classEnd = "/* Fim dos ajustes de classe/ID do FAQ */";
+      const source = String(value || "");
+      const blocks = [];
+      let cursor = 0;
+
+      while (cursor < source.length) {
+        const startIndex = source.indexOf(classStart, cursor);
+        if (startIndex < 0) {
+          break;
+        }
+        const endIndex = source.indexOf(classEnd, startIndex + classStart.length);
+        if (endIndex < 0) {
+          break;
+        }
+        blocks.push(source.slice(startIndex + classStart.length, endIndex).trim());
+        cursor = endIndex + classEnd.length;
+      }
+
+      if (!blocks.length) {
+        return source.trim();
+      }
+
+      const faqSummarySelector = "#faq-section #faq-section__summary";
+      const canonicalizeSelector = (rawSelector) => {
+        const selector = String(rawSelector || "").replace(/\s+/g, " ").trim();
+        if (!selector.includes(faqSummarySelector)) {
+          return selector;
+        }
+        if (/(?:\[id\*=["']icon|\[class\*=["']icon)/i.test(selector)) {
+          return `${faqSummarySelector} #faq-section__icon::before, ${faqSummarySelector} #faq-section__icon::after`;
+        }
+        if (selector === `${faqSummarySelector}, ${faqSummarySelector} *`) {
+          return `${faqSummarySelector} #faq-section__q-text`;
+        }
+        if (selector === `${faqSummarySelector}, ${faqSummarySelector} summary`) {
+          return faqSummarySelector;
+        }
+        if (selector === `${faqSummarySelector}:hover, ${faqSummarySelector} summary:hover`) {
+          return `${faqSummarySelector}:hover`;
+        }
+        return selector;
       };
+
+      const rules = new Map();
+      blocks.filter(Boolean).forEach((block) => {
+        String(block).replace(/([^{}]+)\{([^{}]*)\}/g, (_, rawSelector, rawDeclarations) => {
+          const selector = canonicalizeSelector(rawSelector);
+          if (!selector) {
+            return "";
+          }
+          const declarations = rules.get(selector) || new Map();
+          String(rawDeclarations || "").split(";").forEach((rawDeclaration) => {
+            const separator = rawDeclaration.indexOf(":");
+            if (separator < 0) {
+              return;
+            }
+            const property = rawDeclaration.slice(0, separator).trim().toLowerCase();
+            const declarationValue = rawDeclaration.slice(separator + 1).trim();
+            if (property && declarationValue) {
+              declarations.set(property, declarationValue);
+            }
+          });
+          rules.set(selector, declarations);
+          return "";
+        });
+      });
+
+      let remaining = source;
+      let startIndex = remaining.indexOf(classStart);
+      while (startIndex >= 0) {
+        const endIndex = remaining.indexOf(classEnd, startIndex + classStart.length);
+        if (endIndex < 0) {
+          break;
+        }
+        remaining = `${remaining.slice(0, startIndex)}${remaining.slice(endIndex + classEnd.length)}`;
+        startIndex = remaining.indexOf(classStart);
+      }
+
+      const compactRules = Array.from(rules.entries())
+        .map(([selector, declarations]) => declarations.size
+          ? `${selector} { ${Array.from(declarations.entries()).map(([property, declarationValue]) => `${property}: ${declarationValue}`).join("; ")}; }`
+          : "")
+        .filter(Boolean)
+        .join("\n");
+      const compactBlock = compactRules ? `${classStart}\n${compactRules}\n${classEnd}` : "";
+      return [remaining.trim(), compactBlock].filter(Boolean).join("\n\n").trim();
+    }
+
+    function extractTemplateEmbeddedCss(value = state.template.html) {
+      const rawValue = String(value || "").trim();
+      if (!rawValue || !/<style\b/i.test(rawValue)) {
+        return "";
+      }
+
+      const parsedDocument = new DOMParser().parseFromString(`<div data-ll-style-root>${rawValue}</div>`, "text/html");
+      const wrapper = parsedDocument.querySelector("[data-ll-style-root]");
+      if (!wrapper) {
+        return "";
+      }
+
+      const css = Array.from(wrapper.querySelectorAll("style"))
+        .filter((element) => !isTemplateOptionStateStyle(element))
+        .map((element) => element.textContent || "")
+        .map(repairLegacyOptionStateCss)
+        .map((css) => css.trim())
+        .filter(Boolean)
+        .join("\n\n");
+      return compactTemplateFaqClassCss(css);
+    }
+
+    function isTemplateStylesheetLink(element) {
+      if (!element || element.tagName !== "LINK") {
+        return false;
+      }
+
+      const relations = String(element.getAttribute("rel") || "")
+        .toLowerCase()
+        .split(/\s+/)
+        .filter(Boolean);
+      return relations.includes("stylesheet") && Boolean(String(element.getAttribute("href") || "").trim());
+    }
+
+    function extractTemplateStylesheetLinks(value = state.template.html) {
+      const rawValue = String(value || "").trim();
+      if (!rawValue || !/<link\b/i.test(rawValue)) {
+        return "";
+      }
+
+      const parsedDocument = new DOMParser().parseFromString(`<div data-ll-stylesheet-root>${rawValue}</div>`, "text/html");
+      const wrapper = parsedDocument.querySelector("[data-ll-stylesheet-root]");
+      if (!wrapper) {
+        return "";
+      }
+
+      const seen = new Set();
+      return Array.from(wrapper.querySelectorAll("link"))
+        .filter(isTemplateStylesheetLink)
+        .map((element) => element.outerHTML.replace(/\s+/g, " ").trim())
+        .filter((link) => {
+          if (!link || seen.has(link)) {
+            return false;
+          }
+          seen.add(link);
+          return true;
+        })
+        .join("\n");
+    }
+
+    function stripTemplateEmbeddedStyles(value) {
+      const rawValue = String(value || "").trim();
+      if (!rawValue || (!/<style\b/i.test(rawValue) && !/<link\b/i.test(rawValue))) {
+        return rawValue;
+      }
+
+      const parsedDocument = new DOMParser().parseFromString(`<div data-ll-style-root>${rawValue}</div>`, "text/html");
+      const wrapper = parsedDocument.querySelector("[data-ll-style-root]");
+      if (!wrapper) {
+        return rawValue;
+      }
+
+      wrapper.querySelectorAll("style").forEach((element) => {
+        if (isTemplateOptionStateStyle(element)) {
+          element.textContent = protectTemplateOptionStateColors(element.textContent || "");
+        } else {
+          element.remove();
+        }
+      });
+      wrapper.querySelectorAll("link").forEach((element) => {
+        if (isTemplateStylesheetLink(element)) {
+          element.remove();
+        }
+      });
+      return wrapper.innerHTML.trim();
+    }
+
+    function buildTemplateEmbeddedStyle(value = state.template.html, options = {}) {
+      const css = extractTemplateEmbeddedCss(value);
+      const previewMarker = options.previewMarker === true ? " data-ll-template-embedded-style" : "";
+      const previewComment = options.previewMarker === true
+        ? "/* Layout Lab: estilos embutidos do conteúdo */\n"
+        : "";
+      return css ? `<style${previewMarker}>\n${previewComment}${css}\n</style>` : "";
+    }
+
+    function isLabEditorTooltip(value) {
+      const tooltip = String(value || "").trim();
+      const editorInstruction = /^(?:Clique|Duplo clique|D(?:\u00ea|\u00c3\u00aa) dois cliques|(?:Use\s+)?Ctrl\s*\+\s*clique)/i;
+      const editorAction = /(?:editar|trocar|url|m[i\u00ed]dia|m\u00c3\u00addia|media|texto|estilo|cor|fundo|alt)/i;
+      return editorInstruction.test(tooltip) && editorAction.test(tooltip);
+    }
+
+    function stripLabEditorArtifacts(element, options = {}) {
+      if (!element || !element.attributes) {
+        return;
+      }
+
+      const preserveOptionStateStyle = options.preserveOptionStateStyle === true && isTemplateOptionStateStyle(element);
+      const hasLabAttributes = Array.from(element.attributes).some((attribute) => attribute.name.startsWith("data-ll-"));
+      const hasLabTooltip = isLabEditorTooltip(element.getAttribute("title"));
+
+      Array.from(element.attributes).forEach((attribute) => {
+        if (attribute.name.startsWith("data-ll-") && !(preserveOptionStateStyle && attribute.name === "data-ll-template-option-state-style")) {
+          element.removeAttribute(attribute.name);
+        }
+      });
+
+      if (!preserveOptionStateStyle && isTemplateOptionStateStyle(element)) {
+        element.classList.remove("template-option-state-styles");
+      }
+
+      element.removeAttribute("contenteditable");
+      element.removeAttribute("spellcheck");
+
+      if (hasLabTooltip) {
+        element.removeAttribute("title");
+      }
+
+      // The header editor sets an inline pointer cursor in the preview. It is
+      // not part of the published layout, so remove it along with editor data.
+      if ((hasLabAttributes || hasLabTooltip) && element.style) {
+        element.style.removeProperty("cursor");
+      }
+    }
+
+    function cleanTemplateEditorArtifacts(value, options = {}) {
+      const rawValue = String(value || "").trim();
+      if (!rawValue || !/<\/?[a-z][\s\S]*>/i.test(rawValue)) {
+        return rawValue;
+      }
+
+      const preservePreviewFaqState = options.preservePreviewFaqState === true;
+      const parsedDocument = new DOMParser().parseFromString(`<div data-ll-clean-root>${rawValue}</div>`, "text/html");
+      const wrapper = parsedDocument.querySelector("[data-ll-clean-root]");
+      if (!wrapper) {
+        return rawValue;
+      }
+
+      wrapper.querySelectorAll("#ll-template-faq-custom-style").forEach((element) => {
+        element.remove();
+      });
+
+      // Preview helpers are injected only so an iframe can be edited inside
+      // the Lab. They must never become part of the saved LP markup.
+      wrapper.querySelectorAll("[data-ll-template-helper], .ll-template-iframe-edit, .ll-bento__resize-handle").forEach((element) => {
+        element.remove();
+      });
+
+      Array.from(wrapper.querySelectorAll("*")).forEach((element) => {
+        if (!preservePreviewFaqState) {
+          stripLabEditorArtifacts(element);
+        }
+
+        if (!preservePreviewFaqState && element.style) {
+          const normalBg = element.style.getPropertyValue("--ll-template-faq-summary-bg");
+          const questionColor = element.style.getPropertyValue("--ll-template-faq-question-color");
+          const answerColor = element.style.getPropertyValue("--ll-template-faq-answer-color");
+
+          if (isHexColor(normalBg)) {
+            const summaryTargets = element.matches?.("summary, #faq-section__summary, .ll-template-faq-summary")
+              ? [element]
+              : Array.from(element.querySelectorAll("summary, #faq-section__summary, .ll-template-faq-summary"));
+            summaryTargets.forEach((target) => {
+              target.style.background = normalizeHexColor(normalBg);
+            });
+          }
+
+          if (isHexColor(questionColor)) {
+            const questionTargets = element.matches?.("#faq-section__q-text, [id*='q-text'], [class*='question' i], [class*='pergunta' i]")
+              ? [element]
+              : Array.from(element.querySelectorAll("#faq-section__q-text, [id*='q-text'], [class*='question' i], [class*='pergunta' i]"));
+            questionTargets.forEach((target) => {
+              target.style.color = normalizeHexColor(questionColor);
+            });
+          }
+
+          if (isHexColor(answerColor)) {
+            const answerTargets = element.matches?.("#faq-section__a-text, [id*='a-text'], [class*='answer' i], [class*='resposta' i]")
+              ? [element]
+              : Array.from(element.querySelectorAll("#faq-section__a-text, [id*='a-text'], [class*='answer' i], [class*='resposta' i]"));
+            answerTargets.forEach((target) => {
+              target.style.color = normalizeHexColor(answerColor);
+            });
+          }
+        }
+
+        if (!preservePreviewFaqState && element.classList) {
+          element.classList.remove("ll-template-faq-summary", "ll-template-faq-custom-colors");
+          if (!element.getAttribute("class")) {
+            element.removeAttribute("class");
+          }
+        }
+
+        if (!preservePreviewFaqState && element.style) {
+          element.style.removeProperty("--ll-template-faq-summary-bg");
+          element.style.removeProperty("--ll-template-faq-summary-hover-bg");
+          element.style.removeProperty("--ll-template-faq-question-color");
+          element.style.removeProperty("--ll-template-faq-answer-color");
+          if (!element.getAttribute("style")) {
+            element.removeAttribute("style");
+          }
+        }
+      });
+
+      return wrapper.innerHTML.trim();
     }
 
     function getTemplateHeaderDefaults() {
@@ -151,10 +958,6 @@
       return `<section class="product-header"${managedAttribute} aria-label="Cabeçalho do produto">
   <header class="product-header__banner">
     <picture style="width:100%; height:100%; margin:0;">
-      <source media="(max-width: 430px)" srcset="${escapeHtml(withHeaderImageSize(cleanImageUrl, 430))}">
-      <source media="(max-width: 768px)" srcset="${escapeHtml(withHeaderImageSize(cleanImageUrl, 768))}">
-      <source media="(max-width: 1024px)" srcset="${escapeHtml(withHeaderImageSize(cleanImageUrl, 1024))}">
-      <source media="(max-width: 1200px)" srcset="${escapeHtml(withHeaderImageSize(cleanImageUrl, 1200))}">
       <img src="${escapeHtml(cleanImageUrl)}" alt="${escapeHtml(header.imageAlt)}" class="product-header__banner-img" loading="eager">
     </picture>${logoHtml}
   </header>
@@ -294,13 +1097,21 @@
       const frameCss = includeFrame ? `
 html,
 body {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
   margin: 0;
   min-height: 100%;
   background: #ffffff;
+  overflow-x: hidden;
+}
+
+html {
+  overflow-y: auto;
+  scrollbar-gutter: stable;
 }
 
 body {
-  font-family: Arial, sans-serif;
   color: #111827;
 }
 ` : "";
@@ -309,21 +1120,15 @@ body {
 ${frameCss}
 .lp-container,
 .lp_container {
+  display: block;
   box-sizing: border-box;
   width: 100%;
-  margin: 0 auto;
+  min-width: 0;
+  max-width: 1280px;
+  margin: 0 auto 16px;
   background: #ffffff;
   overflow: hidden;
   font-family: Arial, sans-serif;
-}
-
-.lp-container *,
-.lp-container *::before,
-.lp-container *::after,
-.lp_container *,
-.lp_container *::before,
-.lp_container *::after {
-  box-sizing: border-box;
 }
 
 .lp-container img,
@@ -337,22 +1142,135 @@ ${frameCss}
 </style>`;
     }
 
+    function buildTemplateFaqCustomStyle() {
+      const rawValue = String(state.template.html || "").trim();
+      if (!rawValue || !/<\/?[a-z][\s\S]*>/i.test(rawValue)) {
+        return "";
+      }
+
+      const parsedDocument = new DOMParser().parseFromString(`<div data-ll-faq-style-root>${extractLpContainerHtml(rawValue)}</div>`, "text/html");
+      const wrapper = parsedDocument.querySelector("[data-ll-faq-style-root]");
+      // New FAQ edits are kept in an ordinary style block inside the source
+      // HTML. It is visible in the general code editor and is preserved by
+      // export, so do not regenerate a second hidden rule from legacy vars.
+      if (wrapper?.querySelector("style.faq-custom-style")) {
+        return "";
+      }
+      const faqRoot = wrapper?.querySelector(".ll-template-faq-custom-colors, [style*='--ll-template-faq-summary-bg'], [style*='--ll-template-faq-summary-hover-bg']");
+      if (!faqRoot) {
+        return "";
+      }
+
+      const normalRaw = faqRoot.style.getPropertyValue("--ll-template-faq-summary-bg") || "";
+      const hoverRaw = faqRoot.style.getPropertyValue("--ll-template-faq-summary-hover-bg") || "";
+      const questionColorRaw = faqRoot.style.getPropertyValue("--ll-template-faq-question-color")
+        || wrapper.querySelector("#faq-section__q-text, [id*='q-text']")?.style.color
+        || "";
+      const answerColorRaw = faqRoot.style.getPropertyValue("--ll-template-faq-answer-color")
+        || wrapper.querySelector("#faq-section__a-text, [id*='a-text']")?.style.color
+        || "";
+      const optionalColorToHex = (value) => {
+        const rawColor = String(value || "").trim();
+        if (isHexColor(rawColor)) {
+          return normalizeHexColor(rawColor);
+        }
+
+        return /^rgba?\(/i.test(rawColor) ? colorToHex(rawColor, "#000000") : "";
+      };
+      const normal = optionalColorToHex(normalRaw);
+      const hover = optionalColorToHex(hoverRaw);
+      const questionColor = optionalColorToHex(questionColorRaw);
+      const answerColor = optionalColorToHex(answerColorRaw);
+      const rules = [];
+
+      if (isHexColor(normal)) {
+        rules.push(`#faq-section__summary { background: ${normal} !important; }`);
+      }
+
+      if (isHexColor(hover)) {
+        rules.push(`#faq-section__summary:hover { background: ${hover} !important; }`);
+      }
+
+      if (isHexColor(questionColor)) {
+        rules.push(`#faq-section__q-text { color: ${normalizeHexColor(questionColor)} !important; }`);
+      }
+
+      if (isHexColor(answerColor)) {
+        rules.push(`#faq-section__a-text { color: ${normalizeHexColor(answerColor)} !important; }`);
+      }
+
+      if (!rules.length) {
+        return "";
+      }
+
+      return `<style>
+${rules.join("\n")}
+</style>`;
+    }
+
+    function buildTemplateStyle(options = {}) {
+      const includeHeaderBaseStyle = options.includeHeaderBaseStyle !== false;
+      return [
+        includeHeaderBaseStyle ? buildTemplateHeaderStyle() : "",
+        buildTemplateFaqCustomStyle()
+      ].filter(Boolean).join("\n\n");
+    }
+
+    // The header stylesheet belongs to the template's own <link> tag. It is
+    // used in the preview as a safe fallback, but must never be repeated in
+    // published CSS. Export only changes made through the editor or code.
+    function buildTemplateCustomOutputStyle() {
+      const embeddedStyle = buildTemplateEmbeddedStyle();
+      const previewClassStyle = typeof buildPreviewClassStyle === "function"
+        ? buildPreviewClassStyle("template")
+        : "";
+      return [
+        embeddedStyle,
+        buildTemplateStyle({ includeHeaderBaseStyle: false }),
+        previewClassStyle
+      ].filter(Boolean).join("\n\n");
+    }
+
     function buildLpContainerHtml(value = state.template.html, options = {}) {
-      const content = extractLpContainerHtml(value);
+      const extractedContent = extractLpContainerHtml(value);
+      const contentWithoutStyles = stripTemplateEmbeddedStyles(extractedContent);
+      const content = cleanTemplateEditorArtifacts(contentWithoutStyles, {
+        preservePreviewFaqState: options.includeLabAttrs === true
+      });
       const innerHtml = content || "";
+      const isResponsiveOutput = /class\s*=\s*["'][^"']*\b(?:ll|pdp)-responsive-output\b/i.test(innerHtml);
+      if (isResponsiveOutput) {
+        return innerHtml;
+      }
+      // Conteudo novo pode ser colado sem wrapper; nesse caso, criamos a
+      // lp-container. Quando ela ja veio no HTML, devolvemos a mesma div em
+      // vez de descascá-la e recriar uma versao reduzida.
+      const parsedDocument = new DOMParser().parseFromString(`<div data-ll-container-root>${innerHtml}</div>`, "text/html");
+      const parsedRoot = parsedDocument.querySelector("[data-ll-container-root]");
+      const existingContainer = Array.from(parsedRoot?.children || []).find((element) => element.matches?.(".lp-container, .lp_container"));
+      if (existingContainer) {
+        return existingContainer.outerHTML.trim();
+      }
       return `<div class="lp-container">
 ${innerHtml}
 </div>`;
     }
 
     function buildTemplatePreviewHtml() {
+      const templateStyle = typeof buildTabStyleWithClass === "function"
+        ? buildTabStyleWithClass("template", buildTemplateStyle)
+        : buildTemplateStyle();
+      const stylesheetLinks = extractTemplateStylesheetLinks(state.template.html);
+
       return `<!doctype html>
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   ${buildLpContainerCss(true)}
-  ${buildTemplateHeaderStyle()}
+  ${stylesheetLinks}
+  ${buildTemplateEmbeddedStyle(state.template.html, { previewMarker: true })}
+  ${templateStyle}
 </head>
 <body>
 ${buildLpContainerHtml(state.template.html, { includeLabAttrs: true })}
@@ -360,24 +1278,41 @@ ${buildLpContainerHtml(state.template.html, { includeLabAttrs: true })}
 </html>`;
     }
 
-    function buildTemplateOutputHtml(copyMode = "html") {
+    function buildTemplateOutputHtml(copyMode = "html", options = {}) {
       const containerHtml = buildLpContainerHtml();
+      const stylesheetLinks = extractTemplateStylesheetLinks();
+      const includeCustomStyles = Boolean(options.includeCustomStyles);
+      const customStyle = buildTemplateCustomOutputStyle();
 
       if (copyMode === "full") {
-        return `${buildTemplateHeaderStyle()}
-
-<!-- HTML DO LAYOUT -->
-
-${containerHtml}`;
+        return [
+          containerHtml,
+          stylesheetLinks,
+          customStyle
+        ].filter(Boolean).join("\n\n");
       }
 
-      return containerHtml;
+      // A LP deve aparecer primeiro no código copiado. Os links e as regras
+      // personalizadas continuam presentes, mas vêm depois dela.
+      return [
+        containerHtml,
+        stylesheetLinks,
+        ...(includeCustomStyles ? [customStyle] : [])
+      ].filter(Boolean).join("\n\n");
+    }
+
+    function getPreviewDocument(frame = previewFrame) {
+      try {
+        return frame?.contentDocument || frame?.contentWindow?.document || null;
+      } catch (_) {
+        return null;
+      }
     }
 
     function getPreviewScrollPosition() {
       try {
         const frameWindow = previewFrame.contentWindow;
-        const frameDocument = previewFrame.contentDocument;
+        const frameDocument = getPreviewDocument(previewFrame);
 
         if (!frameWindow || !frameDocument) {
           return { x: 0, y: 0 };
@@ -409,7 +1344,18 @@ ${containerHtml}`;
     }
 
     function closePreviewEditPopover() {
+      const beforeClose = previewEditBeforeCloseHandler;
+      previewEditBeforeCloseHandler = null;
+      if (typeof beforeClose === "function") {
+        try {
+          beforeClose();
+        } catch (error) {
+          // Fechar a janela nao pode bloquear a proxima edicao.
+        }
+      }
+
       if (previewEditPopover) {
+        clearPreviewEditPopoverHistory(previewEditPopover);
         previewEditPopover.remove();
         previewEditPopover = null;
       }
@@ -425,6 +1371,94 @@ ${containerHtml}`;
       }
     }
 
+    function clampPreviewEditPopover(popover) {
+      if (!popover?.isConnected) {
+        return;
+      }
+
+      const margin = 12;
+      const rect = popover.getBoundingClientRect();
+      const currentLeft = Number.parseFloat(popover.style.left);
+      const currentTop = Number.parseFloat(popover.style.top);
+      const maxLeft = Math.max(margin, window.innerWidth - rect.width - margin);
+      const maxTop = Math.max(margin, window.innerHeight - rect.height - margin);
+      const left = Number.isFinite(currentLeft) ? currentLeft : rect.left;
+      const top = Number.isFinite(currentTop) ? currentTop : rect.top;
+
+      popover.style.left = `${Math.min(maxLeft, Math.max(margin, left))}px`;
+      popover.style.top = `${Math.min(maxTop, Math.max(margin, top))}px`;
+    }
+
+    function makePreviewEditPopoverMovable(popover) {
+      if (!popover || popover.dataset.llPreviewPopoverWindow === "true") {
+        return;
+      }
+
+      popover.dataset.llPreviewPopoverWindow = "true";
+      const handle = popover.querySelector(".preview-edit-popover__title, h3:first-child") || popover;
+      handle.classList.add("preview-edit-popover__drag-handle");
+      handle.setAttribute("title", "Arraste para mover a janela. Use a alça inferior direita para redimensionar.");
+
+      handle.addEventListener("pointerdown", (event) => {
+        if (event.button !== 0 || event.target.closest("button, input, select, textarea, label")) {
+          return;
+        }
+
+        const rect = popover.getBoundingClientRect();
+        const drag = {
+          pointerId: event.pointerId,
+          startX: event.clientX,
+          startY: event.clientY,
+          left: rect.left,
+          top: rect.top
+        };
+        popover.classList.add("is-dragging");
+        handle.setPointerCapture?.(event.pointerId);
+        event.preventDefault();
+
+        const move = (moveEvent) => {
+          if (moveEvent.pointerId !== drag.pointerId) {
+            return;
+          }
+          popover.style.left = `${drag.left + moveEvent.clientX - drag.startX}px`;
+          popover.style.top = `${drag.top + moveEvent.clientY - drag.startY}px`;
+          clampPreviewEditPopover(popover);
+        };
+        const finish = (finishEvent) => {
+          if (finishEvent.pointerId !== drag.pointerId) {
+            return;
+          }
+          popover.classList.remove("is-dragging");
+          try {
+            if (handle.hasPointerCapture?.(drag.pointerId)) {
+              handle.releasePointerCapture(drag.pointerId);
+            }
+          } catch (_) {
+            // A captura pode ser encerrada automaticamente pelo navegador.
+          }
+          clampPreviewEditPopover(popover);
+          window.removeEventListener("pointermove", move, true);
+          window.removeEventListener("pointerup", finish, true);
+          window.removeEventListener("pointercancel", finish, true);
+        };
+
+        window.addEventListener("pointermove", move, true);
+        window.addEventListener("pointerup", finish, true);
+        window.addEventListener("pointercancel", finish, true);
+      });
+
+      // Some embedded preview documents polyfill ResizeObserver through a
+      // MutationObserver from another document. Watching this host popover
+      // through that bridge raises an exception and can interrupt the next
+      // edit. Native resize still works; after the gesture ends we only clamp
+      // the window back inside the visible page.
+      const clampAfterResize = () => {
+        window.requestAnimationFrame(() => clampPreviewEditPopover(popover));
+      };
+      popover.addEventListener("pointerup", clampAfterResize);
+      popover.addEventListener("pointercancel", clampAfterResize);
+    }
+
     function getPreviewEditPoint(sourceEvent) {
       const targetDocument = sourceEvent?.target?.ownerDocument || document;
       if (targetDocument === document) {
@@ -435,9 +1469,11 @@ ${containerHtml}`;
       }
 
       const frameRect = previewFrame.getBoundingClientRect();
+      const frameScaleX = frameRect.width / Math.max(1, previewFrame.clientWidth || frameRect.width);
+      const frameScaleY = frameRect.height / Math.max(1, previewFrame.clientHeight || frameRect.height);
       return {
-        x: frameRect.left + (sourceEvent?.clientX || 0),
-        y: frameRect.top + (sourceEvent?.clientY || 0)
+        x: frameRect.left + (sourceEvent?.clientX || 0) * frameScaleX,
+        y: frameRect.top + (sourceEvent?.clientY || 0) * frameScaleY
       };
     }
 
@@ -446,6 +1482,7 @@ ${containerHtml}`;
         return;
       }
 
+      makePreviewEditPopoverMovable(previewEditPopover);
       const point = getPreviewEditPoint(sourceEvent);
       const rect = previewEditPopover.getBoundingClientRect();
       const margin = 12;
@@ -462,21 +1499,34 @@ ${containerHtml}`;
 
       previewEditPopover.style.left = `${left}px`;
       previewEditPopover.style.top = `${top}px`;
+      clampPreviewEditPopover(previewEditPopover);
     }
 
     function openPreviewEditPopover(sourceEvent, meta, options = {}) {
       closePreviewEditPopover();
 
       const kind = options.kind || meta.type || "text";
-      const isColor = kind === "color";
+      const isBorder = kind === "border";
+      const isColor = kind === "color" || isBorder;
       const isTextStyle = kind === "text-style";
-      const colorAllowsGradient = isColor && canUseGradientColor(meta, options);
+      const colorAllowsGradient = isColor && !isBorder && canUseGradientColor(meta, options);
+      const sourceElement = options.sourceElement || sourceEvent?.currentTarget || sourceEvent?.target || document.body;
+      const borderSides = isBorder && Array.isArray(options.borderSides) && options.borderSides.length
+        ? options.borderSides
+        : ["top", "right", "bottom", "left"];
+      const borderStyle = isBorder
+        ? sourceElement?.ownerDocument?.defaultView?.getComputedStyle(sourceElement)
+        : null;
+      const borderColor = isBorder
+        ? colorToHex(borderStyle?.getPropertyValue(`border-${borderSides[0]}-color`), "#111827")
+        : "";
+      const classCandidates = (isColor || isTextStyle) && !isBorder ? getPreviewClassCandidates(sourceElement) : [];
       const currentValue = isColor
-        ? normalizeCssColorValue(readPreviewEditValue(meta))
+        ? (isBorder ? borderColor : normalizeCssColorValue(readPreviewEditValue(meta)))
         : String(readPreviewEditValue(meta) || "");
       const currentTextStyle = isTextStyle
         ? {
-            ...getComputedPreviewTextStyle(options.sourceElement || sourceEvent?.target || document.body),
+            ...getComputedPreviewTextStyle(sourceElement),
             ...getPreviewTextStyle(meta)
           }
         : {};
@@ -496,8 +1546,22 @@ ${containerHtml}`;
       let colorPickerButton;
       let colorGradientInputs = null;
       let colorOpacityInput = null;
+      let borderWidthInput = null;
       let styleInputs = null;
       let localAssetButton = null;
+      let editMode = "element";
+      let classSelect = null;
+      let classPropertySelect = null;
+      let resetClassButton = null;
+      let previewEditHistoryRecorded = false;
+      let previewEditDirty = false;
+      const recordPopoverEditHistory = () => {
+        if (previewEditHistoryRecorded) {
+          return;
+        }
+        recordPreviewEditHistory(meta, sourceElement?.ownerDocument?.defaultView?.frameElement || meta?.sourceFrame);
+        previewEditHistoryRecorded = true;
+      };
 
       if (isColor) {
         const parsedGradient = parseCssGradient(currentValue);
@@ -536,15 +1600,23 @@ ${containerHtml}`;
             valueInput.value = normalizeHexColor(valueInput.value);
             colorInput.value = valueInput.value;
             colorInput.style.setProperty("--preview-edit-color", valueInput.value);
-            applyLiveValue();
+            if (colorGradientInputs?.toggle?.checked) {
+              colorGradientInputs.start.value = valueInput.value;
+            }
+            applyLiveValue({ skipPreviewUpdate: true });
           }
         });
+        valueInput.addEventListener("change", () => applyLiveValue());
 
         colorInput.addEventListener("input", () => {
           valueInput.value = normalizeHexColor(colorInput.value);
           colorInput.style.setProperty("--preview-edit-color", valueInput.value);
-          applyLiveValue();
+          if (colorGradientInputs?.toggle?.checked) {
+            colorGradientInputs.start.value = valueInput.value;
+          }
+          applyLiveValue({ skipPreviewUpdate: true });
         });
+        colorInput.addEventListener("change", () => applyLiveValue());
 
         colorPickerButton.addEventListener("click", async () => {
           if (!("EyeDropper" in window)) {
@@ -558,6 +1630,9 @@ ${containerHtml}`;
               valueInput.value = normalizeHexColor(result.sRGBHex);
               colorInput.value = valueInput.value;
               colorInput.style.setProperty("--preview-edit-color", valueInput.value);
+              if (colorGradientInputs?.toggle?.checked) {
+                colorGradientInputs.start.value = valueInput.value;
+              }
               applyLiveValue();
             }
           } catch (error) {}
@@ -565,6 +1640,25 @@ ${containerHtml}`;
 
         row.append(colorInput, colorPickerButton, valueInput);
         form.appendChild(row);
+
+        if (isBorder) {
+          const borderGrid = document.createElement("div");
+          borderGrid.className = "preview-edit-popover__grid";
+          const borderWidthLabel = document.createElement("label");
+          borderWidthLabel.className = "preview-edit-popover__mini-field";
+          const borderWidthText = document.createElement("span");
+          borderWidthText.textContent = "Espessura (px)";
+          borderWidthInput = document.createElement("input");
+          borderWidthInput.type = "number";
+          borderWidthInput.min = "0";
+          borderWidthInput.max = "48";
+          borderWidthInput.step = "1";
+          const detectedWidth = Number.parseFloat(borderStyle?.getPropertyValue(`border-${borderSides[0]}-width`));
+          borderWidthInput.value = String(Number.isFinite(detectedWidth) ? Math.min(48, Math.max(0, detectedWidth)) : 1);
+          borderWidthLabel.append(borderWidthText, borderWidthInput);
+          borderGrid.appendChild(borderWidthLabel);
+          form.appendChild(borderGrid);
+        }
 
         if (options.opacityField) {
           const opacityGrid = document.createElement("div");
@@ -669,8 +1763,9 @@ ${containerHtml}`;
         form.appendChild(valueInput);
         valueInput.addEventListener("input", () => {
           valueInput.dataset.touched = "true";
-          applyLiveValue();
+          applyLiveValue({ skipPreviewUpdate: true });
         });
+        valueInput.addEventListener("change", () => applyLiveValue());
 
         const grid = document.createElement("div");
         grid.className = "preview-edit-popover__grid";
@@ -687,27 +1782,45 @@ ${containerHtml}`;
         const createInlineHexControl = (initialValue) => {
           const wrapper = document.createElement("div");
           wrapper.className = "preview-edit-popover__mini-color";
-          const swatch = document.createElement("span");
-          swatch.className = "preview-edit-popover__inline-swatch";
+          const color = document.createElement("input");
+          color.type = "color";
+          color.className = "preview-edit-popover__color preview-edit-popover__inline-swatch";
+          color.setAttribute("aria-label", "Abrir seletor de cor");
+          color.setAttribute("title", "Abrir seletor de cor");
           const input = document.createElement("input");
           input.type = "text";
           input.value = colorToHex(initialValue);
+          color.value = input.value;
           input.placeholder = "#111827";
-          swatch.style.setProperty("--preview-edit-color", input.value);
+          color.style.setProperty("--preview-edit-color", input.value);
           input.addEventListener("input", () => {
             if (isHexColor(input.value)) {
               input.value = normalizeHexColor(input.value);
-              swatch.style.setProperty("--preview-edit-color", input.value);
-              applyLiveValue({ multiline: options.multiline });
+              color.value = input.value;
+              color.style.setProperty("--preview-edit-color", input.value);
+              applyLiveValue({ multiline: options.multiline, skipPreviewUpdate: true });
             }
           });
-          wrapper.append(swatch, input);
+          color.addEventListener("input", () => {
+            input.value = normalizeHexColor(color.value);
+            color.style.setProperty("--preview-edit-color", input.value);
+            applyLiveValue({ multiline: options.multiline, skipPreviewUpdate: true });
+          });
+          color.addEventListener("change", () => applyLiveValue({ multiline: options.multiline }));
+          wrapper.append(color, input);
           wrapper.__llColorInput = input;
           return wrapper;
         };
 
         const textColorControl = createInlineHexControl(currentTextStyle.color);
         const textColorInput = textColorControl.__llColorInput;
+        const backgroundColorControl = options.backgroundElement
+          ? createInlineHexControl(colorToHex(
+              sourceElement.ownerDocument.defaultView.getComputedStyle(sourceElement).backgroundColor || "#0ea5e9",
+              "#0ea5e9"
+            ))
+          : null;
+        const backgroundColorInput = backgroundColorControl?.__llColorInput || null;
 
         const fontSizeInput = document.createElement("input");
         fontSizeInput.type = "number";
@@ -767,6 +1880,9 @@ ${containerHtml}`;
         lineHeightInput.value = String(currentTextStyle.lineHeight || 1.35);
 
         createMiniField("Cor", textColorControl);
+        if (backgroundColorControl) {
+          createMiniField("Fundo", backgroundColorControl);
+        }
         createMiniField("Tamanho", fontSizeInput);
         createMiniField("Peso", fontWeightSelect);
         createMiniField("Alinhamento", textAlignSelect);
@@ -776,6 +1892,7 @@ ${containerHtml}`;
 
         styleInputs = {
           color: textColorInput,
+          backgroundColor: backgroundColorInput,
           fontSize: fontSizeInput,
           fontWeight: fontWeightSelect,
           textAlign: textAlignSelect,
@@ -802,7 +1919,8 @@ ${containerHtml}`;
         valueInput.value = currentValue;
         valueInput.placeholder = options.placeholder || "";
         form.appendChild(valueInput);
-        valueInput.addEventListener("input", () => applyLiveValue());
+        valueInput.addEventListener("input", () => applyLiveValue({ skipPreviewUpdate: meta.scope === "template" }));
+        valueInput.addEventListener("change", () => applyLiveValue());
         if (kind === "media" && !options.multiline) {
           localAssetButton = document.createElement("button");
           localAssetButton.className = "button button--soft";
@@ -810,6 +1928,101 @@ ${containerHtml}`;
           localAssetButton.textContent = "Escolher arquivo local";
           form.appendChild(localAssetButton);
         }
+      }
+
+      if ((isColor || isTextStyle) && classCandidates.length) {
+        const controlNodes = Array.from(form.children).filter((node) => node !== title);
+        const tabs = document.createElement("div");
+        tabs.className = "preview-edit-popover__tabs";
+
+        const elementTab = document.createElement("button");
+        elementTab.type = "button";
+        elementTab.textContent = "Elemento";
+        elementTab.className = "is-active";
+
+        const classTab = document.createElement("button");
+        classTab.type = "button";
+        classTab.textContent = "Classe/ID";
+
+        tabs.append(elementTab, classTab);
+
+        const elementPanel = document.createElement("div");
+        elementPanel.className = "preview-edit-popover__panel";
+        controlNodes.forEach((node) => elementPanel.appendChild(node));
+
+        const classPanel = document.createElement("div");
+        classPanel.className = "preview-edit-popover__panel preview-edit-popover__panel--class";
+        classPanel.hidden = true;
+
+        const classField = document.createElement("label");
+        classField.className = "preview-edit-popover__mini-field";
+        const classLabel = document.createElement("span");
+        classLabel.textContent = "Classe ou ID alvo";
+        classSelect = document.createElement("select");
+        classCandidates.forEach((candidate) => {
+          const option = document.createElement("option");
+          option.value = candidate.className;
+          option.textContent = candidate.label;
+          classSelect.appendChild(option);
+        });
+        classField.append(classLabel, classSelect);
+        classPanel.appendChild(classField);
+
+        if (isColor) {
+          const propertyField = document.createElement("label");
+          propertyField.className = "preview-edit-popover__mini-field";
+          const propertyLabel = document.createElement("span");
+          propertyLabel.textContent = "Aplicar em";
+          classPropertySelect = document.createElement("select");
+          [
+            ["background", "Fundo"],
+            ["color", "Texto"],
+            ["border-color", "Borda"],
+            ["outline-color", "Contorno"]
+          ].forEach(([value, label]) => {
+            const option = document.createElement("option");
+            option.value = value;
+            option.textContent = label;
+            option.selected = inferPreviewClassColorProperty(meta, options) === value;
+            classPropertySelect.appendChild(option);
+          });
+          propertyField.append(propertyLabel, classPropertySelect);
+          classPanel.appendChild(propertyField);
+        }
+
+        const note = document.createElement("p");
+        note.className = "preview-edit-popover__note";
+        note.textContent = isTextStyle
+          ? "Nesta aba, os controles de estilo afetam todos os elementos com a classe ou ID escolhido. O texto continua individual."
+          : "Nesta aba, a cor selecionada afeta todos os elementos com a classe ou ID escolhido.";
+        classPanel.appendChild(note);
+
+        resetClassButton = document.createElement("button");
+        resetClassButton.type = "button";
+        resetClassButton.className = "button button--soft";
+        resetClassButton.textContent = "Limpar classe";
+        classPanel.appendChild(resetClassButton);
+
+        form.append(tabs, classPanel, elementPanel);
+
+        const setEditMode = (mode) => {
+          editMode = mode;
+          classPanel.hidden = mode !== "class";
+          if (isTextStyle && valueInput) {
+            valueInput.hidden = mode === "class";
+          }
+          elementTab.classList.toggle("is-active", mode === "element");
+          classTab.classList.toggle("is-active", mode === "class");
+        };
+
+        elementTab.addEventListener("click", () => setEditMode("element"));
+        classTab.addEventListener("click", () => setEditMode("class"));
+        classSelect.addEventListener("change", () => applyLiveValue({ multiline: options.multiline }));
+        classPropertySelect?.addEventListener("change", () => applyLiveValue({ multiline: options.multiline }));
+        resetClassButton.addEventListener("click", () => {
+          recordPopoverEditHistory();
+          clearPreviewClassStyle(meta, classSelect.value);
+        });
       }
 
       const actions = document.createElement("div");
@@ -831,9 +2044,33 @@ ${containerHtml}`;
       actions.appendChild(closeButton);
       form.appendChild(actions);
 
-      const applyLiveValue = (options = {}) => {
+      const applyLiveValue = (applyOptions = {}) => {
+        if (!applyOptions.finalizeOnly) {
+          previewEditDirty = true;
+        }
+        recordPopoverEditHistory();
         let nextValue = String(valueInput.value || "").trim();
         if (isColor) {
+          if (isBorder) {
+            const nextColor = isHexColor(valueInput.value) ? normalizeHexColor(valueInput.value) : borderColor;
+            const parsedWidth = Number.parseFloat(borderWidthInput?.value);
+            const nextWidth = Number.isFinite(parsedWidth) ? Math.min(48, Math.max(0, parsedWidth)) : 1;
+            if (borderWidthInput) {
+              borderWidthInput.value = String(nextWidth);
+            }
+            borderSides.forEach((side) => {
+              sourceElement.style.setProperty(`border-${side}-color`, nextColor);
+              sourceElement.style.setProperty(`border-${side}-width`, `${nextWidth}px`);
+              sourceElement.style.setProperty(`border-${side}-style`, nextWidth > 0 ? "solid" : "none");
+            });
+            if (colorInput) {
+              colorInput.value = nextColor;
+              colorInput.style.setProperty("--preview-edit-color", nextColor);
+            }
+            syncTemplateHtmlFromPreview({ skipPreviewUpdate: Boolean(applyOptions.skipPreviewUpdate) });
+            return;
+          }
+
           if (options.opacityField && colorOpacityInput && meta.scope === "carousel" && meta.slideIndex !== undefined) {
             const slide = state.carousel.slides[meta.slideIndex];
             if (slide) {
@@ -853,12 +2090,19 @@ ${containerHtml}`;
             colorInput.value = normalizeHexColor(nextValue);
           }
           colorInput?.style?.setProperty("--preview-edit-color", isHexColor(nextValue) ? normalizeHexColor(nextValue) : nextValue);
+
+          if (editMode === "class" && classSelect) {
+            const property = classPropertySelect?.value || inferPreviewClassColorProperty(meta, options);
+            setPreviewClassStyle(meta, classSelect.value, { [property]: nextValue });
+            return;
+          }
         }
 
         if (isTextStyle) {
-          const nextText = normalizePreviewText(nextValue, Boolean(options.multiline));
-          const nextStyle = options.clearStyle ? {} : {
+          const nextText = normalizePreviewText(nextValue, Boolean(applyOptions.multiline));
+          const nextStyle = applyOptions.clearStyle ? {} : {
             color: styleInputs.color.value,
+            ...(styleInputs.backgroundColor ? { backgroundColor: styleInputs.backgroundColor.value } : {}),
             fontSize: styleInputs.fontSize.value,
             fontWeight: styleInputs.fontWeight.value,
             textAlign: styleInputs.textAlign.value,
@@ -866,14 +2110,36 @@ ${containerHtml}`;
             lineHeight: styleInputs.lineHeight.value
           };
 
-          updatePreviewEditValue({ ...meta, type: "textStyle", multiline: options.multiline }, {
+          if (editMode === "class" && classSelect) {
+            if (applyOptions.clearStyle) {
+              clearPreviewClassStyle(meta, classSelect.value);
+            } else {
+              setPreviewClassStyle(meta, classSelect.value, nextStyle);
+            }
+            return;
+          }
+
+          updatePreviewEditValue({ ...meta, type: "textStyle", multiline: applyOptions.multiline, allowBackgroundStyle: Boolean(styleInputs.backgroundColor) }, {
             text: nextText,
             style: nextStyle
+          }, {
+            skipPreviewUpdate: Boolean(applyOptions.skipPreviewUpdate),
+            sourceElement
           });
           return;
         }
 
-        updatePreviewEditValue({ ...meta, type: kind }, nextValue);
+        updatePreviewEditValue({ ...meta, type: kind }, nextValue, { skipPreviewUpdate: Boolean(applyOptions.skipPreviewUpdate) });
+      };
+
+      // Entradas de texto e cor usam atualizacao leve enquanto a pessoa
+      // digita. Ao fechar, consolide uma unica vez para propagar a versao
+      // final aos outros frames sem remontar o iframe que esta em uso. Abrir
+      // e fechar o editor sem tocar em nada nao pode reserializar o HTML.
+      previewEditBeforeCloseHandler = () => {
+        if (previewEditDirty) {
+          applyLiveValue({ multiline: options.multiline, finalizeOnly: true });
+        }
       };
 
       if (localAssetButton) {
@@ -896,10 +2162,15 @@ ${containerHtml}`;
       closeButton.addEventListener("click", closePreviewEditPopover);
 
       if (isTextStyle && styleInputs) {
-        Object.values(styleInputs).forEach((input) => {
-          input.addEventListener("input", () => applyLiveValue({ multiline: options.multiline }));
+        Object.values(styleInputs).filter(Boolean).forEach((input) => {
+          input.addEventListener("input", () => applyLiveValue({ multiline: options.multiline, skipPreviewUpdate: true }));
           input.addEventListener("change", () => applyLiveValue({ multiline: options.multiline }));
         });
+      }
+
+      if (borderWidthInput) {
+        borderWidthInput.addEventListener("input", applyLiveValue);
+        borderWidthInput.addEventListener("change", applyLiveValue);
       }
 
       previewEditKeyHandler = (event) => {
@@ -929,8 +2200,11 @@ ${containerHtml}`;
       }
     }
 
-    function getPreviewEditTab() {
-      return currentPage === "conteudo" ? currentEditorTab : "faq";
+    function getPreviewEditTab(frame = previewFrame) {
+      const labDocument = frame?.ownerDocument || document;
+      return labDocument.documentElement.dataset.page === "conteudo"
+        ? (labDocument.documentElement.dataset.editorTab || "dashboard")
+        : "faq";
     }
 
     function normalizePreviewText(value, multiline = false) {
@@ -983,7 +2257,7 @@ ${containerHtml}`;
     }
 
     function normalizeTextStyleNumber(value, fallback, min, max, decimals = 0) {
-      const numericValue = Number(String(value ?? "").replace(",", "."));
+    const numericValue = Number(String(value || "").replace(",", "."));
       if (!Number.isFinite(numericValue)) {
         return fallback;
       }
@@ -1056,6 +2330,10 @@ ${containerHtml}`;
         normalized.color = colorToHex(style.color);
       }
 
+      if (style.backgroundColor) {
+        normalized.backgroundColor = colorToHex(style.backgroundColor, "#0ea5e9");
+      }
+
       if (style.fontSize !== undefined && style.fontSize !== "") {
         normalized.fontSize = normalizeTextStyleNumber(style.fontSize, 16, 8, 96);
       }
@@ -1102,6 +2380,10 @@ ${containerHtml}`;
         declarations.push(`color: ${style.color}`);
       }
 
+      if (style.backgroundColor) {
+        declarations.push(`background-color: ${style.backgroundColor}`);
+      }
+
       if (style.fontSize) {
         declarations.push(`font-size: ${style.fontSize}px`);
       }
@@ -1130,10 +2412,282 @@ ${containerHtml}`;
       return style ? ` style="${escapeHtml(style)}"` : "";
     }
 
-    function getTemplatePreviewNode(meta) {
-      const doc = previewFrame.contentDocument;
+    function getPreviewClassStyleTab(meta = {}) {
+      return ["table", "stories", "article", "carousel", "bento", "template"].includes(meta.scope) ? meta.scope : "faq";
+    }
+
+    function escapeCssClassName(value) {
+      const className = String(value || "").trim();
+      if (!className) {
+        return "";
+      }
+
+      if (window.CSS && typeof window.CSS.escape === "function") {
+        return window.CSS.escape(className);
+      }
+
+      return className.replace(/[^a-zA-Z0-9_-]/g, "\\$&");
+    }
+
+    function isUsefulPreviewClass(className) {
+      const value = String(className || "").trim();
+      if (!value) {
+        return false;
+      }
+
+      return !/^(is-|has-|js-|sr-only|button$|field$|icon-button$|theme-toggle|preview-edit-popover|ll-template-|ql-|cm-)/.test(value);
+    }
+
+    function getPreviewClassCandidates(element) {
+      const doc = element?.ownerDocument || document;
+      const stopSelectors = ".preview-frame, .preview-shell, body, html";
+      const candidates = [];
+      const seen = new Set();
+      let current = element?.nodeType === 1 ? element : element?.parentElement;
+
+      while (current && current.nodeType === 1 && !current.matches?.(stopSelectors)) {
+        Array.from(current.classList || []).forEach((className) => {
+          if (!isUsefulPreviewClass(className) || seen.has(className)) {
+            return;
+          }
+
+          const selector = `.${escapeCssClassName(className)}`;
+          let count = 1;
+          try {
+            count = doc.querySelectorAll(selector).length || 1;
+          } catch (error) {}
+
+          seen.add(className);
+          candidates.push({
+            className,
+            selector,
+            count,
+            label: `.${className}${count > 1 ? ` (${count})` : ""}`
+          });
+        });
+
+        const elementId = String(current.id || "").trim();
+        if (elementId && !seen.has(`#${elementId}`) && !/^ll-template-|^preview-|^codex-/i.test(elementId)) {
+          const selector = `#${escapeCssClassName(elementId)}`;
+          let count = 1;
+          try {
+            count = doc.querySelectorAll(selector).length || 1;
+          } catch (error) {}
+
+          seen.add(`#${elementId}`);
+          candidates.push({
+            className: `#${elementId}`,
+            selector,
+            count,
+            label: `#${elementId}${count > 1 ? ` (${count})` : ""}`
+          });
+        }
+
+        if (current.matches?.(".ll-carousel, .ll-bento, .lp-container, .lp_container, .table-container-custom, #faq-section, .faq-section")) {
+          break;
+        }
+
+        current = current.parentElement;
+      }
+
+      return candidates;
+    }
+
+    function inferPreviewClassColorProperty(meta = {}, options = {}) {
+      const field = String(meta.field || "").toLowerCase();
+      const label = String(options.label || "").toLowerCase();
+
+      if (field.includes("text") || field.includes("question") || field.includes("answer") || label.includes("texto")) {
+        return "color";
+      }
+
+      if (field.includes("border") || field.includes("ring") || field.includes("outline") || label.includes("borda")) {
+        return "border-color";
+      }
+
+      return "background";
+    }
+
+    function normalizePreviewClassDeclarations(style = {}) {
+      const declarations = {};
+
+      Object.entries(style || {}).forEach(([property, value]) => {
+    const rawValue = String(value || "").trim();
+        if (!rawValue) {
+          return;
+        }
+
+        if (property === "fontSize") {
+          declarations["font-size"] = `${normalizeTextStyleNumber(rawValue, 16, 8, 96)}px`;
+          return;
+        }
+
+        if (property === "fontWeight") {
+          declarations["font-weight"] = normalizePreviewFontWeight(rawValue);
+          return;
+        }
+
+        if (property === "fontStyle" && rawValue === "italic") {
+          declarations["font-style"] = "italic";
+          return;
+        }
+
+        if (property === "textAlign") {
+          declarations["text-align"] = normalizePreviewTextAlign(rawValue);
+          return;
+        }
+
+        if (property === "lineHeight") {
+          declarations["line-height"] = String(normalizeTextStyleNumber(rawValue, 1.35, 0.8, 2.6, 2));
+          return;
+        }
+
+        if (["background", "background-color", "color", "border-color", "outline-color"].includes(property)) {
+          declarations[property] = /^linear-gradient\(/i.test(rawValue) ? rawValue : normalizeCssColorValue(rawValue);
+          return;
+        }
+
+        if (["border-width", "border-radius", "padding"].includes(property)) {
+          const numericValue = Number.parseFloat(rawValue);
+          if (Number.isFinite(numericValue)) {
+            const limit = property === "padding" ? 96 : property === "border-radius" ? 120 : 48;
+            declarations[property] = `${Math.min(limit, Math.max(0, numericValue))}px`;
+          }
+          return;
+        }
+
+        if (property === "border-style" && /^(none|solid|dashed|dotted|double)$/i.test(rawValue)) {
+          declarations[property] = rawValue.toLowerCase();
+        }
+      });
+
+      return declarations;
+    }
+
+    function normalizePreviewSelectorValue(value) {
+      const rawValue = String(value || "").trim();
+      if (!rawValue) {
+        return null;
+      }
+
+      if (rawValue.startsWith(".") || rawValue.startsWith("#")) {
+        return { key: rawValue, selector: rawValue };
+      }
+
+      return { key: rawValue, selector: `.${escapeCssClassName(rawValue)}` };
+    }
+
+    function setPreviewClassStyle(meta, className, declarations = {}) {
+      const normalizedSelector = normalizePreviewSelectorValue(className);
+      if (!normalizedSelector) {
+        return;
+      }
+
+      const tab = getPreviewClassStyleTab(meta);
+      const previousTemplateBaseSnapshot = tab === "template" && state.responsive?.editDevice === "base"
+        ? cloneValue(getBaseSnapshot("template"))
+        : null;
+      const normalized = normalizePreviewClassDeclarations(declarations);
+      if (!Object.keys(normalized).length) {
+        return;
+      }
+
+      state.classStyles = state.classStyles || {};
+      state.classStyles[tab] = state.classStyles[tab] || {};
+      state.classStyles[tab][normalizedSelector.key] = {
+        className: normalizedSelector.key,
+        selector: normalizedSelector.selector,
+        declarations: {
+          ...((state.classStyles[tab][normalizedSelector.key] && state.classStyles[tab][normalizedSelector.key].declarations) || {}),
+          ...normalized
+        }
+      };
+
+      if (currentPage === "conteudo") {
+        markResponsiveDirty();
+        if (state.responsive.editDevice === "base") {
+          // A Desktop class change is the new base. Rebase saved responsive
+          // frames from that base so an untouched tablet/mobile snapshot does
+          // not reintroduce an older color in the exported local version.
+          if (tab === "template" && previousTemplateBaseSnapshot && typeof rebaseTemplateResponsiveVersions === "function") {
+            const nextBaseSnapshot = cloneValue(getTabSnapshot("template"));
+            rebaseTemplateResponsiveVersions(previousTemplateBaseSnapshot, nextBaseSnapshot);
+            state.responsive.baseSnapshots.template = nextBaseSnapshot;
+          } else {
+            rememberBaseSnapshot(tab);
+          }
+        } else {
+          rememberActiveResponsiveDraft(tab);
+        }
+      }
+
+      renderEditor(true);
+    }
+
+    function clearPreviewClassStyle(meta, className) {
+      const normalizedSelector = normalizePreviewSelectorValue(className);
+      const tab = getPreviewClassStyleTab(meta);
+      if (!normalizedSelector || !state.classStyles?.[tab]?.[normalizedSelector.key]) {
+        return;
+      }
+
+      const previousTemplateBaseSnapshot = tab === "template" && state.responsive?.editDevice === "base"
+        ? cloneValue(getBaseSnapshot("template"))
+        : null;
+
+      delete state.classStyles[tab][normalizedSelector.key];
+      if (currentPage === "conteudo") {
+        markResponsiveDirty();
+        if (state.responsive.editDevice === "base") {
+          if (tab === "template" && previousTemplateBaseSnapshot && typeof rebaseTemplateResponsiveVersions === "function") {
+            const nextBaseSnapshot = cloneValue(getTabSnapshot("template"));
+            rebaseTemplateResponsiveVersions(previousTemplateBaseSnapshot, nextBaseSnapshot);
+            state.responsive.baseSnapshots.template = nextBaseSnapshot;
+          } else {
+            rememberBaseSnapshot(tab);
+          }
+        } else {
+          rememberActiveResponsiveDraft(tab);
+        }
+      }
+      renderEditor(true);
+    }
+
+    function buildPreviewClassStyle(tab) {
+      const styles = state.classStyles?.[tab] || {};
+      const rules = Object.values(styles).map((entry) => {
+        const selector = entry?.selector || (entry?.className ? `.${escapeCssClassName(entry.className)}` : "");
+        const declarations = Object.entries(entry?.declarations || {})
+          .filter(([, value]) => String(value || "").trim())
+          .map(([property, value]) => `  ${property}: ${value} !important;`);
+
+        return selector && declarations.length ? `${selector} {\n${declarations.join("\n")}\n}` : "";
+      }).filter(Boolean);
+
+      if (!rules.length) {
+        return "";
+      }
+
+      return `<style>\n/* Ajustes visuais personalizados */\n${rules.join("\n\n")}\n</style>`;
+    }
+
+    function getTemplatePreviewNode(meta, sourceElement = null) {
+      const sourceFrame = meta?.sourceFrame
+        || sourceElement?.ownerDocument?.defaultView?.frameElement
+        || previewFrame;
+      const doc = getPreviewDocument(sourceFrame);
       if (!doc || !meta.templateNodeId) {
         return null;
+      }
+
+      // Durante a digitação, o próprio nó do frame é a fonte mais confiável.
+      // Uma sincronização incremental pode remover os atributos auxiliares do
+      // clone seguinte; sem este atalho, uma tecla como Backspace deixava de
+      // atingir o título e a alteração parecia não funcionar.
+      if (sourceElement?.isConnected
+        && sourceElement.ownerDocument === doc
+        && sourceElement.dataset?.llTemplateNode === meta.templateNodeId) {
+        return sourceElement;
       }
 
       return doc.querySelector(`[data-ll-template-node="${meta.templateNodeId}"]`);
@@ -1146,50 +2700,110 @@ ${containerHtml}`;
 
     function cleanTemplatePreviewClone(container) {
       const clone = container.cloneNode(true);
-      [clone, ...clone.querySelectorAll("*")].forEach((element) => {
-        [
-          "data-ll-template-node",
-          "data-ll-preview-text",
-          "data-ll-preview-media",
-          "data-ll-preview-color",
-          "data-ll-preview-inline",
-          "data-ll-preview-position",
-          "data-ll-preview-overlay-horizontal",
-          "data-ll-preview-overlay-vertical",
-          "data-ll-preview-overlay-width",
-          "data-ll-preview-manual-story",
-          "data-ll-preview-story-active",
-          "data-ll-preview-story-hidden",
-          "data-ll-preview-story-current",
-          "data-ll-template-iframe-parent",
-          "data-ll-preview-header-editor",
-          "data-ll-preview-header-banner"
-        ].forEach((attribute) => element.removeAttribute(attribute));
-        element.removeAttribute("contenteditable");
-        element.removeAttribute("spellcheck");
-
-        const title = element.getAttribute("title") || "";
-        if (/^Clique para editar|^Clique para trocar|^Duplo clique para editar/i.test(title)) {
-          element.removeAttribute("title");
-        }
-      });
-
-      clone.querySelectorAll("[data-ll-template-helper]").forEach((element) => {
+      clone.querySelectorAll("#ll-template-faq-custom-style").forEach((element) => {
         element.remove();
+      });
+      clone.querySelectorAll("[data-ll-template-helper], .ll-template-iframe-edit, .ll-bento__resize-handle").forEach((element) => {
+        element.remove();
+      });
+      clone.querySelectorAll("[data-ll-template-faq-title-text]").forEach((element) => {
+        const parent = element.parentNode;
+        if (!parent) {
+          return;
+        }
+
+        if (parent.nodeType === 1 && element.getAttribute("style")) {
+          Array.from(element.style).forEach((property) => {
+            parent.style.setProperty(
+              property,
+              element.style.getPropertyValue(property),
+              element.style.getPropertyPriority(property)
+            );
+          });
+        }
+
+        while (element.firstChild) {
+          parent.insertBefore(element.firstChild, element);
+        }
+        element.remove();
+      });
+      [clone, ...clone.querySelectorAll("*")].forEach((element) => {
+        stripLabEditorArtifacts(element, { preserveOptionStateStyle: true });
       });
 
       return clone;
     }
 
-    function syncTemplateHtmlFromPreview() {
-      const doc = previewFrame.contentDocument;
-      const container = doc ? doc.querySelector(".lp-container, .lp_container") : null;
+    function syncTemplateHtmlFromPreview(options = {}) {
+      const requestedFrame = options.sourceFrame
+        || options.sourceElement?.ownerDocument?.defaultView?.frameElement
+        || options.container?.ownerDocument?.defaultView?.frameElement
+        || templatePreviewSourceFrame
+        || previewFrame;
+      const doc = getPreviewDocument(requestedFrame);
+      const container = options.container || (doc ? doc.querySelector(".lp-container, .lp_container") : null);
       if (!container) {
         return;
       }
 
       const clone = cleanTemplatePreviewClone(container);
-      state.template.html = clone.innerHTML.trim();
+      const sourceDocument = container.ownerDocument || doc;
+      // Preview rendering moves user CSS out of `.lp-container` and into the
+      // document head. Preserve that CSS before cloning the next edit, or a
+      // second option-state edit would serialize only its newest rule and
+      // silently discard the colors already chosen for the other states.
+      const embeddedCss = compactTemplateFaqClassCss(repairLegacyOptionStateCss(
+        Array.from(sourceDocument?.head?.querySelectorAll("style") || [])
+          .filter((style) => style.hasAttribute("data-ll-template-embedded-style")
+            || /\/\*\s*Layout Lab: estilos embutidos do conteúdo\s*\*\//.test(style.textContent || ""))
+          .map((style) => (style.textContent || "")
+            .replace(/\/\*\s*Layout Lab: estilos embutidos do conteúdo\s*\*\/\s*/g, "")
+            .trim())
+          .filter(Boolean)
+          .join("\n\n")
+      ));
+      if (embeddedCss) {
+        const preservedStyle = sourceDocument.createElement("style");
+        preservedStyle.textContent = embeddedCss;
+        clone.insertBefore(preservedStyle, clone.firstChild);
+      }
+      // Stylesheet links are moved to the preview document head so the
+      // browser applies them correctly. Keep those original links when an
+      // edit serializes the frame back into the template, otherwise one edit
+      // would silently make a later preview/export lose its external CSS.
+      const preservedStylesheetLinks = extractTemplateStylesheetLinks(state.template.html);
+      // Mantenha a própria lp-container na fonte. Antes, serializar somente
+      // `innerHTML` apagava a div que a pessoa havia colado para envolver a
+      // LP e o HTML copiado deixava de ter essa estrutura.
+      const nextHtml = [clone.outerHTML.trim(), preservedStylesheetLinks]
+        .filter(Boolean)
+        .join("\n\n");
+      // `container` can come from any live artboard. Resolve its owning
+      // iframe first, otherwise an edit in one responsive frame may be saved
+      // against whichever frame happened to be active most recently.
+      const sourceFrame = container.ownerDocument?.defaultView?.frameElement || requestedFrame;
+      if (sourceFrame?.isConnected) {
+        templatePreviewSourceFrame = sourceFrame;
+      }
+      const boardDevice = sourceFrame?.dataset?.llBoardActiveDevice
+        || requestedFrame?.dataset?.llBoardActiveDevice
+        || previewFrame?.dataset?.llBoardActiveDevice
+        || "";
+      if (boardDevice && typeof updateLpBoardCode === "function") {
+        updateLpBoardCode(nextHtml, boardDevice, {
+          previewDelay: options.previewDelay || 0,
+          skipPreviewUpdate: Boolean(options.skipPreviewUpdate),
+          preserveLiveFrame: options.preserveLiveFrame !== false
+        });
+        commitStagedPreviewEditHistory({ scope: "template", sourceFrame }, sourceFrame);
+        return;
+      }
+
+      if (state.responsive?.editDevice === "base" && typeof updateTemplateBaseHtml === "function") {
+        updateTemplateBaseHtml(nextHtml);
+      } else {
+        state.template.html = nextHtml;
+      }
       const textarea = editor.querySelector('[data-template-field="html"]');
       if (textarea && document.activeElement !== textarea) {
         textarea.value = state.template.html;
@@ -1197,15 +2811,16 @@ ${containerHtml}`;
       }
       generatedHtml.value = buildOutputHtml("html");
       copyStatus.textContent = "";
+      commitStagedPreviewEditHistory({ scope: "template", sourceFrame }, sourceFrame);
     }
 
     function getBentoPreviewRoot() {
-      const doc = previewFrame.contentDocument;
+      const doc = getPreviewDocument(previewFrame);
       return doc ? doc.querySelector(".ll-bento") : null;
     }
 
     function getBentoPreviewNode(meta) {
-      const doc = previewFrame.contentDocument;
+      const doc = getPreviewDocument(previewFrame);
       if (!doc || !meta.bentoNodeId) {
         return null;
       }
@@ -1215,17 +2830,25 @@ ${containerHtml}`;
 
     function cleanBentoPreviewClone(container) {
       const clone = container.cloneNode(true);
+      clone.querySelectorAll("[data-ll-bento-resize-handle], .ll-bento__resize-handle").forEach((element) => element.remove());
       [clone, ...clone.querySelectorAll("*")].forEach((element) => {
-        [
-          "data-ll-bento-node",
-          "data-ll-preview-text",
-          "data-ll-preview-media",
-          "data-ll-preview-color",
-          "data-ll-preview-inline",
-          "data-ll-preview-position"
-        ].forEach((attribute) => element.removeAttribute(attribute));
-        element.removeAttribute("contenteditable");
-        element.removeAttribute("spellcheck");
+        stripLabEditorArtifacts(element);
+        if (element.classList) {
+          element.classList.remove("ll-template-faq-summary", "ll-template-faq-custom-colors");
+          if (!element.getAttribute("class")) {
+            element.removeAttribute("class");
+          }
+        }
+        if (element.style) {
+          element.style.removeProperty("--ll-template-faq-summary-bg");
+          element.style.removeProperty("--ll-template-faq-summary-hover-bg");
+          element.style.removeProperty("--ll-bento-resize-max-width");
+          element.style.removeProperty("--ll-bento-resize-max-height");
+          element.style.removeProperty("--ll-bento-circle-size");
+          if (!element.getAttribute("style")) {
+            element.removeAttribute("style");
+          }
+        }
 
         const title = element.getAttribute("title") || "";
         if (/^Clique para editar|^Clique para trocar|^Duplo clique para editar|^D[eê] dois cliques para trocar/i.test(title)) {
@@ -1286,7 +2909,12 @@ ${containerHtml}`;
       const tagName = element.tagName;
 
       if (tagName === "SOURCE") {
-        element.setAttribute("srcset", normalizedValue);
+        if (element.closest("picture")) {
+          element.remove();
+        } else {
+          element.setAttribute("src", normalizedValue);
+          element.removeAttribute("srcset");
+        }
         return;
       }
 
@@ -1295,7 +2923,7 @@ ${containerHtml}`;
         const picture = element.closest("picture");
         if (picture) {
           picture.querySelectorAll("source").forEach((source) => {
-            source.setAttribute("srcset", normalizedValue);
+            source.remove();
           });
         }
         return;
@@ -1342,8 +2970,14 @@ ${containerHtml}`;
         setBentoMediaValue(element, normalizedValue);
       } else if (meta.type === "color") {
         if (/gradient\(/i.test(normalizedValue)) {
-          element.style.background = normalizedValue;
+          element.style.backgroundImage = normalizedValue;
+          element.style.backgroundColor = "";
         } else {
+          const view = element.ownerDocument.defaultView;
+          const backgroundImage = element.style.backgroundImage || view.getComputedStyle(element).backgroundImage || "";
+          if (backgroundImage && backgroundImage !== "none" && !/url\(/i.test(backgroundImage)) {
+            element.style.backgroundImage = "none";
+          }
           element.style.backgroundColor = normalizedValue;
         }
       }
@@ -1430,7 +3064,7 @@ ${containerHtml}`;
         const picture = element.closest("picture");
         if (picture) {
           picture.querySelectorAll("source").forEach((source) => {
-            source.setAttribute("srcset", normalizedValue);
+            source.remove();
           });
         } else {
           element.removeAttribute("srcset");
@@ -1584,6 +3218,36 @@ ${containerHtml}`;
       return Boolean(banner && target && (target === banner || banner.contains(target)));
     }
 
+    function getTemplateHeaderBadgeElement(headerElement) {
+      if (!headerElement) {
+        return null;
+      }
+
+      return headerElement.querySelector(".product-header__badge, .video-header__badge, [class*='badge' i], [class*='logo' i]");
+    }
+
+    function getTemplateHeaderLogoElement(headerElement) {
+      if (!headerElement) {
+        return null;
+      }
+
+      const badge = getTemplateHeaderBadgeElement(headerElement);
+      return headerElement.querySelector(".product-header__badge-img, .video-header__badge-img")
+        || badge?.querySelector?.("img, svg")
+        || null;
+    }
+
+    function isTemplateHeaderLogoTarget(target, headerElement) {
+      if (!target || !headerElement) {
+        return false;
+      }
+
+      const logo = getTemplateHeaderLogoElement(headerElement);
+      const badge = getTemplateHeaderBadgeElement(headerElement);
+      return Boolean((logo && (target === logo || logo.contains?.(target)))
+        || (badge && (target === badge || badge.contains?.(target))));
+    }
+
     function getTemplateHeaderBannerImage(headerElement) {
       const banner = getTemplateHeaderBannerElement(headerElement);
       if (!banner) {
@@ -1611,9 +3275,8 @@ ${containerHtml}`;
       }
 
       const sources = banner.querySelectorAll("picture source");
-      const sizes = [430, 768, 1024, 1200];
-      sources.forEach((source, index) => {
-        source.setAttribute("srcset", withHeaderImageSize(cleanUrl, sizes[index] || 1200));
+      sources.forEach((source) => {
+        source.remove();
       });
     }
 
@@ -1693,10 +3356,6 @@ ${containerHtml}`;
         const cleanImageUrl = stripHeaderImageVariant(data.imageUrl);
         wrapper.innerHTML = `<header class="product-header__banner">
     <picture style="width:100%; height:100%; margin:0;">
-      <source media="(max-width: 430px)" srcset="${escapeHtml(withHeaderImageSize(cleanImageUrl, 430))}">
-      <source media="(max-width: 768px)" srcset="${escapeHtml(withHeaderImageSize(cleanImageUrl, 768))}">
-      <source media="(max-width: 1024px)" srcset="${escapeHtml(withHeaderImageSize(cleanImageUrl, 1024))}">
-      <source media="(max-width: 1200px)" srcset="${escapeHtml(withHeaderImageSize(cleanImageUrl, 1200))}">
       <img src="${escapeHtml(cleanImageUrl)}" alt="${escapeHtml(data.imageAlt || "")}" class="product-header__banner-img" loading="eager">
     </picture>
   </header>`;
@@ -1741,6 +3400,10 @@ ${containerHtml}`;
         banner.style.cursor = "pointer";
         banner.setAttribute("title", "Clique para editar o banner.");
         banner.addEventListener("click", (event) => {
+          if (isTemplateHeaderLogoTarget(event.target, element)) {
+            return;
+          }
+
           event.preventDefault();
           event.stopPropagation();
           openTemplateHeaderPopover(event, element);
@@ -1748,8 +3411,11 @@ ${containerHtml}`;
       }
     }
 
+    window.__llClosePreviewEditPopover = closePreviewEditPopover;
+
     function openTemplateHeaderPopover(sourceEvent, headerElement) {
       closePreviewEditPopover();
+      recordPreviewEditHistory({ scope: "template", sourceFrame: headerElement?.ownerDocument?.defaultView?.frameElement });
 
       let activeHeader = headerElement;
       let headerData = getTemplateHeaderDataFromElement(activeHeader);
@@ -1908,12 +3574,14 @@ ${containerHtml}`;
     function openTemplateImagePopover(sourceEvent, element, meta, label) {
       const root = element?.ownerDocument?.querySelector(".lp-container, .lp_container");
       const header = root ? findTemplateHeaderRoot(element, root) : null;
-      if (header && isTemplateHeaderBannerTarget(sourceEvent?.target || element, header)) {
+      const isHeaderLogo = header && isTemplateHeaderLogoTarget(sourceEvent?.target || element, header);
+      if (header && isTemplateHeaderBannerTarget(sourceEvent?.target || element, header) && !isHeaderLogo) {
         openTemplateHeaderPopover(sourceEvent, header);
         return;
       }
 
       closePreviewEditPopover();
+      recordPreviewEditHistory({ scope: "template", sourceFrame: element?.ownerDocument?.defaultView?.frameElement });
 
       const form = document.createElement("form");
       form.className = "preview-edit-popover";
@@ -1937,8 +3605,22 @@ ${containerHtml}`;
 
       const altInput = document.createElement("input");
       altInput.type = "text";
-      altInput.value = element.getAttribute("alt") || "";
+      const headerBadge = isHeaderLogo ? getTemplateHeaderBadgeElement(header) : null;
+      altInput.value = headerBadge?.getAttribute("aria-label") || element.getAttribute("alt") || "";
       createField("Alt text", altInput);
+
+      // Promotional banners such as manuals and nutrition tables usually
+      // wrap their image in a link. Keep the destination editable beside the
+      // image URL instead of forcing a separate code-editor pass.
+      const linkElement = element.closest?.("a");
+      let hrefInput = null;
+      if (linkElement) {
+        hrefInput = document.createElement("input");
+        hrefInput.type = "text";
+        hrefInput.placeholder = "https://exemplo.com/destino";
+        hrefInput.value = linkElement.getAttribute("href") || "";
+        createField("URL de destino (href)", hrefInput);
+      }
 
       const actions = document.createElement("div");
       actions.className = "preview-edit-popover__actions";
@@ -1953,7 +3635,25 @@ ${containerHtml}`;
         const normalizedUrl = normalizeAssetUrl(urlInput.value);
         urlInput.value = normalizedUrl;
         setTemplateMediaValue(element, normalizedUrl);
-        element.setAttribute("alt", altInput.value);
+        if (headerBadge) {
+          headerBadge.setAttribute("aria-label", altInput.value);
+          element.setAttribute("alt", "");
+        } else {
+          element.setAttribute("alt", altInput.value);
+        }
+        if (linkElement && hrefInput) {
+          const nextHref = String(hrefInput.value || "").trim();
+          // Prevent executable URL schemes from entering published HTML while
+          // preserving regular relative, anchor, mailto and HTTPS links.
+          if (/^(?:javascript|vbscript|data):/i.test(nextHref)) {
+            hrefInput.value = "";
+            linkElement.removeAttribute("href");
+          } else if (nextHref) {
+            linkElement.setAttribute("href", nextHref);
+          } else {
+            linkElement.removeAttribute("href");
+          }
+        }
         syncTemplateHtmlFromPreview();
       };
 
@@ -1963,6 +3663,8 @@ ${containerHtml}`;
       urlInput.addEventListener("change", applyImage);
       altInput.addEventListener("input", applyImage);
       altInput.addEventListener("change", applyImage);
+      hrefInput?.addEventListener("input", applyImage);
+      hrefInput?.addEventListener("change", applyImage);
 
       form.addEventListener("submit", (event) => {
         event.preventDefault();
@@ -1994,6 +3696,7 @@ ${containerHtml}`;
 
     function openTemplateSvgPopover(sourceEvent, element) {
       closePreviewEditPopover();
+      recordPreviewEditHistory({ scope: "template", sourceFrame: element?.ownerDocument?.defaultView?.frameElement });
 
       const form = document.createElement("form");
       form.className = "preview-edit-popover preview-edit-popover--svg";
@@ -2094,8 +3797,207 @@ ${containerHtml}`;
       textarea.select();
     }
 
-    function updateTemplatePreviewEditValue(meta, rawValue, normalizedValue) {
-      const element = getTemplatePreviewNode(meta);
+    function copyTemplateIconIdentity(source, target) {
+      if (!source || !target) {
+        return;
+      }
+
+      ["id", "class", "style", "width", "height", "role", "aria-hidden", "data-ll-template-node"].forEach((name) => {
+        const value = source.getAttribute?.(name);
+        if (value && !target.getAttribute(name)) {
+          target.setAttribute(name, value);
+        }
+      });
+    }
+
+    function getTemplateIconMediaElement(element) {
+      if (!element) {
+        return null;
+      }
+
+      if (["IMG", "SVG"].includes(element.tagName)) {
+        return element;
+      }
+
+      return element.querySelector?.("img, svg") || null;
+    }
+
+    function openTemplateIconPopover(sourceEvent, element) {
+      const iconHost = element;
+      const iconMedia = getTemplateIconMediaElement(element);
+      if (!iconHost || !iconMedia) {
+        return;
+      }
+
+      closePreviewEditPopover();
+      recordPreviewEditHistory({ scope: "template", sourceFrame: element?.ownerDocument?.defaultView?.frameElement });
+
+      const form = document.createElement("form");
+      form.className = "preview-edit-popover preview-edit-popover--svg";
+      form.setAttribute("role", "dialog");
+      form.setAttribute("aria-label", "Editar ícone");
+
+      const title = document.createElement("p");
+      title.className = "preview-edit-popover__title";
+      title.textContent = "Editar ícone";
+      form.appendChild(title);
+
+      const typeField = document.createElement("label");
+      typeField.className = "field";
+      typeField.innerHTML = "<span>Formato</span>";
+      const typeSelect = document.createElement("select");
+      typeSelect.innerHTML = `
+        <option value="image">Imagem ou URL</option>
+        <option value="svg">SVG</option>
+      `;
+      typeSelect.value = iconMedia.tagName === "SVG" ? "svg" : "image";
+      typeField.appendChild(typeSelect);
+      form.appendChild(typeField);
+
+      const createField = (label, control) => {
+        const field = document.createElement("label");
+        field.className = "field";
+        const text = document.createElement("span");
+        text.textContent = label;
+        field.append(text, control);
+        form.appendChild(field);
+        return field;
+      };
+
+      const imageUrl = document.createElement("input");
+      imageUrl.type = "text";
+      imageUrl.placeholder = "Cole uma URL hospedada ou caminho local";
+      imageUrl.value = iconMedia.tagName === "IMG" ? getTemplateMediaValue(iconMedia) : "";
+      const imageField = createField("URL da imagem", imageUrl);
+
+      const iconLabel = document.createElement("input");
+      iconLabel.type = "text";
+      iconLabel.value = iconMedia.tagName === "IMG"
+        ? (iconMedia.getAttribute("alt") || "")
+        : (iconMedia.getAttribute("aria-label") || iconMedia.getAttribute("title") || "");
+      createField("Rótulo acessível", iconLabel);
+
+      const svgMarkup = document.createElement("textarea");
+      svgMarkup.rows = 8;
+      svgMarkup.spellcheck = false;
+      svgMarkup.placeholder = '<svg viewBox="0 0 24 24" aria-label="Ícone">...</svg>';
+      svgMarkup.value = iconMedia.tagName === "SVG" ? iconMedia.outerHTML : "";
+      const svgField = createField("Código SVG", svgMarkup);
+
+      const note = document.createElement("p");
+      note.className = "muted-note";
+      note.textContent = "Use imagem para URL ou cole um SVG completo. Scripts e eventos inline são removidos antes de salvar.";
+      form.appendChild(note);
+
+      const actions = document.createElement("div");
+      actions.className = "preview-edit-popover__actions";
+      const closeButton = document.createElement("button");
+      closeButton.className = "button";
+      closeButton.type = "button";
+      closeButton.textContent = "Fechar";
+      actions.appendChild(closeButton);
+      form.appendChild(actions);
+
+      let currentElement = iconMedia;
+      let applyTimer = 0;
+      const setMode = () => {
+        const isSvg = typeSelect.value === "svg";
+        imageField.style.display = isSvg ? "none" : "";
+        svgField.style.display = isSvg ? "" : "none";
+      };
+
+      const applyImage = () => {
+        const value = normalizeAssetUrl(imageUrl.value);
+        imageUrl.value = value;
+        if (!value) {
+          return;
+        }
+
+        let nextElement = currentElement;
+        if (currentElement.tagName !== "IMG") {
+          nextElement = currentElement.ownerDocument.createElement("img");
+          copyTemplateIconIdentity(currentElement, nextElement);
+          currentElement.replaceWith(nextElement);
+        }
+        if (iconHost.classList?.contains("ll-carousel__dot-icon")) {
+          nextElement.classList.add("ll-carousel__dot-icon-img");
+        }
+        nextElement.setAttribute("src", value);
+        nextElement.setAttribute("alt", iconLabel.value);
+        nextElement.removeAttribute("srcset");
+        currentElement = nextElement;
+        attachTemplateIcon(currentElement);
+        syncTemplateHtmlFromPreview();
+      };
+
+      const applySvg = () => {
+        const nextElement = createSvgElementFromMarkup(currentElement.ownerDocument, svgMarkup.value);
+        if (!nextElement) {
+          return;
+        }
+
+        copyTemplateIconIdentity(currentElement, nextElement);
+        if (iconLabel.value.trim()) {
+          nextElement.setAttribute("aria-label", iconLabel.value.trim());
+          nextElement.setAttribute("role", "img");
+        }
+        currentElement.replaceWith(nextElement);
+        currentElement = nextElement;
+        attachTemplateIcon(currentElement);
+        syncTemplateHtmlFromPreview();
+      };
+
+      const applyCurrentMode = () => {
+        if (typeSelect.value === "svg") {
+          applySvg();
+        } else {
+          applyImage();
+        }
+      };
+
+      imageField.appendChild(createLocalAssetButton(imageUrl, applyImage, "image/*"));
+      typeSelect.addEventListener("change", setMode);
+      imageUrl.addEventListener("input", applyImage);
+      imageUrl.addEventListener("change", applyImage);
+      iconLabel.addEventListener("input", applyCurrentMode);
+      iconLabel.addEventListener("change", applyCurrentMode);
+      svgMarkup.addEventListener("input", () => {
+        window.clearTimeout(applyTimer);
+        applyTimer = window.setTimeout(applySvg, 260);
+      });
+      svgMarkup.addEventListener("change", applySvg);
+
+      form.addEventListener("submit", (event) => {
+        event.preventDefault();
+        applyCurrentMode();
+        closePreviewEditPopover();
+      });
+      closeButton.addEventListener("click", closePreviewEditPopover);
+
+      previewEditKeyHandler = (event) => {
+        if (event.key === "Escape") {
+          closePreviewEditPopover();
+        }
+      };
+      previewEditOutsideHandler = (event) => {
+        if (previewEditPopover && !previewEditPopover.contains(event.target)) {
+          closePreviewEditPopover();
+        }
+      };
+
+      document.body.appendChild(form);
+      previewEditPopover = form;
+      positionPreviewEditPopover(sourceEvent);
+      window.setTimeout(() => {
+        document.addEventListener("mousedown", previewEditOutsideHandler, true);
+        document.addEventListener("keydown", previewEditKeyHandler, true);
+      }, 0);
+      setMode();
+      (typeSelect.value === "svg" ? svgMarkup : imageUrl).focus();
+    }
+
+    function updateTemplatePreviewEditValue(meta, rawValue, normalizedValue, options = {}) {
+      const element = getTemplatePreviewNode(meta, options.sourceElement);
       if (!element) {
         return;
       }
@@ -2108,7 +4010,11 @@ ${containerHtml}`;
         ["color", "fontSize", "fontWeight", "fontStyle", "textAlign", "lineHeight"].forEach((property) => {
           element.style[property] = "";
         });
+        if (meta.allowBackgroundStyle || style.backgroundColor) {
+          element.style.backgroundColor = "";
+        }
         if (style.color) element.style.color = style.color;
+        if (style.backgroundColor) element.style.backgroundColor = style.backgroundColor;
         if (style.fontSize) element.style.fontSize = `${style.fontSize}px`;
         if (style.fontWeight) element.style.fontWeight = style.fontWeight;
         if (style.fontStyle) element.style.fontStyle = style.fontStyle;
@@ -2119,13 +4025,21 @@ ${containerHtml}`;
       } else if (meta.type === "color") {
         const computed = element.ownerDocument.defaultView.getComputedStyle(element);
         const backgroundImage = computed.backgroundImage || "";
-        if (backgroundImage && backgroundImage !== "none" && !/url\(/i.test(backgroundImage)) {
-          element.style.backgroundImage = "none";
+        if (/gradient\(/i.test(normalizedValue)) {
+          element.style.backgroundImage = normalizedValue;
+          element.style.backgroundColor = "";
+        } else {
+          if (backgroundImage && backgroundImage !== "none" && !/url\(/i.test(backgroundImage)) {
+            element.style.backgroundImage = "none";
+          }
+          element.style.backgroundColor = normalizedValue;
         }
-        element.style.backgroundColor = normalizedValue;
       }
 
-      syncTemplateHtmlFromPreview();
+      syncTemplateHtmlFromPreview({
+        ...options,
+        sourceFrame: meta?.sourceFrame || options.sourceFrame
+      });
     }
 
     function updateInlinePreviewTextValue(meta, element, rawValue, options = {}) {
@@ -2133,7 +4047,10 @@ ${containerHtml}`;
       const value = normalizePreviewText(rawValue, multiline);
 
       if (meta.scope === "template") {
-        syncTemplateHtmlFromPreview();
+        syncTemplateHtmlFromPreview({
+          ...(options.commit ? {} : { skipPreviewUpdate: true }),
+          sourceFrame: meta?.sourceFrame || element?.ownerDocument?.defaultView?.frameElement
+        });
         return value;
       }
 
@@ -2230,6 +4147,28 @@ ${containerHtml}`;
 
     function readPreviewEditValue(meta) {
       if (meta.scope === "template") {
+        if (meta.type === "textStyle") {
+          const element = getTemplatePreviewNode(meta);
+          if (element) {
+            return element.innerText || element.textContent || meta.value || "";
+          }
+        }
+
+        if (meta.type === "color") {
+          const element = getTemplatePreviewNode(meta);
+          if (element) {
+            const computed = element.ownerDocument.defaultView.getComputedStyle(element);
+            const backgroundImage = element.style.backgroundImage || computed.backgroundImage || "";
+            if (backgroundImage && backgroundImage !== "none" && !/url\(/i.test(backgroundImage)) {
+              return backgroundImage;
+            }
+
+            if (!isTransparentColor(computed.backgroundColor)) {
+              return colorToHex(computed.backgroundColor || "#ffffff", "#ffffff");
+            }
+          }
+        }
+
         return meta.value || "";
       }
 
@@ -2245,6 +4184,10 @@ ${containerHtml}`;
 
         if (meta.type === "color") {
           const computed = element.ownerDocument.defaultView.getComputedStyle(element);
+          const backgroundImage = element.style.backgroundImage || computed.backgroundImage || "";
+          if (backgroundImage && backgroundImage !== "none" && !/url\(/i.test(backgroundImage)) {
+            return backgroundImage;
+          }
           return colorToHex(computed.backgroundColor || "#ffffff", "#ffffff");
         }
 
@@ -2311,6 +4254,14 @@ ${containerHtml}`;
 
       if (meta.scope === "carousel") {
         if (meta.slideIndex === undefined) {
+          if (meta.field === "softColor" && state.carousel.sectionGradientEnabled !== false) {
+            return buildCssGradient(
+              state.carousel.sectionGradientStart || "#ffffff",
+              state.carousel.sectionGradientEnd || state.carousel.softColor || "#f3f6fb",
+              180
+            );
+          }
+
           return state.carousel[meta.field] || "";
         }
 
@@ -2323,13 +4274,21 @@ ${containerHtml}`;
           return slide.navNumber || String(Number(meta.slideIndex) + 1).padStart(2, "0");
         }
 
+        if (meta.field === "backgroundColor" && normalizeCarouselType(slide.type) === "impact" && slide.gradientEnabled !== false && !parseCssGradient(slide.backgroundColor)) {
+          return buildCssGradient(
+            slide.backgroundColor || "#f16425",
+            slide.gradientEndColor || slide.backgroundColor || "#ff8a4f",
+            normalizeCarouselGradientAngle(slide.gradientAngle)
+          );
+        }
+
         return slide[meta.field] || "";
       }
 
       return "";
     }
 
-    function updatePreviewEditValue(meta, rawValue) {
+    function updatePreviewEditValue(meta, rawValue, options = {}) {
       const isColor = meta.type === "color";
       const isTextStyle = meta.type === "textStyle";
       const isMedia = meta.type === "media";
@@ -2342,7 +4301,7 @@ ${containerHtml}`;
             : String(rawValue || "");
 
       if (meta.scope === "template") {
-        updateTemplatePreviewEditValue(meta, rawValue, value);
+        updateTemplatePreviewEditValue(meta, rawValue, value, options);
         return;
       }
 
@@ -2425,10 +4384,21 @@ ${containerHtml}`;
       if (meta.scope === "carousel") {
         if (meta.slideIndex === undefined) {
           state.carousel[meta.field] = value;
+          if (meta.field === "softColor") {
+            state.carousel.sectionGradientEnabled = false;
+          }
         } else {
           const slide = state.carousel.slides[meta.slideIndex];
           if (slide) {
             slide[meta.field] = value;
+            if (meta.field === "backgroundColor" && normalizeCarouselType(slide.type) === "impact") {
+              const gradient = parseCssGradient(value);
+              slide.gradientEnabled = Boolean(gradient);
+              if (gradient) {
+                slide.gradientEndColor = gradient.end;
+                slide.gradientAngle = gradient.angle;
+              }
+            }
             state.carousel.openSlideIndex = meta.slideIndex;
             setCarouselPreviewSlide(meta.slideIndex);
           }
@@ -2438,11 +4408,47 @@ ${containerHtml}`;
       renderEditor(true);
     }
 
-    function setupPreviewEditing() {
-      const doc = previewFrame.contentDocument;
+    function setupPreviewEditing(frame = previewFrame) {
+      const doc = getPreviewDocument(frame);
       if (!doc) {
         return;
       }
+
+      if ((frame?.ownerDocument || document).documentElement.dataset.page !== "conteudo") {
+        return;
+      }
+
+      // O board preserva o documento do iframe e troca apenas o body. Quando isso
+      // acontece, os elementos novos precisam receber os bindings de edicao de novo.
+      if (doc.documentElement.dataset.llPreviewEditingReady === "true") {
+        doc.defaultView?.__llPreviewEditingRefresh?.();
+        return;
+      }
+      doc.documentElement.dataset.llPreviewEditingReady = "true";
+
+      const rememberTemplatePreviewSource = () => {
+        if (frame?.isConnected && frame.contentDocument === doc) {
+          templatePreviewSourceFrame = frame;
+        }
+      };
+      doc.addEventListener("pointerdown", rememberTemplatePreviewSource, true);
+      doc.addEventListener("pointerdown", (event) => {
+        if (event.button !== 0) {
+          return;
+        }
+        // Pointerdown runs before labels, radios and other preview controls
+        // change the DOM. Stage this checkpoint so every direct preview edit
+        // has an undo point, even when it does not open a popover.
+        stagePreviewEditHistory({ scope: "template", sourceFrame: frame }, frame);
+      }, true);
+      doc.addEventListener("focusin", rememberTemplatePreviewSource, true);
+      doc.addEventListener("keydown", rememberTemplatePreviewSource, true);
+      doc.addEventListener("keydown", (event) => {
+        // Atalhos digitados em um iframe nao chegam ao documento principal.
+        // Trate-os aqui para que Ctrl+Z tambem restaure o estado salvo pelo
+        // FrameWork, e nao somente o texto visual do contenteditable.
+        handlePreviewEditHistoryShortcut(event, { insidePreview: true });
+      }, true);
 
       const previewScrollbarOutline = document.documentElement.dataset.theme === "dark"
         ? "rgba(255, 255, 255, 0.72)"
@@ -2480,6 +4486,181 @@ ${containerHtml}`;
         *::-webkit-scrollbar-corner {
           background: transparent;
         }
+      `;
+      doc.head.appendChild(style);
+      doc.querySelectorAll("[data-ll-preview-text-bound]").forEach((element) => {
+        delete element.dataset.llPreviewTextBound;
+      });
+
+      const previewTextEditors = new WeakSet();
+      const previewTextMeta = new WeakMap();
+      let boardFrameSpaceDown = false;
+      let boardFramePanPointer = null;
+      let boardFramePanLastPoint = null;
+
+      const isPreviewTypingTarget = (target) => Boolean(
+        target?.isContentEditable
+        || target?.closest?.("input, textarea, select, [contenteditable='true'], [contenteditable='plaintext-only']")
+      );
+
+      const getBoardFrame = () => doc.defaultView?.frameElement || null;
+      const postBoardFrameEvent = (type, event, movement = {}) => {
+        const frame = getBoardFrame();
+        if (!frame?.dataset?.llBoardInteractionScale) {
+          return;
+        }
+        doc.defaultView?.parent?.postMessage({
+          type,
+          key: frame.dataset.llBoardActiveDevice || "",
+          dx: Number(movement.dx) || 0,
+          dy: Number(movement.dy) || 0,
+          pointerId: event.pointerId
+        }, "*");
+      };
+
+      doc.defaultView?.addEventListener("message", (event) => {
+        if (event.data?.type === "layout-lab:board-space") {
+          boardFrameSpaceDown = Boolean(event.data.down);
+        }
+      });
+
+      doc.addEventListener("keydown", (event) => {
+        if (event.code === "Space" && getBoardFrame()?.dataset?.llBoardInteractionScale && !isPreviewTypingTarget(event.target)) {
+          boardFrameSpaceDown = true;
+          event.preventDefault();
+        }
+      }, true);
+
+      doc.addEventListener("keyup", (event) => {
+        if (event.code === "Space") {
+          boardFrameSpaceDown = false;
+        }
+      }, true);
+
+      doc.addEventListener("pointerdown", (event) => {
+        if (!getBoardFrame()?.dataset?.llBoardInteractionScale || (event.button !== 1 && !boardFrameSpaceDown)) {
+          return;
+        }
+        boardFramePanPointer = event.pointerId;
+        boardFramePanLastPoint = { x: event.clientX, y: event.clientY };
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        event.target.setPointerCapture?.(event.pointerId);
+        postBoardFrameEvent("layout-lab:board-frame-pan-start", event);
+      }, true);
+
+      doc.addEventListener("pointermove", (event) => {
+        if (event.pointerId !== boardFramePanPointer) {
+          return;
+        }
+        const previousPoint = boardFramePanLastPoint || { x: event.clientX, y: event.clientY };
+        boardFramePanLastPoint = { x: event.clientX, y: event.clientY };
+        event.preventDefault();
+        postBoardFrameEvent("layout-lab:board-frame-pan-move", event, {
+          dx: event.clientX - previousPoint.x,
+          dy: event.clientY - previousPoint.y
+        });
+      }, true);
+
+      const endBoardFramePan = (event) => {
+        if (event.pointerId !== boardFramePanPointer) {
+          return;
+        }
+        postBoardFrameEvent("layout-lab:board-frame-pan-end", event);
+        boardFramePanPointer = null;
+        boardFramePanLastPoint = null;
+      };
+      doc.addEventListener("pointerup", endBoardFramePan, true);
+      doc.addEventListener("pointercancel", endBoardFramePan, true);
+
+      doc.addEventListener("wheel", (event) => {
+        if (!event.ctrlKey && !event.metaKey) {
+          return;
+        }
+
+        const frame = doc.defaultView?.frameElement;
+        if (!frame?.dataset?.llBoardInteractionScale) {
+          return;
+        }
+
+        event.preventDefault();
+        doc.defaultView?.parent?.postMessage({
+          type: "layout-lab:board-frame-zoom",
+          key: frame.dataset.llBoardActiveDevice || "",
+          deltaY: event.deltaY
+        }, "*");
+      }, { capture: true, passive: false });
+
+      const getPreviewTextTarget = (event) => {
+        const frameScale = Number(doc.defaultView?.frameElement?.dataset?.llBoardInteractionScale) || 1;
+        const pointX = frameScale < 1 ? event.clientX / frameScale : event.clientX;
+        const pointY = frameScale < 1 ? event.clientY / frameScale : event.clientY;
+
+        if (frameScale < 1 && typeof doc.elementsFromPoint === "function") {
+          const scaledTarget = doc.elementsFromPoint(pointX, pointY)
+            .map((element) => element?.closest?.("[data-ll-preview-text]"))
+            .find(Boolean);
+          if (scaledTarget) {
+            return scaledTarget;
+          }
+        }
+
+        const directTarget = event.target?.closest?.("[data-ll-preview-text]");
+        if (directTarget) {
+          return directTarget;
+        }
+
+        if (typeof doc.elementsFromPoint !== "function") {
+          return null;
+        }
+
+        return doc.elementsFromPoint(pointX, pointY)
+          .map((element) => element?.closest?.("[data-ll-preview-text]"))
+          .find(Boolean) || null;
+      };
+
+      doc.addEventListener("click", (event) => {
+        const element = getPreviewTextTarget(event);
+        if (!element || element.isContentEditable) {
+          return;
+        }
+
+        // O clique simples em textos de uma opcao deve continuar chegando ao radio/checkbox.
+        const optionLabel = element.closest?.("label");
+        const optionControl = getControlledInput(optionLabel);
+        if (optionControl?.matches?.('input[type="radio"], input[type="checkbox"]')) {
+          return;
+        }
+
+        const config = previewTextMeta.get(element) || (element.dataset.llTemplateNode
+          ? {
+              meta: {
+                scope: "template",
+                field: "text",
+                templateNodeId: element.dataset.llTemplateNode,
+                value: element.innerText || element.textContent || ""
+              },
+              multiline: isTemplateMultilineText(element),
+              triggerEvent: "click"
+            }
+          : null);
+        if (!config || config.triggerEvent === "dblclick" || config.disableSingleClickPopover) {
+          return;
+        }
+
+        event.preventDefault();
+        event.stopPropagation();
+        event.stopImmediatePropagation();
+        openPreviewEditPopover(event, { ...config.meta, type: "textStyle" }, {
+          kind: "text-style",
+          label: "Editar texto",
+          multiline: config.multiline,
+          sourceElement: element
+        });
+      }, true);
+
+      const editStyle = doc.createElement("style");
+      editStyle.textContent = `
         [data-ll-preview-text],
         [data-ll-preview-media],
         [data-ll-preview-color],
@@ -2544,7 +4725,7 @@ ${containerHtml}`;
         }
         .lp-stories__nav {
           z-index: 38 !important;
-          pointer-events: none !important;
+          pointer-events: auto !important;
         }
         .lp-stories__arrow {
           pointer-events: auto !important;
@@ -2561,12 +4742,10 @@ ${containerHtml}`;
         .lp-stories[data-ll-preview-manual-story] .lp-stories__panel[data-ll-preview-story-active] {
           display: block !important;
         }
-        [data-ll-preview-manual-story] [class*="story" i][class*="panel" i],
-        [data-ll-preview-manual-story] [class*="stories" i][class*="panel" i] {
+        [data-ll-preview-manual-story] [data-ll-preview-story-panel] {
           display: none !important;
         }
-        [data-ll-preview-manual-story] [class*="story" i][class*="panel" i][data-ll-preview-story-active],
-        [data-ll-preview-manual-story] [class*="stories" i][class*="panel" i][data-ll-preview-story-active] {
+        [data-ll-preview-manual-story] [data-ll-preview-story-panel][data-ll-preview-story-active] {
           display: block !important;
         }
         .lp-stories [data-ll-preview-story-current] .lp-stories__ring,
@@ -2580,6 +4759,48 @@ ${containerHtml}`;
         }
         .ll-bento__image-button {
           pointer-events: none !important;
+        }
+        [data-ll-table-edit-root] {
+          position: relative !important;
+        }
+        [data-ll-table-helper-button] {
+          position: absolute;
+          z-index: 2147482600;
+          width: 26px;
+          height: 26px;
+          border: 1px solid rgba(255, 255, 255, 0.82);
+          border-radius: 8px;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          padding: 0;
+          background: rgba(234, 91, 12, 0.92);
+          color: #fff;
+          font: 800 17px/1 Arial, sans-serif;
+          cursor: pointer;
+          opacity: 0;
+          pointer-events: none;
+          transform: scale(0.92);
+          box-shadow: 0 10px 20px rgba(15, 23, 42, 0.18);
+          transition: opacity 0.14s ease, transform 0.14s ease, background 0.14s ease;
+        }
+        [data-ll-table-edit-root]:hover > [data-ll-table-helper-button],
+        [data-ll-table-edit-root]:focus-within > [data-ll-table-helper-button] {
+          opacity: 1;
+          pointer-events: auto;
+          transform: scale(1);
+        }
+        [data-ll-table-helper-button]:hover {
+          background: #f97316;
+          transform: scale(1.08);
+        }
+        [data-ll-table-add-column] {
+          top: 8px;
+          right: 8px;
+        }
+        [data-ll-table-add-row] {
+          left: 8px;
+          bottom: 8px;
         }
         [data-ll-template-iframe-parent] {
           position: relative !important;
@@ -2599,7 +4820,7 @@ ${containerHtml}`;
           box-shadow: 0 0 0 4px rgba(14, 165, 233, 0.12);
         }
       `;
-      doc.head.appendChild(style);
+      doc.head.appendChild(editStyle);
       doc.addEventListener("mousedown", (event) => {
         if (!event.target.closest("[data-ll-preview-text], [data-ll-preview-media], [data-ll-preview-color], [data-ll-preview-position]")) {
           closePreviewEditPopover();
@@ -2627,11 +4848,16 @@ ${containerHtml}`;
         const acceptsSvg = /svg/i.test(label);
         const isVideoEditor = /vídeo|video|youtube/i.test(label);
         const isPosterEditor = /poster/i.test(label);
-        openPreviewEditPopover(event, { ...meta, type: "media" }, {
+        openPreviewEditPopover(event, {
+          ...meta,
+          sourceFrame: meta?.sourceFrame || element?.ownerDocument?.defaultView?.frameElement || frame,
+          type: "media"
+        }, {
           inputType: "text",
           label,
           multiline: acceptsSvg,
           rows: 5,
+          sourceElement: element,
           accept: isPosterEditor ? "image/*" : isVideoEditor ? "video/*,image/*" : "image/*,video/*",
           placeholder: acceptsSvg ? "Cole uma URL .svg/.webp, caminho local ou o código <svg>...</svg>" : "Cole URL hospedada ou caminho local, ex.: C:\\Users\\nome\\Downloads\\imagem.webp"
         });
@@ -2642,16 +4868,28 @@ ${containerHtml}`;
           return;
         }
 
-        if (element.dataset.llPreviewText === "true") {
+        if (previewTextEditors.has(element)) {
           return;
         }
 
+        const sourceMeta = { ...meta, sourceFrame: frame };
         const multiline = Boolean(options.multiline);
         element.dataset.llPreviewText = "true";
-        element.setAttribute("title", "Clique para editar texto e estilo. Dê dois cliques para editar só o texto.");
+        previewTextEditors.add(element);
+        previewTextMeta.set(element, {
+          meta: sourceMeta,
+          multiline,
+          triggerEvent: options.triggerEvent || "click",
+          disableSingleClickPopover: Boolean(options.disableSingleClickPopover)
+        });
+        const requiresCtrlClick = Boolean(options.ctrlClickOpensEditor || options.ctrlDoubleClick);
+        element.setAttribute("title", requiresCtrlClick
+          ? "Clique para interagir. Use Ctrl + clique para editar o texto."
+          : "Clique para editar texto e estilo. Dê dois cliques para editar só o texto.");
 
         let singleClickTimer = 0;
         let originalInlineText = "";
+        let inlineHistoryRecorded = false;
         const focusEditableText = () => {
           const selection = doc.defaultView.getSelection();
           const range = doc.createRange();
@@ -2665,11 +4903,22 @@ ${containerHtml}`;
             return;
           }
 
-          const normalizedValue = updateInlinePreviewTextValue(meta, element, element.innerText, { multiline });
-          element.textContent = normalizedValue;
+          const nextRawValue = element.innerText || element.textContent || "";
+          const normalizedValue = normalizePreviewText(nextRawValue, multiline);
+          const originalValue = normalizePreviewText(originalInlineText, multiline);
+          // contenteditable can normalize whitespace as soon as it receives
+          // focus. Do not serialize that browser-only change when the person
+          // has not actually edited the text.
+          if (normalizedValue !== originalValue) {
+            updateInlinePreviewTextValue(sourceMeta, element, nextRawValue, { multiline, commit: true });
+            element.textContent = normalizedValue;
+          } else {
+            element.textContent = originalInlineText;
+          }
           element.removeAttribute("contenteditable");
           element.removeAttribute("spellcheck");
           delete element.dataset.llPreviewInline;
+          inlineHistoryRecorded = false;
         };
 
         const startInlineTextEdit = (event) => {
@@ -2678,6 +4927,7 @@ ${containerHtml}`;
           window.clearTimeout(singleClickTimer);
           closePreviewEditPopover();
           originalInlineText = element.innerText || element.textContent || "";
+          inlineHistoryRecorded = false;
           element.dataset.llPreviewInline = "true";
           element.setAttribute("contenteditable", "plaintext-only");
           element.setAttribute("spellcheck", "false");
@@ -2686,6 +4936,24 @@ ${containerHtml}`;
         };
 
         element.addEventListener("click", (event) => {
+          if (requiresCtrlClick && (event.ctrlKey || event.metaKey)) {
+            startInlineTextEdit(event);
+            return;
+          }
+          if (options.triggerEvent === "dblclick") {
+            if (element.isContentEditable) {
+              event.stopPropagation();
+            }
+            return;
+          }
+
+          if (options.disableSingleClickPopover) {
+            if (element.isContentEditable) {
+              event.stopPropagation();
+            }
+            return;
+          }
+
           if (element.isContentEditable) {
             event.stopPropagation();
             return;
@@ -2693,23 +4961,38 @@ ${containerHtml}`;
 
           event.preventDefault();
           event.stopPropagation();
+          event.stopImmediatePropagation();
           window.clearTimeout(singleClickTimer);
           singleClickTimer = window.setTimeout(() => {
-            if (options.faqColorTarget?.faqRoot && options.faqColorTarget?.summary) {
-              openTemplateFaqStylePopover(event, options.faqColorTarget.faqRoot, options.faqColorTarget.summary);
-              return;
-            }
-
-            openPreviewEditPopover(event, { ...meta, type: "textStyle" }, {
+            openPreviewEditPopover(event, { ...sourceMeta, type: "textStyle" }, {
               kind: "text-style",
               label: "Editar texto",
               multiline,
               sourceElement: element
             });
           }, 210);
-        });
+        }, true);
 
-        element.addEventListener("dblclick", startInlineTextEdit);
+        element.addEventListener("dblclick", (event) => {
+          if (requiresCtrlClick) {
+            return;
+          }
+          if (options.doubleClickOpensPopover) {
+            event.preventDefault();
+            event.stopImmediatePropagation();
+            window.clearTimeout(singleClickTimer);
+            openPreviewEditPopover(event, { ...sourceMeta, type: "textStyle" }, {
+              kind: "text-style",
+              label: "Editar texto",
+              multiline,
+              sourceElement: element
+            });
+            return;
+          }
+
+          event.stopImmediatePropagation();
+          startInlineTextEdit(event);
+        }, true);
 
         element.addEventListener("keydown", (event) => {
           if (!element.isContentEditable) {
@@ -2734,7 +5017,11 @@ ${containerHtml}`;
             return;
           }
 
-          updateInlinePreviewTextValue(meta, element, element.innerText, { multiline });
+          if (!inlineHistoryRecorded) {
+            recordPreviewEditHistory(sourceMeta, frame);
+            inlineHistoryRecorded = true;
+          }
+          updateInlinePreviewTextValue(sourceMeta, element, element.innerText, { multiline });
         });
 
         element.addEventListener("blur", finishInlineTextEdit);
@@ -2778,6 +5065,8 @@ ${containerHtml}`;
         }
 
         const multiline = Boolean(options.multiline);
+        const sourceMeta = { ...meta, sourceFrame: frame };
+        let inlineHistoryRecorded = false;
         element.dataset.llPreviewText = "true";
         element.dataset.llPreviewInline = "true";
         element.setAttribute("contenteditable", "plaintext-only");
@@ -2792,6 +5081,10 @@ ${containerHtml}`;
         });
 
         element.addEventListener("input", () => {
+          if (!inlineHistoryRecorded) {
+            recordPreviewEditHistory(sourceMeta, frame);
+            inlineHistoryRecorded = true;
+          }
           syncTablePreviewField(meta, element.innerText, { multiline });
         });
 
@@ -2801,6 +5094,7 @@ ${containerHtml}`;
             syncTablePreviewField(meta, element.innerText, { multiline });
           }
           element.textContent = normalizedValue;
+          inlineHistoryRecorded = false;
         });
       };
 
@@ -2810,6 +5104,24 @@ ${containerHtml}`;
         }
 
         const targetId = label.getAttribute("for");
+        const nestedControl = label.querySelector?.('input[type="radio"], input[type="checkbox"]');
+        if (nestedControl) {
+          return nestedControl;
+        }
+
+        // Some imported sections reuse an old `section-8-*` id in newer
+        // section-28 cards. `label.control` then resolves to the first id in
+        // the document, which can belong to another card/section. Prefer the
+        // matching radio or checkbox beside this label before consulting the
+        // document-wide association.
+        if (targetId) {
+          const localControl = Array.from(label.parentElement?.querySelectorAll?.('input[type="radio"], input[type="checkbox"]') || [])
+            .find((candidate) => candidate.id === targetId);
+          if (localControl) {
+            return localControl;
+          }
+        }
+
         return label.control || (targetId ? doc.getElementById(targetId) : null);
       };
 
@@ -2841,54 +5153,76 @@ ${containerHtml}`;
       };
 
       const isRadioToggleLabel = (element) => {
-        const label = element?.closest?.("label[for]");
+        const label = element?.closest?.("label");
         const control = getControlledInput(label);
         return Boolean(control?.matches?.('input[type="radio"], input[type="checkbox"]'));
       };
 
+      const getTemplateElementsAtPoint = (event) => {
+        if (typeof doc.elementsFromPoint !== "function") {
+          return [];
+        }
+
+        const frameScale = Number(doc.defaultView?.frameElement?.dataset?.llBoardInteractionScale) || 1;
+        const pointX = frameScale < 1 ? event.clientX / frameScale : event.clientX;
+        const pointY = frameScale < 1 ? event.clientY / frameScale : event.clientY;
+        return doc.elementsFromPoint(pointX, pointY);
+      };
+
       const findTemplateLabelAtPoint = (event, root) => {
-        const directLabel = event.target?.closest?.("label[for]");
+        // O alvo nativo do evento permanece correto mesmo quando o iframe do
+        // board esta reduzido. So consultar coordenadas quando o clique nao
+        // nasceu dentro de um label, evitando selecionar a opcao vizinha.
+        const directLabel = event.target?.closest?.("label");
         if (directLabel && root.contains(directLabel)) {
           return directLabel;
         }
 
-        if (typeof doc.elementsFromPoint !== "function") {
-          return null;
-        }
-
-        const stack = doc.elementsFromPoint(event.clientX, event.clientY);
-        for (const element of stack) {
-          const label = element?.closest?.("label[for]");
-          if (label && root.contains(label)) {
-            return label;
-          }
+        const pointLabel = getTemplateElementsAtPoint(event)
+          .map((element) => element?.closest?.("label"))
+          .find((label) => label && root.contains(label));
+        if (pointLabel) {
+          return pointLabel;
         }
 
         return null;
       };
 
       const isStoryLabelText = (element) => {
-        return Boolean(element?.closest?.("label[for]") && isTemplateStoryLike(element));
+        return Boolean(element?.closest?.("label") && isTemplateStoryLike(element));
       };
 
       const isTemplateInteractiveControl = (element) => {
-        return Boolean(element?.closest?.('a[href], button, label[for], input, textarea, select, summary, [role="button"], [role="tab"], [role="link"], .lp-stories__options, .lp-stories__nav, .ll-carousel__nav'));
+        return Boolean(element?.closest?.('a[href], button, label, input, textarea, select, summary, [role="button"], [role="tab"], [role="link"], .lp-stories__options, .lp-stories__nav, .ll-carousel__nav'));
       };
 
       const isEditableStoryText = (element) => {
         return Boolean(isTemplateStoryLike(element) && element.matches?.(".lp-stories__name, .lp-stories__title, .lp-stories__caption, [class*='story' i] [class*='name' i], [class*='story' i] [class*='title' i], [class*='story' i] [class*='caption' i], [class*='stories' i] [class*='name' i], [class*='stories' i] [class*='title' i], [class*='stories' i] [class*='caption' i]"));
       };
 
-      const attachMedia = (element, meta, label = "URL da mídia") => {
+      const attachMedia = (element, meta, label = "URL da mídia", options = {}) => {
         if (!element) {
           return;
         }
 
         element.dataset.llPreviewMedia = "true";
         const shouldPreserveClick = meta.scope === "template" && isTemplateInteractiveControl(element);
-        const triggerEvent = shouldPreserveClick ? "dblclick" : "click";
-        element.setAttribute("title", triggerEvent === "dblclick" ? `Dê dois cliques para trocar ${label}.` : `Clique para trocar ${label}.`);
+        const requiresCtrlClick = Boolean(options.ctrlClickOpensEditor || shouldPreserveClick);
+        const triggerEvent = options.triggerEvent || (requiresCtrlClick ? "click" : (meta.scope === "template" ? "dblclick" : "click"));
+        element.setAttribute("title", triggerEvent === "dblclick"
+          ? `Dê dois cliques para trocar ${label}.`
+          : `${requiresCtrlClick ? "Use Ctrl + clique" : "Clique"} para trocar ${label}.`);
         element.addEventListener(triggerEvent, (event) => {
+          if (requiresCtrlClick && !event.ctrlKey && !event.metaKey) {
+            return;
+          }
+          if (requiresCtrlClick) {
+            event.preventDefault();
+            event.stopPropagation();
+            event.stopImmediatePropagation();
+            openMediaEditor(event, element, meta, label);
+            return;
+          }
           if (element.dataset.llPreviewColor) {
             window.clearTimeout(element.__llPreviewMediaTimer);
             element.__llPreviewMediaTimer = window.setTimeout(() => {
@@ -2910,7 +5244,7 @@ ${containerHtml}`;
         }
 
         element.dataset.llPreviewMedia = "true";
-        element.setAttribute("title", `Clique para trocar ${label}.`);
+        element.setAttribute("title", `Dê dois cliques para trocar ${label}.`);
 
         const parent = element.parentElement;
         parent.dataset.llTemplateIframeParent = "true";
@@ -2921,28 +5255,35 @@ ${containerHtml}`;
         overlay.dataset.llTemplateHelper = "true";
         overlay.dataset.llPreviewMedia = "true";
         overlay.setAttribute("aria-label", `Editar ${label}`);
-        overlay.setAttribute("title", `Clique para trocar ${label}.`);
+        overlay.setAttribute("title", `Dê dois cliques para trocar ${label}.`);
         overlay.style.left = `${element.offsetLeft}px`;
         overlay.style.top = `${element.offsetTop}px`;
         overlay.style.width = `${element.offsetWidth || element.getBoundingClientRect().width}px`;
         overlay.style.height = `${element.offsetHeight || element.getBoundingClientRect().height}px`;
-        overlay.addEventListener("click", (event) => {
+        overlay.addEventListener("dblclick", (event) => {
           openMediaEditor(event, element, meta, label);
         });
         element.insertAdjacentElement("afterend", overlay);
       };
 
-      const attachTemplateSvg = (element) => {
-        if (!element) {
+      const attachTemplateIcon = (element) => {
+        const iconMedia = getTemplateIconMediaElement(element);
+        if (!element || !iconMedia || element.dataset.llPreviewIcon === "true") {
           return;
         }
 
         element.dataset.llPreviewMedia = "true";
-        element.setAttribute("title", "Duplo clique para editar SVG.");
-        element.addEventListener("dblclick", (event) => {
+        element.dataset.llPreviewIcon = "true";
+        iconMedia.dataset.llPreviewMedia = "true";
+        iconMedia.dataset.llPreviewIcon = "true";
+        element.setAttribute("title", "Use Ctrl + clique para editar o ícone.");
+        element.addEventListener("click", (event) => {
+          if (!event.ctrlKey && !event.metaKey) {
+            return;
+          }
           event.preventDefault();
-          event.stopPropagation();
-          openTemplateSvgPopover(event, element);
+          event.stopImmediatePropagation();
+          openTemplateIconPopover(event, element);
         });
       };
 
@@ -2951,10 +5292,20 @@ ${containerHtml}`;
           return;
         }
 
+        const sourceMeta = { ...meta, sourceFrame: frame };
         const triggerEvent = options.triggerEvent || (/fundo|prote[cç][aã]o|borda|se[cç][aã]o|m[ií]dia/i.test(label) ? "click" : "dblclick");
         element.dataset.llPreviewColor = "true";
         element.setAttribute("title", triggerEvent === "click" ? `Clique para editar ${label}.` : `Duplo clique para editar ${label}.`);
         element.addEventListener(triggerEvent, (event) => {
+          if (event.target.closest?.("[data-ll-template-faq-details], [data-ll-template-faq-root]")) {
+            return;
+          }
+
+          const interactiveTarget = event.target.closest('a[href], button, label[for], input, textarea, select, summary, [role="button"], [role="tab"], [role="link"], .ll-carousel__nav');
+          if (interactiveTarget && interactiveTarget !== element) {
+            return;
+          }
+
           const allowColorOnMedia = Boolean(options.allowOnMedia);
           if (element.dataset.llPreviewMedia && !allowColorOnMedia) {
             return;
@@ -2989,11 +5340,1410 @@ ${containerHtml}`;
           element.__llPreviewSkipMedia = true;
           window.clearTimeout(element.__llPreviewMediaTimer);
 
-          openPreviewEditPopover(event, { ...meta, type: "color" }, {
+          openPreviewEditPopover(event, { ...sourceMeta, type: "color" }, {
             ...options,
             kind: "color",
-            label
+            label,
+            sourceElement: element
           });
+        });
+      };
+
+      const templateBorderEditors = new WeakSet();
+
+      const attachTemplateBorderEditor = (element) => {
+        if (!element || element.closest?.("[data-ll-template-faq-details], [data-ll-template-faq-root]") || templateBorderEditors.has(element) || element.matches?.("img, picture, video, source, iframe, svg, path, input, textarea, select, button, a, label, summary, [contenteditable='true']")) {
+          return;
+        }
+
+        const getBorderSides = () => {
+          const styles = element.ownerDocument?.defaultView?.getComputedStyle(element);
+          if (!styles) {
+            return [];
+          }
+
+          return ["top", "right", "bottom", "left"].filter((side) => {
+            const style = String(styles.getPropertyValue(`border-${side}-style`) || "").trim();
+            const width = Number.parseFloat(styles.getPropertyValue(`border-${side}-width`));
+            return style !== "none" && style !== "hidden" && Number.isFinite(width) && width > 0;
+          });
+        };
+
+        if (!getBorderSides().length) {
+          return;
+        }
+
+        templateBorderEditors.add(element);
+        element.addEventListener("click", (event) => {
+          if (event.button !== 0 || event.defaultPrevented) {
+            return;
+          }
+
+          const borderSides = getBorderSides();
+          if (!borderSides.length) {
+            return;
+          }
+
+          const styles = element.ownerDocument?.defaultView?.getComputedStyle(element);
+          const rect = element.getBoundingClientRect();
+          const isBorderHit = borderSides.some((side) => {
+            const width = Number.parseFloat(styles?.getPropertyValue(`border-${side}-width`)) || 1;
+            const hitArea = Math.max(6, Math.min(18, width + 7));
+
+            if (side === "top") {
+              return event.clientY <= rect.top + hitArea;
+            }
+            if (side === "right") {
+              return event.clientX >= rect.right - hitArea;
+            }
+            if (side === "bottom") {
+              return event.clientY >= rect.bottom - hitArea;
+            }
+            return event.clientX <= rect.left + hitArea;
+          });
+
+          if (!isBorderHit) {
+            return;
+          }
+
+          const interactiveTarget = event.target.closest?.("a[href], button, label[for], input, textarea, select, summary, [role='button'], [role='tab'], [role='link'], .ll-carousel__nav");
+          if (interactiveTarget && interactiveTarget !== element) {
+            return;
+          }
+
+          event.preventDefault();
+          event.stopPropagation();
+          event.stopImmediatePropagation();
+          openPreviewEditPopover(event, { scope: "template", field: "border", type: "border" }, {
+            kind: "border",
+            label: "Editar borda",
+            sourceElement: element,
+            borderSides
+          });
+        }, true);
+      };
+
+      const templateOptionCardEditors = new WeakSet();
+
+      const isTemplateOptionCard = (element, root) => {
+        if (!element || !root?.contains(element) || element.matches?.("input, textarea, select, option")) {
+          return false;
+        }
+
+        if (isTemplateOptionDot(element)) {
+          return true;
+        }
+
+        const section = element.closest?.("[class*='section-8'], [class*='section_8'], [class*='section-28'], [class*='section_28']");
+        if (!section) {
+          return false;
+        }
+
+        const signature = getTemplateSignature(element);
+        const hasOptionName = /(?:option|choice|tab|benefit|feature|card|control)/i.test(signature);
+        const nestedControls = Array.from(element.querySelectorAll?.('input[type="radio"], input[type="checkbox"]') || []);
+        if (nestedControls.length > 1) {
+          return false;
+        }
+        const isControl = element.matches?.("label, button, [role='tab'], [role='radio'], [role='checkbox']")
+          || nestedControls.length === 1;
+        return hasOptionName && isControl;
+      };
+
+      const getTemplateOptionCardFromTarget = (target, root) => {
+        let current = target?.nodeType === 1 ? target : target?.parentElement;
+        while (current && current !== root) {
+          if (isTemplateOptionCard(current, root)) {
+            return current;
+          }
+          current = current.parentElement;
+        }
+        return isTemplateOptionCard(root, root) ? root : null;
+      };
+
+      const getTemplateOptionCardAtPoint = (event, root) => {
+        const directCard = getTemplateOptionCardFromTarget(event.target, root);
+        if (directCard) {
+          return directCard;
+        }
+
+        const pointCard = getTemplateElementsAtPoint(event)
+          .map((element) => getTemplateOptionCardFromTarget(element, root))
+          .find(Boolean);
+        return pointCard || null;
+      };
+
+      const getTemplateOptionRoot = (element) => {
+        let current = element;
+        let fallback = null;
+        while (current && current.nodeType === 1) {
+          const classes = Array.from(current.classList || []);
+          if (classes.some((className) => /^(?:section[-_]8|section[-_]28)$/i.test(className))) {
+            return current;
+          }
+          if (!fallback && classes.some((className) => /(?:section[-_]8|section[-_]28)/i.test(className) && !className.includes("__"))) {
+            fallback = current;
+          }
+          current = current.parentElement;
+        }
+        return fallback;
+      };
+
+      const getTemplateOptionIcon = (element) => {
+        return Array.from(element.querySelectorAll?.("svg, img, [class*='icon' i], [class*='badge' i], [class*='symbol' i], [class*='mark' i]") || [])
+          .find((candidate) => candidate !== element && (/svg|img/i.test(candidate.tagName) || /icon|badge|symbol|mark/i.test(getTemplateSignature(candidate)))) || null;
+      };
+
+      const getTemplateOptionDotToken = (element) => {
+        return Array.from(element?.classList || [])
+          .map((className) => String(className).match(/^(section[-_](?:8|28)__dot)--(.+)$/i))
+          .find(Boolean) || null;
+      };
+
+      const isTemplateOptionDot = (element) => Boolean(getTemplateOptionDotToken(element));
+
+      const getTemplateOptionDotControl = (element) => {
+        const dotToken = getTemplateOptionDotToken(element);
+        const optionRoot = getTemplateOptionRoot(element);
+        if (!dotToken || !optionRoot) {
+          return null;
+        }
+
+        const controlClass = `${dotToken[1].replace(/__dot$/i, "__control")}--${dotToken[2]}`;
+        return Array.from(optionRoot.querySelectorAll('input[type="radio"], input[type="checkbox"]'))
+          .find((candidate) => candidate.classList.contains(controlClass)) || null;
+      };
+
+      const getTemplateOptionStateControl = (element) => {
+        return getControlledInput(element) || getTemplateOptionDotControl(element);
+      };
+
+      const getTemplateOptionTextTarget = (element) => {
+        return Array.from(element.querySelectorAll?.("h1, h2, h3, h4, h5, h6, p, span, strong, b") || [])
+          .find((candidate) => !candidate.closest("svg") && (candidate.innerText || candidate.textContent || "").trim()) || element;
+      };
+
+      const getTemplateOptionSelector = (element) => {
+        if (!element) {
+          return "";
+        }
+
+        if (element.id && !/^ll-template-|^preview-|^codex-/i.test(element.id)) {
+          return `#${escapeCssClassName(element.id)}`;
+        }
+
+        const classes = Array.from(element.classList || []).filter(isUsefulPreviewClass);
+        const uniqueClass = classes.find((className) => className.includes("--")) || classes[0] || "";
+        const tagName = String(element.tagName || "").toLowerCase();
+        return uniqueClass ? `${tagName}.${escapeCssClassName(uniqueClass)}` : tagName;
+      };
+
+      const getTemplateOptionControlSelector = (control, options = {}) => {
+        if (!control) {
+          return "";
+        }
+
+        const shared = Boolean(options.shared);
+        if (control.id && !shared) {
+          return `#${escapeCssClassName(control.id)}`;
+        }
+
+        const tagName = String(control.tagName || "input").toLowerCase();
+        const classes = Array.from(control.classList || []).filter(isUsefulPreviewClass);
+        const className = shared
+          ? classes.find((value) => !value.includes("--")) || classes[0] || ""
+          : classes.find((value) => value.includes("--")) || classes[0] || "";
+        if (className) {
+          return `${tagName}.${escapeCssClassName(className)}`;
+        }
+
+        if (shared && control.name) {
+          const escapedName = String(control.name).replace(/\\/g, "\\\\").replace(/"/g, '\\"');
+          const type = String(control.type || "radio").toLowerCase();
+          return `${tagName}[type="${type}"][name="${escapedName}"]`;
+        }
+
+        return getTemplateOptionSelector(control);
+      };
+
+      const getTemplateOptionDotStateRouteSelector = (optionRoot, targetSelector, stateName) => {
+        const rootSelector = getTemplateOptionSelector(optionRoot);
+        if (!optionRoot || !rootSelector || !targetSelector) {
+          return "";
+        }
+
+        const stateSelector = stateName === "checked" ? ":checked" : ":not(:checked)";
+        let matchingDots = [];
+        try {
+          matchingDots = Array.from(optionRoot.querySelectorAll(targetSelector))
+            .filter(isTemplateOptionDot);
+        } catch (_) {
+          return "";
+        }
+
+        return matchingDots
+          .map((dot) => {
+            const dotControl = getTemplateOptionStateControl(dot);
+            const dotControlSelector = getTemplateOptionControlSelector(dotControl);
+            const dotSelector = getTemplateOptionSelector(dot);
+            return dotControlSelector && dotSelector
+              ? `${rootSelector}:has(${dotControlSelector}${stateSelector}) ${dotSelector}`
+              : "";
+          })
+          .filter(Boolean)
+          .join(", ");
+      };
+
+      const getTemplateOptionStateVariableName = (stateName, property) => {
+        const normalizedProperty = String(property || "")
+          .trim()
+          .toLowerCase()
+          .replace(/[^a-z0-9]+/g, "-")
+          .replace(/^-+|-+$/g, "");
+        return normalizedProperty ? `--ll-option-${stateName}-${normalizedProperty}` : "";
+      };
+
+      const getTemplateOptionStateSelector = (element, stateName, className = "") => {
+        const control = getTemplateOptionStateControl(element);
+        if (!control) {
+          return "";
+        }
+
+        const targetSelector = className
+          ? (normalizePreviewSelectorValue(className)?.selector || "")
+          : "";
+        const controlSelector = getTemplateOptionControlSelector(control, { shared: Boolean(targetSelector) });
+        if (!controlSelector) {
+          return "";
+        }
+        const stateSelector = stateName === "checked" ? ":checked" : ":not(:checked)";
+        if (isTemplateOptionDot(element)) {
+          const optionRoot = getTemplateOptionRoot(element);
+          return getTemplateOptionDotStateRouteSelector(
+            optionRoot,
+            targetSelector || getTemplateOptionSelector(element),
+            stateName
+          );
+        }
+
+        const buildCardStateSelector = (card, cardControl) => {
+          const cardSelector = getTemplateOptionSelector(card);
+          const cardControlSelector = getTemplateOptionControlSelector(cardControl);
+          if (!cardSelector || !cardControlSelector) {
+            return "";
+          }
+
+          if (card.contains(cardControl)) {
+            return `${cardSelector}:has(${cardControlSelector}${stateSelector})`;
+          }
+
+          const label = card.matches?.("label[for]")
+            ? card
+            : Array.from(cardControl.labels || []).find((candidate) => candidate === card || card.contains(candidate));
+          if (!label) {
+            return "";
+          }
+
+          const combinator = cardControl.nextElementSibling === label ? "+" : "~";
+          return `${cardControlSelector}${stateSelector} ${combinator} ${cardSelector}`;
+        };
+
+        // When the person chooses a shared class, emit one shared rule for
+        // the whole group. The old behavior expanded the same edit into one
+        // selector per card (care, fragrance, application...), which made the
+        // exported CSS needlessly long and, worse, made a class edit look like
+        // individual card edits. Keep the paired selector only as a fallback
+        // for layouts whose controls do not share the same structure.
+        if (targetSelector) {
+          try {
+            const optionRoot = getTemplateOptionRoot(element);
+            const matchingCards = Array.from(optionRoot?.querySelectorAll(targetSelector) || [])
+              .filter((candidate) => !isTemplateOptionDot(candidate) && isTemplateOptionCard(candidate, optionRoot));
+            const sharedNestedControls = matchingCards.map((card) => getTemplateOptionStateControl(card));
+            const supportsSharedNestedSelector = matchingCards.length > 0
+              && sharedNestedControls.every((cardControl, index) => {
+                return cardControl
+                  && matchingCards[index].contains(cardControl)
+                  && getTemplateOptionControlSelector(cardControl, { shared: true }) === controlSelector;
+              });
+            if (supportsSharedNestedSelector) {
+              return `${targetSelector}:has(${controlSelector}${stateSelector})`;
+            }
+
+            const pairedSelectors = matchingCards
+              .map((card, index) => buildCardStateSelector(card, sharedNestedControls[index]))
+              .filter(Boolean);
+            if (pairedSelectors.length) {
+              return pairedSelectors.join(", ");
+            }
+          } catch (_) {}
+        }
+        if (element.contains(control)) {
+          const nestedTarget = targetSelector || getTemplateOptionSelector(element);
+          return `${nestedTarget}:has(${controlSelector}${stateSelector})`;
+        }
+
+        const label = element.matches?.("label[for]")
+          ? element
+          : Array.from(control.labels || []).find((candidate) => candidate === element || element.contains(candidate));
+        if (!label) {
+          return "";
+        }
+
+        const escapedFor = String(control.id || "").replace(/\\/g, "\\\\").replace(/\"/g, '\\"');
+        const labelSelector = targetSelector
+          || (escapedFor ? `label[for=\"${escapedFor}\"]` : getTemplateOptionSelector(label));
+        const combinator = control.nextElementSibling === label ? "+" : "~";
+        return `${controlSelector}${stateSelector} ${combinator} ${labelSelector}`;
+      };
+
+      const getTemplateOptionChildSelector = (element, child, stateSelector) => {
+        if (!child || !stateSelector) {
+          return "";
+        }
+
+        const appendToStateSelectors = (childSelector) => {
+          return String(stateSelector)
+            .split(",")
+            .map((selector) => selector.trim())
+            .filter(Boolean)
+            .map((selector) => `${selector} ${childSelector}`)
+            .join(", ");
+        };
+
+        const childClass = Array.from(child.classList || []).find(isUsefulPreviewClass);
+        if (childClass) {
+          return appendToStateSelectors(`.${escapeCssClassName(childClass)}`);
+        }
+
+        if (child.id && !/^ll-template-|^preview-|^codex-/i.test(child.id)) {
+          return appendToStateSelectors(`#${escapeCssClassName(child.id)}`);
+        }
+
+        const tagName = String(child.tagName || "").toLowerCase();
+        return tagName ? appendToStateSelectors(tagName) : "";
+      };
+
+      const getTemplateOptionStateStyle = (root) => {
+        let style = root.querySelector(":scope > style[data-ll-template-option-state-style], :scope > style.template-option-state-styles");
+        if (!style) {
+          style = doc.createElement("style");
+          root.appendChild(style);
+        }
+        style.classList.add("template-option-state-styles");
+        style.setAttribute("data-ll-template-option-state-style", "true");
+        return style;
+      };
+
+      const splitTemplateOptionStateSelectors = (value) => String(value || "")
+        .split(",")
+        .map((selector) => selector.trim())
+        .filter(Boolean);
+
+      const normalizeTemplateOptionStateSelector = (value) => String(value || "")
+        .replace(/\s+/g, " ")
+        .trim();
+
+      // Do not read these rules through CSSOM. The browser expands shorthands
+      // such as `background` and `padding` into many longhand properties there,
+      // which used to make a small colour change produce a very large rule.
+      const readTemplateOptionStateDeclarations = (source) => {
+        const declarations = new Map();
+        let start = 0;
+        let quote = "";
+        let parentheses = 0;
+        const commit = (end) => {
+          const declaration = String(source || "").slice(start, end).trim();
+          start = end + 1;
+          if (!declaration) {
+            return;
+          }
+          const separator = declaration.indexOf(":");
+          if (separator <= 0) {
+            return;
+          }
+          const property = declaration.slice(0, separator).trim().toLowerCase();
+          const value = declaration.slice(separator + 1).trim();
+          if (property && value) {
+            declarations.set(property, value);
+          }
+        };
+
+        const css = String(source || "");
+        for (let index = 0; index < css.length; index += 1) {
+          const character = css[index];
+          if (quote) {
+            if (character === quote && css[index - 1] !== "\\") {
+              quote = "";
+            }
+            continue;
+          }
+          if (character === '"' || character === "'") {
+            quote = character;
+          } else if (character === "(") {
+            parentheses += 1;
+          } else if (character === ")") {
+            parentheses = Math.max(0, parentheses - 1);
+          } else if (character === ";" && parentheses === 0) {
+            commit(index);
+          }
+        }
+        commit(css.length);
+        return declarations;
+      };
+
+      const readTemplateOptionStateRules = (style) => {
+        const originalCss = style.textContent || "";
+        const repairedCss = repairLegacyOptionStateCss(originalCss);
+        if (repairedCss !== originalCss) {
+          style.textContent = repairedCss;
+        }
+
+        const rules = new Map();
+        const css = repairedCss.replace(/\/\*[\s\S]*?\*\//g, "");
+        const rulePattern = /([^{}]+)\{([^{}]*)\}/g;
+        let match = rulePattern.exec(css);
+        while (match) {
+          const selectorText = match[1].trim();
+          if (!selectorText || selectorText.startsWith("@")) {
+            match = rulePattern.exec(css);
+            continue;
+          }
+          const declarations = readTemplateOptionStateDeclarations(match[2]);
+          splitTemplateOptionStateSelectors(selectorText).forEach((selector) => {
+            const key = normalizeTemplateOptionStateSelector(selector);
+            if (!key) {
+              return;
+            }
+            const existing = rules.get(key);
+            rules.set(key, {
+              selector,
+              declarations: new Map([
+                ...(existing?.declarations || []),
+                ...declarations
+              ])
+            });
+          });
+          match = rulePattern.exec(css);
+        }
+        return rules;
+      };
+
+      const writeTemplateOptionStateRules = (style, rules) => {
+        // Several cards often receive exactly the same state declaration.
+        // Keep their selector maps independent for editing, then group equal
+        // rules only when serializing so the exported CSS stays concise.
+        const groupedRules = new Map();
+        Array.from(rules.values()).forEach(({ selector, declarations }) => {
+          const content = Array.from(declarations.entries())
+            .map(([property, value]) => `${property}: ${value};`)
+            .join(" ");
+          if (!selector || !content) {
+            return;
+          }
+          const group = groupedRules.get(content) || { content, selectors: [] };
+          group.selectors.push(selector);
+          groupedRules.set(content, group);
+        });
+        style.textContent = Array.from(groupedRules.values())
+          .map(({ selectors, content }) => `${selectors.join(",\n")} { ${content} }`)
+          .join("\n");
+      };
+
+      const isTemplateOptionLegacyBulkRule = (declarations) => {
+        return Array.from(declarations?.keys?.() || []).some((property) => {
+          return /^(?:background-(?:image|position|size|repeat|attachment|origin|clip|color)|border-(?:top|right|bottom|left)-(?:color|width|style)|border-(?:top|right|bottom|left)-(?:left|right)-radius|padding-(?:top|right|bottom|left))$/i.test(property);
+        });
+      };
+
+      const removeTemplateOptionPropertyGroup = (declarations, property) => {
+        const groupedProperties = {
+          background: /^(?:background|background-.*)$/i,
+          "border-color": /^(?:border-color|border-(?:top|right|bottom|left)-color)$/i,
+          "border-width": /^(?:border-width|border-(?:top|right|bottom|left)-width)$/i,
+          "border-style": /^(?:border-style|border-(?:top|right|bottom|left)-style)$/i,
+          "border-radius": /^(?:border-radius|border-(?:top|right|bottom|left)-(?:left|right)-radius)$/i,
+          padding: /^(?:padding|padding-(?:top|right|bottom|left))$/i
+        };
+        const matcher = groupedProperties[property];
+        if (!matcher) {
+          declarations.delete(property);
+          return;
+        }
+        Array.from(declarations.keys()).forEach((currentProperty) => {
+          if (matcher.test(currentProperty)) {
+            declarations.delete(currentProperty);
+          }
+        });
+      };
+
+      const updateTemplateOptionStateRule = (root, selector, declarations) => {
+        if (!root || !selector) {
+          return;
+        }
+
+        const style = getTemplateOptionStateStyle(root);
+        const rules = readTemplateOptionStateRules(style);
+        splitTemplateOptionStateSelectors(selector).forEach((targetSelector) => {
+          const key = normalizeTemplateOptionStateSelector(targetSelector);
+          if (!key) {
+            return;
+          }
+          const current = rules.get(key);
+          // Older saves carry browser-expanded longhands. Replacing that
+          // legacy bundle on the first new save keeps only intentional edits.
+          const nextDeclarations = isTemplateOptionLegacyBulkRule(current?.declarations)
+            ? new Map()
+            : new Map(current?.declarations || []);
+          Object.entries(declarations)
+            .filter(([, value]) => value !== "" && value != null)
+            .forEach(([property, value]) => {
+              removeTemplateOptionPropertyGroup(nextDeclarations, property);
+              nextDeclarations.set(property, `${value} !important`);
+            });
+          rules.delete(key);
+          rules.set(key, { selector: targetSelector, declarations: nextDeclarations });
+        });
+        writeTemplateOptionStateRules(style, rules);
+      };
+
+      const clearTemplateOptionStateRule = (root, selector) => {
+        const style = root?.querySelector(":scope > style[data-ll-template-option-state-style], :scope > style.template-option-state-styles");
+        if (!style || !selector) {
+          return;
+        }
+
+        const selectors = new Set(splitTemplateOptionStateSelectors(selector)
+          .map(normalizeTemplateOptionStateSelector));
+        const remainingRules = readTemplateOptionStateRules(style);
+        selectors.forEach((targetSelector) => remainingRules.delete(targetSelector));
+
+        if (!remainingRules.size) {
+          style.remove();
+          return;
+        }
+        writeTemplateOptionStateRules(style, remainingRules);
+      };
+
+      const isTemplateOptionStateRule = (rule) => {
+        const selector = String(rule?.selectorText || "");
+        return /:(?:checked|not\(\s*:checked\s*\))/i.test(selector)
+          && /(?:section[-_](?:8|28)(?:__|[-_])|section[-_](?:8|28)-control)/i.test(selector);
+      };
+
+      const migrateTemplateOptionStateRules = (root) => {
+        if (!root?.ownerDocument) {
+          return;
+        }
+
+        const stateStyle = getTemplateOptionStateStyle(root);
+        const migratedRules = [];
+        Array.from(root.ownerDocument.head.querySelectorAll("style")).forEach((sourceStyle) => {
+          if (sourceStyle === stateStyle) {
+            return;
+          }
+          const rules = Array.from(sourceStyle.sheet?.cssRules || []);
+          const optionRules = rules.filter(isTemplateOptionStateRule);
+          if (!optionRules.length) {
+            return;
+          }
+
+          migratedRules.push(...optionRules.map((rule) => rule.cssText));
+          sourceStyle.textContent = rules
+            .filter((rule) => !isTemplateOptionStateRule(rule))
+            .map((rule) => rule.cssText)
+            .join("\n");
+        });
+
+        if (!migratedRules.length) {
+          return;
+        }
+
+        stateStyle.textContent = repairLegacyOptionStateCss([stateStyle.textContent, ...migratedRules].filter(Boolean).join("\n"));
+        writeTemplateOptionStateRules(stateStyle, readTemplateOptionStateRules(stateStyle));
+      };
+
+      const openTemplateOptionCardPopover = (sourceEvent, element) => {
+        closePreviewEditPopover();
+        // These values need to be refreshed when the option state changes.
+        // Keeping the initial computed-style snapshot here made the form carry
+        // values from "checked" into "unchecked" (and the other way around).
+        const isOptionDot = isTemplateOptionDot(element);
+        const textTarget = isOptionDot ? null : getTemplateOptionTextTarget(element);
+        const icon = getTemplateOptionIcon(element);
+        const control = getTemplateOptionStateControl(element);
+        const optionRoot = getTemplateOptionRoot(element);
+        migrateTemplateOptionStateRules(optionRoot);
+        let styles = element.ownerDocument.defaultView.getComputedStyle(element);
+        let textStyles = textTarget
+          ? textTarget.ownerDocument.defaultView.getComputedStyle(textTarget)
+          : styles;
+        // Board frames share the editor state but each one owns a different
+        // live document. Always serialize the container that originated the
+        // edit so a refresh from another viewport cannot discard this rule.
+        const optionContainer = optionRoot?.closest(".lp-container, .lp_container") || null;
+        const syncOptionTemplateHtml = (options = {}) => {
+          syncTemplateHtmlFromPreview({
+            ...options,
+            container: optionContainer || undefined
+          });
+        };
+        const form = document.createElement("form");
+        form.className = "preview-edit-popover preview-edit-popover--option-card";
+        form.setAttribute("role", "dialog");
+        form.setAttribute("aria-label", isOptionDot ? "Editar aparência do indicador" : "Editar aparência da opção");
+        form.innerHTML = `<p class="preview-edit-popover__title">${isOptionDot ? "Editar indicador" : "Editar opção"}</p><div class="preview-edit-popover__grid"></div><div class="preview-edit-popover__actions"><button class="button preview-edit-popover__option-save" type="button" data-option-save>✓ Salvar aparência</button><button class="button button--soft" type="button" data-option-close>Fechar</button></div>`;
+
+        const grid = form.querySelector(".preview-edit-popover__grid");
+        const createColorField = (label, value, dirtyField) => {
+          const field = document.createElement("label");
+          field.className = "preview-edit-popover__mini-field";
+          const caption = document.createElement("span");
+          caption.textContent = label;
+          const control = document.createElement("div");
+          control.className = "preview-edit-popover__mini-color";
+          const swatch = document.createElement("input");
+          swatch.type = "color";
+          swatch.className = "preview-edit-popover__color preview-edit-popover__inline-swatch";
+          const input = document.createElement("input");
+          input.type = "text";
+          input.value = colorToHex(value, "#ffffff");
+          swatch.value = input.value;
+          swatch.style.setProperty("--preview-edit-color", input.value);
+          const sync = (fromSwatch) => {
+            const next = fromSwatch ? normalizeHexColor(swatch.value) : isHexColor(input.value) ? normalizeHexColor(input.value) : "";
+            if (!next) return;
+            input.value = next;
+            swatch.value = next;
+            swatch.style.setProperty("--preview-edit-color", next);
+            markOptionCardDirty(dirtyField);
+          };
+          input.addEventListener("input", () => sync(false));
+          input.addEventListener("change", () => sync(false));
+          swatch.addEventListener("input", () => sync(true));
+          swatch.addEventListener("change", () => sync(true));
+          control.append(swatch, input);
+          field.append(caption, control);
+          grid.appendChild(field);
+          return input;
+        };
+        const createNumberField = (label, value, min, max, step = "1", dirtyField = "") => {
+          const field = document.createElement("label");
+          field.className = "preview-edit-popover__mini-field";
+          const caption = document.createElement("span");
+          caption.textContent = label;
+          const input = document.createElement("input");
+          input.type = "number";
+          input.min = String(min);
+          input.max = String(max);
+          input.step = step;
+          input.value = String(value);
+          input.addEventListener("input", () => markOptionCardDirty(dirtyField));
+          input.addEventListener("change", () => markOptionCardDirty(dirtyField));
+          field.append(caption, input);
+          grid.appendChild(field);
+          return input;
+        };
+        let stateSelect = null;
+        let optionCardDirty = false;
+        const optionCardChangedFields = new Set();
+        const optionSaveButton = form.querySelector("[data-option-save]");
+        const setOptionSaveButtonState = (saved = false) => {
+          optionSaveButton.classList.toggle("is-saved", saved);
+          optionSaveButton.textContent = saved ? "✓ Aparência salva" : "✓ Salvar aparência";
+        };
+        const markOptionCardDirty = (field = "") => {
+          optionCardDirty = true;
+          if (field) {
+            optionCardChangedFields.add(field);
+          }
+          setOptionSaveButtonState(false);
+        };
+        if (control?.matches?.('input[type="radio"], input[type="checkbox"]') && optionRoot) {
+          const field = document.createElement("label");
+          field.className = "preview-edit-popover__mini-field";
+          const caption = document.createElement("span");
+          caption.textContent = "Estado da opção";
+          stateSelect = document.createElement("select");
+          stateSelect.innerHTML = '<option value="unchecked">Não selecionado</option><option value="checked">Selecionado (checked)</option>';
+          stateSelect.value = control.checked ? "checked" : "unchecked";
+          field.append(caption, stateSelect);
+          grid.appendChild(field);
+        }
+        const backgroundInput = createColorField(isOptionDot ? "Cor" : "Fundo", styles.backgroundColor, "background");
+        const textInput = isOptionDot ? null : createColorField("Texto", textStyles.color, "textColor");
+        const borderInput = createColorField("Borda", styles.borderTopColor, "borderColor");
+        const borderWidth = createNumberField("Borda (px)", Number.parseFloat(styles.borderTopWidth) || 0, 0, 48, "1", "borderWidth");
+        const radius = createNumberField("Raio (px)", Number.parseFloat(styles.borderTopLeftRadius) || 0, 0, 120, "1", "radius");
+        const padding = isOptionDot ? null : createNumberField("Espaçamento", Number.parseFloat(styles.paddingTop) || 0, 0, 96, "1", "padding");
+        const dotSize = isOptionDot
+          ? createNumberField("Tamanho (px)", Math.max(Number.parseFloat(styles.width) || 0, Number.parseFloat(styles.height) || 0, 8), 2, 96, "1", "dotSize")
+          : null;
+        // "Editar a classe inteira" must always mean a class shared by the
+        // component, not a one-off modifier such as --protection. Individual
+        // modifier classes remain available through normal element editing.
+        const classCandidates = getPreviewClassCandidates(element)
+          .filter((candidate) => candidate.count > 1 || !candidate.className.includes("--"));
+        let classModeToggle = null;
+        let classSelect = null;
+        if (classCandidates.length) {
+          const classScope = document.createElement("div");
+          classScope.className = "preview-edit-popover__grid";
+          const toggleField = document.createElement("label");
+          toggleField.className = "preview-edit-popover__toggle";
+          classModeToggle = document.createElement("input");
+          classModeToggle.type = "checkbox";
+          const toggleCaption = document.createElement("span");
+          toggleCaption.textContent = "Editar a classe/ID inteira";
+          toggleField.append(classModeToggle, toggleCaption);
+          const classField = document.createElement("label");
+          classField.className = "preview-edit-popover__mini-field";
+          const classCaption = document.createElement("span");
+          classCaption.textContent = "Alvo";
+          classSelect = document.createElement("select");
+          classCandidates.forEach((candidate) => {
+            const option = document.createElement("option");
+            option.value = candidate.className;
+            option.textContent = candidate.label;
+            classSelect.appendChild(option);
+          });
+          classField.append(classCaption, classSelect);
+          classScope.append(toggleField, classField);
+          form.querySelector(".preview-edit-popover__actions").before(classScope);
+          // Changing the target only chooses where a later visual change will
+          // be applied. It is not a style change by itself and must never
+          // erase a rule when the person presses Save without editing a field.
+          classModeToggle.addEventListener("change", () => setOptionSaveButtonState(false));
+          classSelect.addEventListener("change", () => setOptionSaveButtonState(false));
+        }
+        let iconToggle = null;
+        if (icon) {
+          const field = document.createElement("label");
+          field.className = "preview-edit-popover__toggle";
+          iconToggle = document.createElement("input");
+          iconToggle.type = "checkbox";
+          const iconStyles = icon.ownerDocument.defaultView.getComputedStyle(icon);
+          iconToggle.checked = iconStyles.display !== "none" && iconStyles.visibility !== "hidden";
+          const caption = document.createElement("span");
+          caption.textContent = "Mostrar ícone";
+          iconToggle.addEventListener("change", () => markOptionCardDirty("iconDisplay"));
+          field.append(iconToggle, caption);
+          form.querySelector(".preview-edit-popover__actions").before(field);
+        }
+
+        const setOptionColorFieldValue = (input, value, fallback) => {
+          if (!input) {
+            return;
+          }
+
+          const nextValue = colorToHex(value, fallback);
+          input.value = nextValue;
+          const swatch = input.parentElement?.querySelector('input[type="color"]');
+          if (swatch) {
+            swatch.value = nextValue;
+            swatch.style.setProperty("--preview-edit-color", nextValue);
+          }
+        };
+
+        const refreshOptionCardFields = () => {
+          // Let the browser resolve :checked/:not(:checked) first, then read
+          // the actual appearance for the state that was just selected.
+          styles = element.ownerDocument.defaultView.getComputedStyle(element);
+          textStyles = textTarget
+            ? textTarget.ownerDocument.defaultView.getComputedStyle(textTarget)
+            : styles;
+
+          setOptionColorFieldValue(backgroundInput, styles.backgroundColor, "#ffffff");
+          setOptionColorFieldValue(textInput, textStyles.color, "#111827");
+          setOptionColorFieldValue(borderInput, styles.borderTopColor, "#111827");
+          borderWidth.value = String(Number.parseFloat(styles.borderTopWidth) || 0);
+          radius.value = String(Number.parseFloat(styles.borderTopLeftRadius) || 0);
+          if (padding) {
+            padding.value = String(Number.parseFloat(styles.paddingTop) || 0);
+          }
+          if (dotSize) {
+            dotSize.value = String(Math.max(
+              Number.parseFloat(styles.width) || 0,
+              Number.parseFloat(styles.height) || 0,
+              8
+            ));
+          }
+          if (iconToggle && icon) {
+            const iconStyles = icon.ownerDocument.defaultView.getComputedStyle(icon);
+            iconToggle.checked = iconStyles.display !== "none" && iconStyles.visibility !== "hidden";
+          }
+          // Switching states only loads that state's current values. Nothing
+          // is written until the person confirms with "Salvar".
+          optionCardDirty = false;
+          optionCardChangedFields.clear();
+          setOptionSaveButtonState(false);
+        };
+
+        const clearOptionCardStateScope = (stateSelector, selectedClass = "", options = {}) => {
+          if (!stateSelector || !optionRoot) {
+            return;
+          }
+
+          if (options.keepStateRule !== true) {
+            clearTemplateOptionStateRule(optionRoot, stateSelector);
+            clearTemplateOptionStateRule(optionRoot, getTemplateOptionChildSelector(element, textTarget, stateSelector));
+            clearTemplateOptionStateRule(optionRoot, getTemplateOptionChildSelector(element, icon, stateSelector));
+          }
+
+          // Before the state editor was made deterministic, a card could
+          // leave an individual rule behind and later receive a class rule as
+          // well. When editing the entire class, clear those old per-card
+          // rules for this state so the saved class rule is the sole source
+          // of color and appearance.
+          const targetSelector = selectedClass
+            ? normalizePreviewSelectorValue(selectedClass)?.selector || ""
+            : "";
+          if (!targetSelector) {
+            return;
+          }
+
+          let matchingCards = [];
+          try {
+            matchingCards = Array.from(optionRoot.querySelectorAll(targetSelector))
+              .filter((candidate) => !isTemplateOptionDot(candidate) && isTemplateOptionCard(candidate, optionRoot));
+          } catch (_) {
+            return;
+          }
+
+          matchingCards.forEach((card) => {
+            const individualSelector = getTemplateOptionStateSelector(card, stateSelect?.value || "unchecked");
+            if (!individualSelector) {
+              return;
+            }
+            clearTemplateOptionStateRule(optionRoot, individualSelector);
+            clearTemplateOptionStateRule(optionRoot, getTemplateOptionChildSelector(card, getTemplateOptionTextTarget(card), individualSelector));
+            clearTemplateOptionStateRule(optionRoot, getTemplateOptionChildSelector(card, getTemplateOptionIcon(card), individualSelector));
+          });
+
+          // Clear rules generated by older versions that encoded a separate
+          // editor variant for every input modifier. These live only in the
+          // editor-owned style tag, so removing them does not touch the
+          // original layout's CSS behavior.
+          const stateStyle = optionRoot.querySelector(":scope > style[data-ll-template-option-state-style], :scope > style.template-option-state-styles");
+          if (!stateStyle) {
+            return;
+          }
+          const stateRules = readTemplateOptionStateRules(stateStyle);
+          Array.from(stateRules.entries()).forEach(([ruleKey, rule]) => {
+            const isInputVariantRule = /(?:section[-_](?:8|28)__control|section[-_](?:8|28)-control)--/i.test(rule.selector);
+            const isSharedIndicatorRoute = isInputVariantRule
+              && Array.from(rule.declarations.values()).every((value) => /var\(--ll-option-(?:checked|unchecked)-/i.test(value));
+            if (isInputVariantRule && !isSharedIndicatorRoute) {
+              stateRules.delete(ruleKey);
+            }
+          });
+          if (stateRules.size) {
+            writeTemplateOptionStateRules(stateStyle, stateRules);
+          } else {
+            stateStyle.remove();
+          }
+        };
+
+        const apply = (skipPreviewUpdate) => {
+          if (!optionCardChangedFields.size) {
+            return;
+          }
+          const background = isHexColor(backgroundInput.value) ? normalizeHexColor(backgroundInput.value) : colorToHex(styles.backgroundColor, "#ffffff");
+          const textColor = textInput && isHexColor(textInput.value) ? normalizeHexColor(textInput.value) : colorToHex(textStyles.color, "#111827");
+          const borderColor = isHexColor(borderInput.value) ? normalizeHexColor(borderInput.value) : colorToHex(styles.borderTopColor, "#111827");
+          const borderSize = Math.min(48, Math.max(0, Number(borderWidth.value) || 0));
+          const cornerRadius = Math.min(120, Math.max(0, Number(radius.value) || 0));
+          const inset = Math.min(96, Math.max(0, Number(padding?.value) || 0));
+          const indicatorSize = Math.min(96, Math.max(2, Number(dotSize?.value) || 8));
+          const selectedClass = classModeToggle?.checked ? classSelect?.value || "" : "";
+          const stateSelector = stateSelect && optionRoot
+            ? getTemplateOptionStateSelector(element, stateSelect.value, selectedClass)
+            : "";
+          if (stateSelector) {
+            const stateDeclarations = {};
+            const textSelector = textTarget ? getTemplateOptionChildSelector(element, textTarget, stateSelector) : "";
+            if (optionCardChangedFields.has("background")) {
+              stateDeclarations.background = background;
+            }
+            if (optionCardChangedFields.has("borderColor")) {
+              stateDeclarations["border-color"] = borderColor;
+            }
+            if (optionCardChangedFields.has("borderWidth")) {
+              stateDeclarations["border-width"] = `${borderSize}px`;
+              stateDeclarations["border-style"] = borderSize > 0 ? "solid" : "none";
+            }
+            if (optionCardChangedFields.has("radius")) {
+              stateDeclarations["border-radius"] = `${cornerRadius}px`;
+            }
+            if (isOptionDot) {
+              if (optionCardChangedFields.has("dotSize")) {
+                stateDeclarations.width = `${indicatorSize}px`;
+                stateDeclarations.height = `${indicatorSize}px`;
+              }
+            } else if (optionCardChangedFields.has("padding")) {
+              stateDeclarations.padding = `${inset}px`;
+            }
+            if (optionCardChangedFields.has("textColor") && (!textSelector || textSelector === stateSelector)) {
+              stateDeclarations.color = textColor;
+            }
+            if (["background", "borderColor", "textColor"].some((field) => optionCardChangedFields.has(field))) {
+              // The external section-28 stylesheet animates the controls with
+              // its original blue palette. Keep the slide transition itself,
+              // but never animate colour on an option whose appearance was
+              // customized here; it must remain in its saved palette while
+              // the checked state switches.
+              stateDeclarations["transition-property"] = "transform, opacity";
+              stateDeclarations.animation = "none";
+            }
+            // A class-wide edit replaces obsolete per-card rules. An edit of
+            // one card keeps its earlier compact declarations and changes
+            // only the property the person touched now.
+            if (selectedClass) {
+              // Preserve the already saved class rule and remove only stale
+              // per-card overrides. Otherwise a later color-only save would
+              // clear the previous class border/radius values before merging.
+              clearOptionCardStateScope(stateSelector, selectedClass, { keepStateRule: true });
+            }
+            if (Object.keys(stateDeclarations).length) {
+              if (isOptionDot && selectedClass) {
+                const classSelector = normalizePreviewSelectorValue(selectedClass)?.selector || "";
+                const classVariables = Object.fromEntries(
+                  Object.entries(stateDeclarations)
+                    .map(([property, value]) => [getTemplateOptionStateVariableName(stateSelect.value, property), value])
+                    .filter(([property]) => Boolean(property))
+                );
+                const routedDeclarations = Object.fromEntries(
+                  Object.keys(stateDeclarations)
+                    .map((property) => [property, `var(${getTemplateOptionStateVariableName(stateSelect.value, property)})`])
+                );
+                if (classSelector) {
+                  updateTemplateOptionStateRule(optionRoot, classSelector, classVariables);
+                }
+                updateTemplateOptionStateRule(optionRoot, stateSelector, routedDeclarations);
+              } else {
+                updateTemplateOptionStateRule(optionRoot, stateSelector, stateDeclarations);
+              }
+            }
+            if (optionCardChangedFields.has("textColor") && textSelector && textSelector !== stateSelector) {
+              updateTemplateOptionStateRule(optionRoot, textSelector, { color: textColor });
+            }
+            const iconSelector = getTemplateOptionChildSelector(element, icon, stateSelector);
+            if (optionCardChangedFields.has("iconDisplay") && iconSelector) {
+              updateTemplateOptionStateRule(optionRoot, iconSelector, { display: iconToggle?.checked === false ? "none" : "" });
+            }
+            syncOptionTemplateHtml({ skipPreviewUpdate: Boolean(skipPreviewUpdate) });
+            if (!skipPreviewUpdate) optionCardDirty = false;
+            return;
+          }
+          if (classModeToggle?.checked && classSelect?.value) {
+            const classDeclarations = {};
+            if (optionCardChangedFields.has("background")) classDeclarations.background = background;
+            if (optionCardChangedFields.has("borderColor")) classDeclarations["border-color"] = borderColor;
+            if (optionCardChangedFields.has("borderWidth")) {
+              classDeclarations["border-width"] = borderSize;
+              classDeclarations["border-style"] = borderSize > 0 ? "solid" : "none";
+            }
+            if (optionCardChangedFields.has("radius")) classDeclarations["border-radius"] = cornerRadius;
+            if (isOptionDot) {
+              if (optionCardChangedFields.has("dotSize")) {
+                classDeclarations.width = indicatorSize;
+                classDeclarations.height = indicatorSize;
+              }
+            } else {
+              if (optionCardChangedFields.has("textColor")) classDeclarations.color = textColor;
+              if (optionCardChangedFields.has("padding")) classDeclarations.padding = inset;
+            }
+            if (Object.keys(classDeclarations).length) {
+              setPreviewClassStyle({ scope: "template", field: "optionCard" }, classSelect.value, classDeclarations);
+            }
+            if (!skipPreviewUpdate) optionCardDirty = false;
+            return;
+          }
+          if (optionCardChangedFields.has("background")) element.style.backgroundColor = background;
+          if (optionCardChangedFields.has("borderColor")) element.style.borderColor = borderColor;
+          if (optionCardChangedFields.has("borderWidth")) {
+            element.style.borderWidth = `${borderSize}px`;
+            element.style.borderStyle = borderSize > 0 ? "solid" : "none";
+          }
+          if (optionCardChangedFields.has("radius")) element.style.borderRadius = `${cornerRadius}px`;
+          if (!isOptionDot && optionCardChangedFields.has("padding")) element.style.padding = `${inset}px`;
+          if (isOptionDot) {
+            if (optionCardChangedFields.has("dotSize")) {
+              element.style.width = `${indicatorSize}px`;
+              element.style.height = `${indicatorSize}px`;
+            }
+          } else if (textTarget && optionCardChangedFields.has("textColor")) {
+            textTarget.style.color = textColor;
+          }
+          if (icon && iconToggle && optionCardChangedFields.has("iconDisplay")) icon.style.display = iconToggle.checked ? "" : "none";
+          syncOptionTemplateHtml({ skipPreviewUpdate: Boolean(skipPreviewUpdate) });
+          if (!skipPreviewUpdate) optionCardDirty = false;
+        };
+
+        const applyOptionPreviewState = () => {
+          if (!control || !stateSelect) {
+            return;
+          }
+
+          const shouldBeChecked = stateSelect.value === "checked";
+          if (control.type === "radio" && shouldBeChecked && control.name) {
+            optionRoot?.querySelectorAll('input[type="radio"]').forEach((candidate) => {
+              if (candidate.name !== control.name) {
+                return;
+              }
+              candidate.checked = candidate === control;
+              candidate.toggleAttribute("checked", candidate.checked);
+            });
+            return;
+          }
+
+          if (control.type === "radio" && !shouldBeChecked && control.name && control.checked) {
+            const alternative = Array.from(optionRoot?.querySelectorAll('input[type="radio"]') || [])
+              .find((candidate) => candidate.name === control.name && candidate !== control);
+            if (alternative) {
+              optionRoot?.querySelectorAll('input[type="radio"]').forEach((candidate) => {
+                if (candidate.name !== control.name) {
+                  return;
+                }
+                candidate.checked = candidate === alternative;
+                candidate.toggleAttribute("checked", candidate === alternative);
+              });
+              return;
+            }
+          }
+
+          control.checked = shouldBeChecked;
+          control.toggleAttribute("checked", shouldBeChecked);
+        };
+
+        const getOptionControlStateSnapshot = () => Array.from(optionRoot?.querySelectorAll('input[type="radio"], input[type="checkbox"]') || [])
+          .map((candidate) => ({
+            candidate,
+            checked: candidate.checked,
+            hasCheckedAttribute: candidate.hasAttribute("checked")
+          }));
+
+        const restoreOptionControlStateSnapshot = (snapshot) => {
+          snapshot.forEach(({ candidate, checked, hasCheckedAttribute }) => {
+            candidate.checked = checked;
+            candidate.toggleAttribute("checked", hasCheckedAttribute);
+          });
+        };
+
+        stateSelect?.addEventListener("change", () => {
+          const previousState = getOptionControlStateSnapshot();
+          applyOptionPreviewState();
+          window.requestAnimationFrame(() => {
+            refreshOptionCardFields();
+            restoreOptionControlStateSnapshot(previousState);
+          });
+        });
+
+        const saveOptionCardChanges = () => {
+          if (!optionCardDirty || !optionCardChangedFields.size) {
+            return;
+          }
+          recordPreviewEditHistory({ scope: "template", sourceFrame: element?.ownerDocument?.defaultView?.frameElement || frame });
+          apply(false);
+          optionCardChangedFields.clear();
+          setOptionSaveButtonState(true);
+        };
+
+        form.addEventListener("submit", (event) => {
+          event.preventDefault();
+          saveOptionCardChanges();
+        });
+        form.querySelector("[data-option-close]").addEventListener("click", closePreviewEditPopover);
+        form.querySelector("[data-option-save]").addEventListener("click", saveOptionCardChanges);
+        previewEditKeyHandler = (event) => { if (event.key === "Escape") closePreviewEditPopover(); };
+        previewEditOutsideHandler = (event) => {
+          if (previewEditPopover && !previewEditPopover.contains(event.target)) closePreviewEditPopover();
+        };
+        document.body.appendChild(form);
+        previewEditPopover = form;
+        positionPreviewEditPopover(sourceEvent);
+        window.setTimeout(() => {
+          document.addEventListener("mousedown", previewEditOutsideHandler, true);
+          document.addEventListener("keydown", previewEditKeyHandler, true);
+        }, 0);
+      };
+
+      const attachTemplateOptionCardEditor = (element, root) => {
+        if (!isTemplateOptionCard(element, root) || templateOptionCardEditors.has(element)) {
+          return;
+        }
+
+        templateOptionCardEditors.add(element);
+        element.setAttribute("title", "Ctrl + clique para editar a aparência desta opção.");
+        element.addEventListener("click", (event) => {
+          if (!event.ctrlKey && !event.metaKey) {
+            return;
+          }
+          event.preventDefault();
+          event.stopPropagation();
+          event.stopImmediatePropagation();
+          openTemplateOptionCardPopover(event, element);
+        }, true);
+      };
+
+      const section8SlideTokens = ["protection", "care", "fragrance", "application"];
+
+      const getSection8SlideToken = (element, role) => {
+        if (!element || !role) {
+          return "";
+        }
+        const matcher = new RegExp(`^section[-_](?:8|28)(?:__|-)${role}--(.+)$`, "i");
+        const match = Array.from(element.classList || [])
+          .map((className) => String(className).match(matcher))
+          .find(Boolean);
+        return match ? String(match[1] || "").trim() : "";
+      };
+
+      const getSection8Slides = (section) => {
+        if (!section) {
+          return [];
+        }
+
+        const slidesByToken = new Map();
+        const ensureSlide = (token) => {
+          const key = String(token || "").trim();
+          if (!key) {
+            return null;
+          }
+          if (!slidesByToken.has(key)) {
+            slidesByToken.set(key, { token: key, control: null, tab: null, panel: null, dot: null });
+          }
+          return slidesByToken.get(key);
+        };
+
+        section.querySelectorAll('input[type="radio"], input[type="checkbox"]').forEach((control) => {
+          const token = getSection8SlideToken(control, "control");
+          const slide = ensureSlide(token);
+          if (slide) {
+            slide.control = control;
+          }
+        });
+
+        ["tab", "panel", "dot"].forEach((role) => {
+          section.querySelectorAll("*").forEach((element) => {
+            const token = getSection8SlideToken(element, role);
+            const slide = ensureSlide(token);
+            if (slide && !slide[role]) {
+              slide[role] = element;
+            }
+          });
+        });
+
+        slidesByToken.forEach((slide) => {
+          if (!slide.tab && slide.control) {
+            slide.tab = Array.from(slide.control.labels || [])
+              .find((label) => section.contains(label)) || null;
+          }
+        });
+
+        return Array.from(slidesByToken.values()).filter((slide) => {
+          return slide.control && slide.tab && slide.panel && slide.dot;
+        });
+      };
+
+      const replaceSection8SlideToken = (node, previousToken, nextToken) => {
+        if (!node || !previousToken || !nextToken) {
+          return;
+        }
+        const escapedToken = String(previousToken).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+        const tokenMatcher = new RegExp(escapedToken, "gi");
+        [node, ...node.querySelectorAll("*")].forEach((element) => {
+          Array.from(element.classList || []).forEach((className) => {
+            if (new RegExp(`^section[-_](?:8|28)(?:__|-)(?:control|tab|panel|dot)--${escapedToken}$`, "i").test(className)) {
+              element.classList.replace(className, className.replace(tokenMatcher, nextToken));
+            }
+          });
+          ["id", "for", "aria-controls", "aria-labelledby", "data-target", "data-slide"].forEach((attribute) => {
+            const value = element.getAttribute(attribute);
+            if (value && tokenMatcher.test(value)) {
+              element.setAttribute(attribute, value.replace(tokenMatcher, nextToken));
+            }
+            tokenMatcher.lastIndex = 0;
+          });
+        });
+      };
+
+      const insertSection8SlideAfter = (reference, node) => {
+        if (!reference?.parentElement || !node) {
+          return;
+        }
+        reference.parentElement.insertBefore(node, reference.nextSibling);
+      };
+
+      const setSection8ActiveSlide = (section, slide) => {
+        if (!section || !slide?.control) {
+          return;
+        }
+        const { control } = slide;
+        section.querySelectorAll('input[type="radio"], input[type="checkbox"]').forEach((candidate) => {
+          if (candidate.type === "radio" && candidate.name && candidate.name !== control.name) {
+            return;
+          }
+          const isActive = candidate === control;
+          candidate.checked = isActive;
+          candidate.toggleAttribute("checked", isActive);
+        });
+      };
+
+      const normalizeSection8SlideLayout = (section, slides) => {
+        if (!section || !slides.length) {
+          return false;
+        }
+
+        let changed = false;
+        const setInlineStyle = (element, property, value) => {
+          if (!element || element.style.getPropertyValue(property).trim() === value
+            && element.style.getPropertyPriority(property) === "important") {
+            return;
+          }
+          element?.style.setProperty(property, value, "important");
+          changed = true;
+        };
+
+        const tabHost = slides[0].tab?.parentElement;
+        const dotHost = slides[0].dot?.parentElement;
+        if (tabHost) {
+          const display = tabHost.ownerDocument.defaultView?.getComputedStyle(tabHost).display || "";
+          if (display.includes("grid")) {
+            // The original structural stylesheet uses four columns. Once a
+            // slide is removed, replace that fixed count with the number of
+            // actual tabs so no blank fourth column remains on the right.
+            setInlineStyle(tabHost, "grid-template-columns", `repeat(${slides.length}, minmax(0, 1fr))`);
+          } else if (display.includes("flex")) {
+            setInlineStyle(tabHost, "justify-content", "center");
+            slides.forEach((slide) => setInlineStyle(slide.tab, "flex", "1 1 0"));
+          }
+        }
+        setInlineStyle(dotHost, "justify-content", "center");
+        return changed;
+      };
+
+      const ensureSection8SlideTools = (root) => {
+        const sectionRoots = new Set(
+          Array.from(root.querySelectorAll("[class*='section-8'], [class*='section_8'], [class*='section-28'], [class*='section_28']"))
+            .map((element) => getTemplateOptionRoot(element))
+            .filter((element) => element && root.contains(element))
+        );
+
+        sectionRoots.forEach((section) => {
+          const slides = getSection8Slides(section);
+          if (!slides.length || section.querySelector("[data-ll-section8-slide-tools]")) {
+            return;
+          }
+          // Cada frame responsivo monta esta barra. A normalização é apenas
+          // visual durante a prévia; persistir daqui reiniciava todos os
+          // frames e criava um ciclo de recargas sem nenhuma ação da pessoa.
+          normalizeSection8SlideLayout(section, slides);
+
+          const toolbar = doc.createElement("div");
+          toolbar.dataset.llTemplateHelper = "true";
+          toolbar.dataset.llSection8SlideTools = "true";
+          toolbar.setAttribute("aria-label", "Gerenciar slides da seção 8");
+          toolbar.style.cssText = "display:flex; align-items:center; justify-content:center; gap:7px; width:max-content; max-width:100%; margin:10px auto 0; padding:6px 8px; border:1px solid #d7e3fb; border-radius:999px; background:#ffffff; box-shadow:0 4px 12px rgba(15, 62, 135, .10); font:600 12px/1 Arial,sans-serif;";
+
+          const count = doc.createElement("span");
+          count.textContent = `${slides.length}/4 slides`;
+          count.style.cssText = "padding:0 2px; color:#164ea8; white-space:nowrap;";
+
+          const makeButton = (label, title, muted = false) => {
+            const button = doc.createElement("button");
+            button.type = "button";
+            button.textContent = label;
+            button.title = title;
+            button.setAttribute("aria-label", title);
+            button.style.cssText = `border:1px solid ${muted ? "#cfd8e8" : "#0b4bb6"}; border-radius:999px; padding:5px 9px; background:${muted ? "#ffffff" : "#0b4bb6"}; color:${muted ? "#164ea8" : "#ffffff"}; font:inherit; cursor:pointer;`;
+            return button;
+          };
+
+          const removeButton = makeButton("− Slide", "Remover slide selecionado", true);
+          const addButton = makeButton("+ Slide", "Adicionar slide e indicador");
+          removeButton.disabled = slides.length <= 1;
+          addButton.disabled = slides.length >= 4;
+          [removeButton, addButton].forEach((button) => {
+            if (button.disabled) {
+              button.style.opacity = ".45";
+              button.style.cursor = "not-allowed";
+            }
+          });
+
+          const persistChange = () => {
+            recordPreviewEditHistory({ scope: "template", sourceFrame: frame }, frame);
+            syncTemplateHtmlFromPreview({ container: root, preserveLiveFrame: false });
+          };
+
+          addButton.addEventListener("click", (event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            const currentSlides = getSection8Slides(section);
+            if (currentSlides.length >= 4) {
+              return;
+            }
+            const sourceSlide = currentSlides.find((slide) => slide.control.checked) || currentSlides[currentSlides.length - 1];
+            const usedTokens = new Set(currentSlides.map((slide) => slide.token.toLowerCase()));
+            const nextToken = section8SlideTokens.find((token) => !usedTokens.has(token)) || `slide-${currentSlides.length + 1}`;
+            if (!sourceSlide) {
+              return;
+            }
+
+            const lastByRole = (role) => currentSlides.map((slide) => slide[role]).filter(Boolean).pop();
+            const newTab = sourceSlide.tab.cloneNode(true);
+            const nestedControl = sourceSlide.tab.contains(sourceSlide.control);
+            const newControl = nestedControl ? newTab.querySelector('input[type="radio"], input[type="checkbox"]') : sourceSlide.control.cloneNode(true);
+            const newPanel = sourceSlide.panel.cloneNode(true);
+            const newDot = sourceSlide.dot.cloneNode(true);
+            [newTab, newControl, newPanel, newDot].forEach((node) => replaceSection8SlideToken(node, sourceSlide.token, nextToken));
+            if (!nestedControl) {
+              insertSection8SlideAfter(lastByRole("control"), newControl);
+            }
+            insertSection8SlideAfter(lastByRole("tab"), newTab);
+            insertSection8SlideAfter(lastByRole("panel"), newPanel);
+            insertSection8SlideAfter(lastByRole("dot"), newDot);
+            if (newControl) {
+              newControl.name = sourceSlide.control.name;
+              setSection8ActiveSlide(section, { control: newControl });
+            }
+            normalizeSection8SlideLayout(section, getSection8Slides(section));
+            persistChange();
+          });
+
+          removeButton.addEventListener("click", (event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            const currentSlides = getSection8Slides(section);
+            if (currentSlides.length <= 1) {
+              return;
+            }
+            const activeIndex = Math.max(0, currentSlides.findIndex((slide) => slide.control.checked));
+            const removedSlide = currentSlides[activeIndex] || currentSlides[currentSlides.length - 1];
+            const nextSlide = currentSlides[activeIndex + 1] || currentSlides[activeIndex - 1];
+            const nodes = [removedSlide.control, removedSlide.tab, removedSlide.panel, removedSlide.dot];
+            nodes.forEach((node) => {
+              const nestedInAnotherNode = nodes.some((candidate) => candidate !== node && candidate?.contains?.(node));
+              if (!nestedInAnotherNode && node?.isConnected) {
+                node.remove();
+              }
+            });
+            setSection8ActiveSlide(section, nextSlide);
+            normalizeSection8SlideLayout(section, getSection8Slides(section));
+            persistChange();
+          });
+
+          toolbar.append(removeButton, count, addButton);
+          const dotHost = slides[slides.length - 1].dot?.parentElement;
+          if (dotHost?.parentElement) {
+            dotHost.insertAdjacentElement("afterend", toolbar);
+          } else {
+            section.appendChild(toolbar);
+          }
+
+          // A estrutura só é gravada por `persistChange`, disparado pelos
+          // botões de adicionar/remover. Montar a prévia nunca altera o
+          // código-fonte.
         });
       };
 
@@ -3160,6 +6910,12 @@ ${containerHtml}`;
       const openTemplateOverlayPopover = (sourceEvent, overlayElement) => {
         closePreviewEditPopover();
 
+        const overlayMeta = {
+          scope: "template",
+          sourceFrame: overlayElement?.ownerDocument?.defaultView?.frameElement || frame
+        };
+        let overlayHistoryRecorded = false;
+
         const computed = overlayElement.ownerDocument.defaultView.getComputedStyle(overlayElement);
         const initialColor = colorToHex(computed.backgroundColor || "#000000", "#000000");
         const initialOpacity = getAlphaFromCssColor(computed.backgroundColor, 0.64).toFixed(2);
@@ -3252,13 +7008,17 @@ ${containerHtml}`;
         form.appendChild(actions);
 
         const applyOverlay = () => {
+          if (!overlayHistoryRecorded) {
+            recordPreviewEditHistory(overlayMeta, overlayMeta.sourceFrame);
+            overlayHistoryRecorded = true;
+          }
           const nextColor = isHexColor(colorHexInput.value) ? normalizeHexColor(colorHexInput.value) : colorInput.value;
           const nextOpacity = normalizeCarouselCaptionOpacity(opacityInput.value);
           colorInput.value = nextColor;
           colorHexInput.value = nextColor;
           overlayElement.style.backgroundColor = hexToRgba(nextColor, nextOpacity);
           applyTemplateOverlayPosition(overlayElement, horizontalSelect.value, verticalSelect.value);
-          syncTemplateHtmlFromPreview();
+          syncTemplateHtmlFromPreview({ sourceFrame: overlayMeta.sourceFrame });
         };
 
         horizontalSelect.addEventListener("input", applyOverlay);
@@ -3376,6 +7136,7 @@ ${containerHtml}`;
         }
 
         closePreviewEditPopover();
+        recordPreviewEditHistory({ scope: "carousel", sourceFrame: captionElement?.ownerDocument?.defaultView?.frameElement || frame });
 
         const getCaptionSolidColor = () => {
           const gradient = parseCssGradient(slide.backgroundColor);
@@ -3568,6 +7329,106 @@ ${containerHtml}`;
         return element.dataset.llTemplateNode;
       };
 
+      const getTemplateSourceAnchorCandidates = (element, root) => {
+        const nodes = [];
+        let current = element?.nodeType === 1 ? element : element?.parentElement;
+        while (current && root.contains(current)) {
+          nodes.push(current);
+          if (current === root) {
+            break;
+          }
+          current = current.parentElement;
+        }
+
+        const candidates = [];
+        const seen = new Set();
+        const addCandidate = (type, value) => {
+          const normalized = String(value || "").trim();
+          const key = `${type}:${normalized}`;
+          if (!normalized || seen.has(key)) {
+            return;
+          }
+          seen.add(key);
+          candidates.push({ type, value: normalized });
+        };
+
+        // The section wrapper is the most useful source destination. A click
+        // on `.section-28__tab`, for example, leads to `.section-28`.
+        nodes.forEach((node) => {
+          Array.from(node.classList || [])
+            .filter((className) => /^(?:section|sessao|sessão)[-_]\d+$/i.test(className))
+            .forEach((className) => addCandidate("class", className));
+        });
+        nodes.forEach((node) => addCandidate("id", node.id));
+        nodes.forEach((node) => {
+          Array.from(node.classList || [])
+            .filter((className) => !/^ll-|^preview-|^codex-/i.test(className))
+            .forEach((className) => addCandidate("class", className));
+        });
+        return candidates;
+      };
+
+      const findTemplateSourceOpeningTag = (source, candidate) => {
+        const value = String(candidate?.value || "").trim();
+        if (!value) {
+          return null;
+        }
+
+        let index = source.indexOf(value);
+        while (index !== -1) {
+          const start = source.lastIndexOf("<", index);
+          const end = start >= 0 ? source.indexOf(">", start) : -1;
+          if (start >= 0 && end >= index && !/^<\s*\//.test(source.slice(start, start + 3))) {
+            const tag = source.slice(start, end + 1);
+            const attribute = candidate.type === "id" ? "id" : "class";
+            const attributeMatch = tag.match(new RegExp(`\\b${attribute}\\s*=\\s*(?:\"([^\"]*)\"|'([^']*)'|([^\\s>]+))`, "i"));
+            const attributeValue = attributeMatch
+              ? (attributeMatch[1] ?? attributeMatch[2] ?? attributeMatch[3] ?? "")
+              : "";
+            const matches = candidate.type === "id"
+              ? attributeValue === value
+              : attributeValue.split(/\s+/).includes(value);
+            if (matches) {
+              return { start, end: end + 1 };
+            }
+          }
+          index = source.indexOf(value, index + value.length);
+        }
+        return null;
+      };
+
+      const revealTemplateSourceForPreviewElement = (element, root) => {
+        const textarea = editor.querySelector('[data-template-field="html"]');
+        if (!textarea || !element || !root?.contains(element)) {
+          return;
+        }
+
+        const source = textarea.value || state.template.html || "";
+        const match = getTemplateSourceAnchorCandidates(element, root)
+          .map((candidate) => findTemplateSourceOpeningTag(source, candidate))
+          .find(Boolean);
+        if (!match) {
+          return;
+        }
+
+        const lineNumber = source.slice(0, match.start).split("\n").length - 1;
+        const lineHeight = Number.parseFloat(window.getComputedStyle(textarea).lineHeight) || 18;
+        try {
+          textarea.focus({ preventScroll: true });
+        } catch (_) {
+          textarea.focus();
+        }
+        textarea.setSelectionRange(match.start, match.end);
+        textarea.scrollTop = Math.max(0, (lineNumber * lineHeight) - (textarea.clientHeight * 0.34));
+        textarea.scrollLeft = 0;
+        // A programmatic scroll does not emit this event in every browser;
+        // trigger it so the highlighted code layer follows the textarea too.
+        textarea.dispatchEvent(new Event("scroll", { bubbles: false }));
+        if (typeof syncTemplateCodeEditorScroll === "function") {
+          syncTemplateCodeEditorScroll(textarea);
+        }
+      };
+
       const markBentoNode = (element) => {
         if (!element.dataset.llBentoNode) {
           element.dataset.llBentoNode = `bento-${Math.random().toString(16).slice(2)}`;
@@ -3668,32 +7529,36 @@ ${containerHtml}`;
         return hasTemplateBackgroundImage(element);
       };
 
+      const isTemplateIconElement = (element) => {
+        if (!element || !["IMG", "SVG"].includes(element.tagName)) {
+          return false;
+        }
+
+        if (element.tagName === "SVG") {
+          return true;
+        }
+
+        return /(^|[\s_-])(icon|logo|avatar|badge|symbol|emblem|mark)([\s_-]|$)/i.test(getTemplateSignature(element));
+      };
+
       const ensureTemplateFaqStyle = (root) => {
         const styleId = "ll-template-faq-custom-style";
-        let faqStyle = root.querySelector(`#${styleId}`);
+        let faqStyle = doc.getElementById(styleId);
         if (!faqStyle) {
           faqStyle = doc.createElement("style");
           faqStyle.id = styleId;
-          root.insertBefore(faqStyle, root.firstChild);
+          (doc.head || doc.documentElement).appendChild(faqStyle);
         }
 
         faqStyle.textContent = `
-.lp-container .ll-template-faq-custom-colors #faq-section__summary.ll-template-faq-summary,
-.lp_container .ll-template-faq-custom-colors #faq-section__summary.ll-template-faq-summary,
 .lp-container .ll-template-faq-custom-colors .ll-template-faq-summary,
 .lp_container .ll-template-faq-custom-colors .ll-template-faq-summary,
-.lp-container.ll-template-faq-custom-colors #faq-section__summary.ll-template-faq-summary,
-.lp_container.ll-template-faq-custom-colors #faq-section__summary.ll-template-faq-summary,
 .lp-container.ll-template-faq-custom-colors .ll-template-faq-summary,
 .lp_container.ll-template-faq-custom-colors .ll-template-faq-summary {
   background: var(--ll-template-faq-summary-bg) !important;
 }
-.lp-container .ll-template-faq-custom-colors #faq-section__summary.ll-template-faq-summary:hover,
-.lp_container .ll-template-faq-custom-colors #faq-section__summary.ll-template-faq-summary:hover,
 .lp-container .ll-template-faq-custom-colors .ll-template-faq-summary:hover,
 .lp_container .ll-template-faq-custom-colors .ll-template-faq-summary:hover,
-.lp-container.ll-template-faq-custom-colors #faq-section__summary.ll-template-faq-summary:hover,
-.lp_container.ll-template-faq-custom-colors #faq-section__summary.ll-template-faq-summary:hover,
 .lp-container.ll-template-faq-custom-colors .ll-template-faq-summary:hover,
 .lp_container.ll-template-faq-custom-colors .ll-template-faq-summary:hover {
   background: var(--ll-template-faq-summary-hover-bg) !important;
@@ -3703,7 +7568,10 @@ ${containerHtml}`;
       };
 
       const getTemplateFaqRoot = (details, root) => {
-        return details.closest?.("#faq-section, [id*='faq' i], [class*='faq' i], section, article")
+        // `details` e cada item também carregam IDs com "faq". Eles não
+        // podem ser a raiz: a edição por classe precisa enxergar todos os
+        // itens da seção e gerar um seletor que exista no documento.
+        return details.closest?.("#faq-section, .faq-section, section[id*='faq' i], section[class*='faq' i], article[id*='faq' i], article[class*='faq' i]")
           || details.parentElement
           || root;
       };
@@ -3760,11 +7628,501 @@ ${containerHtml}`;
         }) || null;
       };
 
+      const getTemplateFaqTextTargets = (faqRoot) => {
+        const detailsList = Array.from(faqRoot.querySelectorAll("details")).filter((details) => {
+          return isTemplateFaqDetails(details, faqRoot);
+        });
+
+        return detailsList.reduce((targets, details) => {
+          const question = findTemplateFaqQuestion(details);
+          const answer = findTemplateFaqAnswer(details);
+
+          if (question && !targets.questions.includes(question)) {
+            targets.questions.push(question);
+          }
+
+          if (answer && !targets.answers.includes(answer)) {
+            targets.answers.push(answer);
+          }
+
+          return targets;
+        }, { questions: [], answers: [] });
+      };
+
+      const getTemplateFaqSourceSelector = (element, faqRoot, fallbackSelector) => {
+        const elementId = String(element?.id || "").trim();
+        if (elementId && !/^ll-template-|^preview-|^codex-/i.test(elementId)) {
+          return `#${escapeCssClassName(elementId)}`;
+        }
+
+        const className = Array.from(element?.classList || []).find(isUsefulPreviewClass);
+        if (className) {
+          return `.${escapeCssClassName(className)}`;
+        }
+
+        const rootId = String(faqRoot?.id || "").trim();
+        if (rootId && !/^ll-template-|^preview-|^codex-/i.test(rootId)) {
+          if (element?.tagName === "SUMMARY" || element?.closest?.("summary")) {
+            return `#${escapeCssClassName(rootId)} summary`;
+          }
+          return `#${escapeCssClassName(rootId)} ${fallbackSelector}`;
+        }
+
+        return fallbackSelector;
+      };
+
+      const templateFaqStyleMarkers = {
+        visualStart: "/* Ajustes visuais do FAQ */",
+        visualEnd: "/* Fim dos ajustes visuais do FAQ */",
+        classStart: "/* Ajustes de classe/ID do FAQ */",
+        classEnd: "/* Fim dos ajustes de classe/ID do FAQ */"
+      };
+
+      // The FAQ may be made of several <details>. Styles cannot live inside
+      // one of those items: besides producing invalid-looking source, their
+      // cascade changes depending on the edited question. Keep user rules in
+      // the header of the LP fragment, before every FAQ item instead.
+      const getTemplateFaqStyleHost = (faqRoot) => {
+        return faqRoot?.closest?.(".lp-container, .lp_container")
+          || faqRoot?.parentElement
+          || faqRoot
+          || null;
+      };
+
+      const isTemplateFaqSourceStyle = (style, className, marker) => {
+        return style?.tagName === "STYLE"
+          && (style.classList.contains(className) || String(style.textContent || "").includes(marker));
+      };
+
+      const placeTemplateFaqSourceStyleAtHeader = (style, faqRoot) => {
+        const host = getTemplateFaqStyleHost(faqRoot);
+        if (!style || !host) {
+          return;
+        }
+
+        const headerStyles = Array.from(host.children || []).filter((node) => {
+          return node.tagName === "STYLE" && (
+            node.classList.contains("faq-custom-style")
+            || node.classList.contains("faq-class-style")
+            || String(node.textContent || "").includes(templateFaqStyleMarkers.visualStart)
+            || String(node.textContent || "").includes(templateFaqStyleMarkers.classStart)
+          );
+        });
+        const isClassStyle = style.classList.contains("faq-class-style")
+          || String(style.textContent || "").includes(templateFaqStyleMarkers.classStart);
+
+        if (isClassStyle) {
+          // Class/ID edits need to come after the direct FAQ visual rules so
+          // they can intentionally replace a color declared on a child node.
+          const lastVisualStyle = headerStyles.filter((node) => node !== style && !node.classList.contains("faq-class-style")
+            && !String(node.textContent || "").includes(templateFaqStyleMarkers.classStart)).at(-1);
+          if (lastVisualStyle) {
+            lastVisualStyle.insertAdjacentElement("afterend", style);
+            return;
+          }
+        }
+
+        const firstHeaderStyle = headerStyles.find((node) => node !== style) || null;
+        host.insertBefore(style, firstHeaderStyle || host.firstChild);
+      };
+
+      const getTemplateFaqSourceStyleElement = (faqRoot, className, marker) => {
+        const localStyle = Array.from(faqRoot?.children || []).find((child) => {
+          return isTemplateFaqSourceStyle(child, className, marker);
+        });
+        if (localStyle) {
+          return localStyle;
+        }
+
+        const hostStyle = Array.from(getTemplateFaqStyleHost(faqRoot)?.children || []).find((child) => {
+          return isTemplateFaqSourceStyle(child, className, marker);
+        });
+        if (hostStyle) {
+          return hostStyle;
+        }
+
+        return Array.from(faqRoot?.ownerDocument?.head?.querySelectorAll("style") || []).find((style) => {
+          return isTemplateFaqSourceStyle(style, className, marker);
+        }) || null;
+      };
+
+      const replaceTemplateFaqCssBlock = (cssText, startMarker, endMarker, block) => {
+        const source = String(cssText || "");
+        const startIndex = source.indexOf(startMarker);
+        const endIndex = startIndex >= 0 ? source.indexOf(endMarker, startIndex) : -1;
+        if (startIndex >= 0 && endIndex >= 0) {
+          return `${source.slice(0, startIndex)}${block}${source.slice(endIndex + endMarker.length)}`.trim();
+        }
+        return [source.trim(), block].filter(Boolean).join("\n\n");
+      };
+
+      const getTemplateFaqCssBlock = (cssText, startMarker, endMarker) => {
+        const source = String(cssText || "");
+        const startIndex = source.indexOf(startMarker);
+        const endIndex = startIndex >= 0 ? source.indexOf(endMarker, startIndex) : -1;
+        if (startIndex < 0 || endIndex < 0) {
+          return "";
+        }
+        return source.slice(startIndex + startMarker.length, endIndex).trim();
+      };
+
+      const writeTemplateFaqSourceStyle = (faqRoot, summary, question, answer, fields) => {
+        if (!faqRoot || !summary || !fields) {
+          return;
+        }
+
+        const normalSelector = getTemplateFaqSourceSelector(summary, faqRoot, "summary");
+        const questionSelector = getTemplateFaqSourceSelector(question, faqRoot, "#faq-section__q-text");
+        const answerSelector = answer
+          ? getTemplateFaqSourceSelector(answer, faqRoot, "#faq-section__a-text")
+          : "";
+        const normalizeTextFields = (styleFields) => [
+          `color: ${styleFields.color.color.value} !important;`,
+          `font-size: ${normalizeTextStyleNumber(styleFields.fontSize.value, 16, 8, 96)}px !important;`,
+          `font-weight: ${normalizePreviewFontWeight(styleFields.fontWeight.value)} !important;`,
+          `text-align: ${normalizePreviewTextAlign(styleFields.textAlign.value)} !important;`,
+          `line-height: ${normalizeTextStyleNumber(styleFields.lineHeight.value, 1.35, 0.8, 2.6, 2)} !important;`
+        ];
+        const rules = [
+          `${normalSelector} { background: ${fields.normal.color.value} !important; }`,
+          `${normalSelector}:hover { background: ${fields.hover.color.value} !important; }`,
+          questionSelector ? `${questionSelector} { ${normalizeTextFields(fields.question).join(" ")} }` : "",
+          answerSelector ? `${answerSelector} { ${normalizeTextFields(fields.answer).join(" ")} }` : ""
+        ].filter(Boolean);
+        let style = getTemplateFaqSourceStyleElement(faqRoot, "faq-custom-style", templateFaqStyleMarkers.visualStart);
+
+        if (!style) {
+          style = faqRoot.ownerDocument.createElement("style");
+          style.className = "faq-custom-style";
+        }
+
+        const visualBlock = `${templateFaqStyleMarkers.visualStart}\n${rules.join("\n")}\n${templateFaqStyleMarkers.visualEnd}`;
+        style.textContent = replaceTemplateFaqCssBlock(
+          style.textContent,
+          templateFaqStyleMarkers.visualStart,
+          templateFaqStyleMarkers.visualEnd,
+          visualBlock
+        );
+        placeTemplateFaqSourceStyleAtHeader(style, faqRoot);
+
+        // The values above are public CSS. Clear the temporary preview-only
+        // variables so neither the source code nor the final export depends
+        // on an internal Layout Lab helper.
+        faqRoot.classList.remove("ll-template-faq-custom-colors");
+        [
+          "--ll-template-faq-summary-bg",
+          "--ll-template-faq-summary-hover-bg",
+          "--ll-template-faq-question-color",
+          "--ll-template-faq-answer-color"
+        ].forEach((property) => faqRoot.style.removeProperty(property));
+        if (!faqRoot.getAttribute("class")) {
+          faqRoot.removeAttribute("class");
+        }
+        if (!faqRoot.getAttribute("style")) {
+          faqRoot.removeAttribute("style");
+        }
+      };
+
+      const escapeTemplateFaqCssRegExp = (value) => String(value || "").replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+      const getTemplateFaqCssBlocks = (cssText, startMarker, endMarker) => {
+        const source = String(cssText || "");
+        const blocks = [];
+        let cursor = 0;
+        while (cursor < source.length) {
+          const startIndex = source.indexOf(startMarker, cursor);
+          if (startIndex < 0) {
+            break;
+          }
+          const endIndex = source.indexOf(endMarker, startIndex + startMarker.length);
+          if (endIndex < 0) {
+            break;
+          }
+          blocks.push(source.slice(startIndex + startMarker.length, endIndex).trim());
+          cursor = endIndex + endMarker.length;
+        }
+        return blocks;
+      };
+
+      const removeTemplateFaqCssBlocks = (cssText, startMarker, endMarker) => {
+        let source = String(cssText || "");
+        let startIndex = source.indexOf(startMarker);
+        while (startIndex >= 0) {
+          const endIndex = source.indexOf(endMarker, startIndex + startMarker.length);
+          if (endIndex < 0) {
+            break;
+          }
+          source = `${source.slice(0, startIndex)}${source.slice(endIndex + endMarker.length)}`;
+          startIndex = source.indexOf(startMarker);
+        }
+        return source.trim();
+      };
+
+      const mergeTemplateFaqClassCssBlocks = (blocks) => {
+        const markedCss = [
+          templateFaqStyleMarkers.classStart,
+          ...blocks.filter(Boolean),
+          templateFaqStyleMarkers.classEnd
+        ].join("\n");
+        return getTemplateFaqCssBlock(
+          compactTemplateFaqClassCss(markedCss),
+          templateFaqStyleMarkers.classStart,
+          templateFaqStyleMarkers.classEnd
+        );
+      };
+
+      const normalizeTemplateFaqClassStyles = (faqRoot) => {
+        const documentStyles = Array.from(faqRoot?.ownerDocument?.querySelectorAll("style") || []);
+        const sources = documentStyles.filter((style) => isTemplateFaqSourceStyle(
+          style,
+          "faq-class-style",
+          templateFaqStyleMarkers.classStart
+        ));
+        const blocks = sources.flatMap((style) => getTemplateFaqCssBlocks(
+          style.textContent,
+          templateFaqStyleMarkers.classStart,
+          templateFaqStyleMarkers.classEnd
+        ));
+
+        const currentCss = blocks.filter(Boolean).join("\n").trim();
+        const mergedCss = mergeTemplateFaqClassCssBlocks(blocks);
+        const needsNormalization = sources.length !== 1
+          || blocks.length !== 1
+          || currentCss !== mergedCss;
+        if (!needsNormalization) {
+          return sources[0] || null;
+        }
+
+        sources.forEach((style) => {
+          const remainingCss = removeTemplateFaqCssBlocks(
+            style.textContent,
+            templateFaqStyleMarkers.classStart,
+            templateFaqStyleMarkers.classEnd
+          );
+          if (remainingCss) {
+            style.textContent = remainingCss;
+          } else {
+            style.remove();
+          }
+        });
+
+        if (!mergedCss) {
+          return null;
+        }
+
+        const style = faqRoot.ownerDocument.createElement("style");
+        style.className = "faq-class-style";
+        style.textContent = `${templateFaqStyleMarkers.classStart}\n${mergedCss}\n${templateFaqStyleMarkers.classEnd}`;
+        placeTemplateFaqSourceStyleAtHeader(style, faqRoot);
+        faqRoot.dataset.llTemplateFaqClassStylesCompacted = "true";
+        return style;
+      };
+
+      const getTemplateFaqClassStyle = (faqRoot) => {
+        return normalizeTemplateFaqClassStyles(faqRoot)
+          || getTemplateFaqSourceStyleElement(faqRoot, "faq-class-style", templateFaqStyleMarkers.classStart);
+      };
+
+      const getTemplateFaqClassRuleValue = (faqRoot, selector, property) => {
+        const style = getTemplateFaqClassStyle(faqRoot);
+        const normalizedSelector = String(selector || "").trim();
+        if (!style || !normalizedSelector || !property) {
+          return "";
+        }
+
+        const classCss = getTemplateFaqCssBlock(
+          style.textContent,
+          templateFaqStyleMarkers.classStart,
+          templateFaqStyleMarkers.classEnd
+        );
+        const ruleMatch = classCss.match(new RegExp(`${escapeTemplateFaqCssRegExp(normalizedSelector)}\\s*\\{([\\s\\S]*?)\\}`, "i"));
+        const valueMatch = ruleMatch?.[1]?.match(new RegExp(`${escapeTemplateFaqCssRegExp(property)}\\s*:\\s*([^;]+)`, "i"));
+        return String(valueMatch?.[1] || "").replace(/\\s*!important\\s*$/i, "").trim();
+      };
+
+      const updateTemplateFaqClassRule = (faqRoot, selector, property, value = "") => {
+        const normalizedSelector = String(selector || "").trim();
+        const normalizedProperty = String(property || "").trim().toLowerCase();
+        if (!faqRoot || !normalizedSelector || !normalizedProperty) {
+          return;
+        }
+
+        let style = getTemplateFaqClassStyle(faqRoot);
+        if (!style && !String(value || "").trim()) {
+          return;
+        }
+        if (!style) {
+          style = faqRoot.ownerDocument.createElement("style");
+          style.className = "faq-class-style";
+        }
+
+        const existingCss = getTemplateFaqCssBlock(
+          style.textContent,
+          templateFaqStyleMarkers.classStart,
+          templateFaqStyleMarkers.classEnd
+        );
+        const rulePattern = new RegExp(`(^|\\n)\\s*${escapeTemplateFaqCssRegExp(normalizedSelector)}\\s*\\{([\\s\\S]*?)\\}`, "i");
+        const existingRule = existingCss.match(rulePattern);
+        const declarations = String(existingRule?.[2] || "")
+          .split(";")
+          .map((declaration) => declaration.trim())
+          .filter(Boolean)
+          .filter((declaration) => !new RegExp(`^${escapeTemplateFaqCssRegExp(normalizedProperty)}\\s*:`, "i").test(declaration));
+
+        if (String(value || "").trim()) {
+          declarations.push(`${normalizedProperty}: ${String(value).trim()} !important`);
+        }
+
+        const nextRule = declarations.length
+          ? `${normalizedSelector} { ${declarations.join("; ")}; }`
+          : "";
+        const nextCss = existingRule
+          ? existingCss.replace(rulePattern, `${existingRule[1] || ""}${nextRule}`)
+          : [existingCss, nextRule].filter(Boolean).join("\n");
+        const cleanCss = nextCss.trim();
+        if (!cleanCss) {
+          const withoutClassBlock = replaceTemplateFaqCssBlock(
+            style.textContent,
+            templateFaqStyleMarkers.classStart,
+            templateFaqStyleMarkers.classEnd,
+            ""
+          );
+          if (withoutClassBlock) {
+            style.textContent = withoutClassBlock;
+          } else {
+            style.remove();
+          }
+          return;
+        }
+
+        const classBlock = `${templateFaqStyleMarkers.classStart}\n${cleanCss}\n${templateFaqStyleMarkers.classEnd}`;
+        style.textContent = replaceTemplateFaqCssBlock(
+          style.textContent,
+          templateFaqStyleMarkers.classStart,
+          templateFaqStyleMarkers.classEnd,
+          classBlock
+        );
+        placeTemplateFaqSourceStyleAtHeader(style, faqRoot);
+      };
+
+      const findTemplateFaqTitle = (faqRoot, fallbackRoot = null) => {
+        if (!faqRoot) {
+          return null;
+        }
+
+        const titleSelectors = [
+          "#faq-section__title",
+          "#faq-section-title",
+          "[id*='faq' i][id*='title' i]",
+          "[class*='faq' i][class*='title' i]",
+          "h1",
+          "h2"
+        ].join(", ");
+
+        const searchRoots = [faqRoot];
+        if (fallbackRoot && fallbackRoot !== faqRoot) {
+          searchRoots.push(fallbackRoot);
+        }
+
+        const titleCandidates = searchRoots.flatMap((searchRoot) => {
+          const matches = Array.from(searchRoot.querySelectorAll(titleSelectors));
+          return searchRoot.matches?.(titleSelectors) ? [searchRoot, ...matches] : matches;
+        });
+
+        return titleCandidates.find((element) => {
+          return !element.closest("details")
+            && (element.innerText || element.textContent || "").trim();
+        }) || null;
+      };
+
+      const ensureTemplateFaqTitleTextElement = (titleElement) => {
+        const existing = titleElement.querySelector(":scope > [data-ll-template-faq-title-text]");
+        if (existing) {
+          return existing;
+        }
+
+        const docRef = titleElement.ownerDocument;
+        const span = docRef.createElement("span");
+        span.dataset.llTemplateFaqTitleText = "true";
+
+        const directTextNodes = Array.from(titleElement.childNodes).filter((node) => {
+          return node.nodeType === Node.TEXT_NODE && node.textContent.trim();
+        });
+
+        if (directTextNodes.length) {
+          titleElement.insertBefore(span, directTextNodes[0]);
+          directTextNodes.forEach((node) => {
+            span.appendChild(node);
+          });
+          return span;
+        }
+
+        return Array.from(titleElement.children).find((child) => {
+          const tagName = String(child.tagName || "").toLowerCase();
+          return !["svg", "img", "picture", "video", "source", "iframe"].includes(tagName)
+            && (child.innerText || child.textContent || "").trim();
+        }) || titleElement;
+      };
+
+      const attachTemplateFaqTitleEditor = (titleElement) => {
+        if (!titleElement || titleElement.dataset.llTemplateFaqTitleReady === "true") {
+          return;
+        }
+
+        titleElement.dataset.llTemplateFaqTitleReady = "true";
+        const titleNodeId = markTemplateNode(titleElement);
+        attachColor(titleElement, {
+          scope: "template",
+          field: "backgroundColor",
+          templateNodeId: titleNodeId,
+          value: colorToHex(
+            titleElement.ownerDocument.defaultView.getComputedStyle(titleElement).backgroundColor || "#0ea5e9",
+            "#0ea5e9"
+          )
+        }, "cor de fundo do título do FAQ", { triggerEvent: "dblclick" });
+
+        const textTarget = ensureTemplateFaqTitleTextElement(titleElement);
+        attachText(textTarget, {
+          scope: "template",
+          field: "text",
+          templateNodeId: markTemplateNode(textTarget),
+          value: textTarget.innerText || textTarget.textContent || ""
+        }, { multiline: false });
+      };
+
       const openTemplateFaqStylePopover = (sourceEvent, faqRoot, summary) => {
         closePreviewEditPopover();
         ensureTemplateFaqStyle(faqRoot);
+        const sourceFrame = faqRoot?.ownerDocument?.defaultView?.frameElement || frame;
+        const faqContainer = faqRoot?.closest?.(".lp-container, .lp_container") || null;
+        // O board possui varios frames vivos. Sempre serialize o container
+        // que abriu esta janela; sem isso, a segunda alteração podia ser
+        // gravada a partir de outro frame ainda desatualizado e apagar a cor
+        // escolhida na primeira edição.
+        const syncFaqTemplateHtml = (options = {}) => syncTemplateHtmlFromPreview({
+          ...options,
+          sourceFrame,
+          container: faqContainer || undefined
+        });
+        let faqHistoryRecorded = false;
+        const recordFaqEditHistory = () => {
+          if (faqHistoryRecorded) {
+            return;
+          }
+          recordPreviewEditHistory({ scope: "template", sourceFrame }, sourceFrame);
+          faqHistoryRecorded = true;
+        };
 
         const computed = summary.ownerDocument.defaultView.getComputedStyle(summary);
+        const faqTextTargets = getTemplateFaqTextTargets(faqRoot);
+        const firstQuestion = faqTextTargets.questions[0] || findTemplateFaqQuestion(summary.closest("details")) || summary;
+        const firstAnswer = faqTextTargets.answers[0] || null;
+        const questionComputed = firstQuestion
+          ? firstQuestion.ownerDocument.defaultView.getComputedStyle(firstQuestion)
+          : computed;
+        const answerComputed = firstAnswer
+          ? firstAnswer.ownerDocument.defaultView.getComputedStyle(firstAnswer)
+          : computed;
         const initialNormal = colorToHex(
           faqRoot.style.getPropertyValue("--ll-template-faq-summary-bg") || computed.backgroundColor || "#ffffff",
           "#ffffff"
@@ -3773,24 +8131,56 @@ ${containerHtml}`;
           faqRoot.style.getPropertyValue("--ll-template-faq-summary-hover-bg") || "#f9f9f9",
           "#f9f9f9"
         );
+        const initialQuestionColor = colorToHex(
+          faqRoot.style.getPropertyValue("--ll-template-faq-question-color") || questionComputed.color || "#111827",
+          "#111827"
+        );
+        const initialAnswerColor = colorToHex(
+          faqRoot.style.getPropertyValue("--ll-template-faq-answer-color") || answerComputed.color || "#333333",
+          "#333333"
+        );
 
         const form = document.createElement("form");
-        form.className = "preview-edit-popover preview-edit-popover--color";
+        form.className = "preview-edit-popover preview-edit-popover--color preview-edit-popover--faq";
         form.setAttribute("role", "dialog");
-        form.setAttribute("aria-label", "Editar cores do FAQ");
+        form.setAttribute("aria-label", "Editar FAQ");
 
         const title = document.createElement("p");
         title.className = "preview-edit-popover__title";
-        title.textContent = "Cores do FAQ";
+        title.textContent = "Editar FAQ";
         form.appendChild(title);
 
-        const makeColorField = (labelText, initialValue) => {
+        const tabs = document.createElement("div");
+        tabs.className = "preview-edit-popover__tabs";
+        const summaryTab = document.createElement("button");
+        summaryTab.type = "button";
+        summaryTab.textContent = "Summary";
+        summaryTab.className = "is-active";
+        const textTab = document.createElement("button");
+        textTab.type = "button";
+        textTab.textContent = "Texto";
+        const classTab = document.createElement("button");
+        classTab.type = "button";
+        classTab.textContent = "Classe/ID";
+        tabs.append(summaryTab, textTab, classTab);
+        form.appendChild(tabs);
+
+        const summaryPanel = document.createElement("div");
+        summaryPanel.className = "preview-edit-popover__panel";
+        const textPanel = document.createElement("div");
+        textPanel.className = "preview-edit-popover__panel";
+        textPanel.hidden = true;
+        const classPanel = document.createElement("div");
+        classPanel.className = "preview-edit-popover__panel preview-edit-popover__panel--class";
+        classPanel.hidden = true;
+
+        const makeColorField = (parent, labelText, initialValue) => {
           const label = document.createElement("label");
           label.className = "preview-edit-popover__mini-field";
           const text = document.createElement("span");
           text.textContent = labelText;
           const row = document.createElement("div");
-          row.className = "preview-edit-popover__color-row preview-edit-popover__color-row--picker";
+          row.className = "preview-edit-popover__color-row";
           const color = document.createElement("input");
           color.className = "preview-edit-popover__color";
           color.type = "color";
@@ -3803,12 +8193,428 @@ ${containerHtml}`;
           hex.placeholder = "#ffffff";
           row.append(color, hex);
           label.append(text, row);
-          form.appendChild(label);
+          parent.appendChild(label);
           return { color, hex };
         };
 
-        const normal = makeColorField("Cor normal", initialNormal);
-        const hover = makeColorField("Cor hover", initialHover);
+        const makeSelect = (options, value) => {
+          const select = document.createElement("select");
+          options.forEach((option) => {
+            const item = document.createElement("option");
+            item.value = option.value;
+            item.textContent = option.label;
+            item.selected = option.value === value;
+            select.appendChild(item);
+          });
+          return select;
+        };
+
+        const makeMiniField = (parent, labelText, input) => {
+          const label = document.createElement("label");
+          label.className = "preview-edit-popover__mini-field";
+          const text = document.createElement("span");
+          text.textContent = labelText;
+          label.append(text, input);
+          parent.appendChild(label);
+          return input;
+        };
+
+        const normal = makeColorField(summaryPanel, "Fundo normal do summary", initialNormal);
+        const hover = makeColorField(summaryPanel, "Fundo hover do summary", initialHover);
+
+        const createTextStyleFields = (parent, labelText, target, fallbackColor) => {
+          const group = document.createElement("div");
+          group.className = "preview-edit-popover__group";
+          const groupTitle = document.createElement("p");
+          groupTitle.className = "preview-edit-popover__note";
+          groupTitle.textContent = labelText;
+          group.appendChild(groupTitle);
+
+          const targetComputed = target?.ownerDocument.defaultView.getComputedStyle(target) || computed;
+          const color = makeColorField(group, "Cor", colorToHex(targetComputed.color || fallbackColor, fallbackColor));
+          const grid = document.createElement("div");
+          grid.className = "preview-edit-popover__grid";
+
+          const fontSize = document.createElement("input");
+          fontSize.type = "number";
+          fontSize.min = "8";
+          fontSize.max = "96";
+          fontSize.step = "1";
+          fontSize.value = String(normalizeTextStyleNumber(targetComputed.fontSize, 16, 8, 96));
+
+          const fontWeight = makeSelect([
+            { value: "300", label: "Leve" },
+            { value: "400", label: "Normal" },
+            { value: "500", label: "Medio" },
+            { value: "600", label: "Semibold" },
+            { value: "700", label: "Bold" },
+            { value: "800", label: "Extra bold" },
+            { value: "900", label: "Black" }
+          ], normalizePreviewFontWeight(targetComputed.fontWeight));
+
+          const textAlign = makeSelect([
+            { value: "left", label: "Esquerda" },
+            { value: "center", label: "Centro" },
+            { value: "right", label: "Direita" },
+            { value: "justify", label: "Justificado" }
+          ], normalizePreviewTextAlign(targetComputed.textAlign));
+
+          const lineHeight = document.createElement("input");
+          lineHeight.type = "number";
+          lineHeight.min = "0.8";
+          lineHeight.max = "2.6";
+          lineHeight.step = "0.05";
+          lineHeight.value = String(normalizeTextStyleNumber(targetComputed.lineHeight, 1.35, 0.8, 2.6, 2));
+
+          makeMiniField(grid, "Tamanho", fontSize);
+          makeMiniField(grid, "Peso", fontWeight);
+          makeMiniField(grid, "Alinhamento", textAlign);
+          makeMiniField(grid, "Altura da linha", lineHeight);
+          group.appendChild(grid);
+          parent.appendChild(group);
+
+          return { color, fontSize, fontWeight, textAlign, lineHeight };
+        };
+
+        const questionStyle = createTextStyleFields(textPanel, "Perguntas", firstQuestion, initialQuestionColor);
+        const answerStyle = createTextStyleFields(textPanel, "Respostas", firstAnswer || firstQuestion, initialAnswerColor);
+
+        const classCandidates = [
+          ...getPreviewClassCandidates(summary),
+          ...getPreviewClassCandidates(firstQuestion),
+          ...getPreviewClassCandidates(firstAnswer),
+          ...getPreviewClassCandidates(faqRoot)
+        ].reduce((items, candidate) => {
+          if (!candidate || items.some((item) => item.value === candidate.selector)) {
+            return items;
+          }
+          items.push({
+            value: candidate.selector,
+            label: candidate.label,
+            count: candidate.count || 1
+          });
+          return items;
+        }, []);
+
+        if (classCandidates.length) {
+          const summaryIdSelector = summary.id ? `#${escapeCssClassName(summary.id)}` : "";
+          const preferredClassCandidate = classCandidates.find((candidate) => candidate.value === summaryIdSelector)
+            || classCandidates.find((candidate) => candidate.value.startsWith("#"))
+            || classCandidates[0];
+          const getClassCandidateElement = (selector) => {
+            try {
+              if (faqRoot.matches?.(selector)) {
+                return faqRoot;
+              }
+              return faqRoot.querySelector(selector) || summary.ownerDocument.querySelector(selector);
+            } catch (_) {
+              return null;
+            }
+          };
+          const classSelect = makeSelect(classCandidates, preferredClassCandidate.value);
+          makeMiniField(classPanel, "Classe ou ID", classSelect);
+
+          // A aba de classe segue o mesmo modelo do editor de texto: um
+          // único seletor e todos os campos visuais disponíveis ao mesmo
+          // tempo. Assim não há um segundo seletor ambíguo para decidir
+          // qual parte do FAQ será alterada.
+          const classGrid = document.createElement("div");
+          classGrid.className = "preview-edit-popover__grid";
+          const classTextColor = makeColorField(classGrid, "Cor do texto", initialQuestionColor);
+          const classBackground = makeColorField(classGrid, "Fundo", initialNormal);
+          const classHoverBackground = makeColorField(classGrid, "Fundo hover", initialHover);
+          const classBorderColor = makeColorField(classGrid, "Borda", colorToHex(computed.borderTopColor || "#e5e5e5", "#e5e5e5"));
+
+          const classBorderWidth = document.createElement("input");
+          classBorderWidth.type = "number";
+          classBorderWidth.min = "0";
+          classBorderWidth.max = "24";
+          classBorderWidth.step = "1";
+          classBorderWidth.value = String(Math.max(0, Number.parseFloat(computed.borderTopWidth) || 0));
+          makeMiniField(classGrid, "Largura da borda", classBorderWidth);
+
+          const classFontSize = document.createElement("input");
+          classFontSize.type = "number";
+          classFontSize.min = "8";
+          classFontSize.max = "96";
+          classFontSize.step = "1";
+          classFontSize.value = String(normalizeTextStyleNumber(firstQuestion?.ownerDocument.defaultView.getComputedStyle(firstQuestion).fontSize, 16, 8, 96));
+          makeMiniField(classGrid, "Tamanho", classFontSize);
+
+          const classFontWeight = makeSelect([
+            { value: "300", label: "Leve" },
+            { value: "400", label: "Normal" },
+            { value: "500", label: "Medio" },
+            { value: "600", label: "Semibold" },
+            { value: "700", label: "Bold" },
+            { value: "800", label: "Extra bold" },
+            { value: "900", label: "Black" }
+          ], normalizePreviewFontWeight(firstQuestion?.ownerDocument.defaultView.getComputedStyle(firstQuestion).fontWeight));
+          makeMiniField(classGrid, "Peso", classFontWeight);
+
+          const classTextAlign = makeSelect([
+            { value: "left", label: "Esquerda" },
+            { value: "center", label: "Centro" },
+            { value: "right", label: "Direita" },
+            { value: "justify", label: "Justificado" }
+          ], normalizePreviewTextAlign(firstQuestion?.ownerDocument.defaultView.getComputedStyle(firstQuestion).textAlign));
+          makeMiniField(classGrid, "Alinhamento", classTextAlign);
+
+          const classFontStyle = makeSelect([
+            { value: "normal", label: "Normal" },
+            { value: "italic", label: "Itálico" }
+          ], firstQuestion?.ownerDocument.defaultView.getComputedStyle(firstQuestion).fontStyle === "italic" ? "italic" : "normal");
+          makeMiniField(classGrid, "Estilo", classFontStyle);
+
+          const classLineHeight = document.createElement("input");
+          classLineHeight.type = "number";
+          classLineHeight.min = "0.8";
+          classLineHeight.max = "2.6";
+          classLineHeight.step = "0.05";
+          classLineHeight.value = String(normalizeTextStyleNumber(firstQuestion?.ownerDocument.defaultView.getComputedStyle(firstQuestion).lineHeight, 1.35, 0.8, 2.6, 2));
+          makeMiniField(classGrid, "Altura da linha", classLineHeight);
+          classPanel.appendChild(classGrid);
+
+          const classNote = document.createElement("p");
+          classNote.className = "preview-edit-popover__note";
+          classPanel.appendChild(classNote);
+          const classActions = document.createElement("div");
+          classActions.className = "preview-edit-popover__actions";
+          const resetClassButton = document.createElement("button");
+          resetClassButton.type = "button";
+          resetClassButton.className = "button button--soft";
+          resetClassButton.textContent = "Limpar estilo da classe";
+          classActions.append(resetClassButton);
+          classPanel.appendChild(classActions);
+          const getClassBaseSelector = () => String(classSelect.value || "").trim();
+          const getClassScopedBaseSelector = () => {
+            const baseSelector = getClassBaseSelector();
+            const faqId = String(faqRoot?.id || "").trim();
+            const faqSelector = faqId ? `#${escapeCssClassName(faqId)}` : "";
+            // O CSS público do FAQ usa IDs e !important. Sempre que o alvo
+            // estiver dentro do FAQ, prefixar pelo próprio FAQ faz a regra
+            // personalizada ganhar em especificidade — tanto para classes
+            // quanto para os IDs repetidos de cada item.
+            if (faqSelector && baseSelector && baseSelector !== faqSelector && !baseSelector.startsWith(`${faqSelector} `)) {
+              return `${faqSelector} ${baseSelector}`;
+            }
+            return baseSelector;
+          };
+          const getClassSurfaceSelector = () => {
+            // O alvo escolhido ja representa o grupo a ser alterado. Nao
+            // replique a mesma regra no elemento e em um `summary` filho:
+            // isso gerava CSS longo e, em alguns layouts, invalido.
+            return getClassScopedBaseSelector();
+          };
+          const getClassHoverSelector = () => {
+            const surfaceSelector = getClassSurfaceSelector();
+            return surfaceSelector ? `${surfaceSelector}:hover` : "";
+          };
+          const getClassTextSelector = () => {
+            const baseSelector = getClassScopedBaseSelector();
+            const target = getClassCandidateElement(getClassBaseSelector());
+            const textTarget = getClassTextTarget();
+            if (!baseSelector || !textTarget || textTarget === target) {
+              return baseSelector;
+            }
+            const textId = String(textTarget.id || "").trim();
+            if (textId) {
+              return `${baseSelector} #${escapeCssClassName(textId)}`;
+            }
+            const textClass = Array.from(textTarget.classList || []).find((className) => !/^ll-template-|^preview-|^codex-/i.test(className));
+            return textClass ? `${baseSelector} .${escapeCssClassName(textClass)}` : baseSelector;
+          };
+
+          const getClassIconSelector = () => {
+            const baseSelector = getClassScopedBaseSelector();
+            if (!baseSelector) {
+              return "";
+            }
+            const target = getClassCandidateElement(getClassBaseSelector());
+            const iconTarget = target?.matches?.('[id*="icon" i], [class*="icon" i]')
+              ? target
+              : target?.querySelector?.('[id*="icon" i], [class*="icon" i]');
+            if (!iconTarget) {
+              return "";
+            }
+            const iconId = String(iconTarget.id || "").trim();
+            const iconClass = Array.from(iconTarget.classList || []).find((className) => !/^ll-template-|^preview-|^codex-/i.test(className));
+            const iconSelector = iconTarget === target
+              ? baseSelector
+              : iconId
+                ? `${baseSelector} #${escapeCssClassName(iconId)}`
+                : iconClass
+                  ? `${baseSelector} .${escapeCssClassName(iconClass)}`
+                  : "";
+            return iconSelector ? `${iconSelector}::before, ${iconSelector}::after` : "";
+          };
+
+          const classChangedFields = new Set();
+          const getClassVisualTarget = () => {
+            const target = getClassCandidateElement(getClassBaseSelector());
+            return target?.matches?.("summary") ? target : target?.querySelector?.("summary") || target || summary;
+          };
+          const getClassTextTarget = () => {
+            const target = getClassCandidateElement(getClassBaseSelector());
+            return target?.querySelector?.('[id*="q-text"], [class*="question" i], [class*="pergunta" i], h1, h2, h3, h4, p')
+              || target
+              || firstQuestion;
+          };
+          const getClassRuleValue = (selectors, property, fallback = "") => {
+            return selectors.map((selector) => getTemplateFaqClassRuleValue(faqRoot, selector, property))
+              .find(Boolean) || fallback;
+          };
+          const setColorPairValue = (pair, value, fallback) => {
+            const nextValue = colorToHex(value || fallback, fallback);
+            pair.color.value = nextValue;
+            pair.hex.value = nextValue;
+            pair.color.style.setProperty("--preview-edit-color", nextValue);
+          };
+          const refreshClassFields = () => {
+            const baseSelector = getClassScopedBaseSelector();
+            const surfaceSelector = getClassSurfaceSelector();
+            const hoverSelector = getClassHoverSelector();
+            const textSelector = getClassTextSelector();
+            const surfaceComputed = getClassVisualTarget()?.ownerDocument?.defaultView?.getComputedStyle(getClassVisualTarget()) || computed;
+            const textComputed = getClassTextTarget()?.ownerDocument?.defaultView?.getComputedStyle(getClassTextTarget()) || computed;
+            const baseComputed = getClassCandidateElement(getClassBaseSelector())?.ownerDocument?.defaultView?.getComputedStyle(getClassCandidateElement(getClassBaseSelector())) || computed;
+            setColorPairValue(classBackground, getClassRuleValue([surfaceSelector, `${baseSelector} summary`, baseSelector], "background", surfaceComputed.backgroundColor), colorToHex(surfaceComputed.backgroundColor || initialNormal, initialNormal));
+            setColorPairValue(classHoverBackground, getClassRuleValue([hoverSelector, `${baseSelector} summary:hover`, `${baseSelector}:hover`], "background", initialHover), initialHover);
+            setColorPairValue(classTextColor, getClassRuleValue([textSelector, baseSelector], "color", textComputed.color), colorToHex(textComputed.color || initialQuestionColor, initialQuestionColor));
+            setColorPairValue(classBorderColor, getClassRuleValue([baseSelector], "border-color", baseComputed.borderTopColor), colorToHex(baseComputed.borderTopColor || "#e5e5e5", "#e5e5e5"));
+            classBorderWidth.value = String(Math.max(0, Number.parseFloat(getClassRuleValue([baseSelector], "border-width", baseComputed.borderTopWidth)) || 0));
+            classFontSize.value = String(normalizeTextStyleNumber(getClassRuleValue([textSelector, baseSelector], "font-size", textComputed.fontSize), 16, 8, 96));
+            classFontWeight.value = normalizePreviewFontWeight(getClassRuleValue([textSelector, baseSelector], "font-weight", textComputed.fontWeight));
+            classTextAlign.value = normalizePreviewTextAlign(getClassRuleValue([textSelector, baseSelector], "text-align", textComputed.textAlign));
+            classFontStyle.value = String(getClassRuleValue([textSelector, baseSelector], "font-style", textComputed.fontStyle)).toLowerCase() === "italic" ? "italic" : "normal";
+            classLineHeight.value = String(normalizeTextStyleNumber(getClassRuleValue([textSelector, baseSelector], "line-height", textComputed.lineHeight), 1.35, 0.8, 2.6, 2));
+            classChangedFields.clear();
+            const candidate = classCandidates.find((item) => item.value === getClassBaseSelector());
+            const total = Number(candidate?.count || 1);
+            classNote.textContent = `As mudanças valem para todos os ${total} ${total === 1 ? "elemento" : "elementos"} com ${candidate?.label || getClassBaseSelector()} e são aplicadas na hora.`;
+          };
+
+          const applyClassStyle = () => {
+            const baseSelector = getClassScopedBaseSelector();
+            const surfaceSelector = getClassSurfaceSelector();
+            const hoverSelector = getClassHoverSelector();
+            const textSelector = getClassTextSelector();
+            if (!baseSelector || !classChangedFields.size) {
+              return;
+            }
+            syncPair(classTextColor);
+            syncPair(classBackground);
+            syncPair(classHoverBackground);
+            syncPair(classBorderColor);
+            recordFaqEditHistory();
+            if (classChangedFields.has("background")) {
+              updateTemplateFaqClassRule(faqRoot, surfaceSelector, "background", classBackground.color.value);
+              updateTemplateFaqClassRule(faqRoot, `${baseSelector} summary`, "background");
+            }
+            if (classChangedFields.has("hoverBackground")) {
+              updateTemplateFaqClassRule(faqRoot, hoverSelector, "background", classHoverBackground.color.value);
+              updateTemplateFaqClassRule(faqRoot, `${baseSelector} summary:hover`, "background");
+            }
+            if (classChangedFields.has("textColor")) {
+              updateTemplateFaqClassRule(faqRoot, textSelector, "color", classTextColor.color.value);
+              const iconSelector = getClassIconSelector();
+              if (iconSelector) updateTemplateFaqClassRule(faqRoot, iconSelector, "background", classTextColor.color.value);
+            }
+            if (classChangedFields.has("borderColor")) updateTemplateFaqClassRule(faqRoot, baseSelector, "border-color", classBorderColor.color.value);
+            if (classChangedFields.has("borderWidth")) {
+              const width = Math.max(0, Number.parseFloat(classBorderWidth.value) || 0);
+              updateTemplateFaqClassRule(faqRoot, baseSelector, "border-width", `${width}px`);
+              updateTemplateFaqClassRule(faqRoot, baseSelector, "border-style", width > 0 ? "solid" : "none");
+            }
+            if (classChangedFields.has("fontSize")) updateTemplateFaqClassRule(faqRoot, textSelector, "font-size", `${normalizeTextStyleNumber(classFontSize.value, 16, 8, 96)}px`);
+            if (classChangedFields.has("fontWeight")) updateTemplateFaqClassRule(faqRoot, textSelector, "font-weight", normalizePreviewFontWeight(classFontWeight.value));
+            if (classChangedFields.has("textAlign")) updateTemplateFaqClassRule(faqRoot, textSelector, "text-align", normalizePreviewTextAlign(classTextAlign.value));
+            if (classChangedFields.has("fontStyle")) updateTemplateFaqClassRule(faqRoot, textSelector, "font-style", classFontStyle.value === "italic" ? "italic" : "normal");
+            if (classChangedFields.has("lineHeight")) updateTemplateFaqClassRule(faqRoot, textSelector, "line-height", normalizeTextStyleNumber(classLineHeight.value, 1.35, 0.8, 2.6, 2));
+            syncFaqTemplateHtml();
+          };
+
+          const markClassFieldChanged = (field) => {
+            // Um summary normalmente não possui borda própria. Ao escolher
+            // uma cor de borda, tornar a espessura mínima visível evita a
+            // sensação de que o controle "não funcionou".
+            if (field === "borderColor" && (Number.parseFloat(classBorderWidth.value) || 0) <= 0) {
+              classBorderWidth.value = "1";
+              classChangedFields.add("borderWidth");
+            }
+            classChangedFields.add(field);
+            applyClassStyle();
+          };
+          const bindClassColorField = (pair, field) => {
+            pair.color.addEventListener("input", () => {
+              pair.hex.value = normalizeHexColor(pair.color.value);
+              pair.color.style.setProperty("--preview-edit-color", pair.hex.value);
+              markClassFieldChanged(field);
+            });
+            pair.hex.addEventListener("input", () => {
+              if (isHexColor(pair.hex.value)) {
+                syncPair(pair);
+                markClassFieldChanged(field);
+              }
+            });
+            pair.hex.addEventListener("change", () => {
+              pair.hex.value = isHexColor(pair.hex.value) ? normalizeHexColor(pair.hex.value) : pair.color.value;
+              syncPair(pair);
+              markClassFieldChanged(field);
+            });
+          };
+          bindClassColorField(classTextColor, "textColor");
+          bindClassColorField(classBackground, "background");
+          bindClassColorField(classHoverBackground, "hoverBackground");
+          bindClassColorField(classBorderColor, "borderColor");
+          [
+            [classBorderWidth, "borderWidth"],
+            [classFontSize, "fontSize"],
+            [classFontWeight, "fontWeight"],
+            [classTextAlign, "textAlign"],
+            [classFontStyle, "fontStyle"],
+            [classLineHeight, "lineHeight"]
+          ].forEach(([input, field]) => {
+            input.addEventListener("input", () => markClassFieldChanged(field));
+            input.addEventListener("change", () => markClassFieldChanged(field));
+          });
+          classSelect.addEventListener("change", refreshClassFields);
+          resetClassButton.addEventListener("click", () => {
+            const baseSelector = getClassScopedBaseSelector();
+            const surfaceSelector = getClassSurfaceSelector();
+            const hoverSelector = getClassHoverSelector();
+            const textSelector = getClassTextSelector();
+            if (!baseSelector) {
+              return;
+            }
+            recordFaqEditHistory();
+            updateTemplateFaqClassRule(faqRoot, surfaceSelector, "background");
+            updateTemplateFaqClassRule(faqRoot, `${baseSelector} summary`, "background");
+            updateTemplateFaqClassRule(faqRoot, hoverSelector, "background");
+            updateTemplateFaqClassRule(faqRoot, `${baseSelector} summary:hover`, "background");
+            ["border-color", "border-width", "border-style"].forEach((property) => updateTemplateFaqClassRule(faqRoot, baseSelector, property));
+            ["color", "font-size", "font-weight", "text-align", "font-style", "line-height"].forEach((property) => updateTemplateFaqClassRule(faqRoot, textSelector, property));
+            const iconSelector = getClassIconSelector();
+            if (iconSelector) updateTemplateFaqClassRule(faqRoot, iconSelector, "background");
+            syncFaqTemplateHtml();
+            refreshClassFields();
+          });
+          refreshClassFields();
+          // Se este FAQ veio de uma versao que acumulou blocos, a leitura
+          // acima ja os reduziu a um unico bloco. Serialize uma vez para que
+          // a janela de codigo geral e a exportacao recebam a limpeza tambem.
+          if (faqRoot.dataset.llTemplateFaqClassStylesCompacted === "true") {
+            delete faqRoot.dataset.llTemplateFaqClassStylesCompacted;
+            syncFaqTemplateHtml();
+          }
+        } else {
+          const emptyClassNote = document.createElement("p");
+          emptyClassNote.className = "preview-edit-popover__note";
+          emptyClassNote.textContent = "Nenhuma classe ou ID util foi encontrado neste FAQ.";
+          classPanel.appendChild(emptyClassNote);
+        }
+
+        form.append(summaryPanel, textPanel, classPanel);
 
         const actions = document.createElement("div");
         actions.className = "preview-edit-popover__actions";
@@ -3828,15 +8634,21 @@ ${containerHtml}`;
         };
 
         const applyFaqStyle = () => {
+          recordFaqEditHistory();
           syncPair(normal);
           syncPair(hover);
-          faqRoot.classList.add("ll-template-faq-custom-colors");
-          faqRoot.style.setProperty("--ll-template-faq-summary-bg", normal.color.value);
-          faqRoot.style.setProperty("--ll-template-faq-summary-hover-bg", hover.color.value);
-          syncTemplateHtmlFromPreview();
+          syncPair(questionStyle.color);
+          syncPair(answerStyle.color);
+          writeTemplateFaqSourceStyle(faqRoot, summary, firstQuestion, firstAnswer, {
+            normal,
+            hover,
+            question: questionStyle,
+            answer: answerStyle
+          });
+          syncFaqTemplateHtml();
         };
 
-        [normal, hover].forEach((pair) => {
+        [normal, hover, questionStyle.color, answerStyle.color].forEach((pair) => {
           pair.color.addEventListener("input", () => {
             pair.hex.value = normalizeHexColor(pair.color.value);
             pair.color.style.setProperty("--preview-edit-color", pair.hex.value);
@@ -3852,6 +8664,25 @@ ${containerHtml}`;
             applyFaqStyle();
           });
         });
+
+        [questionStyle, answerStyle].forEach((fields) => {
+          [fields.fontSize, fields.fontWeight, fields.textAlign, fields.lineHeight].forEach((input) => {
+            input.addEventListener("input", applyFaqStyle);
+            input.addEventListener("change", applyFaqStyle);
+          });
+        });
+
+        const setFaqPanel = (panelName) => {
+          summaryPanel.hidden = panelName !== "summary";
+          textPanel.hidden = panelName !== "text";
+          classPanel.hidden = panelName !== "class";
+          summaryTab.classList.toggle("is-active", panelName === "summary");
+          textTab.classList.toggle("is-active", panelName === "text");
+          classTab.classList.toggle("is-active", panelName === "class");
+        };
+        summaryTab.addEventListener("click", () => setFaqPanel("summary"));
+        textTab.addEventListener("click", () => setFaqPanel("text"));
+        classTab.addEventListener("click", () => setFaqPanel("class"));
 
         closeButton.addEventListener("click", closePreviewEditPopover);
         form.addEventListener("submit", (event) => {
@@ -3887,9 +8718,6 @@ ${containerHtml}`;
           return;
         }
 
-        const firstFaqRoot = getTemplateFaqRoot(detailsList[0], root);
-        ensureTemplateFaqStyle(firstFaqRoot);
-
         detailsList.forEach((details, index) => {
           const summary = details.querySelector("summary");
           if (!summary) {
@@ -3898,53 +8726,688 @@ ${containerHtml}`;
 
           const faqRoot = getTemplateFaqRoot(details, root);
           ensureTemplateFaqStyle(faqRoot);
+          details.dataset.llTemplateFaqDetails = "true";
+          faqRoot.dataset.llTemplateFaqRoot = "true";
           summary.classList.add("ll-template-faq-summary");
-          summary.setAttribute("title", "Clique para abrir o FAQ. Dê dois cliques no fundo para mudar cor normal e hover.");
-
-          const question = findTemplateFaqQuestion(details);
-          const answer = findTemplateFaqAnswer(details);
-
-          if (question) {
-            attachText(question, {
-              scope: "template",
-              field: "text",
-              templateNodeId: markTemplateNode(question),
-              value: question.innerText || question.textContent || ""
-            }, { faqColorTarget: { faqRoot, summary } });
-          }
-
-          if (answer) {
-            attachText(answer, {
-              scope: "template",
-              field: "text",
-              templateNodeId: markTemplateNode(answer),
-              value: answer.innerText || answer.textContent || ""
-            }, { multiline: true });
-          }
-
-          details.addEventListener("toggle", () => {
-            syncTemplateHtmlFromPreview();
-          });
-
+          summary.setAttribute("title", "Clique para abrir ou fechar. Use Ctrl + clique para editar o FAQ.");
           summary.addEventListener("click", (event) => {
-            if (event.target.closest("[data-ll-preview-text]")) {
+            if (!event.ctrlKey && !event.metaKey) {
               return;
             }
-
-            closePreviewEditPopover();
-            window.setTimeout(syncTemplateHtmlFromPreview, 0);
-          }, true);
-
-          summary.addEventListener("dblclick", (event) => {
-            if (event.target.closest("[data-ll-preview-text]")) {
-              return;
-            }
-
             event.preventDefault();
             event.stopPropagation();
+            event.stopImmediatePropagation();
             openTemplateFaqStylePopover(event, faqRoot, summary);
+          }, true);
+
+        });
+      };
+
+      const openCarouselNavStylePopover = (sourceEvent, carouselRoot) => {
+        if (!carouselRoot) {
+          return;
+        }
+
+        closePreviewEditPopover();
+        recordPreviewEditHistory({ scope: "carousel", sourceFrame: carouselRoot?.ownerDocument?.defaultView?.frameElement || frame });
+
+        const getColor = (field, fallback) => normalizeHexColor(state.carousel[field] || fallback);
+        const getNumber = (field, fallback, min, max) => {
+          const value = Number(state.carousel[field]);
+          return Math.min(max, Math.max(min, Number.isFinite(value) ? value : fallback));
+        };
+        const form = document.createElement("form");
+        form.className = "preview-edit-popover preview-edit-popover--color preview-edit-popover--carousel-nav";
+        form.setAttribute("role", "dialog");
+        form.setAttribute("aria-label", "Estilo dos botões do carrossel");
+
+        const title = document.createElement("p");
+        title.className = "preview-edit-popover__title";
+        title.textContent = "Botões do carrossel";
+        form.appendChild(title);
+
+        const tabs = document.createElement("div");
+        tabs.className = "preview-edit-popover__tabs";
+        const colorsTab = document.createElement("button");
+        colorsTab.type = "button";
+        colorsTab.className = "is-active";
+        colorsTab.textContent = "Cores";
+        const shapeTab = document.createElement("button");
+        shapeTab.type = "button";
+        shapeTab.textContent = "Forma";
+        tabs.append(colorsTab, shapeTab);
+        form.appendChild(tabs);
+
+        const colorsPanel = document.createElement("div");
+        colorsPanel.className = "preview-edit-popover__panel";
+        const shapePanel = document.createElement("div");
+        shapePanel.className = "preview-edit-popover__panel";
+        shapePanel.hidden = true;
+
+        const makeColorField = (parent, labelText, value) => {
+          const label = document.createElement("label");
+          label.className = "preview-edit-popover__mini-field";
+          const labelTextElement = document.createElement("span");
+          labelTextElement.textContent = labelText;
+          const row = document.createElement("div");
+          row.className = "preview-edit-popover__color-row";
+          const picker = document.createElement("input");
+          picker.className = "preview-edit-popover__color";
+          picker.type = "color";
+          picker.value = value;
+          picker.style.setProperty("--preview-edit-color", value);
+          const hex = document.createElement("input");
+          hex.className = "preview-edit-popover__field";
+          hex.type = "text";
+          hex.value = value;
+          hex.placeholder = "#ffffff";
+          row.append(picker, hex);
+          label.append(labelTextElement, row);
+          parent.appendChild(label);
+          return { picker, hex };
+        };
+
+        const makeGroup = (titleText) => {
+          const group = document.createElement("div");
+          group.className = "preview-edit-popover__group";
+          const heading = document.createElement("p");
+          heading.className = "preview-edit-popover__note";
+          heading.textContent = titleText;
+          group.appendChild(heading);
+          const grid = document.createElement("div");
+          grid.className = "preview-edit-popover__grid";
+          group.appendChild(grid);
+          colorsPanel.appendChild(group);
+          return grid;
+        };
+
+        const normalGrid = makeGroup("Estado normal");
+        const normalBackground = makeColorField(normalGrid, "Fundo", getColor("dotBackgroundColor", "#ffffff"));
+        const normalText = makeColorField(normalGrid, "Texto", getColor("dotTextColor", "#14202b"));
+        const normalBorder = makeColorField(normalGrid, "Borda", getColor("dotBorderColor", "#d9e2ea"));
+        const normalIcon = makeColorField(normalGrid, "Ícone", getColor("dotIconColor", state.carousel.dotTextColor || "#14202b"));
+
+        const hoverGrid = makeGroup("Hover");
+        const hoverBackground = makeColorField(hoverGrid, "Fundo", getColor("dotHoverColor", "#fff9f2"));
+        const hoverText = makeColorField(hoverGrid, "Texto", getColor("dotHoverTextColor", state.carousel.dotTextColor || "#14202b"));
+        const hoverBorder = makeColorField(hoverGrid, "Borda", getColor("dotHoverBorderColor", state.carousel.dotActiveBorderColor || "#ee6911"));
+
+        const activeGrid = makeGroup("Botão selecionado");
+        const activeBackground = makeColorField(activeGrid, "Fundo", getColor("dotActiveColor", "#fff4e0"));
+        const activeText = makeColorField(activeGrid, "Texto", getColor("dotActiveTextColor", state.carousel.brandColor || "#ee6911"));
+        const activeBorder = makeColorField(activeGrid, "Borda", getColor("dotActiveBorderColor", "#ee6911"));
+        const activeIconBackground = makeColorField(activeGrid, "Fundo do ícone", getColor("dotIconActiveBackgroundColor", state.carousel.brandColor || "#ee6911"));
+        const activeIconColor = makeColorField(activeGrid, "Ícone", getColor("dotIconActiveColor", "#ffffff"));
+
+        const iconToggle = document.createElement("label");
+        iconToggle.className = "article-toggle";
+        const iconInput = document.createElement("input");
+        iconInput.type = "checkbox";
+        iconInput.checked = state.carousel.showNavIcons !== false;
+        const iconText = document.createElement("span");
+        iconText.textContent = "Mostrar ícones nos botões";
+        iconToggle.append(iconInput, iconText);
+        colorsPanel.appendChild(iconToggle);
+
+        const shapeGrid = document.createElement("div");
+        shapeGrid.className = "preview-edit-popover__grid";
+        shapePanel.appendChild(shapeGrid);
+        const makeNumberField = (labelText, value, min, max, step = 1) => {
+          const label = document.createElement("label");
+          label.className = "preview-edit-popover__mini-field";
+          const text = document.createElement("span");
+          text.textContent = labelText;
+          const input = document.createElement("input");
+          input.type = "number";
+          input.min = String(min);
+          input.max = String(max);
+          input.step = String(step);
+          input.value = String(value);
+          label.append(text, input);
+          shapeGrid.appendChild(label);
+          return input;
+        };
+        const radius = makeNumberField("Raio da borda (px)", getNumber("dotRadius", 12, 0, 48), 0, 48);
+        const borderWidth = makeNumberField("Espessura da borda (px)", getNumber("dotBorderWidth", 1, 0, 8), 0, 8);
+        const minHeight = makeNumberField("Altura mínima (px)", getNumber("dotMinHeight", 62, 36, 180), 36, 180);
+        const paddingX = makeNumberField("Respiro lateral (px)", getNumber("dotPaddingX", 16, 0, 64), 0, 64);
+        const hoverLift = makeNumberField("Elevação no hover (px)", getNumber("dotHoverLift", 4, 0, 20), 0, 20);
+        const shadowOpacity = makeNumberField("Opacidade da sombra", getNumber("dotShadowOpacity", 0, 0, 0.45), 0, 0.45, 0.01);
+        const formNote = document.createElement("p");
+        formNote.className = "preview-edit-popover__note";
+        formNote.textContent = "As alterações valem para todos os botões de navegação deste carrossel.";
+        shapePanel.appendChild(formNote);
+
+        form.append(colorsPanel, shapePanel);
+
+        const actions = document.createElement("div");
+        actions.className = "preview-edit-popover__actions";
+        const closeButton = document.createElement("button");
+        closeButton.className = "button";
+        closeButton.type = "button";
+        closeButton.textContent = "Fechar";
+        actions.appendChild(closeButton);
+        form.appendChild(actions);
+
+        const colorPairs = [
+          normalBackground, normalText, normalBorder, normalIcon,
+          hoverBackground, hoverText, hoverBorder,
+          activeBackground, activeText, activeBorder, activeIconBackground, activeIconColor
+        ];
+        const syncPair = (pair) => {
+          if (!isHexColor(pair.hex.value)) {
+            return false;
+          }
+          const color = normalizeHexColor(pair.hex.value);
+          pair.hex.value = color;
+          pair.picker.value = color;
+          pair.picker.style.setProperty("--preview-edit-color", color);
+          return true;
+        };
+        const numberValue = (input, fallback, min, max) => {
+          const value = Number(input.value);
+          const normalized = Math.min(max, Math.max(min, Number.isFinite(value) ? value : fallback));
+          input.value = String(normalized);
+          return normalized;
+        };
+        const applyStyle = () => {
+          colorPairs.forEach(syncPair);
+          const values = {
+            dotBackgroundColor: normalBackground.picker.value,
+            dotTextColor: normalText.picker.value,
+            dotBorderColor: normalBorder.picker.value,
+            dotIconColor: normalIcon.picker.value,
+            dotHoverColor: hoverBackground.picker.value,
+            dotHoverTextColor: hoverText.picker.value,
+            dotHoverBorderColor: hoverBorder.picker.value,
+            dotActiveColor: activeBackground.picker.value,
+            dotActiveTextColor: activeText.picker.value,
+            dotActiveBorderColor: activeBorder.picker.value,
+            dotIconActiveBackgroundColor: activeIconBackground.picker.value,
+            dotIconActiveColor: activeIconColor.picker.value,
+            dotRadius: numberValue(radius, 12, 0, 48),
+            dotBorderWidth: numberValue(borderWidth, 1, 0, 8),
+            dotMinHeight: numberValue(minHeight, 62, 36, 180),
+            dotPaddingX: numberValue(paddingX, 16, 0, 64),
+            dotHoverLift: numberValue(hoverLift, 4, 0, 20),
+            dotShadowOpacity: numberValue(shadowOpacity, 0, 0, 0.45),
+            showNavIcons: iconInput.checked
+          };
+          Object.assign(state.carousel, values);
+          const shadowColor = hexToRgba(values.dotBorderColor, values.dotShadowOpacity.toFixed(2));
+          const styleValues = {
+            "--ll-carousel-dot-bg": values.dotBackgroundColor,
+            "--ll-carousel-dot-color": values.dotTextColor,
+            "--ll-carousel-dot-border": values.dotBorderColor,
+            "--ll-carousel-dot-icon-color": values.dotIconColor,
+            "--ll-carousel-dot-hover": values.dotHoverColor,
+            "--ll-carousel-dot-hover-color": values.dotHoverTextColor,
+            "--ll-carousel-dot-hover-border": values.dotHoverBorderColor,
+            "--ll-carousel-dot-active": values.dotActiveColor,
+            "--ll-carousel-dot-active-color": values.dotActiveTextColor,
+            "--ll-carousel-dot-active-border": values.dotActiveBorderColor,
+            "--ll-carousel-dot-icon-active-bg": values.dotIconActiveBackgroundColor,
+            "--ll-carousel-dot-icon-active-color": values.dotIconActiveColor,
+            "--ll-carousel-dot-radius": `${values.dotRadius}px`,
+            "--ll-carousel-dot-border-width": `${values.dotBorderWidth}px`,
+            "--ll-carousel-dot-min-height": `${values.dotMinHeight}px`,
+            "--ll-carousel-dot-padding-x": `${values.dotPaddingX}px`,
+            "--ll-carousel-dot-hover-lift": `${values.dotHoverLift}px`,
+            "--ll-carousel-dot-shadow": `0 ${values.dotHoverLift}px ${values.dotHoverLift * 4}px ${shadowColor}`
+          };
+          Object.entries(styleValues).forEach(([name, value]) => carouselRoot.style.setProperty(name, value));
+          carouselRoot.querySelectorAll(".ll-carousel__dot-icon").forEach((icon) => {
+            icon.style.display = values.showNavIcons ? "" : "none";
+          });
+          generatedHtml.value = buildOutputHtml("html");
+          copyStatus.textContent = "";
+          copyStatus.classList.remove("is-warning", "is-visible");
+        };
+        const setPanel = (name) => {
+          colorsPanel.hidden = name !== "colors";
+          shapePanel.hidden = name !== "shape";
+          colorsTab.classList.toggle("is-active", name === "colors");
+          shapeTab.classList.toggle("is-active", name === "shape");
+        };
+        colorsTab.addEventListener("click", () => setPanel("colors"));
+        shapeTab.addEventListener("click", () => setPanel("shape"));
+        colorPairs.forEach((pair) => {
+          pair.picker.addEventListener("input", () => {
+            pair.hex.value = normalizeHexColor(pair.picker.value);
+            pair.picker.style.setProperty("--preview-edit-color", pair.hex.value);
+            applyStyle();
+          });
+          pair.hex.addEventListener("input", () => {
+            if (isHexColor(pair.hex.value)) {
+              applyStyle();
+            }
+          });
+          pair.hex.addEventListener("change", () => {
+            if (!syncPair(pair)) {
+              pair.hex.value = pair.picker.value;
+            }
+            applyStyle();
           });
         });
+        [radius, borderWidth, minHeight, paddingX, hoverLift, shadowOpacity].forEach((input) => {
+          input.addEventListener("input", applyStyle);
+          input.addEventListener("change", applyStyle);
+        });
+        iconInput.addEventListener("change", () => {
+          applyStyle();
+          if (iconInput.checked && !carouselRoot.querySelector(".ll-carousel__dot-icon")) {
+            updateOutput();
+          }
+        });
+        closeButton.addEventListener("click", closePreviewEditPopover);
+        form.addEventListener("submit", (event) => {
+          event.preventDefault();
+          closePreviewEditPopover();
+        });
+        previewEditKeyHandler = (event) => {
+          if (event.key === "Escape") {
+            closePreviewEditPopover();
+          }
+        };
+        previewEditOutsideHandler = (event) => {
+          if (previewEditPopover && !previewEditPopover.contains(event.target)) {
+            closePreviewEditPopover();
+          }
+        };
+        document.body.appendChild(form);
+        previewEditPopover = form;
+        positionPreviewEditPopover(sourceEvent);
+        window.setTimeout(() => {
+          document.addEventListener("mousedown", previewEditOutsideHandler, true);
+          document.addEventListener("keydown", previewEditKeyHandler, true);
+        }, 0);
+      };
+
+      const getTemplateTableRoot = (element, root) => {
+        const table = element.closest?.(".table-container-custom, .ll-bento__card--table, table, .table-design-custom");
+        if (!table) {
+          return null;
+        }
+
+        return table.closest?.(".table-container-custom, .ll-bento__card--table")
+          || (table.tagName === "TABLE" ? table : table.querySelector?.("table"))
+          || table
+          || root;
+      };
+
+      const isTemplateTableElement = (element, root) => {
+        return Boolean(element?.closest?.(".table-container-custom, .table-design-custom, .table-text-custom, table, th, td")
+          && root.contains(element));
+      };
+
+      const openTemplateTableStylePopover = (sourceEvent, tableRoot) => {
+        if (!tableRoot) {
+          return;
+        }
+
+        closePreviewEditPopover();
+        recordPreviewEditHistory({ scope: "template", sourceFrame: tableRoot?.ownerDocument?.defaultView?.frameElement || frame });
+
+        const table = tableRoot.tagName === "TABLE" ? tableRoot : tableRoot.querySelector("table") || tableRoot;
+        const headerCells = Array.from(tableRoot.querySelectorAll("th, .table-th-custom"));
+        const bodyCells = Array.from(tableRoot.querySelectorAll("td, .table-td-custom, .table-td-custom-title, .table-td-custom-sub"));
+        const sampleHeader = headerCells[0] || table;
+        const sampleBody = bodyCells[0] || sampleHeader;
+        const headerComputed = sampleHeader.ownerDocument.defaultView.getComputedStyle(sampleHeader);
+        const bodyComputed = sampleBody.ownerDocument.defaultView.getComputedStyle(sampleBody);
+        const initialHeaderBg = colorToHex(headerComputed.backgroundColor || "#ea5b0c", "#ea5b0c");
+        const initialHeaderColor = colorToHex(headerComputed.color || "#ffffff", "#ffffff");
+        const initialBodyColor = colorToHex(bodyComputed.color || "#111827", "#111827");
+        const initialBorderColor = colorToHex(bodyComputed.borderBottomColor || headerComputed.borderBottomColor || "#d5dbe7", "#d5dbe7");
+
+        const form = document.createElement("form");
+        form.className = "preview-edit-popover preview-edit-popover--color";
+        form.setAttribute("role", "dialog");
+        form.setAttribute("aria-label", "Editar tabela");
+
+        const title = document.createElement("p");
+        title.className = "preview-edit-popover__title";
+        title.textContent = "Tabela";
+        form.appendChild(title);
+
+        const makeColorField = (labelText, initialValue) => {
+          const label = document.createElement("label");
+          label.className = "preview-edit-popover__mini-field";
+          const text = document.createElement("span");
+          text.textContent = labelText;
+          const row = document.createElement("div");
+          row.className = "preview-edit-popover__color-row preview-edit-popover__color-row--picker";
+          const color = document.createElement("input");
+          color.className = "preview-edit-popover__color";
+          color.type = "color";
+          color.value = initialValue;
+          color.style.setProperty("--preview-edit-color", initialValue);
+          const hex = document.createElement("input");
+          hex.className = "preview-edit-popover__field";
+          hex.type = "text";
+          hex.value = initialValue;
+          hex.placeholder = "#ea5b0c";
+          row.append(color, hex);
+          label.append(text, row);
+          form.appendChild(label);
+          return { color, hex };
+        };
+
+        const headerBg = makeColorField("Fundo do cabecalho", initialHeaderBg);
+        const headerText = makeColorField("Texto do cabecalho", initialHeaderColor);
+        const bodyText = makeColorField("Texto das linhas", initialBodyColor);
+        const border = makeColorField("Bordas", initialBorderColor);
+
+        const actions = document.createElement("div");
+        actions.className = "preview-edit-popover__actions";
+        const closeButton = document.createElement("button");
+        closeButton.className = "button";
+        closeButton.type = "button";
+        closeButton.textContent = "Fechar";
+        actions.appendChild(closeButton);
+        form.appendChild(actions);
+
+        const syncPair = (pair) => {
+          if (isHexColor(pair.hex.value)) {
+            pair.hex.value = normalizeHexColor(pair.hex.value);
+            pair.color.value = pair.hex.value;
+            pair.color.style.setProperty("--preview-edit-color", pair.hex.value);
+          }
+        };
+
+        const applyTableStyle = () => {
+          [headerBg, headerText, bodyText, border].forEach(syncPair);
+          headerCells.forEach((cell) => {
+            cell.style.backgroundColor = headerBg.color.value;
+            cell.style.color = headerText.color.value;
+            cell.style.borderColor = border.color.value;
+          });
+          bodyCells.forEach((cell) => {
+            cell.style.color = bodyText.color.value;
+            cell.style.borderColor = border.color.value;
+          });
+          tableRoot.querySelectorAll(".table-text-custom, th, td").forEach((cell) => {
+            cell.style.borderBottomColor = border.color.value;
+          });
+          syncTemplateHtmlFromPreview();
+        };
+
+        [headerBg, headerText, bodyText, border].forEach((pair) => {
+          pair.color.addEventListener("input", () => {
+            pair.hex.value = normalizeHexColor(pair.color.value);
+            pair.color.style.setProperty("--preview-edit-color", pair.hex.value);
+            applyTableStyle();
+          });
+          pair.hex.addEventListener("input", () => {
+            if (isHexColor(pair.hex.value)) {
+              applyTableStyle();
+            }
+          });
+          pair.hex.addEventListener("change", () => {
+            pair.hex.value = isHexColor(pair.hex.value) ? normalizeHexColor(pair.hex.value) : pair.color.value;
+            applyTableStyle();
+          });
+        });
+
+        closeButton.addEventListener("click", closePreviewEditPopover);
+        form.addEventListener("submit", (event) => {
+          event.preventDefault();
+          closePreviewEditPopover();
+        });
+        previewEditKeyHandler = (event) => {
+          if (event.key === "Escape") {
+            closePreviewEditPopover();
+          }
+        };
+        previewEditOutsideHandler = (event) => {
+          if (previewEditPopover && !previewEditPopover.contains(event.target)) {
+            closePreviewEditPopover();
+          }
+        };
+
+        document.body.appendChild(form);
+        previewEditPopover = form;
+        positionPreviewEditPopover(sourceEvent);
+        window.setTimeout(() => {
+          document.addEventListener("mousedown", previewEditOutsideHandler, true);
+          document.addEventListener("keydown", previewEditKeyHandler, true);
+        }, 0);
+      };
+
+      const getTemplateTableElement = (tableRoot) => {
+        if (!tableRoot) {
+          return null;
+        }
+
+        return tableRoot.tagName === "TABLE" ? tableRoot : tableRoot.querySelector("table");
+      };
+
+      const getTemplateTableToolHost = (tableRoot) => {
+        if (!tableRoot) {
+          return null;
+        }
+
+        return tableRoot.tagName === "TABLE" ? tableRoot.parentElement : tableRoot;
+      };
+
+      const clearTemplateTablePreviewAttrs = (element) => {
+        if (!element?.attributes) {
+          return element;
+        }
+
+        Array.from(element.attributes).forEach((attribute) => {
+          if (attribute.name.startsWith("data-ll-")) {
+            element.removeAttribute(attribute.name);
+          }
+        });
+        element.removeAttribute("contenteditable");
+        element.removeAttribute("spellcheck");
+        element.removeAttribute("title");
+        return element;
+      };
+
+      const getTemplateTableColumnCount = (table) => {
+        const rows = Array.from(table?.rows || []);
+        return rows.reduce((max, row) => Math.max(max, row.cells.length), 0);
+      };
+
+      const normalizeTemplateTableHeaderCorners = (table) => {
+        const headerRows = Array.from(table?.tHead?.rows || table?.querySelectorAll("thead tr") || []);
+        headerRows.forEach((row) => {
+          const cells = Array.from(row.cells || []);
+          cells.forEach((cell, index) => {
+            if (cells.length === 1) {
+              cell.style.borderRadius = "10px 10px 0 0";
+            } else if (index === 0) {
+              cell.style.borderRadius = "10px 0 0 0";
+            } else if (index === cells.length - 1) {
+              cell.style.borderRadius = "0 10px 0 0";
+            } else {
+              cell.style.borderRadius = "0";
+            }
+          });
+        });
+      };
+
+      const makeTemplateTableCell = (docRef, sourceCell, tagName, text) => {
+        const cell = sourceCell ? sourceCell.cloneNode(false) : docRef.createElement(tagName);
+        clearTemplateTablePreviewAttrs(cell);
+        cell.textContent = text;
+        return cell;
+      };
+
+      const attachTemplateTableCellText = (cell) => {
+        if (!cell || !["TD", "TH"].includes(cell.tagName)) {
+          return;
+        }
+
+        const id = markTemplateNode(cell);
+        attachText(cell, {
+          scope: "template",
+          field: "text",
+          templateNodeId: id,
+          value: cell.innerText || cell.textContent || ""
+        }, {
+          multiline: true
+        });
+      };
+
+      const addTemplateTableColumn = (tableRoot) => {
+        const table = getTemplateTableElement(tableRoot);
+        if (!table) {
+          return;
+        }
+
+        recordPreviewEditHistory({ scope: "template", sourceFrame: table.ownerDocument?.defaultView?.frameElement || frame });
+
+        const docRef = table.ownerDocument;
+        const headerRows = Array.from(table.tHead?.rows || table.querySelectorAll("thead tr") || []);
+        headerRows.forEach((row) => {
+          const source = row.cells[row.cells.length - 1] || null;
+          const cell = makeTemplateTableCell(docRef, source, "th", "COLUNA");
+          row.appendChild(cell);
+          attachTemplateTableCellText(cell);
+        });
+
+        const body = table.tBodies?.[0] || table.createTBody();
+        const bodyRows = Array.from(body.rows || []);
+        if (!bodyRows.length) {
+          const row = body.insertRow();
+          const count = Math.max(1, getTemplateTableColumnCount(table));
+          for (let index = 0; index < count; index += 1) {
+            const cell = makeTemplateTableCell(docRef, null, "td", index === count - 1 ? "Novo item" : "");
+            row.appendChild(cell);
+            attachTemplateTableCellText(cell);
+          }
+        } else {
+          bodyRows.forEach((row) => {
+            const source = row.cells[row.cells.length - 1] || null;
+            const cell = makeTemplateTableCell(docRef, source, "td", "Novo item");
+            row.appendChild(cell);
+            attachTemplateTableCellText(cell);
+          });
+        }
+
+        normalizeTemplateTableHeaderCorners(table);
+        syncTemplateHtmlFromPreview();
+      };
+
+      const addTemplateTableRow = (tableRoot) => {
+        const table = getTemplateTableElement(tableRoot);
+        if (!table) {
+          return;
+        }
+
+        recordPreviewEditHistory({ scope: "template", sourceFrame: table.ownerDocument?.defaultView?.frameElement || frame });
+
+        const docRef = table.ownerDocument;
+        const body = table.tBodies?.[0] || table.createTBody();
+        const sourceRow = body.rows?.[body.rows.length - 1] || null;
+        const nextRow = sourceRow ? sourceRow.cloneNode(false) : docRef.createElement("tr");
+        clearTemplateTablePreviewAttrs(nextRow);
+        const columnCount = Math.max(1, getTemplateTableColumnCount(table));
+
+        for (let index = 0; index < columnCount; index += 1) {
+          const sourceCell = sourceRow?.cells?.[index] || sourceRow?.cells?.[sourceRow.cells.length - 1] || null;
+          const cell = makeTemplateTableCell(docRef, sourceCell, "td", "Novo item");
+          nextRow.appendChild(cell);
+          attachTemplateTableCellText(cell);
+        }
+
+        body.appendChild(nextRow);
+        syncTemplateHtmlFromPreview();
+      };
+
+      const ensureTemplateTableTools = (tableRoot, root) => {
+        const table = getTemplateTableElement(tableRoot);
+        const host = getTemplateTableToolHost(tableRoot);
+        if (!table || !host || !root.contains(host)) {
+          return;
+        }
+
+        host.dataset.llTableEditRoot = "true";
+        if (host.querySelector(":scope > [data-ll-table-helper-button]")) {
+          return;
+        }
+
+        const makeButton = (kind, title) => {
+          const button = host.ownerDocument.createElement("button");
+          button.type = "button";
+          button.textContent = "+";
+          button.title = title;
+          button.setAttribute("aria-label", title);
+          button.dataset.llTemplateHelper = "true";
+          button.dataset.llTableHelperButton = "true";
+          if (kind === "column") {
+            button.dataset.llTableAddColumn = "true";
+          } else {
+            button.dataset.llTableAddRow = "true";
+          }
+          button.addEventListener("click", (event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            event.stopImmediatePropagation();
+            if (kind === "column") {
+              addTemplateTableColumn(tableRoot);
+            } else {
+              addTemplateTableRow(tableRoot);
+            }
+          });
+          return button;
+        };
+
+        host.append(
+          makeButton("column", "Adicionar coluna"),
+          makeButton("row", "Adicionar linha")
+        );
+      };
+
+      const setupTemplateTableTools = (root) => {
+        const tableRoots = new Set();
+        root.querySelectorAll(".table-container-custom, .ll-bento__card--table, .table-design-custom, table").forEach((element) => {
+          const tableRoot = getTemplateTableRoot(element, root);
+          if (tableRoot) {
+            tableRoots.add(tableRoot);
+          }
+        });
+        tableRoots.forEach((tableRoot) => ensureTemplateTableTools(tableRoot, root));
+      };
+
+      const setupTemplateTableEditing = (root) => {
+        setupTemplateTableTools(root);
+
+        if (root.dataset.llTemplateTableEditing === "true") {
+          return;
+        }
+
+        root.dataset.llTemplateTableEditing = "true";
+        root.addEventListener("click", (event) => {
+          if (event.target.closest("[data-ll-table-helper-button]")) {
+            return;
+          }
+
+          if (event.detail > 1 || event.target.closest("[data-ll-preview-inline]")) {
+            return;
+          }
+
+          if (event.target.closest("[data-ll-preview-text]")) {
+            return;
+          }
+
+          const target = event.target.closest(".table-container-custom, .table-design-custom, .table-text-custom, table, th, td");
+          if (!target || !root.contains(target)) {
+            return;
+          }
+
+          const tableRoot = getTemplateTableRoot(target, root);
+          if (!tableRoot) {
+            return;
+          }
+
+          event.preventDefault();
+          event.stopImmediatePropagation();
+          openTemplateTableStylePopover(event, tableRoot);
+        }, true);
       };
 
       const resolveTemplateMediaNode = (element) => {
@@ -4022,6 +9485,7 @@ ${containerHtml}`;
         const escapeSelector = doc.defaultView.CSS?.escape || ((value) => String(value).replace(/["\\#.;,[\]()>+~*^$|=:\s]/g, "\\$&"));
         const targetId = target.id || "";
         const ariaControls = label?.getAttribute?.("aria-controls") || target.getAttribute?.("aria-controls") || "";
+        const panels = getTemplateStoryPanels(storyRoot);
         if (ariaControls) {
           const controlledPanel = doc.getElementById(ariaControls);
           if (controlledPanel && storyRoot.contains(controlledPanel)) {
@@ -4050,9 +9514,44 @@ ${containerHtml}`;
           ? `input[type="${target.type}"][name="${escapeSelector(target.name)}"]`
           : `input[type="${target.type}"]`;
         const inputs = Array.from(storyRoot.querySelectorAll(groupSelector));
-        const panels = Array.from(storyRoot.querySelectorAll(".lp-stories__panel, [class*='story' i][class*='panel' i], [class*='stories' i][class*='panel' i]"));
         const index = inputs.indexOf(target);
         return index >= 0 ? panels[index] || null : null;
+      };
+
+      const getTemplateStoryPanels = (storyRoot) => {
+        if (!storyRoot) {
+          return [];
+        }
+
+        const candidates = Array.from(storyRoot.querySelectorAll(".lp-stories__panel, [class*='story' i][class*='panel' i], [class*='stories' i][class*='panel' i]"));
+        return candidates.filter((element) => {
+          if (!element || element === storyRoot) {
+            return false;
+          }
+
+          const className = typeof element.className === "string" ? element.className.toLowerCase() : "";
+          if (/(^|\s)(lp-)?stories?(__|-)?panels(\s|$)/i.test(className) || className.includes("__panels")) {
+            return false;
+          }
+
+          return element.matches?.(".lp-stories__panel")
+            || !Array.from(element.children || []).some((child) => {
+              return child.matches?.(".lp-stories__panel, [class*='story' i][class*='panel' i], [class*='stories' i][class*='panel' i]");
+            });
+        });
+      };
+
+      const getTemplateStoryInputs = (storyRoot, target) => {
+        if (!storyRoot) {
+          return [];
+        }
+
+        const escapeSelector = doc.defaultView.CSS?.escape || ((value) => String(value).replace(/["\\#.;,[\]()>+~*^$|=:\s]/g, "\\$&"));
+        if (target?.name && target?.type) {
+          return Array.from(storyRoot.querySelectorAll(`input[type="${target.type}"][name="${escapeSelector(target.name)}"]`));
+        }
+
+        return Array.from(storyRoot.querySelectorAll('input[type="radio"], input[type="checkbox"]'));
       };
 
       const applyTemplateStorySelection = (label, target, root) => {
@@ -4067,8 +9566,14 @@ ${containerHtml}`;
         }
 
         storyRoot.dataset.llPreviewManualStory = "true";
-        storyRoot.querySelectorAll(".lp-stories__panel, [class*='story' i][class*='panel' i], [class*='stories' i][class*='panel' i]").forEach((item) => {
+        getTemplateStoryInputs(storyRoot, target).forEach((input) => {
+          input.checked = input === target;
+          input.toggleAttribute("checked", input === target);
+        });
+
+        getTemplateStoryPanels(storyRoot).forEach((item) => {
           const isActive = item === panel;
+          item.dataset.llPreviewStoryPanel = "true";
           item.toggleAttribute("data-ll-preview-story-active", isActive);
           item.toggleAttribute("data-ll-preview-story-hidden", !isActive);
         });
@@ -4077,15 +9582,141 @@ ${containerHtml}`;
           const current = getControlledInput(item);
           item.toggleAttribute("data-ll-preview-story-current", current === target);
         });
+
+        syncTemplateHtmlFromPreview();
       };
 
       const setupTemplatePreviewEditing = () => {
         const root = doc.querySelector(".lp-container, .lp_container");
-        if (!root) {
+        if (!root || root.dataset.llPreviewTemplateEditingReady === "true") {
           return;
+        }
+        root.dataset.llPreviewTemplateEditingReady = "true";
+        let optionCardClickTimer = null;
+        let templateSourceSelectionTimer = null;
+
+        const queueTemplateSourceReveal = (event) => {
+          // The board bridge routes preview clicks to the floating code window
+          // for the matching breakpoint. Do not let this generic handler move
+          // focus back to the hidden general editor afterwards.
+          if (doc.defaultView?.frameElement?.dataset?.llBoardDocumentKey
+            || doc.defaultView?.frameElement?.dataset?.llBoardActiveDevice) {
+            return;
+          }
+          if (!event.ctrlKey || !event.shiftKey) {
+            return;
+          }
+          // Frames on the board own a floating code editor per breakpoint.
+          // Its document-level listener has already routed this same click.
+          if (event.__llBoardSourceHandled) {
+            return;
+          }
+          if (event.button && event.button !== 0) {
+            return;
+          }
+          const selectedElement = event.target?.nodeType === 1 ? event.target : event.target?.parentElement;
+          if (!selectedElement || !root.contains(selectedElement)) {
+            return;
+          }
+
+          // Let click handlers, radio changes and preview synchronization
+          // finish first. Some cards intentionally block their click event,
+          // so also listen to pointerdown in capture phase.
+          window.clearTimeout(templateSourceSelectionTimer);
+          templateSourceSelectionTimer = window.setTimeout(() => {
+            revealTemplateSourceForPreviewElement(selectedElement, root);
+          }, 32);
+        };
+        root.addEventListener("pointerdown", queueTemplateSourceReveal, true);
+        root.addEventListener("click", queueTemplateSourceReveal, true);
+
+        const syncTemplateOptionSelection = (event, interactionRoot) => {
+          if (event.__llTemplateOptionSelectionHandled) {
+            return true;
+          }
+
+          const label = findTemplateLabelAtPoint(event, interactionRoot);
+          if (!label || !interactionRoot.contains(label)) {
+            return false;
+          }
+
+          const target = getControlledInput(label);
+          if (!target || !target.matches?.('input[type="radio"], input[type="checkbox"]')
+            || !isTemplateOptionCard(label, interactionRoot)
+            || findTemplateStoryRoot(label, interactionRoot)) {
+            return false;
+          }
+
+          event.__llTemplateOptionSelectionHandled = true;
+          if (event.ctrlKey || event.metaKey) {
+            event.preventDefault();
+            event.stopImmediatePropagation();
+            if (optionCardClickTimer) {
+              window.clearTimeout(optionCardClickTimer);
+              optionCardClickTimer = null;
+            }
+            openTemplateOptionCardPopover(event, label);
+            return true;
+          }
+          // O radio ja recebe o estado abaixo. Bloquear apenas a acao padrao
+          // evita que o label reaplique o checked anterior apos o preview.
+          event.preventDefault();
+          if (target.type === "radio" && target.name) {
+            const optionRoot = getTemplateOptionRoot(label) || interactionRoot;
+            optionRoot.querySelectorAll('input[type="radio"]').forEach((candidate) => {
+              if (candidate.name !== target.name) {
+                return;
+              }
+              candidate.checked = candidate === target;
+              candidate.toggleAttribute("checked", candidate.checked);
+            });
+          } else {
+            target.checked = !target.checked;
+            target.toggleAttribute("checked", target.checked);
+          }
+          // Guarda o estado no HTML imediatamente, mas deixa a atualizacao do
+          // frame para depois da janela de duplo clique. Assim um card pode
+          // ser editado sem ser substituido entre os dois cliques.
+          if (interactionRoot.isConnected) {
+            syncTemplateHtmlFromPreview({
+              container: interactionRoot,
+              skipPreviewUpdate: true
+            });
+          }
+          if (optionCardClickTimer) {
+            window.clearTimeout(optionCardClickTimer);
+          }
+          optionCardClickTimer = window.setTimeout(() => {
+            optionCardClickTimer = null;
+            if (interactionRoot.isConnected) {
+              syncTemplateHtmlFromPreview({
+                container: interactionRoot,
+                preserveLiveFrame: false
+              });
+            }
+          }, 220);
+          return true;
+        };
+
+        // Os documentos do board podem receber outros controles de preview
+        // depois de montados. Capturar a opcao no documento a deixa acima
+        // desses listeners e tambem preserva a interacao apos uma atualizacao.
+        if (doc.documentElement.dataset.llTemplateOptionSelectionReady !== "true") {
+          doc.documentElement.dataset.llTemplateOptionSelectionReady = "true";
+          doc.addEventListener("click", (event) => {
+            const interactionRoot = doc.querySelector(".lp-container, .lp_container");
+            if (interactionRoot) {
+              syncTemplateOptionSelection(event, interactionRoot);
+            }
+          }, true);
+
         }
 
         root.addEventListener("click", (event) => {
+          if (syncTemplateOptionSelection(event, root)) {
+            return;
+          }
+
           const label = findTemplateLabelAtPoint(event, root);
           if (!label || !root.contains(label)) {
             return;
@@ -4096,10 +9727,16 @@ ${containerHtml}`;
             return;
           }
 
+          const storyRoot = findTemplateStoryRoot(label, root) || findTemplateStoryRoot(target, root);
+          if (!storyRoot) {
+            return;
+          }
+
+          event.preventDefault();
+          event.stopPropagation();
+
           const syncStorySelection = () => {
-            if (target.type === "radio") {
-              target.checked = true;
-            }
+            target.checked = true;
             target.dispatchEvent(new doc.defaultView.Event("input", { bubbles: true }));
             target.dispatchEvent(new doc.defaultView.Event("change", { bubbles: true }));
             applyTemplateStorySelection(label, target, root);
@@ -4109,36 +9746,6 @@ ${containerHtml}`;
             doc.defaultView.requestAnimationFrame(syncStorySelection);
           } else {
             window.setTimeout(syncStorySelection, 0);
-          }
-        }, true);
-
-        root.addEventListener("dblclick", (event) => {
-          if (event.target.closest("[data-ll-preview-text]")) {
-            return;
-          }
-
-          const editableElement = findTemplateMediaAtPoint(event, root);
-          if (!editableElement) {
-            return;
-          }
-
-          event.preventDefault();
-          event.stopPropagation();
-
-          const id = markTemplateNode(editableElement);
-          const mediaMeta = {
-            scope: "template",
-            field: "media",
-            templateNodeId: id,
-            value: getTemplateMediaValue(editableElement)
-          };
-
-          if (editableElement.tagName === "SVG") {
-            openTemplateSvgPopover(event, editableElement);
-          } else if (editableElement.tagName === "IMG") {
-            openTemplateImagePopover(event, editableElement, mediaMeta, "URL da imagem ou mídia");
-          } else {
-            openMediaEditor(event, editableElement, mediaMeta, editableElement.tagName === "IFRAME" ? "URL do vídeo do YouTube" : "URL da imagem ou mídia");
           }
         }, true);
 
@@ -4165,14 +9772,14 @@ ${containerHtml}`;
             }
 
             const target = targetId ? doc.getElementById(targetId) : null;
-            try {
-              doc.defaultView.history.replaceState(null, "", rawHref);
-            } catch (_) {}
-
             if (target) {
               if (target.matches?.('input[type="radio"], input[type="checkbox"]')) {
+                const storyRoot = findTemplateStoryRoot(anchor, root) || findTemplateStoryRoot(target, root);
                 target.checked = true;
                 target.dispatchEvent(new doc.defaultView.Event("change", { bubbles: true }));
+                if (storyRoot) {
+                  applyTemplateStorySelection(anchor, target, root);
+                }
               } else {
                 target.scrollIntoView({ block: "nearest", inline: "nearest" });
               }
@@ -4191,6 +9798,8 @@ ${containerHtml}`;
           attachTemplateHeaderEditor(header);
         });
 
+        setupTemplateFaqEditing(root);
+
         root.addEventListener("click", (event) => {
           const header = findTemplateHeaderRoot(event.target, root);
           if (!header || !root.contains(header)) {
@@ -4201,22 +9810,52 @@ ${containerHtml}`;
             return;
           }
 
+          if (isTemplateHeaderLogoTarget(event.target, header)) {
+            return;
+          }
+
           event.preventDefault();
           event.stopPropagation();
           openTemplateHeaderPopover(event, header);
         }, true);
 
         [root, ...root.querySelectorAll("*")].forEach((element) => {
+          if (element.closest?.("[data-ll-template-faq-details], [data-ll-template-faq-root]")) {
+            return;
+          }
           if (isTemplateOverlayCandidate(element, root)) {
             attachTemplateOverlay(element);
           }
         });
 
-        setupTemplateFaqEditing(root);
+        root.querySelectorAll(".ll-carousel__dot-icon, [class*='icon' i], [class*='logo' i], [class*='avatar' i], [class*='emblem' i]").forEach((element) => {
+          if (element.closest?.("[data-ll-template-faq-details], [data-ll-template-faq-root]")) {
+            return;
+          }
+          if (getTemplateIconMediaElement(element)) {
+            attachTemplateIcon(element);
+          }
+        });
+
+        setupTemplateTableEditing(root);
 
         [root, ...root.querySelectorAll("*")].forEach((element) => {
+          attachTemplateOptionCardEditor(element, root);
+        });
+
+        [root, ...root.querySelectorAll("*")].forEach((element) => {
+          if (element !== root) {
+            attachTemplateBorderEditor(element);
+          }
+        });
+
+        [root, ...root.querySelectorAll("*")].forEach((element) => {
+          if (element.closest?.("[data-ll-template-faq-details], [data-ll-template-faq-root]")) {
+            return;
+          }
+
           const header = findTemplateHeaderRoot(element, root);
-          if (header && isTemplateHeaderBannerTarget(element, header)) {
+          if (header && isTemplateHeaderBannerTarget(element, header) && !isTemplateHeaderLogoTarget(element, header)) {
             return;
           }
 
@@ -4224,11 +9863,15 @@ ${containerHtml}`;
 
           if (element.tagName === "SVG") {
             markTemplateNode(element);
-            attachTemplateSvg(element);
+            attachTemplateIcon(element);
             return;
           }
 
           if (!isOverlayElement && isTemplateTextCandidate(element)) {
+            if (element.dataset.llTemplateFaqTitleReady === "true") {
+              return;
+            }
+
             const id = markTemplateNode(element);
             const shouldUseDblClick = isRadioToggleLabel(element) || isStoryLabelText(element);
             attachText(element, {
@@ -4236,7 +9879,11 @@ ${containerHtml}`;
               field: "text",
               templateNodeId: id,
               value: element.innerText || element.textContent || ""
-            }, { multiline: isTemplateMultilineText(element), triggerEvent: shouldUseDblClick ? "dblclick" : "click" });
+            }, {
+              multiline: isTemplateMultilineText(element),
+              triggerEvent: shouldUseDblClick ? "dblclick" : "click",
+              ctrlClickOpensEditor: shouldUseDblClick
+            });
           }
 
           if (["IMG", "VIDEO", "SOURCE", "IFRAME"].includes(element.tagName) || hasTemplateBackgroundImage(element)) {
@@ -4250,6 +9897,11 @@ ${containerHtml}`;
             };
 
             if (element.tagName === "IMG") {
+              if (isTemplateIconElement(element)) {
+                attachTemplateIcon(element);
+                return;
+              }
+
               element.setAttribute("title", "Dê dois cliques para trocar URL e alt text.");
               element.addEventListener("dblclick", (event) => {
                 event.preventDefault();
@@ -4266,18 +9918,28 @@ ${containerHtml}`;
           if (!isOverlayElement && isTemplateColorCandidate(element, root)) {
             const id = markTemplateNode(element);
             const computed = element.ownerDocument.defaultView.getComputedStyle(element);
-            const backgroundColor = isTransparentColor(computed.backgroundColor) ? "#ffffff" : colorToHex(computed.backgroundColor || "#ffffff", "#ffffff");
+            const backgroundImage = computed.backgroundImage || "";
+            const backgroundColor = backgroundImage && backgroundImage !== "none" && !/url\(/i.test(backgroundImage)
+              ? backgroundImage
+              : isTransparentColor(computed.backgroundColor)
+                ? "#ffffff"
+                : colorToHex(computed.backgroundColor || "#ffffff", "#ffffff");
             attachColor(element, {
               scope: "template",
               field: "backgroundColor",
               templateNodeId: id,
               value: backgroundColor
-            }, "cor de fundo", { allowOnMedia: true, triggerEvent: "click" });
+            }, "cor de fundo", { allowOnMedia: true, triggerEvent: "dblclick" });
           }
         });
+
+        // These controls exist only inside the Lab preview. They are removed
+        // before serialization; the added/removed slide structure itself is
+        // what remains in the published HTML.
+        ensureSection8SlideTools(root);
       };
 
-      const tab = getPreviewEditTab();
+      const tab = getPreviewEditTab(frame);
 
       if (tab === "dashboard") {
         doc.querySelectorAll("[data-dashboard-preview-home]").forEach((button) => {
@@ -4291,7 +9953,7 @@ ${containerHtml}`;
           button.addEventListener("click", (event) => {
             event.preventDefault();
             const nextDashboardTab = button.dataset.dashboardPreviewTab;
-            if (["faq", "table", "stories", "article", "carousel", "bento", "template"].includes(nextDashboardTab)) {
+            if (["faq", "table", "stories", "article", "carousel", "bento", "senko", "template"].includes(nextDashboardTab)) {
               currentEditorTab = nextDashboardTab;
               state.dashboard.view = "layouts";
               renderEditor();
@@ -4302,6 +9964,7 @@ ${containerHtml}`;
       }
 
       if (tab === "template") {
+        doc.defaultView.__llPreviewEditingRefresh = setupTemplatePreviewEditing;
         setupTemplatePreviewEditing();
         return;
       }
@@ -4366,6 +10029,54 @@ ${containerHtml}`;
       }
 
       if (tab === "carousel") {
+        const carouselRoot = doc.querySelector(".ll-carousel");
+        if (carouselRoot) {
+          carouselRoot.addEventListener("click", (event) => {
+            if (event.target.closest('[contenteditable="true"]')) {
+              return;
+            }
+
+            if (event.target.closest("[data-ll-preview-text], [data-ll-preview-media], [data-ll-preview-color], [data-ll-preview-position]")) {
+              return;
+            }
+
+            const label = event.target.closest(".ll-carousel__dot[for], .ll-carousel__side-hint[for]");
+            if (!label || !carouselRoot.contains(label)) {
+              return;
+            }
+
+            // Os cards de navegação aguardam o clique local para distinguir
+            // troca de slide de duplo clique no fundo para editar o estilo.
+            if (label.matches(".ll-carousel__dot")) {
+              return;
+            }
+
+            const input = getControlledInput(label);
+            if (!input || !input.matches?.('input[type="radio"]')) {
+              return;
+            }
+
+            event.preventDefault();
+            event.stopPropagation();
+
+            input.checked = true;
+            input.dispatchEvent(new doc.defaultView.Event("input", { bubbles: true }));
+            input.dispatchEvent(new doc.defaultView.Event("change", { bubbles: true }));
+
+            const slideMatch = String(input.id || label.getAttribute("for") || "").match(/(\d+)$/);
+            const slideIndex = slideMatch
+              ? Math.max(0, Number(slideMatch[1]) - 1)
+              : Array.from(carouselRoot.querySelectorAll(".ll-carousel__dot")).indexOf(label);
+
+            if (slideIndex >= 0) {
+              state.carousel.openSlideIndex = slideIndex;
+              setCarouselPreviewSlide(slideIndex);
+            }
+
+            updateOutput();
+          }, true);
+        }
+
         attachText(doc.querySelector(".ll-carousel__intro .ll-carousel__eyebrow"), { scope: "carousel", field: "eyebrow" });
         attachText(doc.querySelector(".ll-carousel__intro .ll-carousel__title"), { scope: "carousel", field: "title" });
         attachText(doc.querySelector(".ll-carousel__intro .ll-carousel__lead"), { scope: "carousel", field: "lead" }, { multiline: true });
@@ -4373,9 +10084,48 @@ ${containerHtml}`;
         attachColor(doc.querySelector(".ll-carousel__eyebrow"), { scope: "carousel", field: "brandColor" }, "cor de destaque");
 
         doc.querySelectorAll(".ll-carousel__dot").forEach((dot, slideIndex) => {
+          let dotClickTimer = 0;
+          const activateDot = () => {
+            const targetId = dot.getAttribute("for");
+            const input = targetId ? doc.getElementById(targetId) : null;
+            if (input) {
+              input.checked = true;
+            }
+            state.carousel.openSlideIndex = slideIndex;
+            setCarouselPreviewSlide(slideIndex);
+            updateOutput();
+          };
+
+          dot.addEventListener("click", (event) => {
+            if (event.target?.isContentEditable || event.target.closest("[data-ll-preview-text], [data-ll-preview-media]")) {
+              return;
+            }
+
+            if (event.ctrlKey || event.metaKey) {
+              event.preventDefault();
+              event.stopPropagation();
+              window.clearTimeout(dotClickTimer);
+              openCarouselNavStylePopover(event, carouselRoot);
+              return;
+            }
+
+            event.preventDefault();
+            event.stopPropagation();
+            window.clearTimeout(dotClickTimer);
+            if (event.detail > 1) {
+              return;
+            }
+            dotClickTimer = window.setTimeout(activateDot, 280);
+          });
+
+          dot.addEventListener("dblclick", (event) => {
+            window.clearTimeout(dotClickTimer);
+            event.stopPropagation();
+          });
+
           attachText(dot.querySelector(".ll-carousel__dot-number"), { scope: "carousel", slideIndex, field: "navNumber" });
           attachText(dot.querySelector(".ll-carousel__dot-text"), { scope: "carousel", slideIndex, field: "navLabel" });
-          attachMedia(dot.querySelector(".ll-carousel__dot-icon"), { scope: "carousel", slideIndex, field: "navIconImage" }, "URL ou SVG do ícone");
+          attachTemplateIcon(dot.querySelector(".ll-carousel__dot-icon"));
         });
 
         doc.querySelectorAll(".ll-carousel__panel").forEach((panel, slideIndex) => {
@@ -4403,6 +10153,936 @@ ${containerHtml}`;
         if (!root) {
           return;
         }
+
+        root.dataset.llBentoEditor = "true";
+        const grid = root.querySelector(":scope > .ll-bento__grid");
+        const gridBlocks = grid ? Array.from(grid.children) : [];
+        const isStarterBentoDom = gridBlocks.length === 6
+          && gridBlocks[0]?.matches(".ll-bento__expand--hero")
+          && gridBlocks[1]?.matches(".ll-bento__card--text")
+          && gridBlocks[2]?.matches(".ll-bento__expand--image")
+          && gridBlocks[3]?.matches(".ll-bento__card--text")
+          && gridBlocks[4]?.matches(".ll-bento__expand--image")
+          && gridBlocks[5]?.matches(".ll-bento__card--text");
+        const isDefaultBentoLayout = root.dataset.llBentoDefaultLayout === "true" || isStarterBentoDom;
+
+        if (isDefaultBentoLayout && grid) {
+          // The starter Bento is a fixed composition. Apply its grid directly
+          // in the preview so stale widths from a previous resize cannot turn
+          // the six cards into thin columns before CSS settles.
+          root.dataset.llBentoDefaultLayout = "true";
+          delete root.dataset.llBentoFluidEditor;
+          const isCompactViewport = doc.defaultView.matchMedia("(max-width: 900px)").matches;
+          const desktopAreas = [
+            "hero hero hero hero hero hero hero summary summary summary summary summary",
+            "hero hero hero hero hero hero hero rectangle rectangle rectangle rectangle rectangle",
+            "use use use circle circle circle detail detail detail detail detail detail"
+          ].map((row) => `\"${row}\"`).join(" ");
+          const compactAreas = [
+            "hero hero",
+            "summary rectangle",
+            "use circle",
+            "detail detail"
+          ].map((row) => `\"${row}\"`).join(" ");
+          grid.style.setProperty("display", "grid", "important");
+          grid.style.setProperty("width", "100%", "important");
+          grid.style.setProperty("min-width", "0", "important");
+          grid.style.setProperty("grid-template-columns", isCompactViewport ? "repeat(2, minmax(0, 1fr))" : "repeat(12, minmax(0, 1fr))", "important");
+          grid.style.setProperty("grid-template-areas", isCompactViewport ? compactAreas : desktopAreas, "important");
+          grid.style.setProperty(
+            "grid-template-rows",
+            isCompactViewport
+              ? "minmax(260px, 380px) 170px 170px 170px"
+              : "230px 230px 175px",
+            "important"
+          );
+          grid.style.setProperty("grid-auto-flow", "row", "important");
+          grid.style.setProperty("grid-auto-rows", "auto", "important");
+          grid.style.setProperty("gap", "14px", "important");
+          grid.style.setProperty("align-items", "stretch", "important");
+
+          const areas = ["hero", "summary", "rectangle", "use", "circle", "detail"];
+          gridBlocks.forEach((block, index) => {
+            [
+              "width", "height", "min-width", "min-height", "max-width", "max-height",
+              "grid-column", "grid-row", "align-self", "justify-self", "resize",
+              "--ll-bento-editor-width", "--ll-bento-editor-height", "--ll-bento-editor-span",
+              "--ll-bento-circle-size", "--ll-bento-resize-max-width", "--ll-bento-resize-max-height"
+            ].forEach((property) => block.style.removeProperty(property));
+            block.style.setProperty("grid-area", areas[index], "important");
+            block.style.setProperty("width", "100%", "important");
+            block.style.setProperty("min-width", "0", "important");
+            block.style.setProperty("max-width", "none", "important");
+            block.style.setProperty("height", "auto", "important");
+            block.style.setProperty("max-height", "none", "important");
+            block.style.setProperty("align-self", "stretch", "important");
+            block.style.setProperty("justify-self", "stretch", "important");
+            block.style.setProperty("resize", "none", "important");
+          });
+
+          gridBlocks[0].style.setProperty("min-height", isCompactViewport ? "clamp(260px, 48vw, 380px)" : "460px", "important");
+          gridBlocks[1].style.setProperty("min-height", isCompactViewport ? "150px" : "220px", "important");
+          gridBlocks[2].style.setProperty("min-height", isCompactViewport ? "150px" : "220px", "important");
+          gridBlocks[3].style.setProperty("height", isCompactViewport ? "100%" : "175px", "important");
+          gridBlocks[3].style.setProperty("max-height", isCompactViewport ? "none" : "175px", "important");
+          gridBlocks[3].style.setProperty("min-height", "0", "important");
+          gridBlocks[5].style.setProperty("height", isCompactViewport ? "100%" : "175px", "important");
+          gridBlocks[5].style.setProperty("max-height", isCompactViewport ? "none" : "175px", "important");
+          gridBlocks[5].style.setProperty("min-height", "0", "important");
+          // O bloco circular precisa conservar 1:1. Esticar o item na linha
+          // faz a imagem virar uma elipse alta e infla toda a ultima faixa.
+          gridBlocks[4].style.setProperty("align-self", "center", "important");
+          gridBlocks[4].style.setProperty("justify-self", "center", "important");
+          gridBlocks[4].style.setProperty("height", "auto", "important");
+          gridBlocks[4].style.setProperty("width", "min(100%, 165px)", "important");
+          gridBlocks[4].style.setProperty("max-width", "165px", "important");
+          gridBlocks[4].style.setProperty("aspect-ratio", "1 / 1", "important");
+        }
+
+        // Os controles de ampliar usam labels ligados a checkboxes. Alguns
+        // navegadores focam o input oculto e reposicionam o iframe; guardar a
+        // rolagem antes e restaura-la depois impede esse salto visual.
+        const keepBentoPreviewScroll = () => {
+          const scrollRoot = doc.scrollingElement || doc.documentElement;
+          const top = scrollRoot.scrollTop;
+          const left = scrollRoot.scrollLeft;
+          doc.defaultView.requestAnimationFrame(() => {
+            scrollRoot.scrollTo({ top, left, behavior: "auto" });
+          });
+          doc.defaultView.setTimeout(() => {
+            scrollRoot.scrollTo({ top, left, behavior: "auto" });
+          }, 0);
+        };
+
+        root.querySelectorAll(".ll-bento__lightbox-toggle, .ll-bento__image-button, .ll-bento__lightbox-backdrop, .ll-bento__lightbox-clickzone, .ll-bento__lightbox-close").forEach((control) => {
+          control.addEventListener("pointerdown", keepBentoPreviewScroll, true);
+          control.addEventListener("click", keepBentoPreviewScroll, true);
+          control.addEventListener("change", keepBentoPreviewScroll, true);
+          control.addEventListener("focus", keepBentoPreviewScroll, true);
+        });
+
+        const getBentoResizeBounds = (element, referenceRect) => {
+          const grid = root.querySelector(".ll-bento__grid") || root;
+          const gridRect = grid.getBoundingClientRect();
+          const elementRect = referenceRect || element.getBoundingClientRect();
+          const isCircle = element.classList.contains("ll-bento__expand--image-circle");
+          const isImage = isCircle || element.classList.contains("ll-bento__expand--image-square");
+          const isResponsiveGrid = doc.defaultView.matchMedia("(max-width: 900px)").matches;
+          const responsiveCellWidth = isResponsiveGrid
+            ? Math.max(112, Math.floor((gridRect.width - 14) / 2))
+            : Number.POSITIVE_INFINITY;
+          const minWidth = Math.min(isImage ? 150 : 170, responsiveCellWidth);
+          const minHeight = 150;
+          const minimumGap = Number.parseFloat(doc.defaultView.getComputedStyle(doc.documentElement).fontSize) || 16;
+          const siblingRects = Array.from(grid.children)
+            .filter((item) => item !== element && !item.classList.contains("ll-bento__editor-add"))
+            .map((item) => item.getBoundingClientRect())
+            .filter((rect) => rect.width > 0 && rect.height > 0);
+          // A borda externa do grid e permitida. A folga de 1rem vale apenas
+          // entre dois blocos, para nao reduzir um card que ja encosta no fim.
+          let rightEdge = gridRect.right;
+          let bottomEdge = gridRect.bottom;
+
+          siblingRects.forEach((siblingRect) => {
+            const sharesRow = siblingRect.top < elementRect.bottom - minimumGap
+              && siblingRect.bottom > elementRect.top + minimumGap;
+            const sharesColumn = siblingRect.left < elementRect.right - minimumGap
+              && siblingRect.right > elementRect.left + minimumGap;
+
+            if (sharesRow && siblingRect.left >= elementRect.right - 1) {
+              rightEdge = Math.min(rightEdge, siblingRect.left - minimumGap);
+            }
+
+            if (sharesColumn && siblingRect.top >= elementRect.bottom - 1) {
+              bottomEdge = Math.min(bottomEdge, siblingRect.top - minimumGap);
+            }
+          });
+
+          let maxWidth = Math.max(minWidth, Math.floor(rightEdge - elementRect.left));
+          let maxHeight = Math.max(minHeight, Math.floor(bottomEdge - elementRect.top));
+
+          // Em duas colunas a alca horizontal muda o card entre uma e duas
+          // colunas. O grid empacota os vizinhos; por isso o limite pode ser a
+          // largura inteira da area, sem deixar um elemento invadir outro.
+          if (isResponsiveGrid && !isCircle) {
+            maxWidth = Math.max(minWidth, Math.floor(gridRect.width));
+          }
+
+          // A alca deve ajustar o card dentro da composicao existente. Sem esse
+          // teto, um arrasto longo cria uma nova faixa vazia no grid e quebra o ritmo.
+          if (!isCircle && !isResponsiveGrid) {
+            maxWidth = Math.min(maxWidth, Math.max(minWidth, Math.round(elementRect.width + 320)));
+            maxHeight = Math.min(maxHeight, Math.max(minHeight, Math.round(elementRect.height + 240)));
+          }
+
+          if (isCircle) {
+            const maxSide = Math.max(minWidth, Math.min(maxWidth, maxHeight));
+            maxWidth = maxSide;
+            maxHeight = maxSide;
+          }
+
+          return { minWidth, minHeight, maxWidth, maxHeight };
+        };
+
+        const applyBentoEditorSize = (element, width, height) => {
+          if (!element) {
+            return;
+          }
+
+          if (Number.isFinite(width) && width > 0) {
+            const value = `${Math.round(width)}px`;
+            element.style.width = value;
+            element.style.setProperty("--ll-bento-editor-width", value);
+          }
+
+          if (Number.isFinite(height) && height > 0) {
+            const value = `${Math.round(height)}px`;
+            element.style.height = value;
+            element.style.setProperty("--ll-bento-editor-height", value);
+          }
+        };
+
+        const applyBentoResponsiveSpan = (element, requestedWidth) => {
+          if (!element || element.matches(".ll-bento__expand--image-circle")) {
+            return 1;
+          }
+
+          const viewport = doc.defaultView;
+          if (!viewport.matchMedia("(max-width: 900px)").matches) {
+            return Number(element.style.getPropertyValue("--ll-bento-editor-span")) || 1;
+          }
+
+          const grid = root.querySelector(".ll-bento__grid") || root;
+          const gridRect = grid.getBoundingClientRect();
+          const gap = Number.parseFloat(viewport.getComputedStyle(grid).columnGap) || 14;
+          const cellWidth = Math.max(1, (gridRect.width - gap) / 2);
+          const span = Number(requestedWidth) > cellWidth * 1.38 ? 2 : 1;
+          const blockIndex = Number(element.dataset.llBentoResizeBlock);
+          const savedSpan = Number.isInteger(blockIndex) && state.bento?.blocks?.[blockIndex]
+            ? Number(state.bento.blocks[blockIndex].responsiveSpan) || 1
+            : 1;
+          const currentSpan = Number(element.style.getPropertyValue("--ll-bento-editor-span")) || savedSpan;
+
+          // A composicao padrao continua com areas nomeadas. So passamos para
+          // o fluxo livre quando a largura foi realmente modificada.
+          if (span !== currentSpan) {
+            root.dataset.llBentoFluidEditor = "true";
+          }
+
+          element.style.setProperty("--ll-bento-editor-span", String(span));
+          element.style.gridColumn = `span ${span}`;
+
+          if (Number.isInteger(blockIndex) && state.bento?.blocks?.[blockIndex]) {
+            state.bento.blocks[blockIndex].responsiveSpan = span;
+          }
+
+          return span;
+        };
+
+        const constrainBentoResize = (element) => {
+          if (!element || !element.isConnected) {
+            return;
+          }
+
+          const currentWidth = Math.round(element.offsetWidth);
+          const currentHeight = Math.round(element.offsetHeight);
+          const isCircle = element.classList.contains("ll-bento__expand--image-circle");
+          const lockedBounds = element.__llBentoResizeBounds;
+          const liveBounds = getBentoResizeBounds(element);
+          const minWidth = lockedBounds?.minWidth || liveBounds.minWidth;
+          const minHeight = lockedBounds?.minHeight || liveBounds.minHeight;
+          const maxWidth = Math.min(lockedBounds?.maxWidth || Number.POSITIVE_INFINITY, liveBounds.maxWidth);
+          const maxHeight = Math.min(lockedBounds?.maxHeight || Number.POSITIVE_INFINITY, liveBounds.maxHeight);
+
+          element.style.setProperty("--ll-bento-resize-max-width", `${maxWidth}px`);
+          element.style.setProperty("--ll-bento-resize-max-height", `${maxHeight}px`);
+
+          if (isCircle) {
+            const side = Math.max(minWidth, Math.min(currentWidth, maxWidth, maxHeight));
+            applyBentoEditorSize(element, side, side);
+            element.style.setProperty("--ll-bento-circle-size", `${side}px`);
+            return;
+          }
+
+          if (currentWidth > maxWidth) {
+            applyBentoEditorSize(element, maxWidth);
+          }
+          if (currentHeight > maxHeight) {
+            applyBentoEditorSize(element, undefined, maxHeight);
+          }
+        };
+
+        const persistBentoResize = (element) => {
+          if (!element || !element.isConnected) {
+            return;
+          }
+
+          constrainBentoResize(element);
+          const rect = element.getBoundingClientRect();
+          const isCircle = element.classList.contains("ll-bento__expand--image-circle");
+          const width = Math.round(rect.width);
+          const height = Math.round(rect.height);
+          if (!Number.isFinite(width) || !Number.isFinite(height) || width <= 0 || height <= 0) {
+            return;
+          }
+
+          const size = isCircle ? Math.min(width, height) : null;
+          const start = element.__llBentoResizeStart || {};
+          const widthChanged = Math.abs(width - (start.width || width)) > 2;
+          const heightChanged = Math.abs(height - (start.height || height)) > 2;
+          if (isCircle || widthChanged) {
+            applyBentoEditorSize(element, size || width, isCircle ? size : undefined);
+          }
+          if (isCircle) {
+            element.style.setProperty("--ll-bento-circle-size", `${size}px`);
+          } else if (heightChanged) {
+            applyBentoEditorSize(element, undefined, height);
+          }
+
+          if (!isCircle) {
+            applyBentoResponsiveSpan(element, width);
+          }
+
+          const blockIndex = Number(element.dataset.llBentoResizeBlock);
+          if (Number.isInteger(blockIndex) && state.bento?.blocks?.[blockIndex]) {
+            if (isCircle || widthChanged) {
+              state.bento.blocks[blockIndex].resizeWidth = size || width;
+            }
+            if (isCircle) {
+              state.bento.blocks[blockIndex].resizeHeight = "";
+            } else if (heightChanged) {
+              state.bento.blocks[blockIndex].resizeHeight = height;
+            }
+            if (isCircle || widthChanged || heightChanged) {
+              state.bento.blocks[blockIndex].resizeEdited = true;
+            }
+          }
+
+          if (currentPage === "conteudo") {
+            markResponsiveDirty();
+          }
+
+          if (state.bento?.useCustomHtml) {
+            syncBentoHtmlFromPreview();
+          } else {
+            state.bento.status = "Tamanho salvo pela previa.";
+            generatedHtml.value = buildOutputHtml("html");
+            copyStatus.textContent = "";
+            copyStatus.classList.remove("is-warning", "is-visible");
+          }
+        };
+
+        const setupBentoResizePersistence = () => {
+          // O modelo inicial usa uma grade nomeada fixa. Os controles de
+          // resize so entram numa composicao alterada, evitando que medidas
+          // residuais do editor comprimam os seis blocos de referencia.
+          if (isDefaultBentoLayout) {
+            return;
+          }
+
+          const resizableBlockIndexes = state.bento.blocks
+            .map((block, index) => ["text", "image"].includes(block.type) ? index : -1)
+            .filter((index) => index >= 0);
+          const resizeCards = Array.from(
+            root.querySelectorAll(".ll-bento__card--text, .ll-bento__expand--image-square, .ll-bento__expand--image-circle")
+          );
+          // Persistencia ocorre no fim do gesto de redimensionamento. Evitar
+          // ResizeObserver aqui elimina o observador polifilado que alguns
+          // srcdocs emprestam do documento pai e que pode interromper a
+          // proxima interacao do preview.
+          const resizeObserver = null;
+
+          resizeCards.forEach((element, orderIndex) => {
+            element.dataset.llBentoResizeReady = "true";
+            const blockIndex = resizableBlockIndexes[orderIndex];
+            if (blockIndex !== undefined) {
+              element.dataset.llBentoResizeBlock = String(blockIndex);
+              const block = state.bento.blocks[blockIndex];
+              const savedSpan = Number(block?.responsiveSpan) || 1;
+              if (isDefaultBentoLayout) {
+                // The standard six-block Bento has a fixed named-grid. Old
+                // editor dimensions must not be replayed over that baseline.
+                [
+                  "width",
+                  "height",
+                  "min-width",
+                  "min-height",
+                  "max-width",
+                  "max-height",
+                  "grid-column",
+                  "grid-row",
+                  "align-self",
+                  "justify-self"
+                ].forEach((property) => element.style.removeProperty(property));
+                [
+                  "--ll-bento-editor-width",
+                  "--ll-bento-editor-height",
+                  "--ll-bento-editor-span",
+                  "--ll-bento-circle-size"
+                ].forEach((property) => element.style.removeProperty(property));
+                if (block) {
+                  delete block.resizeWidth;
+                  delete block.resizeHeight;
+                  delete block.responsiveSpan;
+                  block.resizeEdited = false;
+                }
+              } else if (block?.resizeEdited && savedSpan === 2) {
+                root.dataset.llBentoFluidEditor = "true";
+                element.style.setProperty("--ll-bento-editor-span", "2");
+                element.style.gridColumn = "span 2";
+              }
+            }
+
+            constrainBentoResize(element);
+
+            const isCircle = element.matches(".ll-bento__expand--image-circle");
+            if ((element.matches(".ll-bento__card--text, .ll-bento__expand--image-square") || isCircle) && !element.querySelector("[data-ll-bento-resize-handle]")) {
+              const handleAxes = isCircle ? ["circle"] : ["vertical", "horizontal", "both"];
+              handleAxes.forEach((axis) => {
+                const handle = doc.createElement("span");
+                handle.className = `ll-bento__resize-handle ll-bento__resize-handle--${axis}`;
+                handle.dataset.llBentoResizeHandle = axis;
+                handle.setAttribute("aria-hidden", "true");
+                element.append(handle);
+              });
+            }
+
+            const isResizeHandlePointer = (event) => {
+              if (isCircle) {
+                return false;
+              }
+              const rect = element.getBoundingClientRect();
+              const gripSize = 26;
+              return event.clientX >= rect.right - gripSize
+                && event.clientY >= rect.bottom - gripSize;
+            };
+
+            element.addEventListener("pointerdown", (event) => {
+              // Keep resize-grip gestures out of the preview editors attached to the
+              // card and its text children.
+              const customHandle = event.target.closest?.("[data-ll-bento-resize-handle]");
+              element.__llBentoSuppressPreviewClick = Boolean(customHandle) || isResizeHandlePointer(event);
+              constrainBentoResize(element);
+              const rect = element.getBoundingClientRect();
+              element.__llBentoResizeStart = {
+                width: Math.round(rect.width),
+                height: Math.round(rect.height)
+              };
+              element.__llBentoResizeBounds = getBentoResizeBounds(element, rect);
+              element.__llBentoResizeActive = true;
+            }, true);
+
+            element.addEventListener("click", (event) => {
+              if (!element.__llBentoSuppressPreviewClick) {
+                return;
+              }
+
+              element.__llBentoSuppressPreviewClick = false;
+              event.preventDefault();
+              event.stopImmediatePropagation();
+            }, true);
+
+            element.querySelectorAll("[data-ll-bento-resize-handle]").forEach((handle) => {
+              handle.addEventListener("pointerdown", (event) => {
+                if (event.button !== 0) {
+                  return;
+                }
+
+                event.preventDefault();
+                event.stopPropagation();
+                element.__llBentoSuppressPreviewClick = true;
+                const axis = handle.dataset.llBentoResizeHandle || "both";
+                const startRect = element.getBoundingClientRect();
+                const startX = event.clientX;
+                const startY = event.clientY;
+                const resizeBounds = getBentoResizeBounds(element, startRect);
+                const minWidth = resizeBounds.minWidth;
+                const minHeight = resizeBounds.minHeight;
+                element.__llBentoResizeStart = {
+                  width: Math.round(startRect.width),
+                  height: Math.round(startRect.height)
+                };
+                element.__llBentoResizeBounds = resizeBounds;
+                element.__llBentoResizeActive = true;
+                handle.setPointerCapture?.(event.pointerId);
+
+                const move = (moveEvent) => {
+                  if (moveEvent.pointerId !== event.pointerId) {
+                    return;
+                  }
+
+                  if (axis === "circle") {
+                    const delta = Math.max(moveEvent.clientX - startX, moveEvent.clientY - startY);
+                    const requestedSize = Math.round(startRect.width + delta);
+                  const safeSize = Math.min(
+                      resizeBounds.maxWidth,
+                      resizeBounds.maxHeight,
+                      Math.max(minWidth, requestedSize)
+                    );
+                    applyBentoEditorSize(element, safeSize, safeSize);
+                    element.style.setProperty("--ll-bento-circle-size", `${safeSize}px`);
+                  } else if (axis !== "vertical") {
+                    const requestedWidth = Math.round(startRect.width + moveEvent.clientX - startX);
+                    const safeWidth = Math.min(resizeBounds.maxWidth, Math.max(minWidth, requestedWidth));
+                    applyBentoEditorSize(element, safeWidth);
+                    applyBentoResponsiveSpan(element, safeWidth);
+                  }
+                  if (axis !== "horizontal" && axis !== "circle") {
+                    const requestedHeight = Math.round(startRect.height + moveEvent.clientY - startY);
+                    const safeHeight = Math.min(resizeBounds.maxHeight, Math.max(minHeight, requestedHeight));
+                    applyBentoEditorSize(element, undefined, safeHeight);
+                  }
+                  constrainBentoResize(element);
+                };
+
+                const finish = (finishEvent) => {
+                  if (finishEvent.pointerId !== event.pointerId) {
+                    return;
+                  }
+
+                  doc.defaultView.removeEventListener("pointermove", move, true);
+                  doc.defaultView.removeEventListener("pointerup", finish, true);
+                  doc.defaultView.removeEventListener("pointercancel", finish, true);
+                  element.__llBentoResizeActive = false;
+                  persistBentoResize(element);
+                  delete element.__llBentoResizeBounds;
+                  doc.defaultView.setTimeout(() => {
+                    element.__llBentoSuppressPreviewClick = false;
+                  }, 260);
+                };
+
+                doc.defaultView.addEventListener("pointermove", move, true);
+                doc.defaultView.addEventListener("pointerup", finish, true);
+                doc.defaultView.addEventListener("pointercancel", finish, true);
+              });
+
+              handle.addEventListener("click", (event) => {
+                event.preventDefault();
+                event.stopPropagation();
+              });
+            });
+
+            resizeObserver?.observe(element);
+          });
+
+          let resizeFrame = 0;
+          doc.addEventListener("pointermove", () => {
+            if (resizeFrame) {
+              return;
+            }
+
+            resizeFrame = doc.defaultView.requestAnimationFrame(() => {
+              resizeFrame = 0;
+              resizeCards.forEach((element) => {
+                if (element.__llBentoResizeActive) {
+                  constrainBentoResize(element);
+                }
+              });
+            });
+          }, true);
+
+          doc.addEventListener("pointerup", () => {
+            resizeCards.forEach((element) => {
+              if (!element.__llBentoResizeActive) {
+                return;
+              }
+
+              element.__llBentoResizeActive = false;
+              const rect = element.getBoundingClientRect();
+              const start = element.__llBentoResizeStart || {};
+              const changed = Math.abs(Math.round(rect.width) - (start.width || rect.width)) > 2
+                || Math.abs(Math.round(rect.height) - (start.height || rect.height)) > 2;
+              window.clearTimeout(element.__llBentoResizeTimer);
+              if (changed) {
+                persistBentoResize(element);
+              }
+              delete element.__llBentoResizeBounds;
+            });
+          }, true);
+        };
+
+        setupBentoResizePersistence();
+
+        const setupBentoBlockReordering = () => {
+          const grid = root.querySelector(".ll-bento__grid");
+          if (!grid || state.bento?.useCustomHtml) {
+            return;
+          }
+
+          // O grid gerado pelo Bento segue a mesma ordem de state.bento.blocks.
+          // Ao soltar um card sobre outro, o card-alvo abre caminho na grade em
+          // vez de os dois disputarem a mesma area visual.
+          const blocks = Array.from(grid.children)
+            .filter((item) => !item.classList.contains("ll-bento__editor-add"));
+          if (blocks.length < 2 || blocks.length !== state.bento.blocks.length) {
+            return;
+          }
+
+          root.querySelectorAll(".ll-bento__editor-add").forEach((item) => item.remove());
+
+          const editorStyleId = "ll-bento-editor-reorder-style";
+          if (!doc.getElementById(editorStyleId)) {
+            const style = doc.createElement("style");
+            style.id = editorStyleId;
+            style.textContent = `
+              .ll-bento__editor-drag-handle {
+                position: absolute;
+                top: 10px;
+                right: 10px;
+                z-index: 30;
+                display: grid;
+                place-items: center;
+                width: 30px;
+                height: 30px;
+                padding: 0;
+                border: 1px solid rgba(255, 255, 255, 0.44);
+                border-radius: 9px;
+                color: #ffffff;
+                background: rgba(16, 24, 40, 0.66);
+                box-shadow: 0 4px 12px rgba(16, 24, 40, 0.16);
+                cursor: grab;
+                opacity: 0;
+                transform: translateY(-4px);
+                transition: opacity 0.16s ease, transform 0.16s ease, background-color 0.16s ease;
+              }
+
+              .ll-bento__grid > :hover > .ll-bento__editor-drag-handle,
+              .ll-bento__editor-drag-handle:focus-visible {
+                opacity: 1;
+                transform: translateY(0);
+              }
+
+              .ll-bento__editor-drag-handle:active {
+                cursor: grabbing;
+              }
+
+              .ll-bento__editor-drag-handle:focus-visible {
+                outline: 3px solid rgba(234, 91, 12, 0.78);
+                outline-offset: 2px;
+              }
+
+              .ll-bento__expand--image-circle > .ll-bento__editor-drag-handle {
+                z-index: 40;
+                opacity: 0.96;
+                transform: translateY(0);
+              }
+
+              .ll-bento__editor-dragging {
+                opacity: 0.38;
+                filter: saturate(0.72);
+              }
+
+              .ll-bento__editor-drop-target {
+                outline: 2px solid rgba(234, 91, 12, 0.84);
+                outline-offset: 5px;
+              }
+
+              .ll-bento__editor-drop-target::after {
+                content: "";
+                position: absolute;
+                inset: 0;
+                z-index: 25;
+                border-radius: inherit;
+                background: rgba(234, 91, 12, 0.08);
+                pointer-events: none;
+              }
+            `;
+            doc.head.append(style);
+          }
+
+          let draggedBlock = null;
+          const clearDropState = () => {
+            blocks.forEach((item) => item.classList.remove("ll-bento__editor-dragging", "ll-bento__editor-drop-target"));
+          };
+
+          const moveBlockToTarget = (sourceIndex, targetIndex) => {
+            if (!Number.isInteger(sourceIndex) || !Number.isInteger(targetIndex) || sourceIndex === targetIndex) {
+              return;
+            }
+
+            if (typeof recordBentoUndo === "function") {
+              recordBentoUndo();
+            }
+
+            const [movedBlock] = state.bento.blocks.splice(sourceIndex, 1);
+            const destinationIndex = sourceIndex < targetIndex ? targetIndex - 1 : targetIndex;
+            state.bento.blocks.splice(destinationIndex, 0, movedBlock);
+            state.bento.status = "Blocos reorganizados na grade.";
+            markResponsiveDirty();
+            renderEditor(true);
+          };
+
+          const beginBlockDrag = (event, block, blockIndex) => {
+            const isImageBlock = block.matches(".ll-bento__expand--image-circle, .ll-bento__expand--image-square");
+            const startedFromHandle = Boolean(event.target.closest?.(".ll-bento__editor-drag-handle"));
+            if (!startedFromHandle && !isImageBlock) {
+              event.preventDefault();
+              return;
+            }
+
+            draggedBlock = block;
+            clearDropState();
+            block.classList.add("ll-bento__editor-dragging");
+            event.dataTransfer?.setData("application/x-layout-lab-bento", String(blockIndex));
+            event.dataTransfer?.setData("text/plain", "Layout Lab Bento");
+            if (event.dataTransfer) {
+              event.dataTransfer.effectAllowed = "move";
+              event.dataTransfer.setDragImage(block, Math.min(48, block.clientWidth / 2), Math.min(36, block.clientHeight / 2));
+            }
+          };
+
+          blocks.forEach((block, blockIndex) => {
+            block.dataset.llBentoBlockIndex = String(blockIndex);
+            block.classList.add("ll-bento__editor-reorderable");
+            // A reorganizacao acontece pelo puxador. O drag nativo disputa
+            // eventos com a area clicavel da imagem circular e impede a troca.
+            block.draggable = false;
+
+            let handle = block.querySelector(":scope > .ll-bento__editor-drag-handle");
+            if (!handle) {
+              handle = doc.createElement("button");
+              handle.type = "button";
+              handle.className = "ll-bento__editor-drag-handle";
+              handle.draggable = false;
+              handle.setAttribute("aria-label", "Reorganizar bloco na grade");
+              handle.title = "Arraste para reorganizar";
+              handle.innerHTML = `<svg viewBox="0 0 24 24" width="16" height="16" fill="none" aria-hidden="true"><path d="M8 7h.01M12 7h.01M16 7h.01M8 12h.01M12 12h.01M16 12h.01M8 17h.01M12 17h.01M16 17h.01" stroke="currentColor" stroke-width="3" stroke-linecap="round"/></svg>`;
+              block.append(handle);
+            }
+
+            handle.addEventListener("pointerdown", (event) => {
+              if (event.button !== 0) {
+                return;
+              }
+
+              event.preventDefault();
+              event.stopPropagation();
+
+              const startX = event.clientX;
+              const startY = event.clientY;
+              let isDragging = false;
+
+              const clearPointerDrag = () => {
+                doc.defaultView.removeEventListener("pointermove", handlePointerMove, true);
+                doc.defaultView.removeEventListener("pointerup", finishPointerDrag, true);
+                doc.defaultView.removeEventListener("pointercancel", finishPointerDrag, true);
+                clearDropState();
+              };
+
+              const getDropTarget = (pointerEvent) => {
+                const target = doc.elementFromPoint(pointerEvent.clientX, pointerEvent.clientY);
+                return target?.closest?.(".ll-bento__editor-reorderable") || null;
+              };
+
+              const handlePointerMove = (pointerEvent) => {
+                const movedFarEnough = Math.abs(pointerEvent.clientX - startX) > 5 || Math.abs(pointerEvent.clientY - startY) > 5;
+                if (!movedFarEnough) {
+                  return;
+                }
+
+                isDragging = true;
+                block.classList.add("ll-bento__editor-dragging");
+                clearDropState();
+                block.classList.add("ll-bento__editor-dragging");
+                const target = getDropTarget(pointerEvent);
+                if (target && target !== block) {
+                  target.classList.add("ll-bento__editor-drop-target");
+                }
+              };
+
+              const finishPointerDrag = (pointerEvent) => {
+                const target = isDragging ? getDropTarget(pointerEvent) : null;
+                clearPointerDrag();
+                if (!target || target === block) {
+                  return;
+                }
+
+                moveBlockToTarget(Number(block.dataset.llBentoBlockIndex), Number(target.dataset.llBentoBlockIndex));
+              };
+
+              try {
+                handle.setPointerCapture(event.pointerId);
+              } catch (error) {}
+              doc.defaultView.addEventListener("pointermove", handlePointerMove, true);
+              doc.defaultView.addEventListener("pointerup", finishPointerDrag, true);
+              doc.defaultView.addEventListener("pointercancel", finishPointerDrag, true);
+            }, true);
+
+            handle.addEventListener("click", (event) => {
+              event.preventDefault();
+              event.stopPropagation();
+            });
+
+            block.addEventListener("dragstart", (event) => beginBlockDrag(event, block, blockIndex));
+
+            block.addEventListener("dragend", () => {
+              draggedBlock = null;
+              clearDropState();
+            });
+
+            block.addEventListener("dragover", (event) => {
+              if (!draggedBlock || draggedBlock === block) {
+                return;
+              }
+              event.preventDefault();
+              event.dataTransfer.dropEffect = "move";
+              clearDropState();
+              draggedBlock.classList.add("ll-bento__editor-dragging");
+              block.classList.add("ll-bento__editor-drop-target");
+            });
+
+            block.addEventListener("dragleave", (event) => {
+              if (!block.contains(event.relatedTarget)) {
+                block.classList.remove("ll-bento__editor-drop-target");
+              }
+            });
+
+            block.addEventListener("drop", (event) => {
+              if (!draggedBlock || draggedBlock === block) {
+                return;
+              }
+              event.preventDefault();
+              event.stopPropagation();
+              const sourceIndex = Number(draggedBlock.dataset.llBentoBlockIndex);
+              const targetIndex = Number(block.dataset.llBentoBlockIndex);
+              draggedBlock = null;
+              clearDropState();
+              moveBlockToTarget(sourceIndex, targetIndex);
+            });
+          });
+        };
+
+        setupBentoBlockReordering();
+
+        const addBentoPreviewSlots = () => {
+          const grid = root.querySelector(".ll-bento__grid");
+          if (!grid || state.bento?.useCustomHtml) {
+            return;
+          }
+
+          const availableTypes = ["text", "image"].filter((type) => canUseBentoBlockType(type));
+          if (!availableTypes.length) {
+            return;
+          }
+
+          // Cinco blocos ja formam a composicao-base do Bento. A partir dai,
+          // os espacos entre cards fazem parte do ritmo visual, nao sao vagas.
+          if (state.bento.blocks.length >= 5) {
+            return;
+          }
+
+          // Um card redimensionado passa a definir a ocupacao final do Bento.
+          // Nao oferecemos novas insercoes por cima dessa composicao manual.
+          const hasManuallySizedBlock = state.bento.blocks.some((block) => block.resizeEdited);
+          if (hasManuallySizedBlock) {
+            return;
+          }
+
+          const layoutItems = Array.from(grid.children)
+            .filter((item) => !item.classList.contains("ll-bento__editor-add"))
+            .map((item) => item.getBoundingClientRect())
+            .filter((rect) => rect.width > 0 && rect.height > 0);
+          if (!layoutItems.length) {
+            return;
+          }
+
+          const gridRect = grid.getBoundingClientRect();
+          const contentTop = Math.min(...layoutItems.map((rect) => rect.top));
+          const contentBottom = Math.max(...layoutItems.map((rect) => rect.bottom));
+          const minSlotWidth = doc.defaultView.innerWidth <= 560 ? 84 : 132;
+          const minSlotHeight = doc.defaultView.innerWidth <= 560 ? 84 : 118;
+          const yStops = [...new Set([contentTop, contentBottom, ...layoutItems.flatMap((rect) => [rect.top, rect.bottom])])]
+            .sort((first, second) => first - second);
+          const emptySlots = [];
+
+          for (let row = 0; row < yStops.length - 1; row += 1) {
+            const top = yStops[row];
+            const bottom = yStops[row + 1];
+            const height = bottom - top;
+            if (height < minSlotHeight) {
+              continue;
+            }
+
+            const occupied = layoutItems
+              .filter((rect) => rect.top <= top + 1 && rect.bottom >= bottom - 1)
+              .map((rect) => ({ left: Math.max(gridRect.left, rect.left), right: Math.min(gridRect.right, rect.right) }))
+              .sort((first, second) => first.left - second.left);
+            const gaps = [];
+            let cursor = gridRect.left;
+
+            occupied.forEach((interval) => {
+              if (interval.left - cursor >= minSlotWidth) {
+                gaps.push({ left: cursor, right: interval.left });
+              }
+              cursor = Math.max(cursor, interval.right);
+            });
+
+            if (gridRect.right - cursor >= minSlotWidth) {
+              gaps.push({ left: cursor, right: gridRect.right });
+            }
+
+            gaps.forEach((gap) => {
+              emptySlots.push({
+                left: gap.left - gridRect.left,
+                top: top - gridRect.top,
+                width: gap.right - gap.left,
+                height
+              });
+            });
+          }
+
+          const slots = emptySlots
+            .sort((first, second) => (second.width * second.height) - (first.width * first.height))
+            .slice(0, 2);
+          if (!slots.length) {
+            return;
+          }
+
+          if (doc.defaultView.getComputedStyle(grid).position === "static") {
+            grid.style.position = "relative";
+          }
+
+          slots.forEach((slotBounds) => {
+            const slot = doc.createElement("div");
+            slot.className = "ll-bento__editor-add";
+            slot.style.left = `${Math.round(slotBounds.left)}px`;
+            slot.style.top = `${Math.round(slotBounds.top)}px`;
+            slot.style.width = `${Math.round(slotBounds.width)}px`;
+            slot.style.height = `${Math.round(slotBounds.height)}px`;
+            slot.innerHTML = `
+              <button class="ll-bento__editor-add__trigger" type="button" aria-label="Adicionar bloco ao Bento">+</button>
+              <div class="ll-bento__editor-add__menu" role="group" aria-label="Adicionar bloco">
+                ${availableTypes.map((type) => `<button type="button" data-bento-preview-add="${type}">${type === "text" ? "Texto" : "Imagem"}</button>`).join("")}
+              </div>`;
+
+            const stopPreviewEvent = (event) => event.stopPropagation();
+            slot.addEventListener("pointerdown", stopPreviewEvent);
+            slot.addEventListener("click", stopPreviewEvent);
+
+            const trigger = slot.querySelector(".ll-bento__editor-add__trigger");
+            trigger?.addEventListener("click", (event) => {
+              event.preventDefault();
+              event.stopPropagation();
+              grid.querySelectorAll(".ll-bento__editor-add.is-open").forEach((item) => {
+                if (item !== slot) item.classList.remove("is-open");
+              });
+              slot.classList.toggle("is-open");
+            });
+
+            slot.querySelectorAll("[data-bento-preview-add]").forEach((button) => {
+              button.addEventListener("click", (event) => {
+                event.preventDefault();
+                event.stopPropagation();
+                const type = button.dataset.bentoPreviewAdd;
+                if (type && canUseBentoBlockType(type)) {
+                  addBentoBlock(type);
+                }
+              });
+            });
+
+            grid.append(slot);
+          });
+        };
 
         [
           ".ll-bento__eyebrow",
@@ -4476,13 +11156,19 @@ ${containerHtml}`;
           <div class="faq-editor__bar">
             <strong>Conteúdo da LP</strong>
             <div class="template-editor__actions">
+              <button class="button button--soft icon-button" type="button" data-action="open-lp-board" aria-label="Abrir board responsivo" title="Abrir board responsivo">
+                <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                  <rect x="3" y="3" width="18" height="18" rx="2" stroke="currentColor" stroke-width="1.8"></rect>
+                  <path d="M8.5 3v18M3 9h18M15.5 9v12" stroke="currentColor" stroke-width="1.8"></path>
+                </svg>
+              </button>
               <button class="button button--soft icon-button" type="button" data-action="save-template-html-cache" aria-label="Salvar conteúdo da LP no navegador" title="Salvar conteúdo da LP">${saveIcon()}</button>
               <button class="button button--danger icon-button" type="button" data-action="clear-template-html" aria-label="Limpar conteúdo da LP e apagar cache" title="Limpar conteúdo da LP">${trashIcon()}</button>
             </div>
           </div>
           <div class="faq-bulk-panel__body">
             <label class="field">
-              <span>HTML dentro da lp-container</span>
+              <span>HTML dentro do FrameWork</span>
               <textarea class="bulk-input template-editor__textarea" data-template-field="html" spellcheck="false">${escapeHtml(state.template.html)}</textarea>
             </label>
             <p class="template-editor__status" aria-live="polite">${escapeHtml(state.template.status)}</p>
@@ -4492,8 +11178,13 @@ ${containerHtml}`;
     }
 
     function clearTemplateHtml() {
-      state.template.html = "";
-      state.template.status = "Conteúdo da LP limpo.";
+      const nextStatus = "Conteúdo da LP limpo.";
+      if (state.responsive?.editDevice === "base" && typeof updateTemplateBaseHtml === "function") {
+        updateTemplateBaseHtml("", nextStatus);
+      } else {
+        state.template.html = "";
+        state.template.status = nextStatus;
+      }
       try {
         localStorage.removeItem(templateCacheKey);
       } catch (error) {}
@@ -4504,10 +11195,13 @@ ${containerHtml}`;
       try {
         localStorage.setItem(templateCacheKey, state.template.html || "");
         state.template.status = "Conteúdo da LP salvo neste navegador.";
+        renderEditor(true);
+        return true;
       } catch (error) {
         state.template.status = "Não consegui salvar no navegador.";
+        renderEditor(true);
+        return false;
       }
-      renderEditor(true);
     }
 
     function loadTemplateHtmlCache() {
@@ -4529,10 +11223,15 @@ ${containerHtml}`;
       reader.addEventListener("load", () => {
         const rawValue = String(reader.result || "");
         const extractedValue = extractLpContainerHtml(rawValue);
-        state.template.html = extractedValue;
-        state.template.status = rawValue.trim() && extractedValue !== rawValue.trim()
-          ? "HTML importado. Encontrei a lp-container e trouxe só o conteúdo interno."
+        const nextStatus = rawValue.trim() && extractedValue !== rawValue.trim()
+          ? "HTML importado. Encontrei e preservei a lp-container."
           : "HTML importado para a lp-container.";
+        if (state.responsive?.editDevice === "base" && typeof updateTemplateBaseHtml === "function") {
+          updateTemplateBaseHtml(extractedValue, nextStatus);
+        } else {
+          state.template.html = extractedValue;
+          state.template.status = nextStatus;
+        }
         renderEditor(true);
       });
       reader.readAsText(file);

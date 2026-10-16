@@ -1,0 +1,48 @@
+/* Base compartilhada do Layout Lab. Carregue antes do CSS da secao. */
+.ll-layout,
+.ll-layout *,
+.lp-container,
+.lp-container * {
+  box-sizing: border-box;
+}
+
+.ll-layout img,
+.ll-layout picture,
+.ll-layout video,
+.ll-layout iframe,
+.lp-container img,
+.lp-container picture,
+.lp-container video,
+.lp-container iframe {
+  max-width: 100%;
+}
+
+.ll-layout picture,
+.lp-container picture {
+  display: block;
+}
+
+.ll-layout img,
+.ll-layout video,
+.lp-container img,
+.lp-container video {
+  display: block;
+}
+
+.ll-layout [hidden],
+.lp-container [hidden] {
+  display: none !important;
+}
+
+.ll-layout .sr-only,
+.lp-container .sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
