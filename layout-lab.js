@@ -3779,10 +3779,35 @@ ${buildFaqPreviewStylePackage({ includeResponsive: true, responsiveOptions: { in
       });
     }
 
+    function stripStandaloneStylesFromHtmlExport(value) {
+      const rawValue = String(value || "");
+      if (!rawValue || typeof DOMParser === "undefined") {
+        return rawValue;
+      }
+
+      const parsedDocument = new DOMParser().parseFromString(`<div data-ll-html-export-root>${rawValue}</div>`, "text/html");
+      const root = parsedDocument.querySelector("[data-ll-html-export-root]");
+      if (!root) {
+        return rawValue;
+      }
+
+      // HTML-only means markup only. In particular, styles produced by the
+      // preview must not leak into WorkH.html as siblings of lp-container.
+      Array.from(root.children).forEach((element) => {
+        if (element.tagName === "STYLE") {
+          element.remove();
+        }
+      });
+      return root.innerHTML.trim();
+    }
+
     function buildOutputHtml(copyMode = "html") {
       const value = buildOutputHtmlRaw(copyMode);
       const outputWithoutEditorArtifacts = cleanLabEditorArtifactsFromOutput(value);
-      const outputWithStructuralStylesheet = prependStructuralStylesheet(outputWithoutEditorArtifacts);
+      const htmlOnlyOutput = copyMode === "html"
+        ? stripStandaloneStylesFromHtmlExport(outputWithoutEditorArtifacts)
+        : outputWithoutEditorArtifacts;
+      const outputWithStructuralStylesheet = prependStructuralStylesheet(htmlOnlyOutput);
       const cleanedValue = copyMode === "css"
         ? outputWithStructuralStylesheet
         : cleanPictureSourcesFromOutput(outputWithStructuralStylesheet);

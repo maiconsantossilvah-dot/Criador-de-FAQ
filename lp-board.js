@@ -850,7 +850,10 @@
           });
           return items.slice(0, 32);
         }
-        function getManagedHeadNodes(sourceDocument) { return Array.prototype.slice.call(sourceDocument.head.querySelectorAll("style,link[rel~='stylesheet']")); }
+        function getManagedHeadNodes(sourceDocument) {
+          return Array.prototype.slice.call(sourceDocument.head.querySelectorAll("style,link[rel~='stylesheet']"))
+            .filter(function (node) { return !node.hasAttribute("data-ll-preview-only-style"); });
+        }
         function syncStyles(nextDocument) {
           var current = getManagedHeadNodes(document), next = getManagedHeadNodes(nextDocument);
           var signature = function (nodes) { return nodes.map(function (node) { return node.outerHTML; }).join("\\n"); };
@@ -858,7 +861,13 @@
           current.forEach(function (node) { node.remove(); });
           next.forEach(function (node) { document.head.appendChild(document.importNode(node, true)); });
         }
+        var lastIncomingHtml = null;
         function syncDocument(nextHtml) {
+          nextHtml = String(nextHtml || "");
+          // O pai já evita atualizações iguais, mas manter a mesma barreira
+          // dentro do iframe protege contra mensagens repetidas em sequência.
+          if (nextHtml === lastIncomingHtml) return;
+          lastIncomingHtml = nextHtml;
           var parser = new DOMParser(), nextDocument = parser.parseFromString(nextHtml, "text/html");
           var scrollX = window.scrollX, scrollY = window.scrollY;
           var nodes = Array.prototype.slice.call(nextDocument.body.childNodes).map(function (node) { return document.importNode(node, true); });

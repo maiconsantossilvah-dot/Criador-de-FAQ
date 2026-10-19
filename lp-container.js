@@ -7546,8 +7546,12 @@ ${buildLpContainerHtml(state.template.html, { includeLabAttrs: true })}
         if (!faqStyle) {
           faqStyle = doc.createElement("style");
           faqStyle.id = styleId;
+          // Regra usada somente para os controles de edição dentro do frame.
+          // Ela nunca deve participar da comparação/sincronização do HTML da
+          // LP, pois é recriada sempre que um frame é montado.
           (doc.head || doc.documentElement).appendChild(faqStyle);
         }
+        faqStyle.dataset.llPreviewOnlyStyle = "true";
 
         faqStyle.textContent = `
 .lp-container .ll-template-faq-custom-colors .ll-template-faq-summary,
@@ -9591,7 +9595,6 @@ ${buildLpContainerHtml(state.template.html, { includeLabAttrs: true })}
           return;
         }
         root.dataset.llPreviewTemplateEditingReady = "true";
-        let optionCardClickTimer = null;
         let templateSourceSelectionTimer = null;
 
         const queueTemplateSourceReveal = (event) => {
@@ -9650,10 +9653,6 @@ ${buildLpContainerHtml(state.template.html, { includeLabAttrs: true })}
           if (event.ctrlKey || event.metaKey) {
             event.preventDefault();
             event.stopImmediatePropagation();
-            if (optionCardClickTimer) {
-              window.clearTimeout(optionCardClickTimer);
-              optionCardClickTimer = null;
-            }
             openTemplateOptionCardPopover(event, label);
             return true;
           }
@@ -9673,30 +9672,12 @@ ${buildLpContainerHtml(state.template.html, { includeLabAttrs: true })}
             target.checked = !target.checked;
             target.toggleAttribute("checked", target.checked);
           }
-          // Guarda o estado no HTML imediatamente, mas deixa a atualizacao do
-          // frame para depois da janela de duplo clique. Assim um card pode
-          // ser editado sem ser substituido entre os dois cliques.
-          if (interactionRoot.isConnected) {
-            syncTemplateHtmlFromPreview({
-              container: interactionRoot,
-              skipPreviewUpdate: true
-            });
-          }
-          if (optionCardClickTimer) {
-            window.clearTimeout(optionCardClickTimer);
-          }
-          optionCardClickTimer = window.setTimeout(() => {
-            optionCardClickTimer = null;
-            if (interactionRoot.isConnected) {
-              syncTemplateHtmlFromPreview({
-                container: interactionRoot,
-                // O estado já foi aplicado neste frame. Atualizar o próprio
-                // documento depois do atraso desmontava e remontava as barras
-                // de slides sem necessidade, causando o flicker visível.
-                preserveLiveFrame: true
-              });
-            }
-          }, 220);
+          // Selecionar um slide é uma interação do preview, não uma edição
+          // do código. Serializar a LP aqui substituía todos os iframes duas
+          // vezes por clique, recriando as barras de slide e fazendo o código
+          // crescer mesmo sem alteração de conteúdo. A opção selecionada fica
+          // estável no frame atual; mudanças reais continuam sendo salvas
+          // pelos editores de texto, cor, mídia e pelos botões + / − Slide.
           return true;
         };
 
